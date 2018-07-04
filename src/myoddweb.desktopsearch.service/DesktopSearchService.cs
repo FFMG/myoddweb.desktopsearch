@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Configuration.Install;
 using System.Reflection;
 using System.ServiceProcess;
+using System.Threading.Tasks;
 using Microsoft.Win32;
 
 namespace myoddweb.desktopsearch.service
@@ -21,6 +22,11 @@ namespace myoddweb.desktopsearch.service
     /// Required designer variable.
     /// </summary>
     private System.ComponentModel.IContainer components;
+
+    /// <summary>
+    /// We use this to prevent a shutdown while we are still starting.
+    /// </summary>
+    private bool _startupThreadBusy;
 
     public DesktopSearchService()
     {
@@ -53,12 +59,56 @@ namespace myoddweb.desktopsearch.service
     #region ServiceBase overrides
     protected override void OnStart(string[] args)
     {
+      StartMonitors(true);
     }
 
     protected override void OnStop()
     {
+      StopMonitors();
     }
     #endregion
+
+    /// <summary>
+    /// Start the process as a service or as a console app.
+    /// </summary>
+    /// <param name="isService"></param>
+    /// <returns></returns>
+    private bool StartMonitors( bool isService )
+    {
+      var errorDuringStartup = false;
+      try
+      {
+        _startupThreadBusy = true;
+      }
+      catch (AggregateException)
+      {
+        errorDuringStartup = true;
+      }
+      finally
+      {
+        _startupThreadBusy = false;
+      }
+
+      if (errorDuringStartup)
+      {
+        Stop();
+      }
+
+      // return if we had an error or not.
+      return !errorDuringStartup;
+    }
+
+    /// <summary>
+    /// Stopt the currently running parsers.
+    /// </summary>
+    private void StopMonitors()
+    {
+      // don't do the stop while the startup thread is still busy starting up
+      while (_startupThreadBusy)
+      {
+        Task.Yield();
+      }
+    }
 
     /// <summary>
     /// Invoke the actions directrly from the Main( string[] )
@@ -225,6 +275,47 @@ namespace myoddweb.desktopsearch.service
     /// </summary>
     private void RunAsConsole()
     {
+      try
+      {
+        Console.WriteLine("Running as a console.");
+        if (!StartMonitors(false))
+        {
+          Console.WriteLine("There was a problem starting the processes.");
+          return;
+        }
+
+        Console.WriteLine("Press Ctrl+C to stop the proccess.");
+
+        // then wait for the user to press a key
+        var keepRunning = true;
+        Console.CancelKeyPress += delegate(object sender, ConsoleCancelEventArgs e)
+        {
+          Console.WriteLine("Stop detected.");
+          e.Cancel = true;
+          keepRunning = false;
+        };
+
+        while (keepRunning)
+        {
+          // wait a little.
+          Task.Delay(1000).Wait();
+        }
+      }
+      catch (Exception ex)
+      {
+        Console.WriteLine( ex.Message );
+        while (ex.InnerException != null)
+        {
+          ex = ex.InnerException;
+          Console.WriteLine(ex.Message);
+        }
+      }
+
+      // if we are here, we stopped
+      // they might throw as well, but it is up to the 
+      // stop monitor function to handle it.
+      StopMonitors();
+
     }
   }
 }
