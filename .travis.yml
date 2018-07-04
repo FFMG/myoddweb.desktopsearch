@@ -1,0 +1,13 @@
+language: csharp
+solution: src/myoddweb.desktopsearch.sln
+
+before_install:
+  - sudo apt-get install nunit-console
+before_script:
+  - nuget restore src/myoddweb.desktopsearch.sln
+  
+script:
+  - msbuild /p:Configuration=Debug src/myoddweb.desktopsearch.sln
+
+notifications:
+  - email: false
