@@ -5,6 +5,10 @@ VisualStudioVersion = 15.0.27703.2035
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.service", "src\myoddweb.desktopsearch.service\myoddweb.desktopsearch.service.csproj", "{4EC949E0-F005-458F-91E4-2AC42270F9EA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.interfaces", "src\myoddweb.desktopsearch.interfaces\myoddweb.desktopsearch.interfaces.csproj", "{B1B3597E-D169-47A0-8CA8-FD543EF817D9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.parser", "src\myoddweb.desktopsearch.parser\myoddweb.desktopsearch.parser.csproj", "{22E5A150-C0AD-4715-8A42-47C50D74BAAE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{4EC949E0-F005-458F-91E4-2AC42270F9EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4EC949E0-F005-458F-91E4-2AC42270F9EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4EC949E0-F005-458F-91E4-2AC42270F9EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1B3597E-D169-47A0-8CA8-FD543EF817D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1B3597E-D169-47A0-8CA8-FD543EF817D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1B3597E-D169-47A0-8CA8-FD543EF817D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1B3597E-D169-47A0-8CA8-FD543EF817D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{22E5A150-C0AD-4715-8A42-47C50D74BAAE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{22E5A150-C0AD-4715-8A42-47C50D74BAAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{22E5A150-C0AD-4715-8A42-47C50D74BAAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{22E5A150-C0AD-4715-8A42-47C50D74BAAE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -12,16 +12,20 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-namespace myoddweb.desktopsearch.service
+
+using System;
+using System.IO;
+
+namespace myoddweb.desktopsearch.interfaces.IO
 {
-  internal class Program
+  public interface IDirectory
   {
-    static void Main(string[] args)
-    {
-      using (var service = new DesktopSearchService())
-      {
-        service.InvokeAction(args);
-      }
-    }
+    /// <summary>
+    /// Parse a directlry and look for sub folders.
+    /// </summary>
+    /// <param name="path">The start path</param>
+    /// <param name="actionFile">Called when a file is found</param>
+    /// <param name="parseSubDirectory">Called when a directory is found, return true if we want to parse it further,</param>
+    void Parse(string path, Action<FileInfo> actionFile, Func<bool, DirectoryInfo> parseSubDirectory );
   }
 }

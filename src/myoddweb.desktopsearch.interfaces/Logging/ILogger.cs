@@ -12,16 +12,32 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-namespace myoddweb.desktopsearch.service
+namespace myoddweb.desktopsearch.interfaces.Logging
 {
-  internal class Program
+  public interface ILogger
   {
-    static void Main(string[] args)
-    {
-      using (var service = new DesktopSearchService())
-      {
-        service.InvokeAction(args);
-      }
-    }
+    /// <summary>
+    /// Log an error message.
+    /// </summary>
+    /// <param name="message"></param>
+    void Error(string message);
+
+    /// <summary>
+    /// Log a warning
+    /// </summary>
+    /// <param name="message"></param>
+    void Warning(string message);
+
+    /// <summary>
+    /// Log an information message
+    /// </summary>
+    /// <param name="message"></param>
+    void Information(string message);
+
+    /// <summary>
+    /// Log a verbose message
+    /// </summary>
+    /// <param name="message"></param>
+    void Verbose(string message);
   }
 }
