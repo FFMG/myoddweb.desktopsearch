@@ -18,14 +18,32 @@ using System.Collections.Specialized;
 using System.Configuration.Install;
 using System.Reflection;
 using System.ServiceProcess;
+using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Logging;
+using myoddweb.desktopsearch.parser;
+using myoddweb.desktopsearch.service.IO;
+using myoddweb.desktopsearch.service.Logger;
 using Microsoft.Win32;
 
 namespace myoddweb.desktopsearch.service
 {
   internal class DesktopSearchService : ServiceBase
   {
+    /// <summary>
+    /// The name of the server.
+    /// </summary>
     private const string DesktopSearchServiceName = "Myoddweb.DesktopSearch";
+
+    /// <summary>
+    /// This is the parser we are currently working with.
+    /// </summary>
+    private Parser _parser;
+
+    /// <summary>
+    /// The cancellation source
+    /// </summary>
+    private CancellationTokenSource _cancellationTokenSource;
 
     /// <summary>
     /// The parsed arguments.
@@ -73,12 +91,12 @@ namespace myoddweb.desktopsearch.service
     #region ServiceBase overrides
     protected override void OnStart(string[] args)
     {
-      StartMonitors(true);
+      StartParser(true);
     }
 
     protected override void OnStop()
     {
-      StopMonitors();
+      StopParser();
     }
     #endregion
 
@@ -87,12 +105,25 @@ namespace myoddweb.desktopsearch.service
     /// </summary>
     /// <param name="isService"></param>
     /// <returns></returns>
-    private bool StartMonitors( bool isService )
+    private bool StartParser( bool isService )
     {
       var errorDuringStartup = false;
       try
       {
         _startupThreadBusy = true;
+
+        ILogger logger = null;
+        if (!isService)
+        {
+          logger = new ConsoleLogger( LogLevel.All );
+        }
+
+        // create the cancellation source
+        _cancellationTokenSource = new CancellationTokenSource();
+
+        // and we can now create and start the parser.
+        _parser = new Parser(logger, new Directory() );
+        _parser.Start(_cancellationTokenSource.Token );
       }
       catch (AggregateException)
       {
@@ -115,13 +146,19 @@ namespace myoddweb.desktopsearch.service
     /// <summary>
     /// Stopt the currently running parsers.
     /// </summary>
-    private void StopMonitors()
+    private void StopParser()
     {
       // don't do the stop while the startup thread is still busy starting up
       while (_startupThreadBusy)
       {
         Task.Yield();
       }
+
+      _cancellationTokenSource?.Cancel();
+      _parser?.Stop();
+
+      _cancellationTokenSource = null;
+      _parser = null;
     }
 
     /// <summary>
@@ -292,7 +329,7 @@ namespace myoddweb.desktopsearch.service
       try
       {
         Console.WriteLine("Running as a console.");
-        if (!StartMonitors(false))
+        if (!StartParser(false))
         {
           Console.WriteLine("There was a problem starting the processes.");
           return;
@@ -328,8 +365,7 @@ namespace myoddweb.desktopsearch.service
       // if we are here, we stopped
       // they might throw as well, but it is up to the 
       // stop monitor function to handle it.
-      StopMonitors();
-
+      StopParser();
     }
   }
 }
