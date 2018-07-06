@@ -116,6 +116,7 @@ namespace myoddweb.desktopsearch.service
         if (!isService)
         {
           logger = new ConsoleLogger( LogLevel.All );
+          logger.Information("Running as a console.");
         }
 
         // create the cancellation source
@@ -328,10 +329,8 @@ namespace myoddweb.desktopsearch.service
     {
       try
       {
-        Console.WriteLine("Running as a console.");
         if (!StartParser(false))
         {
-          Console.WriteLine("There was a problem starting the processes.");
           return;
         }
 

@@ -28,4 +28,3 @@ namespace myoddweb.desktopsearch.interfaces.Logging
     All = None | Verbose | Information | Warning | Error
   }
 }
-}

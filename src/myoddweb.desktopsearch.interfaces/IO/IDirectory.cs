@@ -29,6 +29,6 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="parseSubDirectory">Called when a directory is found, return true if we want to parse it further,</param>
     /// <param name="token">The cancelation token to cancel the runningtask.</param>
     /// <returns>success or false if the operation was cancelled.</returns>
-    Task<bool> ParseAsync(string path, Action<FileInfo> actionFile, Func<bool, DirectoryInfo> parseSubDirectory, CancellationToken token );
+    Task<bool> ParseAsync(string path, Action<FileInfo> actionFile, Func<DirectoryInfo, bool> parseSubDirectory, CancellationToken token );
   }
 }

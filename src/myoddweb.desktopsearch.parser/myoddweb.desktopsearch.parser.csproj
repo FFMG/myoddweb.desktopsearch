@@ -40,7 +40,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Parser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\myoddweb.desktopsearch.interfaces\myoddweb.desktopsearch.interfaces.csproj">
+      <Project>{B1B3597E-D169-47A0-8CA8-FD543EF817D9}</Project>
+      <Name>myoddweb.desktopsearch.interfaces</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

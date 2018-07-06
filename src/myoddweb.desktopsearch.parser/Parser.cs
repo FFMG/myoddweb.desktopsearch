@@ -13,6 +13,9 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.IO;
+using System.Security;
+using System.Security.AccessControl;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -46,18 +49,92 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     public void Start( CancellationToken token )
     {
-      var thread = new Thread(async () => await Work(token));
+      var thread = new Thread(async () => await Work(token).ConfigureAwait(false));
       thread.Start();
+      _logger.Information("Parser started");
     }
 
     public async Task<bool> Work(CancellationToken token)
     {
-      if (token.IsCancellationRequested)
+      // parse the directory
+      return await _directory.ParseAsync("c:\\", ProcessFile, ParseDirectory, token).ConfigureAwait( false );
+    }
+
+    public bool CanReadDirectory(DirectoryInfo directoryInfo)
+    {
+      try
+      {
+        var accessControlList = directoryInfo.GetAccessControl();
+
+        var accessRules =
+          accessControlList?.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
+        if (accessRules == null)
+        {
+          return false;
+        }
+
+        var readAllow = false;
+        var readDeny = false;
+        foreach (FileSystemAccessRule rule in accessRules)
+        {
+          if ((FileSystemRights.Read & rule.FileSystemRights) != FileSystemRights.Read){ continue;}
+
+          switch (rule.AccessControlType)
+          {
+            case AccessControlType.Allow:
+              readAllow = true;
+              break;
+
+            case AccessControlType.Deny:
+              readDeny = true;
+              break;
+          }
+        }
+
+        return readAllow && !readDeny;
+      }
+      catch (UnauthorizedAccessException)
       {
         return false;
       }
+      catch (SecurityException)
+      {
+        return false;
+      }
+      catch (Exception e)
+      {
+        _logger.Error(e.Message);
+        return false;
+      }
+    }
 
+    /// <summary>
+    /// Check if we want to parse this directory or not.
+    /// </summary>
+    /// <param name="directoryInfo"></param>
+    /// <returns></returns>
+    private bool ParseDirectory(DirectoryInfo directoryInfo )
+    {
+      if (!CanReadDirectory(directoryInfo))
+      {
+        _logger.Warning($"Cannot Parse Directory: {directoryInfo.Name}");
+        return false;
+      }
+
+      // we can parse it.
+      _logger.Verbose($"Parsing Directory: {directoryInfo.Name}");
+
+      // we always parse sub directories
       return true;
+    }
+
+    /// <summary>
+    /// Process a file that has been found.
+    /// </summary>
+    /// <param name="fileInfo"></param>
+    private void ProcessFile(FileInfo fileInfo )
+    {
+      _logger.Verbose( $"Processing File: {fileInfo.Name}");
     }
 
     /// <summary>
