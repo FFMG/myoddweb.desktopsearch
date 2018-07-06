@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Security;
 using System.Security.AccessControl;
@@ -49,17 +50,70 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     public void Start( CancellationToken token )
     {
-      var thread = new Thread(async () => await Work(token).ConfigureAwait(false));
+      var thread = new Thread(async () => await WorkAsync(token).ConfigureAwait(false));
       thread.Start();
       _logger.Information("Parser started");
     }
 
-    public async Task<bool> Work(CancellationToken token)
+    /// <summary>
+    /// Do all the parsing work,
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> WorkAsync(CancellationToken token)
     {
-      // parse the directory
-      return await _directory.ParseAsync("c:\\", ProcessFile, ParseDirectory, token).ConfigureAwait( false );
+      const string startFolder = "c:\\";
+      // first we get a full list of files/directories.
+      if (!await ParseAllDirectoriesAsync(startFolder, token).ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // we then watch for files/folder changes.
+      // WatchFoldersAsync(startFolder, token);
+      return true;
     }
 
+    /// <summary>
+    /// Parse all the directories.
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> ParseAllDirectoriesAsync(string startFolder, CancellationToken token)
+    { 
+      var stopwatch = new Stopwatch();
+      stopwatch.Start();
+      var directoryCounter = 0;
+      var parseDirectoryCounter = new Func<DirectoryInfo, bool>(( directoryInfo) =>
+      {
+        if (!ParseDirectory(directoryInfo))
+        {
+          return false;
+        }
+
+        ++directoryCounter;
+        return true;
+      });
+      // parse the directory
+
+      if (!await _directory.ParseAsync( startFolder , ProcessFile, parseDirectoryCounter, token).ConfigureAwait(false))
+      {
+        _logger.Warning( "The parsing was cancelled");
+        return false;
+      }
+
+      stopwatch.Stop();
+      var elapsedTime = stopwatch.ElapsedMilliseconds;
+      _logger.Information($"Parsed {directoryCounter} directories (Elapsed:{stopwatch.Elapsed:g})");
+
+      return true;
+    }
+
+    /// <summary>
+    /// Check if we are able to process this directlry.
+    /// </summary>
+    /// <param name="directoryInfo"></param>
+    /// <returns></returns>
     public bool CanReadDirectory(DirectoryInfo directoryInfo)
     {
       try
@@ -117,12 +171,12 @@ namespace myoddweb.desktopsearch.parser
     {
       if (!CanReadDirectory(directoryInfo))
       {
-        _logger.Warning($"Cannot Parse Directory: {directoryInfo.Name}");
+        _logger.Warning($"Cannot Parse Directory: {directoryInfo.FullName}");
         return false;
       }
 
       // we can parse it.
-      _logger.Verbose($"Parsing Directory: {directoryInfo.Name}");
+      _logger.Verbose($"Parsing Directory: {directoryInfo.FullName}");
 
       // we always parse sub directories
       return true;
