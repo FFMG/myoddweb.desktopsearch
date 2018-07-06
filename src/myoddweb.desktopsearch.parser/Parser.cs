@@ -70,13 +70,48 @@ namespace myoddweb.desktopsearch.parser
       }
 
       // we then watch for files/folder changes.
-      // WatchFoldersAsync(startFolder, token);
+      if( !await WatchFoldersAsync(startFolder, token).ConfigureAwait(false))
+      {
+        return false;
+      }
+
       return true;
+    }
+
+    /// <summary>
+    /// Start to watch all the folders and sub folders.
+    /// </summary>
+    /// <param name="startFolder"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> WatchFoldersAsync(string startFolder, CancellationToken token)
+    {
+      var watcher = new FileSystemWatcher
+      {
+        Path = startFolder,
+        NotifyFilter = NotifyFilters.LastWrite,
+        Filter = "*.*",
+        IncludeSubdirectories = true
+      };
+      watcher.Changed += OnFolderChanged;
+      watcher.EnableRaisingEvents = true;
+      return true;
+    }
+
+    /// <summary>
+    /// When a file has been changed.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void OnFolderChanged(object sender, FileSystemEventArgs e)
+    {
+      _logger.Verbose( $"File: {e.FullPath} changed ({e.ChangeType}");
     }
 
     /// <summary>
     /// Parse all the directories.
     /// </summary>
+    /// <param name="startFolder"></param>
     /// <param name="token"></param>
     /// <returns></returns>
     private async Task<bool> ParseAllDirectoriesAsync(string startFolder, CancellationToken token)
