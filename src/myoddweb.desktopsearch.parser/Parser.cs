@@ -29,7 +29,7 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// The file watcher
     /// </summary>
-    private FileSystemWatcher _watcher;
+    private FileWatcher _watcher;
 
     /// <summary>
     /// The logger that we will be using to log messages.
@@ -69,10 +69,10 @@ namespace myoddweb.desktopsearch.parser
     {
       const string startFolder = "c:\\";
       // first we get a full list of files/directories.
-      if (!await ParseAllDirectoriesAsync(startFolder, token).ConfigureAwait(false))
-      {
-        return false;
-      }
+      //if (!await ParseAllDirectoriesAsync(startFolder, token).ConfigureAwait(false))
+      //{
+      //  return false;
+      //}
 
       // we then watch for files/folder changes.
       if( !StartWatcher(startFolder))
@@ -86,13 +86,7 @@ namespace myoddweb.desktopsearch.parser
     private void StopWatcher()
     {
       // are we watching?
-      if (_watcher == null)
-      {
-        return;
-      }
-
-      _watcher.EnableRaisingEvents = false;
-      _watcher.Dispose();
+      _watcher?.Stop();
       _watcher = null;
     }
 
@@ -103,30 +97,22 @@ namespace myoddweb.desktopsearch.parser
     /// <returns></returns>
     private bool StartWatcher(string startFolder)
     {
-      _watcher = new FileSystemWatcher
-      {
-        Path = startFolder,
-        NotifyFilter = NotifyFilters.LastWrite,
-        Filter = "*.*",
-        IncludeSubdirectories = true,
-        EnableRaisingEvents = true
-      };
+      _watcher = new FileWatcher(startFolder);
       _watcher.Error += OnFolderError;
       _watcher.Changed += OnFolderChanged;
       _watcher.Renamed += OnFolderRenamed;
       _watcher.Created += OnFolderCreated;
       _watcher.Deleted += OnFolderDeleted;
 
-      _watcher.EnableRaisingEvents = true;
+      _watcher.Start();
       return true;
     }
 
     /// <summary>
     /// When the file watcher errors out.
     /// </summary>
-    /// <param name="sender"></param>
     /// <param name="e"></param>
-    private void OnFolderError(object sender, ErrorEventArgs e)
+    private void OnFolderError( ErrorEventArgs e)
     {
       // the watcher raised an error
       _logger.Error( $"File watcher error: {e.GetException().Message}");
@@ -138,9 +124,8 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// When a file/folder has been renamed.
     /// </summary>
-    /// <param name="sender"></param>
     /// <param name="e"></param>
-    private void OnFolderRenamed(object sender, RenamedEventArgs e)
+    private void OnFolderRenamed( RenamedEventArgs e)
     {
       _logger.Verbose($"File/Folder: {e.OldFullPath} to {e.FullPath} ({e.ChangeType})");
     }
@@ -148,9 +133,8 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// When a file/folder has been changed.
     /// </summary>
-    /// <param name="sender"></param>
     /// <param name="e"></param>
-    private void OnFolderChanged(object sender, FileSystemEventArgs e)
+    private void OnFolderChanged( FileSystemEventArgs e)
     {
       _logger.Verbose( $"File/Folder: {e.FullPath} ({e.ChangeType})");
     }
@@ -158,9 +142,8 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// When a file/folder has been created.
     /// </summary>
-    /// <param name="sender"></param>
     /// <param name="e"></param>
-    private void OnFolderCreated(object sender, FileSystemEventArgs e)
+    private void OnFolderCreated( FileSystemEventArgs e)
     {
       _logger.Verbose($"File/Folder: {e.FullPath} ({e.ChangeType})");
     }
@@ -168,9 +151,8 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// When a file/folder has been deleted.
     /// </summary>
-    /// <param name="sender"></param>
     /// <param name="e"></param>
-    private void OnFolderDeleted(object sender, FileSystemEventArgs e)
+    private void OnFolderDeleted(FileSystemEventArgs e)
     {
       _logger.Verbose($"File/Folder: {e.FullPath} ({e.ChangeType})");
     }
