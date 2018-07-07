@@ -27,6 +27,11 @@ namespace myoddweb.desktopsearch.parser
   public class Parser
   {
     /// <summary>
+    /// The file watcher
+    /// </summary>
+    private FileSystemWatcher _watcher;
+
+    /// <summary>
     /// The logger that we will be using to log messages.
     /// </summary>
     private readonly ILogger _logger;
@@ -70,7 +75,7 @@ namespace myoddweb.desktopsearch.parser
       }
 
       // we then watch for files/folder changes.
-      if( !await WatchFoldersAsync(startFolder, token).ConfigureAwait(false))
+      if( !StartWatcher(startFolder))
       {
         return false;
       }
@@ -82,19 +87,18 @@ namespace myoddweb.desktopsearch.parser
     /// Start to watch all the folders and sub folders.
     /// </summary>
     /// <param name="startFolder"></param>
-    /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> WatchFoldersAsync(string startFolder, CancellationToken token)
+    private bool StartWatcher(string startFolder)
     {
-      var watcher = new FileSystemWatcher
+      _watcher = new FileSystemWatcher
       {
         Path = startFolder,
         NotifyFilter = NotifyFilters.LastWrite,
         Filter = "*.*",
         IncludeSubdirectories = true
       };
-      watcher.Changed += OnFolderChanged;
-      watcher.EnableRaisingEvents = true;
+      _watcher.Changed += OnFolderChanged;
+      _watcher.EnableRaisingEvents = true;
       return true;
     }
 
@@ -105,7 +109,7 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="e"></param>
     private void OnFolderChanged(object sender, FileSystemEventArgs e)
     {
-      _logger.Verbose( $"File: {e.FullPath} changed ({e.ChangeType}");
+      _logger.Verbose( $"File/Folder: {e.FullPath} ({e.ChangeType})");
     }
 
     /// <summary>
@@ -129,16 +133,15 @@ namespace myoddweb.desktopsearch.parser
         ++directoryCounter;
         return true;
       });
-      // parse the directory
 
-      if (!await _directory.ParseAsync( startFolder , ProcessFile, parseDirectoryCounter, token).ConfigureAwait(false))
+      // parse the directory
+      if (!await _directory.ParseDirectoriesAsync( _logger, startFolder, parseDirectoryCounter, token).ConfigureAwait(false))
       {
         _logger.Warning( "The parsing was cancelled");
         return false;
       }
 
       stopwatch.Stop();
-      var elapsedTime = stopwatch.ElapsedMilliseconds;
       _logger.Information($"Parsed {directoryCounter} directories (Elapsed:{stopwatch.Elapsed:g})");
 
       return true;
@@ -221,9 +224,9 @@ namespace myoddweb.desktopsearch.parser
     /// Process a file that has been found.
     /// </summary>
     /// <param name="fileInfo"></param>
-    private void ProcessFile(FileInfo fileInfo )
+    private void ProcessFile(FileSystemInfo fileInfo )
     {
-      _logger.Verbose( $"Processing File: {fileInfo.Name}");
+      _logger.Verbose( $"Processing File: {fileInfo.FullName}");
     }
 
     /// <summary>
@@ -231,6 +234,12 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     public void Stop()
     {
+      // are we watching?
+      if (_watcher != null)
+      {
+        _watcher.EnableRaisingEvents = false;
+        _watcher = null;
+      }
     }
   }
 }
