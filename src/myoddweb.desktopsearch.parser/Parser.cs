@@ -69,10 +69,10 @@ namespace myoddweb.desktopsearch.parser
     {
       const string startFolder = "c:\\";
       // first we get a full list of files/directories.
-      //if (!await ParseAllDirectoriesAsync(startFolder, token).ConfigureAwait(false))
-      //{
-      //  return false;
-      //}
+      if (!await ParseAllDirectoriesAsync(startFolder, token).ConfigureAwait(false))
+      {
+        return false;
+      }
 
       // we then watch for files/folder changes.
       if( !StartWatcher(startFolder))

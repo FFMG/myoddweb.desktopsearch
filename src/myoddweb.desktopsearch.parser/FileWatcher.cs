@@ -227,6 +227,7 @@ namespace myoddweb.desktopsearch.parser
       lock (_lock)
       {
         //  cancel all the tasks.
+        _tasks.RemoveAll(t => t.IsCompleted);
         _source?.Cancel();
 
         _watcher.EnableRaisingEvents = false;
@@ -234,9 +235,23 @@ namespace myoddweb.desktopsearch.parser
         _watcher = null;
 
         // wait for them all to finish
-        Task.WaitAll(_tasks.ToArray());
-        _tasks.Clear();
+        try
+        {
+          if(_tasks.Count > 0 )
+          { 
+            Task.WaitAll(_tasks.ToArray(), _source?.Token ?? new CancellationToken() );
+          }
+        }
+        catch (OperationCanceledException e)
+        {
+          // ignore the cancelled exceptions.
+          if (e.CancellationToken != _source?.Token)
+          {
+            throw;
+          }
+        }
 
+        _tasks.Clear();
         _source = null;
       }
     }
