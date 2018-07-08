@@ -24,6 +24,7 @@ using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.parser;
 using myoddweb.desktopsearch.service.IO;
 using myoddweb.desktopsearch.service.Logger;
+using myoddweb.desktopsearch.service.Persisters;
 using Microsoft.Win32;
 
 namespace myoddweb.desktopsearch.service
@@ -123,7 +124,7 @@ namespace myoddweb.desktopsearch.service
         _cancellationTokenSource = new CancellationTokenSource();
 
         // and we can now create and start the parser.
-        _parser = new Parser(logger, new Directory() );
+        _parser = new Parser(new Persister(logger), logger, new Directory(logger) );
         _parser.Start(_cancellationTokenSource.Token );
       }
       catch (AggregateException)

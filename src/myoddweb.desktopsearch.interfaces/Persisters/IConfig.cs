@@ -12,41 +12,27 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+using System.Threading.Tasks;
 
-using System;
-
-namespace myoddweb.desktopsearch.interfaces.Logging
+namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface ILogger
+  public interface IConfig
   {
     /// <summary>
-    /// Log an error message.
+    /// Get a configuration value.
     /// </summary>
-    /// <param name="message"></param>
-    void Error(string message);
+    /// <param name="name"></param>
+    /// <param name="defaultValue"></param>
+    /// <returns></returns>
+    Task<string> GetConfigValueAsync(string name, string defaultValue);
 
     /// <summary>
-    /// Log a warning
+    /// Set a configuration value.
     /// </summary>
-    /// <param name="message"></param>
-    void Warning(string message);
+    /// <param name="name"></param>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    Task<bool> SetConfigValueAsync(string name, string value);
 
-    /// <summary>
-    /// Log an information message
-    /// </summary>
-    /// <param name="message"></param>
-    void Information(string message);
-
-    /// <summary>
-    /// Log a verbose message
-    /// </summary>
-    /// <param name="message"></param>
-    void Verbose(string message);
-
-    /// <summary>
-    /// Log an Exception
-    /// </summary>
-    /// <param name="ex"></param>
-    void Exception(Exception ex);
   }
 }

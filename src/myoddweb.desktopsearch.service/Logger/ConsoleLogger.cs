@@ -79,6 +79,28 @@ namespace myoddweb.desktopsearch.service.Logger
     }
 
     /// <summary>
+    /// Error message
+    /// </summary>
+    /// <param name="ex"></param>
+    public void Exception(Exception ex )
+    {
+      if (!CanLog(LogLevel.Error))
+      {
+        return;
+      }
+      while (true)
+      {
+        Error(ex.ToString());
+        if (ex.InnerException != null)
+        {
+          ex = ex.InnerException;
+          continue;
+        }
+        break;
+      }
+    }
+
+    /// <summary>
     /// Warning message
     /// </summary>
     /// <param name="message"></param>

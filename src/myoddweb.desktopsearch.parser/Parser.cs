@@ -21,6 +21,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.parser
 {
@@ -41,8 +42,16 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     private readonly IDirectory _directory;
 
-    public Parser(ILogger logger, IDirectory directory)
+    /// <summary>
+    /// The persister.
+    /// </summary>
+    private readonly IPersister _perister;
+
+    public Parser( IPersister persister, ILogger logger, IDirectory directory)
     {
+      // set the persister.
+      _perister = persister ?? throw new ArgumentNullException(nameof(persister));
+
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -180,7 +189,7 @@ namespace myoddweb.desktopsearch.parser
       });
 
       // parse the directory
-      if (!await _directory.ParseDirectoriesAsync( _logger, startFolder, parseDirectoryCounter, token).ConfigureAwait(false))
+      if (!await _directory.ParseDirectoriesAsync( startFolder, parseDirectoryCounter, token).ConfigureAwait(false))
       {
         _logger.Warning( "The parsing was cancelled");
         return false;

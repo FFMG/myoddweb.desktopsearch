@@ -25,25 +25,34 @@ namespace myoddweb.desktopsearch.service.IO
 {
   internal class Directory : IDirectory
   {
-    public async Task<bool> ParseDirectoriesAsync(ILogger logger, string path, Func<DirectoryInfo, bool> parseSubDirectory, CancellationToken token)
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    public Directory(ILogger logger)
     {
-      return await ParseDirectoryAsync(logger, new DirectoryInfo(path), parseSubDirectory, token).ConfigureAwait(false);
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<bool> ParseDirectoryAsync(ILogger logger, string path, Action<FileSystemInfo> actionFile, CancellationToken token)
+    public async Task<bool> ParseDirectoriesAsync(string path, Func<DirectoryInfo, bool> parseSubDirectory, CancellationToken token)
     {
-      return await ParseDirectoryAsync(logger, new DirectoryInfo(path), actionFile, token).ConfigureAwait(false);
+      return await ParseDirectoryAsync( new DirectoryInfo(path), parseSubDirectory, token).ConfigureAwait(false);
+    }
+
+    public async Task<bool> ParseDirectoryAsync(string path, Action<FileSystemInfo> actionFile, CancellationToken token)
+    {
+      return await ParseDirectoryAsync( new DirectoryInfo(path), actionFile, token).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Parse the given directory and sub directories
     /// </summary>
-    /// <param name="logger"></param>
     /// <param name="directoryInfo"></param>
     /// <param name="parseSubDirectory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ParseDirectoryAsync(ILogger logger, DirectoryInfo directoryInfo, Func<DirectoryInfo, bool> parseSubDirectory, CancellationToken token)
+    private async Task<bool> ParseDirectoryAsync(DirectoryInfo directoryInfo, Func<DirectoryInfo, bool> parseSubDirectory, CancellationToken token)
     {
       try
       {
@@ -63,7 +72,7 @@ namespace myoddweb.desktopsearch.service.IO
           }
 
           // we can parse this directory now.
-          if (!await ParseDirectoryAsync(logger, info, parseSubDirectory, token).ConfigureAwait(false))
+          if (!await ParseDirectoryAsync(info, parseSubDirectory, token).ConfigureAwait(false))
           {
             return false;
           }
@@ -73,17 +82,17 @@ namespace myoddweb.desktopsearch.service.IO
       {
         // we cannot access/enumerate this file
         // but we might as well continue
-        logger.Verbose($"Security error while parsing directory: {directoryInfo.FullName}.");
+        _logger.Verbose($"Security error while parsing directory: {directoryInfo.FullName}.");
       }
       catch (UnauthorizedAccessException)
       {
         // we cannot access/enumerate this file
         // but we might as well continue
-        logger.Verbose($"Unauthorized Access while parsing directory: {directoryInfo.FullName}.");
+        _logger.Verbose($"Unauthorized Access while parsing directory: {directoryInfo.FullName}.");
       }
       catch (Exception e)
       {
-        logger.Error($"Exception while parsing directory: {directoryInfo.FullName}. {e.Message}");
+        _logger.Error($"Exception while parsing directory: {directoryInfo.FullName}. {e.Message}");
       }
 
       // if we are here, we parsed everything.
@@ -93,12 +102,11 @@ namespace myoddweb.desktopsearch.service.IO
     /// <summary>
     /// Parse files in a directory
     /// </summary>
-    /// <param name="logger"></param>
     /// <param name="directoryInfo"></param>
     /// <param name="actionFile"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ParseDirectoryAsync(ILogger logger, DirectoryInfo directoryInfo, Action<FileSystemInfo> actionFile, CancellationToken token)
+    private async Task<bool> ParseDirectoryAsync(DirectoryInfo directoryInfo, Action<FileSystemInfo> actionFile, CancellationToken token)
     {
       IEnumerable<FileSystemInfo> files;
       try
@@ -109,19 +117,19 @@ namespace myoddweb.desktopsearch.service.IO
       {
         // we cannot access/enumerate this file
         // but we might as well continue
-        logger.Verbose($"Security error while parsing directory: {directoryInfo.FullName}.");
+        _logger.Verbose($"Security error while parsing directory: {directoryInfo.FullName}.");
         return true;
       }
       catch (UnauthorizedAccessException)
       {
         // we cannot access/enumerate this file
         // but we might as well continue
-        logger.Verbose($"Unauthorized Access while parsing directory: {directoryInfo.FullName}.");
+        _logger.Verbose($"Unauthorized Access while parsing directory: {directoryInfo.FullName}.");
         return true;
       }
       catch (Exception e)
       {
-        logger.Error($"Exception while parsing directory: {directoryInfo.FullName}. {e.Message}");
+        _logger.Error($"Exception while parsing directory: {directoryInfo.FullName}. {e.Message}");
         return true;
       }
       var tasks = new List<Task>();
@@ -147,17 +155,17 @@ namespace myoddweb.desktopsearch.service.IO
           {
             // we cannot access/enumerate this file
             // but we might as well continue
-            logger.Verbose($"Security error while parsing file: {file.FullName}.");
+            _logger.Verbose($"Security error while parsing file: {file.FullName}.");
           }
           catch (UnauthorizedAccessException)
           {
             // we cannot access/enumerate this file
             // but we might as well continue
-            logger.Verbose($"Unauthorized Access while parsing file: {file.FullName}.");
+            _logger.Verbose($"Unauthorized Access while parsing file: {file.FullName}.");
           }
           catch (Exception e)
           {
-            logger.Error($"Exception while parsing file: {file.FullName}. {e.Message}");
+            _logger.Error($"Exception while parsing file: {file.FullName}. {e.Message}");
           }
         }, token));
       }
