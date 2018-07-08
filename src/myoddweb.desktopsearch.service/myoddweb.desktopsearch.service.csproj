@@ -55,11 +55,11 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\myoddweb.desktopsearch.interfaces\myoddweb.desktopsearch.interfaces.csproj">
-      <Project>{B1B3597E-D169-47A0-8CA8-FD543EF817D9}</Project>
+      <Project>{b1b3597e-d169-47a0-8ca8-fd543ef817d9}</Project>
       <Name>myoddweb.desktopsearch.interfaces</Name>
     </ProjectReference>
     <ProjectReference Include="..\myoddweb.desktopsearch.parser\myoddweb.desktopsearch.parser.csproj">
-      <Project>{22E5A150-C0AD-4715-8A42-47C50D74BAAE}</Project>
+      <Project>{22e5a150-c0ad-4715-8a42-47c50d74baae}</Project>
       <Name>myoddweb.desktopsearch.parser</Name>
     </ProjectReference>
   </ItemGroup>
