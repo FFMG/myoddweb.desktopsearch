@@ -19,6 +19,8 @@ namespace myoddweb.desktopsearch.service.Logger
 {
   internal class ConsoleLogger : ILogger
   {
+    private readonly object _lock = new object();
+
     /// <summary>
     /// The current log level.
     /// </summary>
@@ -52,17 +54,19 @@ namespace myoddweb.desktopsearch.service.Logger
         return;
       }
 
-      var currentColor = Console.ForegroundColor;
-      try
+      lock (_lock)
       {
-        Console.ForegroundColor = color;
-        Console.WriteLine( message );
+        var currentColor = Console.ForegroundColor;
+        try
+        {
+          Console.ForegroundColor = color;
+          Console.WriteLine(message);
+        }
+        finally
+        {
+          Console.ForegroundColor = currentColor;
+        }
       }
-      finally 
-      {
-        Console.ForegroundColor = currentColor;
-      }
-      
     }
 
     /// <summary>
