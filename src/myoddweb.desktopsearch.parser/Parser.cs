@@ -16,8 +16,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Security;
-using System.Security.AccessControl;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -175,27 +173,30 @@ namespace myoddweb.desktopsearch.parser
     /// <returns></returns>
     private async Task<bool> ParseAllDirectoriesAsync(string startFolder, CancellationToken token)
     {
-      DirectoriesParser directoriesParser = null;
-      var stopwatch = new Stopwatch();
-      stopwatch.Start();
       try
       {
-        directoriesParser = new DirectoriesParser(startFolder, _logger, _directory);
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
+
+        var directoriesParser = new DirectoriesParser(startFolder, _logger, _directory);
         await directoriesParser.SearchAsync(token).ConfigureAwait(false);
 
         // process all the files.
-        return await ParseDirectoryAsync(directoriesParser.Directories, token).ConfigureAwait(false);
+        if (!await ParseDirectoryAsync(directoriesParser.Directories, token).ConfigureAwait(false))
+        {
+          _logger.Warning($"Parsing was cancelled (Elapsed:{stopwatch.Elapsed:g})");
+          return false;
+        }
+
+        // stop the watch and log how many items we found.
+        stopwatch.Stop();
+        _logger.Information($"Parsed {directoriesParser.Directories.Count} directories (Elapsed:{stopwatch.Elapsed:g})");
+        return true;
       }
       catch (Exception e)
       {
         _logger.Exception(e);
         return false;
-      }
-      finally
-      {
-        // stop the watch and log how many items we found.
-        stopwatch.Stop();
-        _logger.Information($"Parsed {directoriesParser?.Directories.Count ?? 0} directories (Elapsed:{stopwatch.Elapsed:g})");
       }
     }
 

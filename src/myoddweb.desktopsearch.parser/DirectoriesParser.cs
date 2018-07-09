@@ -25,14 +25,14 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// The folder we will be parsing
     /// </summary>
-    private readonly string StartFolder;
+    private readonly string _startFolder;
 
-    public List<DirectoryInfo> Directories { get; private set; }
+    public List<DirectoryInfo> Directories { get; }
 
     public DirectoriesParser( string startFolder, ILogger logger, IDirectory directory)
     {
       // save the start folde.r
-      StartFolder = startFolder ?? throw new ArgumentNullException(nameof(startFolder));
+      _startFolder = startFolder ?? throw new ArgumentNullException(nameof(startFolder));
 
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -48,7 +48,7 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     /// <param name="directoryInfo"></param>
     /// <returns></returns>
-    public bool CanReadDirectory(DirectoryInfo directoryInfo)
+    private bool CanReadDirectory(DirectoryInfo directoryInfo)
     {
       try
       {
@@ -99,6 +99,11 @@ namespace myoddweb.desktopsearch.parser
       }
     }
 
+    /// <summary>
+    /// The call back function to check if we are parsing that directory or not.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <returns></returns>
     private Task<bool> ParseDirectory(DirectoryInfo directory)
     {
       if (!CanReadDirectory(directory))
@@ -114,16 +119,23 @@ namespace myoddweb.desktopsearch.parser
       return Task.FromResult(true);
     }
 
+    /// <summary>
+    /// Search the directory
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
     public async Task<bool> SearchAsync(CancellationToken token)
     {
+      Directories.Clear();
+
       // parse the directory
-      if (!await _directory.ParseDirectoriesAsync(StartFolder, ParseDirectory, token).ConfigureAwait(false))
+      if (await _directory.ParseDirectoriesAsync(_startFolder, ParseDirectory, token).ConfigureAwait(false))
       {
-        _logger.Warning("The parsing was cancelled");
-        return false;
+        return true;
       }
 
-      return true;
+      _logger.Warning("The parsing was cancelled");
+      return false;
     }
   }
 }
