@@ -107,10 +107,10 @@ namespace myoddweb.desktopsearch.parser
     {
       _watcher = new FileWatcher(startFolder);
       _watcher.Error += OnFolderError;
-      _watcher.Changed += OnFolderChanged;
-      _watcher.Renamed += OnFolderRenamed;
-      _watcher.Created += OnFolderCreated;
-      _watcher.Deleted += OnFolderDeleted;
+      _watcher.Changed += OnFolderTouched;
+      _watcher.Renamed += OnFolderTouched;
+      _watcher.Created += OnFolderTouched;
+      _watcher.Deleted += OnFolderTouched;
 
       _watcher.Start();
       return true;
@@ -133,36 +133,17 @@ namespace myoddweb.desktopsearch.parser
     /// When a file/folder has been renamed.
     /// </summary>
     /// <param name="e"></param>
-    private void OnFolderRenamed( RenamedEventArgs e)
+    private void OnFolderTouched(FileSystemEventArgs e)
     {
-      _logger.Verbose($"File/Folder: {e.OldFullPath} to {e.FullPath} ({e.ChangeType})");
-    }
-
-    /// <summary>
-    /// When a file/folder has been changed.
-    /// </summary>
-    /// <param name="e"></param>
-    private void OnFolderChanged( FileSystemEventArgs e)
-    {
-      _logger.Verbose( $"File/Folder: {e.FullPath} ({e.ChangeType})");
-    }
-
-    /// <summary>
-    /// When a file/folder has been created.
-    /// </summary>
-    /// <param name="e"></param>
-    private void OnFolderCreated( FileSystemEventArgs e)
-    {
-      _logger.Verbose($"File/Folder: {e.FullPath} ({e.ChangeType})");
-    }
-
-    /// <summary>
-    /// When a file/folder has been deleted.
-    /// </summary>
-    /// <param name="e"></param>
-    private void OnFolderDeleted(FileSystemEventArgs e)
-    {
-      _logger.Verbose($"File/Folder: {e.FullPath} ({e.ChangeType})");
+      var r = e as RenamedEventArgs;
+      if (r != null )
+      {
+        _logger.Verbose($"File/Folder: {e.OldFullPath} to {e.FullPath} ({e.ChangeType})");
+      }
+      else
+      {
+        _logger.Verbose($"File/Folder: {e.FullPath} ({e.ChangeType})");
+      }
     }
 
     /// <summary>
