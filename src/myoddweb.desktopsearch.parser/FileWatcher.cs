@@ -215,13 +215,13 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     public void Stop()
     {
+      // cancel whatever we might be busy with.
+      _source?.Cancel();
+
       if (_watcher == null)
       {
         return;
       }
-
-      // cancel whatever we might be busy with.
-      _source?.Cancel();
 
       // stop the cleanup timer
       // we don't need it anymore.

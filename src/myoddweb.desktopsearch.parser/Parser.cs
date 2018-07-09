@@ -32,6 +32,11 @@ namespace myoddweb.desktopsearch.parser
     private FileWatcher _watcher;
 
     /// <summary>
+    /// The files event parser.
+    /// </summary>
+    private FileSystemEventsParser _eventsParser;
+
+    /// <summary>
     /// The logger that we will be using to log messages.
     /// </summary>
     private readonly ILogger _logger;
@@ -88,9 +93,26 @@ namespace myoddweb.desktopsearch.parser
         return false;
       }
 
+      // finally start the file timer.
+      StartFileSystemEventTimer();
+
       return true;
     }
 
+    private void StartFileSystemEventTimer()
+    {
+      _eventsParser = new FileSystemEventsParser(_logger);
+      _eventsParser.Start();
+    }
+
+    private void StopFileSystemEventTimer()
+    {
+      _eventsParser?.Stop();
+    }
+
+    /// <summary>
+    /// Stop the file watcher
+    /// </summary>
     private void StopWatcher()
     {
       // are we watching?
@@ -124,9 +146,6 @@ namespace myoddweb.desktopsearch.parser
     {
       // the watcher raised an error
       _logger.Error( $"File watcher error: {e.GetException().Message}");
-
-      // we have to stop the watcher
-      StopWatcher();
     }
 
     /// <summary>
@@ -135,14 +154,8 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="e"></param>
     private void OnFolderTouched(FileSystemEventArgs e)
     {
-      if (e is RenamedEventArgs r )
-      {
-        _logger.Verbose($"File/Folder: {r.OldFullPath} to {r.FullPath} ({r.ChangeType})");
-      }
-      else
-      {
-        _logger.Verbose($"File/Folder: {e.FullPath} ({e.ChangeType})");
-      }
+      // It is posible that the event parser has not started yet.
+      _eventsParser?.Add(e);
     }
 
     /// <summary>
@@ -213,6 +226,7 @@ namespace myoddweb.desktopsearch.parser
     public void Stop()
     {
       StopWatcher();
+      StopFileSystemEventTimer();
     }
   }
 }
