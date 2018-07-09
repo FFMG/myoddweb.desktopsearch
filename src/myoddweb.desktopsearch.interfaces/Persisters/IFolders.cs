@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -26,6 +27,13 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="directory"></param>
     /// <returns></returns>
     Task<bool> AddOrUpdateFolderAsync(DirectoryInfo directory);
+
+    /// <summary>
+    /// Update multiple directories at once.
+    /// </summary>
+    /// <param name="directories"></param>
+    /// <returns></returns>
+    Task<bool> AddOrUpdateFoldersAsync(IEnumerable<DirectoryInfo> directories);
 
     /// <summary>
     /// Delete a folder by its id

@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Security;
@@ -176,16 +177,20 @@ namespace myoddweb.desktopsearch.parser
     { 
       var stopwatch = new Stopwatch();
       stopwatch.Start();
-      var directoryCounter = 0;
-      var parseDirectoryCounter = new Func<DirectoryInfo, Task<bool>>( async ( directoryInfo) =>
+      var directories = new List<DirectoryInfo>();
+      var parseDirectoryCounter = new Func<DirectoryInfo, Task<bool>>( directoryInfo =>
       {
-        if (!await ParseDirectoryAsync(directoryInfo).ConfigureAwait(false) )
+        if (!CanReadDirectory(directoryInfo))
         {
-          return false;
+          _logger.Warning($"Cannot Parse Directory: {directoryInfo.FullName}");
+          return Task.FromResult(false);
         }
 
-        ++directoryCounter;
-        return true;
+        // add this directory to our list.
+        directories.Add(directoryInfo);
+
+        // we will be parsing it.
+        return Task.FromResult(true);
       });
 
       // parse the directory
@@ -195,8 +200,12 @@ namespace myoddweb.desktopsearch.parser
         return false;
       }
 
+      // process all the files.
+      await ParseDirectoryAsync(directories.ToArray()).ConfigureAwait(false);
+
+      // stop the watch and log how many items we found.
       stopwatch.Stop();
-      _logger.Information($"Parsed {directoryCounter} directories (Elapsed:{stopwatch.Elapsed:g})");
+      _logger.Information($"Parsed {directories.Count} directories (Elapsed:{stopwatch.Elapsed:g})");
 
       return true;
     }
@@ -223,7 +232,10 @@ namespace myoddweb.desktopsearch.parser
         var readDeny = false;
         foreach (FileSystemAccessRule rule in accessRules)
         {
-          if ((FileSystemRights.Read & rule.FileSystemRights) != FileSystemRights.Read){ continue;}
+          if ((FileSystemRights.Read & rule.FileSystemRights) != FileSystemRights.Read)
+          {
+            continue;
+          }
 
           switch (rule.AccessControlType)
           {
@@ -257,21 +269,21 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// Check if we want to parse this directory or not.
     /// </summary>
-    /// <param name="directoryInfo"></param>
+    /// <param name="directories"></param>
     /// <returns></returns>
-    private async Task<bool> ParseDirectoryAsync(DirectoryInfo directoryInfo )
+    private async Task<bool> ParseDirectoryAsync(DirectoryInfo[] directories )
     {
-      if (!CanReadDirectory(directoryInfo))
+      // add the folder to the list.
+      if (!await _perister.AddOrUpdateFoldersAsync(directories).ConfigureAwait(false))
       {
-        _logger.Warning($"Cannot Parse Directory: {directoryInfo.FullName}");
         return false;
       }
 
-      // add the folder to the list.
-      await _perister.AddOrUpdateFolderAsync(directoryInfo).ConfigureAwait(false);
-
-      // we can parse it.
-      _logger.Verbose($"Parsing Directory: {directoryInfo.FullName}");
+      foreach (var directory in directories)
+      {
+        // we can parse it.
+        _logger.Verbose($"Directory: {directory.FullName}");
+      }
 
       // we always parse sub directories
       return true;

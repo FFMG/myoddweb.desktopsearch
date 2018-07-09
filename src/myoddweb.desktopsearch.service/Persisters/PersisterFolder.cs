@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Data.SQLite;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -8,6 +10,72 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class Persister 
   {
     public async Task<bool> AddOrUpdateFolderAsync(DirectoryInfo directory )
+    {
+      var transaction = DbConnection.BeginTransaction();
+      try
+      {
+        if (!await AddOrUpdateFolderAsync(directory, transaction))
+        {
+          transaction.Rollback();
+          return false;
+        }
+        transaction.Commit();
+        return true;
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        try
+        {
+          transaction.Rollback();
+        }
+        catch (Exception rollbackException)
+        {
+          _logger.Exception(rollbackException);
+        }
+        return false;
+      }
+    }
+
+    /// <summary>
+    /// Update multiple directories at once.
+    /// </summary>
+    /// <param name="directories"></param>
+    /// <returns></returns>
+    public async Task<bool> AddOrUpdateFoldersAsync(IEnumerable<DirectoryInfo> directories)
+    {
+      var transaction = DbConnection.BeginTransaction();
+      try
+      {
+        foreach (var directory in directories)
+        {
+          if (await AddOrUpdateFolderAsync(directory, transaction))
+          {
+            continue;
+          }
+
+          transaction.Rollback();
+          return false;
+        }
+        transaction.Commit();
+        return true;
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        try
+        {
+          transaction.Rollback();
+        }
+        catch (Exception rollbackException)
+        {
+          _logger.Exception(rollbackException);
+        }
+        return false;
+      }
+    }
+
+    public async Task<bool> AddOrUpdateFolderAsync(DirectoryInfo directory, SQLiteTransaction transaction )
     {
       // only valid paths are added.
       if (!directory.Exists)
@@ -26,7 +94,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sql = $"insert into {TableFolders} (path) values (@path)";
       using (var cmd = CreateCommand(sql))
       {
-        cmd.Parameters.Add("@path", DbType.String );
+        cmd.Transaction = transaction;
+        cmd.Parameters.Add("@path", DbType.String);
         cmd.Parameters["@path"].Value = directory.FullName;
         try
         {
