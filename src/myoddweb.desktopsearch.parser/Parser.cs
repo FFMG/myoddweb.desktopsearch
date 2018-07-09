@@ -201,7 +201,7 @@ namespace myoddweb.desktopsearch.parser
       }
 
       // process all the files.
-      await ParseDirectoryAsync(directories.ToArray()).ConfigureAwait(false);
+      await ParseDirectoryAsync(directories.ToArray(), token ).ConfigureAwait(false);
 
       // stop the watch and log how many items we found.
       stopwatch.Stop();
@@ -270,17 +270,22 @@ namespace myoddweb.desktopsearch.parser
     /// Check if we want to parse this directory or not.
     /// </summary>
     /// <param name="directories"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ParseDirectoryAsync(DirectoryInfo[] directories )
+    private async Task<bool> ParseDirectoryAsync(DirectoryInfo[] directories, CancellationToken token )
     {
       // add the folder to the list.
-      if (!await _perister.AddOrUpdateFoldersAsync(directories).ConfigureAwait(false))
+      if (!await _perister.AddOrUpdateFoldersAsync(directories, token).ConfigureAwait(false))
       {
         return false;
       }
 
       foreach (var directory in directories)
       {
+        if (token.IsCancellationRequested)
+        {
+          return false;
+        }
         // we can parse it.
         _logger.Verbose($"Directory: {directory.FullName}");
       }

@@ -31,7 +31,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateFoldersAsync()
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableFolders} (path varchar(260))")
+        ExecuteNonQueryAsync($"CREATE TABLE {TableFolders} (id integer PRIMARY KEY, path varchar(260))")
           .ConfigureAwait(false))
       {
         return false;
@@ -43,6 +43,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return false;
       }
+
       return true;
     }
 

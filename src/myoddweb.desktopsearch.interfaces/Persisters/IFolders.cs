@@ -15,6 +15,7 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
@@ -25,28 +26,32 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// Add or update an existing folder.
     /// </summary>
     /// <param name="directory"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateFolderAsync(DirectoryInfo directory);
+    Task<bool> AddOrUpdateFolderAsync(DirectoryInfo directory, CancellationToken token);
 
     /// <summary>
     /// Update multiple directories at once.
     /// </summary>
     /// <param name="directories"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateFoldersAsync(IEnumerable<DirectoryInfo> directories);
+    Task<bool> AddOrUpdateFoldersAsync(IEnumerable<DirectoryInfo> directories, CancellationToken token);
 
     /// <summary>
-    /// Delete a folder by its id
+    /// Delete a single folder.
     /// </summary>
-    /// <param name="folderId"></param>
+    /// <param name="directory"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFolderAsync(int folderId );
+    Task<bool> DeleteFolderAsync(DirectoryInfo directory, CancellationToken token);
 
     /// <summary>
-    /// Delete a folder by its path
+    /// Delete multiple folders.
     /// </summary>
-    /// <param name="path"></param>
+    /// <param name="directories"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFolderAsync(string path);
+    Task<bool> DeleteFoldersAsync(IEnumerable<DirectoryInfo> directories, CancellationToken token);
   }
 }
