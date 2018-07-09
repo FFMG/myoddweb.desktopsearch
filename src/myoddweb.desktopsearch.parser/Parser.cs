@@ -174,95 +174,28 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="token"></param>
     /// <returns></returns>
     private async Task<bool> ParseAllDirectoriesAsync(string startFolder, CancellationToken token)
-    { 
+    {
+      DirectoriesParser directoriesParser = null;
       var stopwatch = new Stopwatch();
       stopwatch.Start();
-      var directories = new List<DirectoryInfo>();
-      var parseDirectoryCounter = new Func<DirectoryInfo, Task<bool>>( directoryInfo =>
-      {
-        if (!CanReadDirectory(directoryInfo))
-        {
-          _logger.Warning($"Cannot Parse Directory: {directoryInfo.FullName}");
-          return Task.FromResult(false);
-        }
-
-        // add this directory to our list.
-        directories.Add(directoryInfo);
-
-        // we will be parsing it.
-        return Task.FromResult(true);
-      });
-
-      // parse the directory
-      if (!await _directory.ParseDirectoriesAsync( startFolder, parseDirectoryCounter, token).ConfigureAwait(false))
-      {
-        _logger.Warning( "The parsing was cancelled");
-        return false;
-      }
-
-      // process all the files.
-      await ParseDirectoryAsync(directories.ToArray(), token ).ConfigureAwait(false);
-
-      // stop the watch and log how many items we found.
-      stopwatch.Stop();
-      _logger.Information($"Parsed {directories.Count} directories (Elapsed:{stopwatch.Elapsed:g})");
-
-      return true;
-    }
-
-    /// <summary>
-    /// Check if we are able to process this directlry.
-    /// </summary>
-    /// <param name="directoryInfo"></param>
-    /// <returns></returns>
-    public bool CanReadDirectory(DirectoryInfo directoryInfo)
-    {
       try
       {
-        var accessControlList = directoryInfo.GetAccessControl();
+        directoriesParser = new DirectoriesParser(startFolder, _logger, _directory);
+        await directoriesParser.SearchAsync(token).ConfigureAwait(false);
 
-        var accessRules =
-          accessControlList?.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
-        if (accessRules == null)
-        {
-          return false;
-        }
-
-        var readAllow = false;
-        var readDeny = false;
-        foreach (FileSystemAccessRule rule in accessRules)
-        {
-          if ((FileSystemRights.Read & rule.FileSystemRights) != FileSystemRights.Read)
-          {
-            continue;
-          }
-
-          switch (rule.AccessControlType)
-          {
-            case AccessControlType.Allow:
-              readAllow = true;
-              break;
-
-            case AccessControlType.Deny:
-              readDeny = true;
-              break;
-          }
-        }
-
-        return readAllow && !readDeny;
-      }
-      catch (UnauthorizedAccessException)
-      {
-        return false;
-      }
-      catch (SecurityException)
-      {
-        return false;
+        // process all the files.
+        return await ParseDirectoryAsync(directoriesParser.Directories, token).ConfigureAwait(false);
       }
       catch (Exception e)
       {
-        _logger.Error(e.Message);
+        _logger.Exception(e);
         return false;
+      }
+      finally
+      {
+        // stop the watch and log how many items we found.
+        stopwatch.Stop();
+        _logger.Information($"Parsed {directoriesParser?.Directories.Count ?? 0} directories (Elapsed:{stopwatch.Elapsed:g})");
       }
     }
 
@@ -272,22 +205,12 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="directories"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ParseDirectoryAsync(DirectoryInfo[] directories, CancellationToken token )
+    private async Task<bool> ParseDirectoryAsync(IEnumerable<DirectoryInfo> directories, CancellationToken token )
     {
       // add the folder to the list.
       if (!await _perister.AddOrUpdateFoldersAsync(directories, token).ConfigureAwait(false))
       {
         return false;
-      }
-
-      foreach (var directory in directories)
-      {
-        if (token.IsCancellationRequested)
-        {
-          return false;
-        }
-        // we can parse it.
-        _logger.Verbose($"Directory: {directory.FullName}");
       }
 
       // we always parse sub directories

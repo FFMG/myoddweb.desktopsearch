@@ -220,6 +220,9 @@ namespace myoddweb.desktopsearch.parser
         return;
       }
 
+      // cancel whatever we might be busy with.
+      _source?.Cancel();
+
       // stop the cleanup timer
       // we don't need it anymore.
       StopTasksCleanupTimer();
@@ -228,7 +231,6 @@ namespace myoddweb.desktopsearch.parser
       {
         //  cancel all the tasks.
         _tasks.RemoveAll(t => t.IsCompleted);
-        _source?.Cancel();
 
         _watcher.EnableRaisingEvents = false;
         _watcher.Dispose();
