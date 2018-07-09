@@ -177,9 +177,9 @@ namespace myoddweb.desktopsearch.parser
       var stopwatch = new Stopwatch();
       stopwatch.Start();
       var directoryCounter = 0;
-      var parseDirectoryCounter = new Func<DirectoryInfo, bool>(( directoryInfo) =>
+      var parseDirectoryCounter = new Func<DirectoryInfo, Task<bool>>( async ( directoryInfo) =>
       {
-        if (!ParseDirectory(directoryInfo))
+        if (!await ParseDirectoryAsync(directoryInfo).ConfigureAwait(false) )
         {
           return false;
         }
@@ -259,13 +259,16 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     /// <param name="directoryInfo"></param>
     /// <returns></returns>
-    private bool ParseDirectory(DirectoryInfo directoryInfo )
+    private async Task<bool> ParseDirectoryAsync(DirectoryInfo directoryInfo )
     {
       if (!CanReadDirectory(directoryInfo))
       {
         _logger.Warning($"Cannot Parse Directory: {directoryInfo.FullName}");
         return false;
       }
+
+      // add the folder to the list.
+      await _perister.AddOrUpdateFolderAsync(directoryInfo).ConfigureAwait(false);
 
       // we can parse it.
       _logger.Verbose($"Parsing Directory: {directoryInfo.FullName}");

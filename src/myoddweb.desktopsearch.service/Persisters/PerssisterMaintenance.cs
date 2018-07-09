@@ -7,19 +7,65 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Create the database to the latest version
     /// </summary>
-    protected async Task CreateDatabase()
+    protected async Task<bool> CreateDatabase()
     {
-      await CreateConfigAsync().ConfigureAwait( false );
+      // create the config table.
+      if (!await CreateConfigAsync().ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // the folders table.
+      if (!await CreateFoldersAsync().ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      return true;
     }
 
-    private async Task CreateConfigAsync()
+    /// <summary>
+    /// Create the folders table
+    /// </summary>
+    /// <returns></returns>
+    private async Task<bool> CreateFoldersAsync()
     {
-      // first we create the tables.
-      await
+      if (!await
+        ExecuteNonQueryAsync($"CREATE TABLE {TableFolders} (path varchar(260))")
+          .ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      if ( 
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolders}_path ON {TableFolders}(path); ").ConfigureAwait(false))
+      {
+        return false;
+      }
+      return true;
+    }
+
+    /// <summary>
+    /// Create the configuration table
+    /// </summary>
+    /// <returns></returns>
+    private async Task<bool> CreateConfigAsync()
+    {
+      if (!await
         ExecuteNonQueryAsync($"CREATE TABLE {TableConfig} (name varchar(20), value varchar(255))")
-          .ConfigureAwait(false);
-      await
-        ExecuteNonQueryAsync($"CREATE INDEX index_{TableConfig}_name ON {TableConfig}(name); ").ConfigureAwait(false);
+          .ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      if (!await
+        ExecuteNonQueryAsync($"CREATE INDEX index_{TableConfig}_name ON {TableConfig}(name); ").ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      return true;
     }
 
     /// <summary>

@@ -26,6 +26,7 @@ namespace myoddweb.desktopsearch.service.Persisters
   {
     #region Table names
     private const string TableConfig = "config";
+    private const string TableFolders = "folders";
     #endregion
 
     /// <summary>
@@ -43,7 +44,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
       // the file we are looking for.
-      const string source = "database.sql";
+      const string source = "database.db";
 
       // check that the file does exists.
       if (!File.Exists(source))

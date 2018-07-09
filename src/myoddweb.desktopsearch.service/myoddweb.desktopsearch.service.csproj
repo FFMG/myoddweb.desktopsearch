@@ -70,6 +70,7 @@
     <Compile Include="Logger\ConsoleLogger.cs" />
     <Compile Include="Persisters\Persister.cs" />
     <Compile Include="Persisters\PersisterConfig.cs" />
+    <Compile Include="Persisters\PersisterFolder.cs" />
     <Compile Include="Persisters\PerssisterMaintenance.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

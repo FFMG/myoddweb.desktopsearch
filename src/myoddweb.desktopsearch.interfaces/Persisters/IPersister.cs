@@ -14,7 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IPersister : IConfig
+  public interface IPersister : IConfig, IFolders
   {
     
   }

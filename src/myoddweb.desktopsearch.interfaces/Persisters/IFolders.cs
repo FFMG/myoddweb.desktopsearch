@@ -12,31 +12,33 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System;
+
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 
-namespace myoddweb.desktopsearch.interfaces.IO
+namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IDirectory
+  public interface IFolders
   {
     /// <summary>
-    /// Parse a directory and look for sub folders.
+    /// Add or update an existing folder.
     /// </summary>
-    /// <param name="path">The start path</param>
-    /// <param name="parseSubDirectory">Called when a directory is found, return true if we want to parse it further,</param>
-    /// <param name="token">The cancelation token to cancel the runningtask.</param>
-    /// <returns>success or false if the operation was cancelled.</returns>
-    Task<bool> ParseDirectoriesAsync( string path, Func<DirectoryInfo, Task<bool>> parseSubDirectory, CancellationToken token );
+    /// <param name="directory"></param>
+    /// <returns></returns>
+    Task<bool> AddOrUpdateFolderAsync(DirectoryInfo directory);
 
     /// <summary>
-    /// Parse all the files in a directory
+    /// Delete a folder by its id
+    /// </summary>
+    /// <param name="folderId"></param>
+    /// <returns></returns>
+    Task<bool> DeleteFolderAsync(int folderId );
+
+    /// <summary>
+    /// Delete a folder by its path
     /// </summary>
     /// <param name="path"></param>
-    /// <param name="actionFile">When a file is found, we will be calling this function.</param>
-    /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> ParseDirectoryAsync(string path, Func<FileSystemInfo, Task> actionFile, CancellationToken token);
+    Task<bool> DeleteFolderAsync(string path);
   }
 }
