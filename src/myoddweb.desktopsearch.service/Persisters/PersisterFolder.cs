@@ -3,62 +3,32 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
   internal partial class Persister 
   {
+    /// <inheritdoc />
     public async Task<bool> AddOrUpdateFolderAsync(DirectoryInfo directory )
     {
-      var transaction = DbConnection.BeginTransaction();
-      try
-      {
-        if (!await AddOrUpdateFolderAsync(directory, transaction))
-        {
-          transaction.Rollback();
-          return false;
-        }
-        transaction.Commit();
-        return true;
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
-        try
-        {
-          transaction.Rollback();
-        }
-        catch (Exception rollbackException)
-        {
-          _logger.Exception(rollbackException);
-        }
-        return false;
-      }
+      return await AddOrUpdateFoldersAsync(new [] {directory});
     }
 
-    /// <summary>
-    /// Update multiple directories at once.
-    /// </summary>
-    /// <param name="directories"></param>
-    /// <returns></returns>
+    /// <inheritdoc />
     public async Task<bool> AddOrUpdateFoldersAsync(IEnumerable<DirectoryInfo> directories)
     {
       var transaction = DbConnection.BeginTransaction();
       try
       {
-        foreach (var directory in directories)
+        if (await AddOrUpdateFoldersAsync(directories, transaction))
         {
-          if (await AddOrUpdateFolderAsync(directory, transaction))
-          {
-            continue;
-          }
-
-          transaction.Rollback();
-          return false;
+          transaction.Commit();
+          return true;
         }
-        transaction.Commit();
-        return true;
+        transaction.Rollback();
+        return false;
       }
       catch (Exception e)
       {
@@ -75,64 +45,78 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
-    public async Task<bool> AddOrUpdateFolderAsync(DirectoryInfo directory, SQLiteTransaction transaction )
+    /// <summary>
+    /// Add multiple folders within a transaction.
+    /// </summary>
+    /// <param name="directories">The directories we will be adding</param>
+    /// <param name="transaction">The transaction.</param>
+    /// <returns></returns>
+    private async Task<bool> AddOrUpdateFoldersAsync(IEnumerable<DirectoryInfo> directories, SQLiteTransaction transaction )
     {
-      // only valid paths are added.
-      if (!directory.Exists)
-      {
-        return false;
-      }
+      // The list of directories we will be adding to the list.
+      var actualDirectories = new List<DirectoryInfo>();
+
       // we first look for it, and, if we find it then there is nothing to do.
-      var id = await FindFolderAsycn(directory).ConfigureAwait(false);
-
-      // does it exist already?
-      if (-1 != id)
-      {
-        return true;
-      }
-
-      var sql = $"insert into {TableFolders} (path) values (@path)";
-      using (var cmd = CreateCommand(sql))
+      var sqlGetRowId = $"SELECT rowid FROM {TableFolders} WHERE path=@path";
+      using (var cmd = CreateCommand(sqlGetRowId))
       {
         cmd.Transaction = transaction;
         cmd.Parameters.Add("@path", DbType.String);
-        cmd.Parameters["@path"].Value = directory.FullName;
-        try
+        foreach (var directory in directories)
         {
-          var rowsAffected = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-          return rowsAffected > 0;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-          return false;
+          // only valid paths are added.
+          if (!directory.Exists)
+          {
+            continue;
+          }
+          cmd.Parameters["@path"].Value = directory.FullName;
+          if (null != await cmd.ExecuteScalarAsync().ConfigureAwait(false))
+          {
+            continue;
+          }
+
+          // we could not find this path ... so just add it.
+          actualDirectories.Add(directory);
         }
       }
-    }
 
-    /// <summary>
-    /// Look for a folder id given the directory path.
-    /// </summary>
-    /// <param name="directory"></param>
-    /// <returns></returns>
-    private async Task<long> FindFolderAsycn(FileSystemInfo directory)
-    {
-      var sql = $"SELECT rowid FROM {TableFolders} WHERE path=@path";
-      using (var cmd = CreateCommand(sql))
+      // if we have nothing to do... we are done.
+      if (!actualDirectories.Any())
       {
-        cmd.Parameters.Add("@path", DbType.String);
-        cmd.Parameters["@path"].Value = directory.FullName;
-
-        var reader = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
-        return (long?) reader ?? -1;
+        return true;
       }
+      
+      var sqlInsert = $"INSERT INTO {TableFolders} (path) VALUES (@path)";
+      using (var cmd = CreateCommand(sqlInsert))
+      {
+        cmd.Transaction = transaction;
+        cmd.Parameters.Add("@path", DbType.String);
+        foreach (var directory in actualDirectories)
+        {
+          try
+          {
+            cmd.Parameters["@path"].Value = directory.FullName;
+            if (0 == await cmd.ExecuteNonQueryAsync().ConfigureAwait(false))
+            {
+              _logger.Error( $"There was an issue adding folder: {directory.FullName} to persister");
+            }
+          }
+          catch (Exception ex)
+          {
+            _logger.Exception(ex);
+          }
+        }
+      }
+      return true;
     }
-
+    
+    /// <inheritdoc />
     public Task<bool> DeleteFolderAsync(int folderId)
     {
       throw new NotImplementedException();
     }
 
+    /// <inheritdoc />
     public Task<bool> DeleteFolderAsync(string path)
     {
       throw new NotImplementedException();
