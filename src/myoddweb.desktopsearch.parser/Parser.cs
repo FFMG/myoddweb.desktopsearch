@@ -135,10 +135,9 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="e"></param>
     private void OnFolderTouched(FileSystemEventArgs e)
     {
-      var r = e as RenamedEventArgs;
-      if (r != null )
+      if (e is RenamedEventArgs r )
       {
-        _logger.Verbose($"File/Folder: {e.OldFullPath} to {e.FullPath} ({e.ChangeType})");
+        _logger.Verbose($"File/Folder: {r.OldFullPath} to {r.FullPath} ({r.ChangeType})");
       }
       else
       {
