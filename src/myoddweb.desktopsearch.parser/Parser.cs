@@ -81,6 +81,41 @@ namespace myoddweb.desktopsearch.parser
       _logger.Information("Parser started");
     }
 
+    private List<string> GetStartPaths()
+    {
+      var drvs = DriveInfo.GetDrives();
+      var paths = new List<string>();
+      foreach (var drv in drvs)
+      {
+        switch (drv.DriveType)
+        {
+          case DriveType.Fixed:
+            if (_config.Paths.ParseFixedDrives)
+            {
+              paths.Add(drv.Name);
+            }
+            break;
+
+          case DriveType.Removable:
+            if (_config.Paths.ParseRemovableDrives)
+            {
+              paths.Add(drv.Name);
+            }
+            break;
+        }
+      }
+
+      // then we try and add the folders as given by the user
+      foreach (var path in _config.Paths.Paths )
+      {
+        if (!Helper.File.IsSubDirectory(paths, path))
+        {
+          paths.Add(path);
+        }
+      }
+      return paths;
+    }
+
     /// <summary>
     /// Do all the parsing work,
     /// </summary>
@@ -88,6 +123,7 @@ namespace myoddweb.desktopsearch.parser
     /// <returns></returns>
     private async Task<bool> WorkAsync(CancellationToken token)
     {
+      var paths = GetStartPaths();
       const string startFolder = "c:\\";
       // first we get a full list of files/directories.
       if (!await ParseAllDirectoriesAsync(startFolder, token).ConfigureAwait(false))

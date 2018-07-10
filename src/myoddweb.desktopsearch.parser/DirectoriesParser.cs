@@ -8,7 +8,7 @@ using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.parser
 {
-  internal class DirectoriesParser : FileHelper
+  internal class DirectoriesParser
   {
     /// <summary>
     /// The directory parser we will be using.
@@ -27,8 +27,7 @@ namespace myoddweb.desktopsearch.parser
 
     public List<DirectoryInfo> Directories { get; }
 
-    public DirectoriesParser( string startFolder, ILogger logger, IDirectory directory) :
-      base( logger )
+    public DirectoriesParser( string startFolder, ILogger logger, IDirectory directory)
     {
       // save the start folde.r
       _startFolder = startFolder ?? throw new ArgumentNullException(nameof(startFolder));
@@ -49,7 +48,7 @@ namespace myoddweb.desktopsearch.parser
     /// <returns></returns>
     private Task<bool> ParseDirectory(DirectoryInfo directory)
     {
-      if (!CanReadDirectory(directory))
+      if (!Helper.File.CanReadDirectory(directory))
       {
         _logger.Warning($"Cannot Parse Directory: {directory.FullName}");
         return Task.FromResult(false);

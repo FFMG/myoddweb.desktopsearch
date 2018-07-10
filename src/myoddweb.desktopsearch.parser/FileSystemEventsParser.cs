@@ -9,7 +9,7 @@ using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.parser
 {
-  internal class FileSystemEventsParser : FileHelper
+  internal class FileSystemEventsParser
   {
     /// <summary>
     /// The logger that we will be using to log messages.
@@ -46,7 +46,7 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     private System.Timers.Timer _tasksTimer;
 
-    public FileSystemEventsParser(ILogger logger) : base(logger)
+    public FileSystemEventsParser(ILogger logger)
     {
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -145,9 +145,9 @@ namespace myoddweb.desktopsearch.parser
  
         if (e is RenamedEventArgs r)
         {
-          if (IsDirectory(file))
+          if (Helper.File.IsDirectory(file))
           {
-            if (!CanReadDirectory( new DirectoryInfo(file.FullName)))
+            if (!Helper.File.CanReadDirectory( new DirectoryInfo(file.FullName)))
             {
               continue;
             }
@@ -155,7 +155,7 @@ namespace myoddweb.desktopsearch.parser
           }
           else
           {
-            if (!CanReadFile(file))
+            if (!Helper.File.CanReadFile(file))
             {
               continue;
             }
@@ -164,9 +164,9 @@ namespace myoddweb.desktopsearch.parser
         }
         else
         {
-          if (IsDirectory(file))
+          if (Helper.File.IsDirectory(file))
           {
-            if (!CanReadDirectory(new DirectoryInfo(file.FullName)))
+            if (!Helper.File.CanReadDirectory(new DirectoryInfo(file.FullName)))
             {
               continue;
             }
@@ -174,7 +174,7 @@ namespace myoddweb.desktopsearch.parser
           }
           else
           {
-            if (!CanReadFile(file))
+            if (!Helper.File.CanReadFile(file))
             {
               continue;
             }

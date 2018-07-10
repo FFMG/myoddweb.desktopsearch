@@ -41,7 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DirectoriesParser.cs" />
-    <Compile Include="FileHelper.cs" />
+    <Compile Include="Helper\File.cs" />
     <Compile Include="FileSystemEventsParser.cs" />
     <Compile Include="FileWatcher.cs" />
     <Compile Include="Parser.cs" />

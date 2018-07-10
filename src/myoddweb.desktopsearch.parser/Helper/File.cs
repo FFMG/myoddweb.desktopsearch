@@ -1,22 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Security;
 using System.Security.AccessControl;
-using myoddweb.desktopsearch.interfaces.Logging;
 
-namespace myoddweb.desktopsearch.parser
+namespace myoddweb.desktopsearch.parser.Helper
 {
-  internal class FileHelper
+  internal class File
   {
-    /// <summary>
-    /// The logger that we will be using to log messages.
-    /// </summary>
-    private readonly ILogger _logger;
-
-    public FileHelper(ILogger logger)
+    private File()
     {
-      // save the logger
-      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -24,7 +17,7 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     /// <param name="file"></param>
     /// <returns></returns>
-    protected static bool IsDirectory(FileSystemInfo file)
+    public static bool IsDirectory(FileSystemInfo file)
     {
       try
       {
@@ -34,7 +27,7 @@ namespace myoddweb.desktopsearch.parser
           return true;
         }
 
-        return !File.Exists(file.FullName);
+        return !System.IO.File.Exists(file.FullName);
       }
       catch (SecurityException)
       {
@@ -50,11 +43,11 @@ namespace myoddweb.desktopsearch.parser
       }
     }
 
-    protected bool CanReadFile(FileSystemInfo file)
+    public static bool CanReadFile(FileSystemInfo file)
     {
       try
       {
-        File.Open(file.FullName, FileMode.Open, FileAccess.Read).Dispose();
+        System.IO.File.Open(file.FullName, FileMode.Open, FileAccess.Read).Dispose();
         return true;
       }
       catch (IOException)
@@ -76,7 +69,7 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     /// <param name="directoryInfo"></param>
     /// <returns></returns>
-    protected bool CanReadDirectory(DirectoryInfo directoryInfo)
+    public static bool CanReadDirectory(DirectoryInfo directoryInfo)
     {
       try
       {
@@ -124,11 +117,31 @@ namespace myoddweb.desktopsearch.parser
       {
         return false;
       }
-      catch (Exception e)
+      catch (Exception)
       {
-        _logger.Error(e.Message);
         return false;
       }
+    }
+
+    public static bool IsSubDirectory(List<string> parentPaths, string path)
+    {
+      foreach (var parentPath in parentPaths)
+      {
+        if (IsSubDirectory(parentPath, path))
+        {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    public static bool IsSubDirectory(string parentPath, string path)
+    { 
+      var parentDirectory = new DirectoryInfo(Path.GetDirectoryName(parentPath) ?? throw new InvalidOperationException());
+      var childDirectory = new DirectoryInfo(Path.GetDirectoryName(path) ?? throw new InvalidOperationException());
+
+      
+      return false;
     }
   }
 }
