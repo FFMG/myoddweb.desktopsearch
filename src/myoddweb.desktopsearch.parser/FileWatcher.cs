@@ -150,6 +150,10 @@ namespace myoddweb.desktopsearch.parser
         // restart the timer.
         StartTasksCleanupTimer();
       }
+      else
+      {
+        Stop();
+      }
     }
 
     /// <summary>
@@ -179,6 +183,11 @@ namespace myoddweb.desktopsearch.parser
 
     private void OnFolderDeleted(object sender, FileSystemEventArgs e)
     {
+      if (_token.IsCancellationRequested)
+      {
+        Stop();
+        return;
+      }
       lock (_lock)
       {
         _tasks.Add(Task.Run(() => Deleted( e), _token));
@@ -187,6 +196,11 @@ namespace myoddweb.desktopsearch.parser
 
     private void OnFolderCreated(object sender, FileSystemEventArgs e)
     {
+      if (_token.IsCancellationRequested)
+      {
+        Stop();
+        return;
+      }
       lock (_lock)
       {
         _tasks.Add(Task.Run(() => Created( e), _token));
@@ -195,6 +209,11 @@ namespace myoddweb.desktopsearch.parser
 
     private void OnFolderRenamed(object sender, RenamedEventArgs e)
     {
+      if (_token.IsCancellationRequested)
+      {
+        Stop();
+        return;
+      }
       lock (_lock)
       {
         _tasks.Add(Task.Run(() => Renamed( e), _token));
@@ -203,6 +222,11 @@ namespace myoddweb.desktopsearch.parser
 
     private void OnFolderChanged(object sender, FileSystemEventArgs e)
     {
+      if (_token.IsCancellationRequested)
+      {
+        Stop();
+        return;
+      }
       lock (_lock)
       {
         _tasks.Add(Task.Run(() => Changed( e), _token));
@@ -222,8 +246,12 @@ namespace myoddweb.desktopsearch.parser
       }
       finally 
       {
-        // restart everything
-        Start( _token );
+        if (!_token.IsCancellationRequested)
+        {
+          // restart everything
+          Start(_token);
+        }
+
       }
     }
 
