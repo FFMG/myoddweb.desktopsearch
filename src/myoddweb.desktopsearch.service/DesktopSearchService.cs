@@ -161,7 +161,7 @@ namespace myoddweb.desktopsearch.service
       {
         errorDuringStartup = true;
       }
-      catch (Exception e)
+      catch (Exception)
       {
         errorDuringStartup = true;
       }

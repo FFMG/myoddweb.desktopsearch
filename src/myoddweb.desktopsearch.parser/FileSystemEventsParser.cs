@@ -1,4 +1,18 @@
-﻿using System;
+﻿//This file is part of Myoddweb.DesktopSearch.
+//
+//    Myoddweb.DesktopSearch is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    Myoddweb.DesktopSearch is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+//    GNU General Public License for more details.
+//
+//    You should have received a copy of the GNU General Public License
+//    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -29,7 +43,7 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// The cancellation source
     /// </summary>
-    private CancellationTokenSource _source;
+    private CancellationToken _token;
 
     /// <summary>
     /// All the tasks currently running
@@ -105,11 +119,14 @@ namespace myoddweb.desktopsearch.parser
 
       if (null != events)
       {
-        _tasks.Add(Task.Run(() => ProcessEvents( events ), _source.Token));
+        _tasks.Add(Task.Run(() => ProcessEvents( events ), _token));
       }
 
-      // restart the timer.
-      StartFileSystemEventsTimer();
+      if (!_token.IsCancellationRequested)
+      {
+        // restart the timer.
+        StartFileSystemEventsTimer();
+      }
     }
 
     /// <summary>
@@ -187,13 +204,13 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// Start watching for the folder changes.
     /// </summary>
-    public void Start()
+    public void Start( CancellationToken token )
     {
       // stop what might have already started.
       Stop();
 
       // start the source.
-      _source = new CancellationTokenSource();
+      _token = token;
 
       StartFileSystemEventsTimer();
     }
@@ -203,8 +220,6 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     public void Stop()
     {
-      // cancel whatever we might be busy with.
-      _source?.Cancel();
       // stop the cleanup timer
       // we don't need it anymore.
       StopFileSystemEventsTimer();
@@ -219,20 +234,19 @@ namespace myoddweb.desktopsearch.parser
         {
           if (_tasks.Count > 0)
           {
-            Task.WaitAll(_tasks.ToArray(), _source?.Token ?? new CancellationToken());
+            Task.WaitAll(_tasks.ToArray(), _token);
           }
         }
         catch (OperationCanceledException e)
         {
           // ignore the cancelled exceptions.
-          if (e.CancellationToken != _source?.Token)
+          if (e.CancellationToken != _token)
           {
             throw;
           }
         }
 
         _tasks.Clear();
-        _source = null;
       }
     }
 

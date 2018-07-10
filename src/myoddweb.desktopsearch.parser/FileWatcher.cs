@@ -1,4 +1,18 @@
-﻿using System;
+﻿//This file is part of Myoddweb.DesktopSearch.
+//
+//    Myoddweb.DesktopSearch is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    Myoddweb.DesktopSearch is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+//    GNU General Public License for more details.
+//
+//    You should have received a copy of the GNU General Public License
+//    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -48,7 +62,7 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// The cancellation source
     /// </summary>
-    private CancellationTokenSource _source;
+    private CancellationToken _token;
 
     #region Events handler
     /// <summary>
@@ -131,8 +145,11 @@ namespace myoddweb.desktopsearch.parser
         _tasks.RemoveAll(t => t.IsCompleted);
       }
 
-      // restart the timer.
-      StartTasksCleanupTimer();
+      if (!_token.IsCancellationRequested)
+      {
+        // restart the timer.
+        StartTasksCleanupTimer();
+      }
     }
 
     /// <summary>
@@ -164,7 +181,7 @@ namespace myoddweb.desktopsearch.parser
     {
       lock (_lock)
       {
-        _tasks.Add(Task.Run(() => Deleted( e), _source.Token));
+        _tasks.Add(Task.Run(() => Deleted( e), _token));
       }
     }
 
@@ -172,7 +189,7 @@ namespace myoddweb.desktopsearch.parser
     {
       lock (_lock)
       {
-        _tasks.Add(Task.Run(() => Created( e), _source.Token));
+        _tasks.Add(Task.Run(() => Created( e), _token));
       }
     }
 
@@ -180,7 +197,7 @@ namespace myoddweb.desktopsearch.parser
     {
       lock (_lock)
       {
-        _tasks.Add(Task.Run(() => Renamed( e), _source.Token));
+        _tasks.Add(Task.Run(() => Renamed( e), _token));
       }
     }
 
@@ -188,7 +205,7 @@ namespace myoddweb.desktopsearch.parser
     {
       lock (_lock)
       {
-        _tasks.Add(Task.Run(() => Changed( e), _source.Token));
+        _tasks.Add(Task.Run(() => Changed( e), _token));
       }
     }
 
@@ -206,7 +223,7 @@ namespace myoddweb.desktopsearch.parser
       finally 
       {
         // restart everything
-        Start();
+        Start( _token );
       }
     }
 
@@ -215,58 +232,54 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     public void Stop()
     {
-      // cancel whatever we might be busy with.
-      _source?.Cancel();
+      // stop the cleanup timer
+      // we don't need it anymore.
+      StopTasksCleanupTimer();
 
       if (_watcher == null)
       {
         return;
       }
 
-      // stop the cleanup timer
-      // we don't need it anymore.
-      StopTasksCleanupTimer();
+      _watcher.EnableRaisingEvents = false;
+      _watcher.Dispose();
+      _watcher = null;
 
       lock (_lock)
       {
         //  cancel all the tasks.
         _tasks.RemoveAll(t => t.IsCompleted);
 
-        _watcher.EnableRaisingEvents = false;
-        _watcher.Dispose();
-        _watcher = null;
-
         // wait for them all to finish
         try
         {
           if(_tasks.Count > 0 )
           { 
-            Task.WaitAll(_tasks.ToArray(), _source?.Token ?? new CancellationToken() );
+            Task.WaitAll(_tasks.ToArray(), _token );
           }
         }
         catch (OperationCanceledException e)
         {
           // ignore the cancelled exceptions.
-          if (e.CancellationToken != _source?.Token)
+          if (e.CancellationToken != _token )
           {
             throw;
           }
         }
 
         _tasks.Clear();
-        _source = null;
       }
     }
 
     /// <summary>
     /// Start watching for the folder changes.
     /// </summary>
-    public void Start()
+    public void Start( CancellationToken token )
     {
       // stop what might have already started.
       Stop();
 
-      _source = new CancellationTokenSource();
+      _token = token;
 
       _watcher = new FileSystemWatcher
       {

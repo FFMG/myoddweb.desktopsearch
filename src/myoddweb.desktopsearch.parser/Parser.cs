@@ -27,9 +27,9 @@ namespace myoddweb.desktopsearch.parser
   public class Parser
   {
     /// <summary>
-    /// The file watcher
+    /// The file watchers
     /// </summary>
-    private FileWatcher _watcher;
+    private readonly List<FileWatcher> _watchers = new List<FileWatcher>();
 
     /// <summary>
     /// The files event parser.
@@ -81,6 +81,11 @@ namespace myoddweb.desktopsearch.parser
       _logger.Information("Parser started");
     }
 
+    /// <summary>
+    /// Get all the start paths so we can monitor them.
+    /// As well as parse them all.
+    /// </summary>
+    /// <returns></returns>
     private List<string> GetStartPaths()
     {
       var drvs = DriveInfo.GetDrives();
@@ -106,6 +111,8 @@ namespace myoddweb.desktopsearch.parser
       }
 
       // then we try and add the folders as given by the user
+      // but if the ones given by the user is a child of the ones 
+      // we already have, then there is no point in adding it.
       foreach (var path in _config.Paths.Paths )
       {
         if (!Helper.File.IsSubDirectory(paths, path))
@@ -113,6 +120,8 @@ namespace myoddweb.desktopsearch.parser
           paths.Add(path);
         }
       }
+
+      // This is the list of all the paths we want to parse.
       return paths;
     }
 
@@ -123,30 +132,31 @@ namespace myoddweb.desktopsearch.parser
     /// <returns></returns>
     private async Task<bool> WorkAsync(CancellationToken token)
     {
+      // get all the paths we will be working with.
       var paths = GetStartPaths();
-      const string startFolder = "c:\\";
+
       // first we get a full list of files/directories.
-      if (!await ParseAllDirectoriesAsync(startFolder, token).ConfigureAwait(false))
+      if (!await ParseAllDirectoriesAsync(paths, token).ConfigureAwait(false))
       {
         return false;
       }
 
       // we then watch for files/folder changes.
-      if( !StartWatcher(startFolder))
+      if( !StartWatchers(paths, token ))
       {
         return false;
       }
 
       // finally start the file timer.
-      StartFileSystemEventTimer();
+      StartFileSystemEventTimer( token );
 
       return true;
     }
 
-    private void StartFileSystemEventTimer()
+    private void StartFileSystemEventTimer( CancellationToken token )
     {
       _eventsParser = new FileSystemEventsParser(_logger);
-      _eventsParser.Start();
+      _eventsParser.Start( token );
     }
 
     private void StopFileSystemEventTimer()
@@ -157,28 +167,34 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// Stop the file watcher
     /// </summary>
-    private void StopWatcher()
+    private void StopWatchers()
     {
       // are we watching?
-      _watcher?.Stop();
-      _watcher = null;
+      foreach (var watcher in _watchers)
+      {
+        watcher?.Stop();
+      }
+      _watchers.Clear();
     }
 
     /// <summary>
     /// Start to watch all the folders and sub folders.
     /// </summary>
-    /// <param name="startFolder"></param>
+    /// <param name="paths"></param>
     /// <returns></returns>
-    private bool StartWatcher(string startFolder)
+    private bool StartWatchers( List<string> paths, CancellationToken token )
     {
-      _watcher = new FileWatcher(startFolder);
-      _watcher.Error += OnFolderError;
-      _watcher.Changed += OnFolderTouched;
-      _watcher.Renamed += OnFolderTouched;
-      _watcher.Created += OnFolderTouched;
-      _watcher.Deleted += OnFolderTouched;
-
-      _watcher.Start();
+      foreach (var path in paths)
+      {
+        var watcher = new FileWatcher(path);
+        watcher.Error += OnFolderError;
+        watcher.Changed += OnFolderTouched;
+        watcher.Renamed += OnFolderTouched;
+        watcher.Created += OnFolderTouched;
+        watcher.Deleted += OnFolderTouched;
+        watcher.Start( token );
+        _watchers.Add(watcher);
+      }
       return true;
     }
 
@@ -205,29 +221,37 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// Parse all the directories.
     /// </summary>
-    /// <param name="startFolder"></param>
+    /// <param name="paths"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ParseAllDirectoriesAsync(string startFolder, CancellationToken token)
+    private async Task<bool> ParseAllDirectoriesAsync(IEnumerable<string> paths, CancellationToken token)
     {
       try
       {
         var stopwatch = new Stopwatch();
         stopwatch.Start();
 
-        var directoriesParser = new DirectoriesParser(startFolder, _logger, _directory);
-        await directoriesParser.SearchAsync(token).ConfigureAwait(false);
-
-        // process all the files.
-        if (!await ParseDirectoryAsync(directoriesParser.Directories, token).ConfigureAwait(false))
+        var totalDirectories = 0;
+        foreach (var path in paths)
         {
-          _logger.Warning($"Parsing was cancelled (Elapsed:{stopwatch.Elapsed:g})");
-          return false;
+          var directoriesParser = new DirectoriesParser(path, _logger, _directory);
+          await directoriesParser.SearchAsync(token).ConfigureAwait(false);
+
+          // process all the files.
+          if (!await ParseDirectoryAsync(directoriesParser.Directories, token).ConfigureAwait(false))
+          {
+            stopwatch.Stop();
+            _logger.Warning($"Parsing was cancelled (Elapsed:{stopwatch.Elapsed:g})");
+            return false;
+          }
+
+          // get the number of directories parsed.
+          totalDirectories += directoriesParser.Directories.Count;
         }
 
         // stop the watch and log how many items we found.
         stopwatch.Stop();
-        _logger.Information($"Parsed {directoriesParser.Directories.Count} directories (Elapsed:{stopwatch.Elapsed:g})");
+        _logger.Information($"Parsed {totalDirectories} directories (Elapsed:{stopwatch.Elapsed:g})");
         return true;
       }
       catch (Exception e)
@@ -269,7 +293,7 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     public void Stop()
     {
-      StopWatcher();
+      StopWatchers();
       StopFileSystemEventTimer();
     }
   }

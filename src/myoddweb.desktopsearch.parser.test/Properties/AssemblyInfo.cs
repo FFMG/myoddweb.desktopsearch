@@ -5,16 +5,14 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("myoddweb.desktopsearch.parser")]
+[assembly: AssemblyTitle("myoddweb.desktopsearch.parser.test")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("myoddweb.desktopsearch.parser")]
+[assembly: AssemblyProduct("myoddweb.desktopsearch.parser.test")]
 [assembly: AssemblyCopyright("Copyright ©  2018")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
-[assembly: InternalsVisibleTo("myoddweb.desktopsearch.parser.test")]
-
 
 // Setting ComVisible to false makes the types in this assembly not visible
 // to COM components.  If you need to access a type in this assembly from
@@ -22,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("22e5a150-c0ad-4715-8a42-47c50d74baae")]
+[assembly: Guid("01ddb99f-4ff9-4911-aeee-f360531a203d")]
 
 // Version information for an assembly consists of the following four values:
 //

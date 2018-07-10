@@ -123,11 +123,21 @@ namespace myoddweb.desktopsearch.parser.Helper
       }
     }
 
-    public static bool IsSubDirectory(List<string> parentPaths, string path)
+    /// <summary>
+    /// If the given path is the child of any given parent directories.
+    /// </summary>
+    /// <param name="parents"></param>
+    /// <param name="child"></param>
+    /// <returns></returns>
+    public static bool IsSubDirectory(List<string> parents, string child)
     {
-      foreach (var parentPath in parentPaths)
+      if (null == parents)
       {
-        if (IsSubDirectory(parentPath, path))
+        throw new ArgumentNullException(nameof(parents));
+      }
+      foreach (var parent in parents)
+      {
+        if (IsSubDirectory( new DirectoryInfo(parent), new DirectoryInfo(child) ))
         {
           return true;
         }
@@ -135,12 +145,56 @@ namespace myoddweb.desktopsearch.parser.Helper
       return false;
     }
 
-    public static bool IsSubDirectory(string parentPath, string path)
-    { 
-      var parentDirectory = new DirectoryInfo(Path.GetDirectoryName(parentPath) ?? throw new InvalidOperationException());
-      var childDirectory = new DirectoryInfo(Path.GetDirectoryName(path) ?? throw new InvalidOperationException());
+    /// <summary>
+    /// Check if a directory is a child of the parent
+    /// </summary>
+    /// <param name="parent"></param>
+    /// <param name="child"></param>
+    /// <returns></returns>
+    public static bool IsSubDirectory(string parent, string child)
+    {
+      if (null == parent)
+      {
+        throw new ArgumentNullException( nameof(parent));
+      }
+      if (null == child)
+      {
+        throw new ArgumentNullException(nameof(child));
+      }
+      var parentDirectory = new DirectoryInfo(parent);
+      var childDirectory = new DirectoryInfo(child);
+      return IsSubDirectory(parentDirectory, childDirectory);
+    }
 
-      
+    /// <summary>
+    /// Check if a directory is a child of the parent
+    /// </summary>
+    /// <param name="parent"></param>
+    /// <param name="child"></param>
+    /// <returns></returns>
+    public static bool IsSubDirectory(DirectoryInfo parent, DirectoryInfo child)
+    {
+      if (null == parent)
+      {
+        throw new ArgumentNullException(nameof(parent));
+      }
+      if (null == child)
+      {
+        throw new ArgumentNullException(nameof(child));
+      }
+      var pFullName = parent.FullName.TrimEnd('\\', '/');
+      var cFullName = child.FullName.TrimEnd('\\', '/');
+      if (string.Equals(pFullName, cFullName, StringComparison.OrdinalIgnoreCase))
+      {
+        return true;
+      }
+
+      if ( child.Parent != null && IsSubDirectory(parent, child.Parent))
+      {
+        return true;
+      }
+
+      // if we made it this far, it is not the same.
       return false;
     }
   }

@@ -1,0 +1,13 @@
+﻿{
+  "Paths": {
+    "ParseFixedDrives": true,
+    "ParseRemovableDrives": false,
+    "Paths": [
+      "c:\\Folder",
+      "c:\\other"
+    ],
+    "IgnoredPaths": [
+      "%temp%"
+    ]
+  } 
+}
