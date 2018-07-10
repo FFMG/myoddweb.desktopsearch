@@ -51,8 +51,16 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     private readonly IPersister _perister;
 
-    public Parser( IPersister persister, ILogger logger, IDirectory directory)
+    /// <summary>
+    /// The system configuration
+    /// </summary>
+    private readonly interfaces.Configs.IConfig _config;
+
+    public Parser(interfaces.Configs.IConfig config, IPersister persister, ILogger logger, IDirectory directory)
     {
+      // set the config values.
+      _config = config ?? throw new ArgumentNullException(nameof(config));
+
       // set the persister.
       _perister = persister ?? throw new ArgumentNullException(nameof(persister));
 

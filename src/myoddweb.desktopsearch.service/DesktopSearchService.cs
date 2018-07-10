@@ -16,16 +16,20 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Configuration.Install;
+using System.IO;
 using System.Reflection;
 using System.ServiceProcess;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.parser;
-using myoddweb.desktopsearch.service.IO;
+using myoddweb.desktopsearch.service.Configs;
 using myoddweb.desktopsearch.service.Logger;
 using myoddweb.desktopsearch.service.Persisters;
 using Microsoft.Win32;
+using Newtonsoft.Json;
+using Directory = myoddweb.desktopsearch.service.IO.Directory;
 
 namespace myoddweb.desktopsearch.service
 {
@@ -102,6 +106,33 @@ namespace myoddweb.desktopsearch.service
     #endregion
 
     /// <summary>
+    /// Create the config interface
+    /// </summary>
+    /// <returns></returns>
+    private IConfig CreateConfig()
+    {
+      var json = File.ReadAllText(_arguments["config"]);
+      return JsonConvert.DeserializeObject<Config>(json);
+    }
+
+    /// <summary>
+    /// Create the logger interface
+    /// </summary>
+    /// <returns></returns>
+    private static ILogger CreateLogger( bool isService )
+    {
+      if (!isService)
+      {
+        var logger = new ConsoleLogger(LogLevel.All);
+        logger.Information("Running as a console.");
+        return logger;
+      }
+
+      // we need to create something for the service.
+      throw new NotSupportedException();
+    }
+
+    /// <summary>
     /// Start the process as a service or as a console app.
     /// </summary>
     /// <param name="isService"></param>
@@ -113,21 +144,24 @@ namespace myoddweb.desktopsearch.service
       {
         _startupThreadBusy = true;
 
-        ILogger logger = null;
-        if (!isService)
-        {
-          logger = new ConsoleLogger( LogLevel.All );
-          logger.Information("Running as a console.");
-        }
+        // create the config
+        var config = CreateConfig();
+
+        // and the logger
+        var logger = CreateLogger(isService);
 
         // create the cancellation source
         _cancellationTokenSource = new CancellationTokenSource();
 
         // and we can now create and start the parser.
-        _parser = new Parser(new Persister(logger), logger, new Directory(logger) );
+        _parser = new Parser( config, new Persister(logger), logger, new Directory(logger) );
         _parser.Start(_cancellationTokenSource.Token );
       }
       catch (AggregateException)
+      {
+        errorDuringStartup = true;
+      }
+      catch (Exception e)
       {
         errorDuringStartup = true;
       }
