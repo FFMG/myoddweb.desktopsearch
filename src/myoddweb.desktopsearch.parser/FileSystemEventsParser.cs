@@ -336,7 +336,9 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     private void TokenCancellation()
     {
+      _logger.Verbose("Stopping Events parser");
       Stop();
+      _logger.Verbose("Done events parser");
     }
 
     /// <summary>

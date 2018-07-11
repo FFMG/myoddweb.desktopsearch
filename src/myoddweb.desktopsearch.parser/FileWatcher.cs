@@ -354,7 +354,9 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     private void TokenCancellation()
     {
+      _logger.Verbose( $"Stopping File watcher : {_folder}" );
       Stop();
+      _logger.Verbose($"Done File watcher : {_folder}");
     }
   }
 }
