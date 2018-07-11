@@ -22,14 +22,19 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(Required = Required.Always)]
     public IPaths Paths { get; protected set; }
 
+    [JsonProperty(Required = Required.Always)]
+    public ITimers Timers { get; protected set; }
+
     // ReSharper disable once SuggestBaseTypeForParameter
     /// <summary>
     /// By using this constructor here we allowing JSon to convert from ConfigPaths > IPaths
     /// </summary>
     /// <param name="paths"></param>
-    public Config(ConfigPaths paths)
+    /// <param name="timers"></param>
+    public Config(ConfigPaths paths, ConfigTimers timers )
     {
       Paths = paths;
+      Timers = timers;
     }
   }
 }

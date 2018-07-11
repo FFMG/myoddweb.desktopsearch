@@ -155,7 +155,7 @@ namespace myoddweb.desktopsearch.parser
 
     private void StartFileSystemEventTimer( CancellationToken token )
     {
-      _eventsParser = new FileSystemEventsParser(_logger);
+      _eventsParser = new FileSystemEventsParser( _config.Timers.EventsParserMs, _logger);
       _eventsParser.Start( token );
     }
 

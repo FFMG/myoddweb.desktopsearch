@@ -14,16 +14,11 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 namespace myoddweb.desktopsearch.interfaces.Configs
 {
-  public interface IConfig
+  public interface ITimers
   {
     /// <summary>
-    /// The paths information.
+    /// How often we want to parse file events.
     /// </summary>
-    IPaths Paths { get; }
-
-    /// <summary>
-    /// All the timers.
-    /// </summary>
-    ITimers Timers { get; }
+    int EventsParserMs { get; }
   }
 }

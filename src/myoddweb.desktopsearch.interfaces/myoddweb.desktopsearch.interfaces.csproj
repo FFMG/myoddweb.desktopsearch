@@ -42,6 +42,7 @@
   <ItemGroup>
     <Compile Include="Configs\IConfig.cs" />
     <Compile Include="Configs\IPaths.cs" />
+    <Compile Include="Configs\ITimers.cs" />
     <Compile Include="IO\IDirectory.cs" />
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Logging\LogLevel.cs" />

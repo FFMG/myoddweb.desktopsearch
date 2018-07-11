@@ -30,11 +30,6 @@ namespace myoddweb.desktopsearch.parser
   /// </summary>
   internal class FileSystemEventsParser
   {
-    /// <summary>
-    /// How often we will be remobing compledted tasks.
-    /// </summary>
-    private const int FileSystemEventsTimeOutInMs = 10000;
-
     #region Member variables
     /// <summary>
     /// The logger that we will be using to log messages.
@@ -70,10 +65,21 @@ namespace myoddweb.desktopsearch.parser
     /// The timer so we can clear some completed taks.
     /// </summary>
     private System.Timers.Timer _tasksTimer;
+
+    /// <summary>
+    /// How often we will be remobing compledted tasks.
+    /// </summary>
+    private readonly int _eventsTimeOutInMs;
     #endregion
-    
-    public FileSystemEventsParser(ILogger logger)
+
+    public FileSystemEventsParser( int eventsParserMs, ILogger logger)
     {
+      if (eventsParserMs <= 0)
+      {
+        throw new ArgumentException( $"The event timeout, ({eventsParserMs}), cannot be zero or negative.");
+      }
+      _eventsTimeOutInMs = eventsParserMs;
+
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -94,7 +100,7 @@ namespace myoddweb.desktopsearch.parser
           return;
         }
 
-        _tasksTimer = new System.Timers.Timer(FileSystemEventsTimeOutInMs)
+        _tasksTimer = new System.Timers.Timer(_eventsTimeOutInMs)
         {
           AutoReset = false,
           Enabled = true
@@ -110,35 +116,44 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="e"></param>
     private void FileSystemEventsProcess(object sender, ElapsedEventArgs e)
     {
-      // stop the timer
-      StopFileSystemEventsTimer();
-
-      // clean up the tasks.
-      List<FileSystemEventArgs> events = null;
-      lock (_lock)
+      try
       {
-        if (_currentEvents.Count > 0)
-        {
-          // the events.
-          events = _currentEvents.Select(s => s).ToList();
+        // stop the timer
+        StopFileSystemEventsTimer();
 
-          // clear the current values within the lock
-          _currentEvents.Clear();
+        // clean up the tasks.
+        List<FileSystemEventArgs> events = null;
+        lock (_lock)
+        {
+          if (_currentEvents.Count > 0)
+          {
+            // the events.
+            events = _currentEvents.Select(s => s).ToList();
+
+            // clear the current values within the lock
+            _currentEvents.Clear();
+          }
+
+          // remove the completed events.
+          _tasks.RemoveAll(t => t.IsCompleted);
         }
 
-        // remove the completed events.
-        _tasks.RemoveAll(t => t.IsCompleted);
+        if (null != events)
+        {
+          _tasks.Add(Task.Run(() => ProcessEvents(events), _token));
+        }
       }
-
-      if (null != events)
+      catch (Exception exception)
       {
-        _tasks.Add(Task.Run(() => ProcessEvents(events), _token));
+        _logger.Exception( exception);
       }
-
-      if (!_token.IsCancellationRequested)
+      finally
       {
-        // restart the timer.
-        StartFileSystemEventsTimer();
+        if (!_token.IsCancellationRequested)
+        {
+          // restart the timer.
+          StartFileSystemEventsTimer();
+        }
       }
     }
 

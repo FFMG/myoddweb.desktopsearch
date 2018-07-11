@@ -1,4 +1,7 @@
 ﻿{
+  "Timers": {
+    "EventsParserMs": 10000
+  },
   "Paths": {
     "ParseFixedDrives": true,
     "ParseRemovableDrives": false,
@@ -9,5 +12,5 @@
     "IgnoredPaths": [
       "%temp%"
     ]
-  } 
+  }
 }

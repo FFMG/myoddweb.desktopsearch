@@ -68,6 +68,7 @@
     <Compile Include="ArgumentsParser.cs" />
     <Compile Include="Configs\Config.cs" />
     <Compile Include="Configs\ConfigPaths.cs" />
+    <Compile Include="Configs\ConfigTimers.cs" />
     <Compile Include="DesktopSearchService.cs">
       <SubType>Component</SubType>
     </Compile>

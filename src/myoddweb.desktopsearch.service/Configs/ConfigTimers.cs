@@ -12,18 +12,17 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-namespace myoddweb.desktopsearch.interfaces.Configs
-{
-  public interface IConfig
-  {
-    /// <summary>
-    /// The paths information.
-    /// </summary>
-    IPaths Paths { get; }
 
-    /// <summary>
-    /// All the timers.
-    /// </summary>
-    ITimers Timers { get; }
+using System.ComponentModel;
+using myoddweb.desktopsearch.interfaces.Configs;
+using Newtonsoft.Json;
+
+namespace myoddweb.desktopsearch.service.Configs
+{
+  internal class ConfigTimers : ITimers
+  {
+    [DefaultValue(10000)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public int EventsParserMs { get; protected set; }
   }
 }
