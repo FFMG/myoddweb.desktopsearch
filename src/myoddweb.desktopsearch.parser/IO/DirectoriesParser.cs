@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 
-namespace myoddweb.desktopsearch.parser
+namespace myoddweb.desktopsearch.parser.IO
 {
   internal class DirectoriesParser
   {

@@ -21,6 +21,7 @@ using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using myoddweb.desktopsearch.parser.IO;
 
 namespace myoddweb.desktopsearch.parser
 {

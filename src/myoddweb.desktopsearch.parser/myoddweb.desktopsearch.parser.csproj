@@ -40,10 +40,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DirectoriesParser.cs" />
+    <Compile Include="IO\DirectoriesParser.cs" />
     <Compile Include="Helper\File.cs" />
-    <Compile Include="FileSystemEventsParser.cs" />
-    <Compile Include="FileWatcher.cs" />
+    <Compile Include="IO\FileSystemEventsParser.cs" />
+    <Compile Include="IO\FileWatcher.cs" />
     <Compile Include="Parser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

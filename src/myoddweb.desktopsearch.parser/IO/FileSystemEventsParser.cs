@@ -21,7 +21,7 @@ using System.Threading.Tasks;
 using System.Timers;
 using myoddweb.desktopsearch.interfaces.Logging;
 
-namespace myoddweb.desktopsearch.parser
+namespace myoddweb.desktopsearch.parser.IO
 {
   /// <summary>
   /// This file processes the file events at regular intervales.

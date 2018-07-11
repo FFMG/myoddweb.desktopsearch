@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 using System.Timers;
 using myoddweb.desktopsearch.interfaces.Logging;
 
-namespace myoddweb.desktopsearch.parser
+namespace myoddweb.desktopsearch.parser.IO
 {
   public delegate void FileEventHandler( FileSystemEventArgs e);
 
