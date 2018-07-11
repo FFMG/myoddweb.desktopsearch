@@ -102,7 +102,7 @@ namespace myoddweb.desktopsearch.parser.test.Helper
     [Test]
     public void ParentDirectoryInfoCannotBeNull()
     {
-      Assert.Throws<ArgumentNullException>(() => File.IsSubDirectory(null, new DirectoryInfo("c:\\")));
+      Assert.Throws<ArgumentNullException>(() => File.IsSubDirectory((DirectoryInfo)null, new DirectoryInfo("c:\\")));
     }
 
     [Test]

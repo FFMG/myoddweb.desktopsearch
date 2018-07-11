@@ -16,6 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -27,6 +28,7 @@ namespace myoddweb.desktopsearch.parser
 {
   public class Parser
   {
+    #region Member variables
     /// <summary>
     /// The file watchers
     /// </summary>
@@ -56,6 +58,7 @@ namespace myoddweb.desktopsearch.parser
     /// The system configuration
     /// </summary>
     private readonly interfaces.Configs.IConfig _config;
+    #endregion
 
     public Parser(interfaces.Configs.IConfig config, IPersister persister, ILogger logger, IDirectory directory)
     {
@@ -83,14 +86,38 @@ namespace myoddweb.desktopsearch.parser
     }
 
     /// <summary>
+    /// Get all the paths we want to ignore.
+    /// </summary>
+    /// <returns></returns>
+    private IReadOnlyCollection<DirectoryInfo> GetIgnorePaths()
+    {
+      var paths = new List<DirectoryInfo>();
+
+      // get all the paths we want to ignore.
+      foreach (var path in _config.Paths.IgnoredPaths)
+      {
+        try
+        {
+          var expendedVariable = Environment.ExpandEnvironmentVariables(path);
+          paths.Add(new DirectoryInfo(expendedVariable ));
+        }
+        catch (Exception e)
+        {
+          _logger.Exception(e);
+        }
+      }
+      return paths;
+    }
+
+    /// <summary>
     /// Get all the start paths so we can monitor them.
     /// As well as parse them all.
     /// </summary>
     /// <returns></returns>
-    private List<string> GetStartPaths()
+    private IReadOnlyCollection<DirectoryInfo> GetStartPaths()
     {
       var drvs = DriveInfo.GetDrives();
-      var paths = new List<string>();
+      var paths = new List<DirectoryInfo>();
       foreach (var drv in drvs)
       {
         switch (drv.DriveType)
@@ -98,14 +125,14 @@ namespace myoddweb.desktopsearch.parser
           case DriveType.Fixed:
             if (_config.Paths.ParseFixedDrives)
             {
-              paths.Add(drv.Name);
+              paths.Add(new DirectoryInfo(drv.Name));
             }
             break;
 
           case DriveType.Removable:
             if (_config.Paths.ParseRemovableDrives)
             {
-              paths.Add(drv.Name);
+              paths.Add(new DirectoryInfo(drv.Name));
             }
             break;
         }
@@ -116,9 +143,9 @@ namespace myoddweb.desktopsearch.parser
       // we already have, then there is no point in adding it.
       foreach (var path in _config.Paths.Paths )
       {
-        if (!Helper.File.IsSubDirectory(paths, path))
+        if (!Helper.File.IsSubDirectory(paths, new DirectoryInfo(path)))
         {
-          paths.Add(path);
+          paths.Add( new DirectoryInfo(path));
         }
       }
 
@@ -135,9 +162,10 @@ namespace myoddweb.desktopsearch.parser
     {
       // get all the paths we will be working with.
       var paths = GetStartPaths();
+      var ignorePaths = GetIgnorePaths();
 
       // first we get a full list of files/directories.
-      if (!await ParseAllDirectoriesAsync(paths, token).ConfigureAwait(false))
+      if (!await ParseAllDirectoriesAsync(paths, ignorePaths, token).ConfigureAwait(false))
       {
         return false;
       }
@@ -184,7 +212,7 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="paths"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private bool StartWatchers( IEnumerable<string> paths, CancellationToken token )
+    private bool StartWatchers( IEnumerable<DirectoryInfo> paths, CancellationToken token )
     {
       foreach (var path in paths)
       {
@@ -224,9 +252,13 @@ namespace myoddweb.desktopsearch.parser
     /// Parse all the directories.
     /// </summary>
     /// <param name="paths"></param>
+    /// <param name="ignorePaths"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ParseAllDirectoriesAsync(IEnumerable<string> paths, CancellationToken token)
+    private async Task<bool> ParseAllDirectoriesAsync(
+      IEnumerable<DirectoryInfo> paths,
+      IReadOnlyCollection<DirectoryInfo> ignorePaths, 
+      CancellationToken token)
     {
       try
       {
@@ -236,7 +268,7 @@ namespace myoddweb.desktopsearch.parser
         var totalDirectories = 0;
         foreach (var path in paths)
         {
-          var directoriesParser = new DirectoriesParser(path, _logger, _directory);
+          var directoriesParser = new DirectoriesParser(path, ignorePaths, _logger, _directory);
           await directoriesParser.SearchAsync(token).ConfigureAwait(false);
 
           // process all the files.

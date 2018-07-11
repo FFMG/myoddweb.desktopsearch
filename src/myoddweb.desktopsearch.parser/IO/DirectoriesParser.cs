@@ -37,22 +37,31 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The folder we will be parsing
     /// </summary>
-    private readonly string _startFolder;
+    private readonly DirectoryInfo _startFolder;
 
-    public List<DirectoryInfo> Directories { get; }
+    /// <summary>
+    /// The folders we are ignoring.
+    /// </summary>
+    private readonly IEnumerable<DirectoryInfo> _ignorePaths;
 
-    public DirectoriesParser( string startFolder, ILogger logger, IDirectory directory)
+    /// <summary>
+    /// The directories we found.
+    /// </summary>
+    public List<DirectoryInfo> Directories { get; } = new List<DirectoryInfo>();
+
+    public DirectoriesParser(DirectoryInfo startFolder, IReadOnlyCollection<DirectoryInfo> ignorePaths, ILogger logger, IDirectory directory)
     {
-      // save the start folde.r
+      // save the start folder.
       _startFolder = startFolder ?? throw new ArgumentNullException(nameof(startFolder));
+
+      // the paths we want to ignore.
+      _ignorePaths = ignorePaths ?? throw new ArgumentNullException(nameof(ignorePaths));
 
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
       // save the directory parser
       _directory = directory ?? throw new ArgumentNullException(nameof(directory));
-
-      Directories = new List<DirectoryInfo>();
     }
 
     /// <summary>
@@ -68,11 +77,20 @@ namespace myoddweb.desktopsearch.parser.IO
         return Task.FromResult(false);
       }
 
-      // add this directory to our list.
-      Directories.Add(directory);
+      if (!Helper.File.IsSubDirectory(_ignorePaths, directory))
+      {
+        // add this directory to our list.
+        Directories.Add(directory);
 
-      // we will be parsing it.
-      return Task.FromResult(true);
+        // we will be parsing it and the sub-directories.
+        return Task.FromResult(true);
+      }
+
+      // we are ignoreing this.
+      _logger.Verbose($"Ignoring: {directory.FullName} and sub-directories.");
+
+      // we are not parsing this
+      return Task.FromResult(false);
     }
 
     /// <summary>

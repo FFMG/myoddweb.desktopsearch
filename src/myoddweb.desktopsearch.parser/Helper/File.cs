@@ -146,6 +146,28 @@ namespace myoddweb.desktopsearch.parser.Helper
     }
 
     /// <summary>
+    /// If the given path is the child of any given parent directories.
+    /// </summary>
+    /// <param name="parents"></param>
+    /// <param name="child"></param>
+    /// <returns></returns>
+    public static bool IsSubDirectory(IEnumerable<DirectoryInfo> parents, DirectoryInfo child)
+    {
+      if (null == parents)
+      {
+        throw new ArgumentNullException(nameof(parents));
+      }
+      foreach (var parent in parents)
+      {
+        if (IsSubDirectory( parent, child))
+        {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    /// <summary>
     /// Check if a directory is a child of the parent
     /// </summary>
     /// <param name="parent"></param>

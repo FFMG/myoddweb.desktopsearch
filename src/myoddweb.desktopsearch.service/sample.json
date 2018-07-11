@@ -10,7 +10,12 @@
       "c:\\other"
     ],
     "IgnoredPaths": [
-      "%temp%"
+      "%temp%",
+      "%tmp%",
+      "%ProgramFiles%",
+      "%ProgramFiles(x86)%",
+      "%ProgramW6432%",
+      "%windir%"
     ]
   }
 }

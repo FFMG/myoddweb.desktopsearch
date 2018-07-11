@@ -49,7 +49,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The folder we are watching
     /// </summary>
-    private readonly string _folder;
+    private readonly DirectoryInfo _folder;
 
     /// <summary>
     /// All the tasks currently running
@@ -114,7 +114,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="folder"></param>
     /// <param name="logger"></param>
-    public FileWatcher( string folder, ILogger logger )
+    public FileWatcher( DirectoryInfo folder, ILogger logger )
     {
       // the folder being watched.
       _folder = folder ?? throw new ArgumentNullException(nameof(folder));
@@ -327,7 +327,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // start the file watcher
       _watcher = new FileSystemWatcher
       {
-        Path = _folder,
+        Path = _folder.FullName,
         NotifyFilter = NotifyFilters.LastWrite,
         Filter = "*.*",
         IncludeSubdirectories = true,

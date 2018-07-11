@@ -35,24 +35,8 @@ namespace myoddweb.desktopsearch.service.IO
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<bool> ParseDirectoriesAsync(string path, Func<DirectoryInfo, Task<bool>> parseSubDirectory, CancellationToken token)
-    {
-      return await ParseDirectoriesAsync( new DirectoryInfo(path), parseSubDirectory, token).ConfigureAwait(false);
-    }
-
-    public async Task<bool> ParseDirectoryAsync(string path, Func<FileSystemInfo, Task> actionFile, CancellationToken token)
-    {
-      return await ParseDirectoryAsync( new DirectoryInfo(path), actionFile, token).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Parse the given directory and sub directories
-    /// </summary>
-    /// <param name="directoryInfo"></param>
-    /// <param name="parseSubDirectory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<bool> ParseDirectoriesAsync(DirectoryInfo directoryInfo, Func<DirectoryInfo, Task<bool>> parseSubDirectory, CancellationToken token)
+    /// <inheritdoc />
+    public async Task<bool> ParseDirectoriesAsync(DirectoryInfo directoryInfo, Func<DirectoryInfo, Task<bool>> parseSubDirectory, CancellationToken token)
     {
       try
       {
@@ -99,14 +83,8 @@ namespace myoddweb.desktopsearch.service.IO
       return true;
     }
 
-    /// <summary>
-    /// Parse files in a directory
-    /// </summary>
-    /// <param name="directoryInfo"></param>
-    /// <param name="actionFile"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<bool> ParseDirectoryAsync(DirectoryInfo directoryInfo, Func<FileSystemInfo, Task> actionFile, CancellationToken token)
+    /// <inheritdoc />
+    public async Task<bool> ParseDirectoryAsync(DirectoryInfo directoryInfo, Func<FileSystemInfo, Task> actionFile, CancellationToken token)
     {
       IEnumerable<FileSystemInfo> files;
       try
