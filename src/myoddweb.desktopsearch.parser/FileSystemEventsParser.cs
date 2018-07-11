@@ -23,8 +23,19 @@ using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.parser
 {
+  /// <summary>
+  /// This file processes the file events at regular intervales.
+  /// We use timers to ensure that we are not blocking the normal file usage.
+  /// This means we have to be a bit carefule of files that might have been deleted/changed and so on.
+  /// </summary>
   internal class FileSystemEventsParser
   {
+    /// <summary>
+    /// How often we will be remobing compledted tasks.
+    /// </summary>
+    private const int FileSystemEventsTimeOutInMs = 10000;
+
+    #region Member variables
     /// <summary>
     /// The logger that we will be using to log messages.
     /// </summary>
@@ -36,20 +47,20 @@ namespace myoddweb.desktopsearch.parser
     private readonly List<FileSystemEventArgs> _currentEvents = new List<FileSystemEventArgs>();
 
     /// <summary>
-    /// How often we will be remobing compledted tasks.
-    /// </summary>
-    private const int FileSystemEventsTimeOutInMs = 10000;
-
-    /// <summary>
     /// The cancellation source
     /// </summary>
     private CancellationToken _token;
 
     /// <summary>
+    /// When we register a token
+    /// </summary>
+    private CancellationTokenRegistration _cancellationTokenRegistration;
+
+    /// <summary>
     /// All the tasks currently running
     /// </summary>
     private readonly List<Task> _tasks = new List<Task>();
-
+    
     /// <summary>
     /// The lock so we can add/remove data
     /// </summary>
@@ -59,6 +70,7 @@ namespace myoddweb.desktopsearch.parser
     /// The timer so we can clear some completed taks.
     /// </summary>
     private System.Timers.Timer _tasksTimer;
+    #endregion
 
     public FileSystemEventsParser(ILogger logger)
     {
@@ -67,6 +79,7 @@ namespace myoddweb.desktopsearch.parser
     }
 
     #region Task Cleanup Timer
+
     private void StartFileSystemEventsTimer()
     {
       if (null != _tasksTimer)
@@ -119,7 +132,7 @@ namespace myoddweb.desktopsearch.parser
 
       if (null != events)
       {
-        _tasks.Add(Task.Run(() => ProcessEvents( events ), _token));
+        _tasks.Add(Task.Run(() => ProcessEvents(events), _token));
       }
 
       if (!_token.IsCancellationRequested)
@@ -152,54 +165,95 @@ namespace myoddweb.desktopsearch.parser
         _tasksTimer = null;
       }
     }
+
     #endregion
 
+    #region Process File events
+    /// <summary>
+    /// Process a file/directory that was renamed.
+    /// </summary>
+    /// <param name="fileInfo"></param>
+    /// <param name="renameEvent"></param>
+    /// <returns></returns>
+    private bool ProcessRenameFileInfo(FileInfo fileInfo, RenamedEventArgs renameEvent)
+    {
+      if (null == fileInfo)
+      {
+        throw new ArgumentNullException(nameof(fileInfo));
+      }
+
+      // it is a directory
+      if (Helper.File.IsDirectory(fileInfo))
+      {
+        if (!Helper.File.CanReadDirectory(new DirectoryInfo(fileInfo.FullName)))
+        {
+          return false;
+        }
+
+        _logger.Verbose($"Directory: {renameEvent.OldFullPath} to {renameEvent.FullPath}");
+        return true;
+      }
+
+      // it is a file
+      if (!Helper.File.CanReadFile(fileInfo))
+      {
+        return false;
+      }
+
+      _logger.Verbose($"File: {renameEvent.OldFullPath} to {renameEvent.FullPath}");
+      return true;
+    }
+
+    /// <summary>
+    /// Parse a normal file event
+    /// </summary>
+    /// <param name="fileInfo"></param>
+    /// <param name="fileEvent"></param>
+    /// <returns></returns>
+    private bool ProcessFileInfo(FileInfo fileInfo, FileSystemEventArgs fileEvent)
+    {
+      // it is a directory
+      if (Helper.File.IsDirectory(fileInfo))
+      {
+        if (!Helper.File.CanReadDirectory(new DirectoryInfo(fileInfo.FullName)))
+        {
+          return false;
+        }
+        _logger.Verbose($"Directory: {fileEvent.FullPath} ({fileEvent.ChangeType})");
+        return true;
+      }
+
+      // it is a file
+      if (!Helper.File.CanReadFile(fileInfo))
+      {
+        return false;
+      }
+      _logger.Verbose($"File: {fileEvent.FullPath} ({fileEvent.ChangeType})");
+      return true;
+    }
+
+    /// <summary>
+    /// This function is called when processing a list of file events.
+    /// It should be non-blocking.
+    /// </summary>
+    /// <param name="events"></param>
     private void ProcessEvents(IEnumerable<FileSystemEventArgs> events )
     {
       foreach (var e in events)
       {
         var file = new FileInfo(e.FullPath);
  
-        if (e is RenamedEventArgs r)
+        if (e is RenamedEventArgs renameEvent)
         {
-          if (Helper.File.IsDirectory(file))
-          {
-            if (!Helper.File.CanReadDirectory( new DirectoryInfo(file.FullName)))
-            {
-              continue;
-            }
-            _logger.Verbose($"Directory: {r.OldFullPath} to {r.FullPath}");
-          }
-          else
-          {
-            if (!Helper.File.CanReadFile(file))
-            {
-              continue;
-            }
-            _logger.Verbose($"File: {r.OldFullPath} to {r.FullPath}");
-          }
+          ProcessRenameFileInfo(file, renameEvent);
         }
         else
         {
-          if (Helper.File.IsDirectory(file))
-          {
-            if (!Helper.File.CanReadDirectory(new DirectoryInfo(file.FullName)))
-            {
-              continue;
-            }
-            _logger.Verbose($"Directory: {e.FullPath} ({e.ChangeType})");
-          }
-          else
-          {
-            if (!Helper.File.CanReadFile(file))
-            {
-              continue;
-            }
-            _logger.Verbose($"File: {e.FullPath} ({e.ChangeType})");
-          }
+          ProcessFileInfo(file, e );
         }
       }
     }
+    #endregion
 
     /// <summary>
     /// Start watching for the folder changes.
@@ -212,9 +266,11 @@ namespace myoddweb.desktopsearch.parser
       // start the source.
       _token = token;
 
+      // register the token cancellation
+      _cancellationTokenRegistration = _token.Register(TokenCancellation);
+
       StartFileSystemEventsTimer();
     }
-
     /// <summary>
     /// Stop the folder monitoring.
     /// </summary>
@@ -234,7 +290,14 @@ namespace myoddweb.desktopsearch.parser
         {
           if (_tasks.Count > 0)
           {
+            // Log that we are stopping the tasks.
+            _logger.Verbose($"Waiting for {_tasks.Count} tasks to complete in the File System Events Timer.");
+
+            // then wait...
             Task.WaitAll(_tasks.ToArray(), _token);
+
+            // done 
+            _logger.Verbose("Done.");
           }
         }
         catch (OperationCanceledException e)
@@ -245,9 +308,20 @@ namespace myoddweb.desktopsearch.parser
             throw;
           }
         }
-
-        _tasks.Clear();
+        finally
+        {
+          _cancellationTokenRegistration.Dispose();
+          _tasks.Clear();
+        }
       }
+    }
+
+    /// <summary>
+    /// Called when the token has been cancelled.
+    /// </summary>
+    private void TokenCancellation()
+    {
+      Stop();
     }
 
     /// <summary>
