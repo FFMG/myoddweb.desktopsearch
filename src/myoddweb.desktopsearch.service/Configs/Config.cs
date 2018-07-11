@@ -12,6 +12,9 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System.ComponentModel;
+using System.Runtime.Serialization;
 using myoddweb.desktopsearch.interfaces.Configs;
 using Newtonsoft.Json;
 
@@ -22,8 +25,19 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(Required = Required.Always)]
     public IPaths Paths { get; protected set; }
 
-    [JsonProperty(Required = Required.Always)]
+    [DefaultValue(null)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public ITimers Timers { get; protected set; }
+
+    [OnDeserialized]
+    internal void OnDeserialized(StreamingContext context)
+    {
+      if (null == Timers)
+      {
+        // set the default values.
+        Timers = JsonConvert.DeserializeObject<ConfigTimers>("{}");
+      }
+    }
 
     // ReSharper disable once SuggestBaseTypeForParameter
     /// <summary>

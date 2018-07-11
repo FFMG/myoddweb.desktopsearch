@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Runtime.Serialization;
 using myoddweb.desktopsearch.interfaces.Configs;
 using Newtonsoft.Json;
 
@@ -36,5 +37,22 @@ namespace myoddweb.desktopsearch.service.Configs
     [DefaultValue(null)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public List<string> IgnoredPaths { get; protected set; }
+
+    [OnDeserialized]
+    internal void OnDeserialized(StreamingContext context)
+    {
+      if (null == IgnoredPaths)
+      {
+        IgnoredPaths = new List<string>
+        {
+          "%temp%",
+          "%tmp%",
+          "%ProgramFiles%",
+          "%ProgramFiles(x86)%",
+          "%ProgramW6432%",
+          "%windir%"
+        };
+      }
+    }
   }
 }
