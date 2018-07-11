@@ -71,7 +71,7 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     private System.Timers.Timer _tasksTimer;
     #endregion
-
+    
     public FileSystemEventsParser(ILogger logger)
     {
       // save the logger

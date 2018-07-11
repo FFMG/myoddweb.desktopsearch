@@ -18,6 +18,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.parser
 {
@@ -33,6 +34,12 @@ namespace myoddweb.desktopsearch.parser
     /// How often we will be remobing compledted tasks.
     /// </summary>
     private const int TaskTimerTimeOutInMs = 30000;
+
+    #region Member variables
+    /// <summary>
+    /// The logger that we will be using to log messages.
+    /// </summary>
+    private readonly ILogger _logger;
 
     /// <summary>
     /// The actual file watcher.
@@ -63,6 +70,12 @@ namespace myoddweb.desktopsearch.parser
     /// The cancellation source
     /// </summary>
     private CancellationToken _token;
+
+    /// <summary>
+    /// When we register a token
+    /// </summary>
+    private CancellationTokenRegistration _cancellationTokenRegistration;
+    #endregion
 
     #region Events handler
     /// <summary>
@@ -100,9 +113,14 @@ namespace myoddweb.desktopsearch.parser
     /// Constructor to prepare the file watcher.
     /// </summary>
     /// <param name="folder"></param>
-    public FileWatcher( string folder )
+    /// <param name="logger"></param>
+    public FileWatcher( string folder, ILogger logger )
     {
-      _folder = folder;
+      // the folder being watched.
+      _folder = folder ?? throw new ArgumentNullException(nameof(folder));
+
+      // save the logger.
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     #region Task Cleanup Timer
@@ -181,13 +199,9 @@ namespace myoddweb.desktopsearch.parser
     }
     #endregion
 
+    #region Folder Event
     private void OnFolderDeleted(object sender, FileSystemEventArgs e)
     {
-      if (_token.IsCancellationRequested)
-      {
-        Stop();
-        return;
-      }
       lock (_lock)
       {
         _tasks.Add(Task.Run(() => Deleted( e), _token));
@@ -196,11 +210,6 @@ namespace myoddweb.desktopsearch.parser
 
     private void OnFolderCreated(object sender, FileSystemEventArgs e)
     {
-      if (_token.IsCancellationRequested)
-      {
-        Stop();
-        return;
-      }
       lock (_lock)
       {
         _tasks.Add(Task.Run(() => Created( e), _token));
@@ -209,11 +218,6 @@ namespace myoddweb.desktopsearch.parser
 
     private void OnFolderRenamed(object sender, RenamedEventArgs e)
     {
-      if (_token.IsCancellationRequested)
-      {
-        Stop();
-        return;
-      }
       lock (_lock)
       {
         _tasks.Add(Task.Run(() => Renamed( e), _token));
@@ -222,11 +226,6 @@ namespace myoddweb.desktopsearch.parser
 
     private void OnFolderChanged(object sender, FileSystemEventArgs e)
     {
-      if (_token.IsCancellationRequested)
-      {
-        Stop();
-        return;
-      }
       lock (_lock)
       {
         _tasks.Add(Task.Run(() => Changed( e), _token));
@@ -246,14 +245,11 @@ namespace myoddweb.desktopsearch.parser
       }
       finally 
       {
-        if (!_token.IsCancellationRequested)
-        {
-          // restart everything
-          Start(_token);
-        }
-
+        // restart everything
+        Start(_token);
       }
     }
+    #endregion 
 
     /// <summary>
     /// Stop the folder monitoring.
@@ -278,24 +274,33 @@ namespace myoddweb.desktopsearch.parser
         //  cancel all the tasks.
         _tasks.RemoveAll(t => t.IsCompleted);
 
-        // wait for them all to finish
         try
         {
-          if(_tasks.Count > 0 )
-          { 
-            Task.WaitAll(_tasks.ToArray(), _token );
+          // wait for them all to finish
+          if (_tasks.Count > 0)
+          {
+            // Log that we are stopping the tasks.
+            _logger.Verbose($"Waiting for {_tasks.Count} tasks to complete in the File watcher.");
+
+            Task.WaitAll(_tasks.ToArray(), _token);
+
+            // done 
+            _logger.Verbose("Done.");
           }
         }
         catch (OperationCanceledException e)
         {
           // ignore the cancelled exceptions.
-          if (e.CancellationToken != _token )
+          if (e.CancellationToken != _token)
           {
             throw;
           }
         }
-
-        _tasks.Clear();
+        finally
+        {
+          _cancellationTokenRegistration.Dispose();
+          _tasks.Clear();
+        }
       }
     }
 
@@ -309,6 +314,17 @@ namespace myoddweb.desktopsearch.parser
 
       _token = token;
 
+      // it is posible that we are trying to (re)start an event that was
+      // cancelled at some point.
+      if (_token.IsCancellationRequested)
+      {
+        return;
+      }
+
+      // register the token cancellation
+      _cancellationTokenRegistration = _token.Register(TokenCancellation);
+
+      // start the file watcher
       _watcher = new FileSystemWatcher
       {
         Path = _folder,
@@ -331,6 +347,14 @@ namespace myoddweb.desktopsearch.parser
       // we can now start monitoring for tasks.
       // so we can remove the completed ones from time to time.
       StartTasksCleanupTimer();
+    }
+
+    /// <summary>
+    /// Called when the token has been cancelled.
+    /// </summary>
+    private void TokenCancellation()
+    {
+      Stop();
     }
   }
 }

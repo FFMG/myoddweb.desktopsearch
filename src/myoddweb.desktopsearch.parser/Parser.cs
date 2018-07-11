@@ -181,12 +181,13 @@ namespace myoddweb.desktopsearch.parser
     /// Start to watch all the folders and sub folders.
     /// </summary>
     /// <param name="paths"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    private bool StartWatchers( List<string> paths, CancellationToken token )
+    private bool StartWatchers( IEnumerable<string> paths, CancellationToken token )
     {
       foreach (var path in paths)
       {
-        var watcher = new FileWatcher(path);
+        var watcher = new FileWatcher(path, _logger);
         watcher.Error += OnFolderError;
         watcher.Changed += OnFolderTouched;
         watcher.Renamed += OnFolderTouched;
