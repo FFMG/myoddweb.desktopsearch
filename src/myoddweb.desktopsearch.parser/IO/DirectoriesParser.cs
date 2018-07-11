@@ -22,8 +22,12 @@ using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.parser.IO
 {
+  /// <summary>
+  /// Class to parse a given directory looking for sub directories.
+  /// </summary>
   internal class DirectoriesParser
   {
+    #region Member variables
     /// <summary>
     /// The directory parser we will be using.
     /// </summary>
@@ -48,6 +52,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// The directories we found.
     /// </summary>
     public List<DirectoryInfo> Directories { get; } = new List<DirectoryInfo>();
+    #endregion
 
     public DirectoriesParser(DirectoryInfo startFolder, IReadOnlyCollection<DirectoryInfo> ignorePaths, ILogger logger, IDirectory directory)
     {

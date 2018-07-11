@@ -39,7 +39,12 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The list of current/unprocessed events.
     /// </summary>
-    private readonly List<FileSystemEventArgs> _currentEvents = new List<FileSystemEventArgs>();
+    private readonly List<FileSystemEventArgs> _currentFileEvents = new List<FileSystemEventArgs>();
+
+    /// <summary>
+    /// The list of current/unprocessed events.
+    /// </summary>
+    private readonly List<FileSystemEventArgs> _currentDirectoryEvents = new List<FileSystemEventArgs>();
 
     /// <summary>
     /// The cancellation source
@@ -55,7 +60,12 @@ namespace myoddweb.desktopsearch.parser.IO
     /// All the tasks currently running
     /// </summary>
     private readonly List<Task> _tasks = new List<Task>();
-    
+
+    /// <summary>
+    /// The folders we are ignoring.
+    /// </summary>
+    private readonly IEnumerable<DirectoryInfo> _ignorePaths;
+
     /// <summary>
     /// The lock so we can add/remove data
     /// </summary>
@@ -72,8 +82,11 @@ namespace myoddweb.desktopsearch.parser.IO
     private readonly int _eventsTimeOutInMs;
     #endregion
 
-    public FileSystemEventsParser( int eventsParserMs, ILogger logger)
+    public FileSystemEventsParser(IReadOnlyCollection<DirectoryInfo> ignorePaths, int eventsParserMs, ILogger logger)
     {
+      // the paths we want to ignore.
+      _ignorePaths = ignorePaths ?? throw new ArgumentNullException(nameof(ignorePaths));
+
       if (eventsParserMs <= 0)
       {
         throw new ArgumentException( $"The event timeout, ({eventsParserMs}), cannot be zero or negative.");
@@ -84,8 +97,7 @@ namespace myoddweb.desktopsearch.parser.IO
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    #region Task Cleanup Timer
-
+    #region File Events Process Timer
     private void StartFileSystemEventsTimer()
     {
       if (null != _tasksTimer)
@@ -122,25 +134,40 @@ namespace myoddweb.desktopsearch.parser.IO
         StopFileSystemEventsTimer();
 
         // clean up the tasks.
-        List<FileSystemEventArgs> events = null;
+        List<FileSystemEventArgs> fileEvents = null;
+        List<FileSystemEventArgs> directoryEvents = null;
         lock (_lock)
         {
-          if (_currentEvents.Count > 0)
+          if (_currentFileEvents.Count > 0)
           {
             // the events.
-            events = _currentEvents.Select(s => s).ToList();
+            fileEvents = _currentFileEvents.Select(s => s).ToList();
 
             // clear the current values within the lock
-            _currentEvents.Clear();
+            _currentFileEvents.Clear();
+          }
+
+          if (_currentDirectoryEvents.Count > 0)
+          {
+            // the events.
+            directoryEvents = _currentDirectoryEvents.Select(s => s).ToList();
+
+            // clear the current values within the lock
+            _currentDirectoryEvents.Clear();
           }
 
           // remove the completed events.
           _tasks.RemoveAll(t => t.IsCompleted);
         }
 
-        if (null != events)
+        if (null != fileEvents)
         {
-          _tasks.Add(Task.Run(() => ProcessEvents(events), _token));
+          _tasks.Add(Task.Run(() => ProcessFileEvents(fileEvents), _token));
+        }
+
+        if (null != directoryEvents)
+        {
+          _tasks.Add(Task.Run(() => ProcessDirectoryEvents(directoryEvents), _token));
         }
       }
       catch (Exception exception)
@@ -180,70 +207,86 @@ namespace myoddweb.desktopsearch.parser.IO
         _tasksTimer = null;
       }
     }
+    #endregion
 
+    #region Watcher Change Types
+    private bool Is(WatcherChangeTypes types, WatcherChangeTypes type)
+    {
+      return (types & type) == type;
+    }
+
+    private bool IsDeleted(WatcherChangeTypes types)
+    {
+      return Is( types, WatcherChangeTypes.Deleted);
+    }
     #endregion
 
     #region Process File events
     /// <summary>
     /// Process a file/directory that was renamed.
     /// </summary>
-    /// <param name="fileInfo"></param>
+    /// <param name="file"></param>
     /// <param name="renameEvent"></param>
     /// <returns></returns>
-    private bool ProcessRenameFileInfo(FileInfo fileInfo, RenamedEventArgs renameEvent)
+    private void ProcessRenameFileInfo(FileInfo file, RenamedEventArgs renameEvent)
     {
-      if (null == fileInfo)
+      if (null == file)
       {
-        throw new ArgumentNullException(nameof(fileInfo));
+        throw new ArgumentNullException(nameof(file));
       }
 
-      // it is a directory
-      if (Helper.File.IsDirectory(fileInfo))
+      // can we process this?
+      if (!CanProcessFile(file, renameEvent.ChangeType))
       {
-        if (!Helper.File.CanReadDirectory(new DirectoryInfo(fileInfo.FullName)))
-        {
-          return false;
-        }
-
-        _logger.Verbose($"Directory: {renameEvent.OldFullPath} to {renameEvent.FullPath}");
-        return true;
-      }
-
-      // it is a file
-      if (!Helper.File.CanReadFile(fileInfo))
-      {
-        return false;
+        return;
       }
 
       _logger.Verbose($"File: {renameEvent.OldFullPath} to {renameEvent.FullPath}");
-      return true;
     }
 
     /// <summary>
     /// Parse a normal file event
     /// </summary>
-    /// <param name="fileInfo"></param>
+    /// <param name="file"></param>
     /// <param name="fileEvent"></param>
     /// <returns></returns>
-    private bool ProcessFileInfo(FileInfo fileInfo, FileSystemEventArgs fileEvent)
+    private void ProcessFileInfo(FileInfo file, FileSystemEventArgs fileEvent)
     {
-      // it is a directory
-      if (Helper.File.IsDirectory(fileInfo))
+      if (null == file)
       {
-        if (!Helper.File.CanReadDirectory(new DirectoryInfo(fileInfo.FullName)))
-        {
-          return false;
-        }
-        _logger.Verbose($"Directory: {fileEvent.FullPath} ({fileEvent.ChangeType})");
-        return true;
+        throw new ArgumentNullException(nameof(file));
       }
 
-      // it is a file
-      if (!Helper.File.CanReadFile(fileInfo))
+      // can we process this?
+      if (!CanProcessFile(file, fileEvent.ChangeType))
+      {
+        return;
+      }
+
+      // the given file is going to be processed.
+      _logger.Verbose($"File: {fileEvent.FullPath} ({fileEvent.ChangeType})");
+    }
+
+    /// <summary>
+    /// Check if we can process this file or not.
+    /// </summary>
+    /// <param name="file"></param>
+    /// <param name="types"></param>
+    /// <returns></returns>
+    private bool CanProcessFile(FileInfo file, WatcherChangeTypes types)
+    {
+      // it is a file that we can read?
+      // we do not check delted files as they are ... deleted.
+      if (!IsDeleted(types) && !Helper.File.CanReadFile(file))
       {
         return false;
       }
-      _logger.Verbose($"File: {fileEvent.FullPath} ({fileEvent.ChangeType})");
+
+      // do we monitor this directory?
+      if (Helper.File.IsSubDirectory(_ignorePaths, file.Directory))
+      {
+        return false;
+      }
       return true;
     }
 
@@ -252,19 +295,102 @@ namespace myoddweb.desktopsearch.parser.IO
     /// It should be non-blocking.
     /// </summary>
     /// <param name="events"></param>
-    private void ProcessEvents(IEnumerable<FileSystemEventArgs> events )
+    private void ProcessFileEvents(IEnumerable<FileSystemEventArgs> events)
     {
       foreach (var e in events)
       {
         var file = new FileInfo(e.FullPath);
- 
         if (e is RenamedEventArgs renameEvent)
         {
           ProcessRenameFileInfo(file, renameEvent);
         }
         else
         {
-          ProcessFileInfo(file, e );
+          ProcessFileInfo(file, e);
+        }
+      }
+    }
+    #endregion
+
+    #region Process Directory events
+    /// <summary>
+    /// Process a file/directory that was renamed.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="renameEvent"></param>
+    /// <returns></returns>
+    private void ProcessRenameDirectoryInfo(DirectoryInfo directory, RenamedEventArgs renameEvent)
+    {
+      if (null == directory)
+      {
+        throw new ArgumentNullException(nameof(directory));
+      }
+
+      if (!CanProcessDirectory(directory, renameEvent.ChangeType ))
+      {
+        return;
+      }
+
+      _logger.Verbose($"Directory: {renameEvent.OldFullPath} to {renameEvent.FullPath}");
+    }
+
+    /// <summary>
+    /// Parse a normal file event
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="fileEvent"></param>
+    /// <returns></returns>
+    private void ProcessDirectoryInfo(DirectoryInfo directory, FileSystemEventArgs fileEvent)
+    {
+      // it is a directory
+      if( !CanProcessDirectory(directory, fileEvent.ChangeType ))
+      {
+        return;
+      }
+      _logger.Verbose($"Directory: {fileEvent.FullPath} ({fileEvent.ChangeType})");
+    }
+
+    /// <summary>
+    /// Check if we can process this directory or not.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="types"></param>
+    /// <returns></returns>
+    private bool CanProcessDirectory(DirectoryInfo directory, WatcherChangeTypes types )
+    {
+      // it is a file that we can read?
+      // it is a file that we can read?
+      if (!IsDeleted(types) && !Helper.File.CanReadDirectory(directory))
+      {
+        return false;
+      }
+
+      // do we monitor this directory?
+      if (Helper.File.IsSubDirectory(_ignorePaths, directory))
+      {
+        return false;
+      }
+
+      return true;
+    }
+
+    /// <summary>
+    /// This function is called when processing a list of file events.
+    /// It should be non-blocking.
+    /// </summary>
+    /// <param name="events"></param>
+    private void ProcessDirectoryEvents(IEnumerable<FileSystemEventArgs> events)
+    {
+      foreach (var e in events)
+      {
+        var directory = new DirectoryInfo(e.FullPath);
+        if (e is RenamedEventArgs renameEvent)
+        {
+          ProcessRenameDirectoryInfo(directory, renameEvent);
+        }
+        else
+        {
+          ProcessDirectoryInfo(directory, e);
         }
       }
     }
@@ -286,6 +412,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
       StartFileSystemEventsTimer();
     }
+    
     /// <summary>
     /// Stop the folder monitoring.
     /// </summary>
@@ -345,11 +472,23 @@ namespace myoddweb.desktopsearch.parser.IO
     /// Add a file event to the list.
     /// </summary>
     /// <param name="fileSystemEventArgs"></param>
-    public void Add(FileSystemEventArgs fileSystemEventArgs)
+    public void AddFile(FileSystemEventArgs fileSystemEventArgs)
     {
       lock (_lock)
       {
-        _currentEvents.Add(fileSystemEventArgs);
+        _currentFileEvents.Add(fileSystemEventArgs);
+      }
+    }
+
+    /// <summary>
+    /// Add a file event to the list.
+    /// </summary>
+    /// <param name="fileSystemEventArgs"></param>
+    public void AddDirectory(FileSystemEventArgs fileSystemEventArgs)
+    {
+      lock (_lock)
+      {
+        _currentDirectoryEvents.Add(fileSystemEventArgs);
       }
     }
   }

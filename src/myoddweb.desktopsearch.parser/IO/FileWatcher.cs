@@ -44,7 +44,12 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The actual file watcher.
     /// </summary>
-    private FileSystemWatcher _watcher;
+    private FileSystemWatcher _fileWatcher;
+
+    /// <summary>
+    /// The actual file watcher.
+    /// </summary>
+    private FileSystemWatcher _directoryWatcher;
 
     /// <summary>
     /// The folder we are watching
@@ -79,28 +84,44 @@ namespace myoddweb.desktopsearch.parser.IO
 
     #region Events handler
     /// <summary>
-    ///     Occurs when a file or directory in the specified System.IO.FileSystemWatcher.Path
-    ///     is deleted.
+    /// Occurs when a file is deleted.
     /// </summary>
-    public event FileEventHandler Deleted = delegate { };
+    public event FileEventHandler FileDeleted = delegate { };
 
     /// <summary>
-    ///     Occurs when a file or directory in the specified System.IO.FileSystemWatcher.Path
-    ///     is created.
+    /// Occurs when a directory is deleted.
     /// </summary>
-    public event FileEventHandler Created = delegate { };
+    public event FileEventHandler DirectoryDeleted = delegate { };
 
     /// <summary>
-    ///     Occurs when a file or directory in the specified System.IO.FileSystemWatcher.Path
-    ///     is changed.
+    ///  Occurs when a file is created.
     /// </summary>
-    public event FileEventHandler Changed = delegate { };
+    public event FileEventHandler FileCreated = delegate { };
 
     /// <summary>
-    ///     Occurs when a file or directory in the specified System.IO.FileSystemWatcher.Path
-    ///     is renamed.
+    ///  Occurs when a directory is created.
     /// </summary>
-    public event RenamedEventHandler Renamed = delegate { };
+    public event FileEventHandler DirectoryCreated = delegate { };
+
+    /// <summary>
+    /// Occurs when a file is changed.
+    /// </summary>
+    public event FileEventHandler FileChanged = delegate { };
+
+    /// <summary>
+    /// Occurs when a directory is changed.
+    /// </summary>
+    public event FileEventHandler DirectoryChanged = delegate { };
+
+    /// <summary>
+    /// Occurs when a file is renamed.
+    /// </summary>
+    public event RenamedEventHandler FileRenamed = delegate { };
+
+    /// <summary>
+    /// Occurs when a directory is renamed.
+    /// </summary>
+    public event RenamedEventHandler DirectoryRenamed = delegate { };
 
     /// <summary>
     ///     Occurs when the instance of System.IO.FileSystemWatcher is unable to continue
@@ -204,7 +225,14 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       lock (_lock)
       {
-        _tasks.Add(Task.Run(() => Deleted( e), _token));
+        if (sender == _fileWatcher)
+        {
+          _tasks.Add(Task.Run(() => FileDeleted(e), _token));
+        }
+        if (sender == _directoryWatcher)
+        {
+          _tasks.Add(Task.Run(() => DirectoryDeleted(e), _token));
+        }
       }
     }
 
@@ -212,7 +240,14 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       lock (_lock)
       {
-        _tasks.Add(Task.Run(() => Created( e), _token));
+        if (sender == _fileWatcher)
+        {
+          _tasks.Add(Task.Run(() => FileCreated(e), _token));
+        }
+        if (sender == _directoryWatcher)
+        {
+          _tasks.Add(Task.Run(() => DirectoryCreated(e), _token));
+        }
       }
     }
 
@@ -220,7 +255,14 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       lock (_lock)
       {
-        _tasks.Add(Task.Run(() => Renamed( e), _token));
+        if (sender == _fileWatcher)
+        {
+          _tasks.Add(Task.Run(() => FileRenamed(e), _token));
+        }
+        if (sender == _directoryWatcher)
+        {
+          _tasks.Add(Task.Run(() => DirectoryRenamed(e), _token));
+        }
       }
     }
 
@@ -228,7 +270,14 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       lock (_lock)
       {
-        _tasks.Add(Task.Run(() => Changed( e), _token));
+        if (sender == _fileWatcher)
+        {
+          _tasks.Add(Task.Run(() => FileChanged(e), _token));
+        }
+        if (sender == _directoryWatcher)
+        {
+          _tasks.Add(Task.Run(() => DirectoryChanged(e), _token));
+        }
       }
     }
 
@@ -260,15 +309,19 @@ namespace myoddweb.desktopsearch.parser.IO
       // we don't need it anymore.
       StopTasksCleanupTimer();
 
-      if (_watcher == null)
+      if (_fileWatcher != null)
       {
-        return;
+        _fileWatcher.EnableRaisingEvents = false;
+        _fileWatcher.Dispose();
+        _fileWatcher = null;
       }
 
-      _watcher.EnableRaisingEvents = false;
-      _watcher.Dispose();
-      _watcher = null;
-
+      if (_directoryWatcher != null)
+      {
+        _directoryWatcher.EnableRaisingEvents = false;
+        _directoryWatcher.Dispose();
+        _directoryWatcher = null;
+      }
       lock (_lock)
       {
         //  cancel all the tasks.
@@ -325,24 +378,40 @@ namespace myoddweb.desktopsearch.parser.IO
       _cancellationTokenRegistration = _token.Register(TokenCancellation);
 
       // start the file watcher
-      _watcher = new FileSystemWatcher
+      _fileWatcher = new FileSystemWatcher
       {
         Path = _folder.FullName,
-        NotifyFilter = NotifyFilters.LastWrite,
+        NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
         Filter = "*.*",
         IncludeSubdirectories = true,
-        EnableRaisingEvents = true,
+        EnableRaisingEvents = false,
         InternalBufferSize = 64 * 1024
       };
 
-      _watcher.Error += OnFolderError;
-      _watcher.Renamed += OnFolderRenamed;
+      _directoryWatcher = new FileSystemWatcher
+      {
+        Path = _folder.FullName,
+        NotifyFilter = NotifyFilters.DirectoryName,
+        Filter = "*.*",
+        IncludeSubdirectories = true,
+        EnableRaisingEvents = false,
+        InternalBufferSize = 64 * 1024
+      };
 
-      _watcher.Changed += OnFolderChanged;
-      _watcher.Created += OnFolderCreated;
-      _watcher.Deleted += OnFolderDeleted;
+      _fileWatcher.Error += OnFolderError;
+      _fileWatcher.Renamed += OnFolderRenamed;
+      _fileWatcher.Changed += OnFolderChanged;
+      _fileWatcher.Created += OnFolderCreated;
+      _fileWatcher.Deleted += OnFolderDeleted;
 
-      _watcher.EnableRaisingEvents = true;
+      _directoryWatcher.Error += OnFolderError;
+      _directoryWatcher.Renamed += OnFolderRenamed;
+      _directoryWatcher.Changed += OnFolderChanged;
+      _directoryWatcher.Created += OnFolderCreated;
+      _directoryWatcher.Deleted += OnFolderDeleted;
+
+      _fileWatcher.EnableRaisingEvents = true;
+      _directoryWatcher.EnableRaisingEvents = true;
 
       // we can now start monitoring for tasks.
       // so we can remove the completed ones from time to time.

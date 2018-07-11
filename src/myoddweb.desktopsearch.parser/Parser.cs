@@ -16,7 +16,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -176,19 +175,27 @@ namespace myoddweb.desktopsearch.parser
         return false;
       }
 
-      // finally start the file timer.
-      StartFileSystemEventTimer( token );
+      // finally start the file parser.
+      StartFileSystemEventParser(ignorePaths, token);
 
       return true;
     }
 
-    private void StartFileSystemEventTimer( CancellationToken token )
+    /// <summary>
+    /// Start the file event parser that will process files changes,
+    /// </summary>
+    /// <param name="ignorePaths"></param>
+    /// <param name="token"></param>
+    private void StartFileSystemEventParser( IReadOnlyCollection<DirectoryInfo> ignorePaths, CancellationToken token )
     {
-      _eventsParser = new FileSystemEventsParser( _config.Timers.EventsParserMs, _logger);
+      _eventsParser = new FileSystemEventsParser(ignorePaths, _config.Timers.EventsParserMs, _logger);
       _eventsParser.Start( token );
     }
 
-    private void StopFileSystemEventTimer()
+    /// <summary>
+    /// Stop the file event parser.
+    /// </summary>
+    private void StopFileSystemEventParser()
     {
       _eventsParser?.Stop();
     }
@@ -218,10 +225,16 @@ namespace myoddweb.desktopsearch.parser
       {
         var watcher = new FileWatcher(path, _logger);
         watcher.Error += OnFolderError;
-        watcher.Changed += OnFolderTouched;
-        watcher.Renamed += OnFolderTouched;
-        watcher.Created += OnFolderTouched;
-        watcher.Deleted += OnFolderTouched;
+        watcher.FileChanged += OnFileTouched;
+        watcher.FileRenamed += OnFileTouched;
+        watcher.FileCreated += OnFileTouched;
+        watcher.FileDeleted += OnFileTouched;
+
+        watcher.DirectoryChanged += OnDirectoryTouched;
+        watcher.DirectoryRenamed += OnDirectoryTouched;
+        watcher.DirectoryCreated += OnDirectoryTouched;
+        watcher.DirectoryDeleted += OnDirectoryTouched;
+
         watcher.Start( token );
         _watchers.Add(watcher);
       }
@@ -239,13 +252,23 @@ namespace myoddweb.desktopsearch.parser
     }
 
     /// <summary>
-    /// When a file/folder has been renamed.
+    /// When a file was changed
     /// </summary>
     /// <param name="e"></param>
-    private void OnFolderTouched(FileSystemEventArgs e)
+    private void OnFileTouched(FileSystemEventArgs e)
     {
       // It is posible that the event parser has not started yet.
-      _eventsParser?.Add(e);
+      _eventsParser?.AddFile(e);
+    }
+
+    /// <summary>
+    /// When a directory has been changed.
+    /// </summary>
+    /// <param name="e"></param>
+    private void OnDirectoryTouched(FileSystemEventArgs e)
+    {
+      // It is posible that the event parser has not started yet.
+      _eventsParser?.AddDirectory(e);
     }
 
     /// <summary>
@@ -301,7 +324,7 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="directories"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ParseDirectoryAsync(IEnumerable<DirectoryInfo> directories, CancellationToken token )
+    private async Task<bool> ParseDirectoryAsync(IEnumerable<DirectoryInfo> directories, CancellationToken token)
     {
       // add the folder to the list.
       if (!await _perister.AddOrUpdateFoldersAsync(directories, token).ConfigureAwait(false))
@@ -314,21 +337,12 @@ namespace myoddweb.desktopsearch.parser
     }
 
     /// <summary>
-    /// Process a file that has been found.
-    /// </summary>
-    /// <param name="fileInfo"></param>
-    private void ProcessFile(FileSystemInfo fileInfo )
-    {
-      _logger.Verbose( $"Processing File: {fileInfo.FullName}");
-    }
-
-    /// <summary>
     /// Stop parsing
     /// </summary>
     public void Stop()
     {
       StopWatchers();
-      StopFileSystemEventTimer();
+      StopFileSystemEventParser();
     }
   }
 }
