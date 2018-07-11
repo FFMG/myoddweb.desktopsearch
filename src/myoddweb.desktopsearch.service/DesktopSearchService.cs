@@ -372,19 +372,15 @@ namespace myoddweb.desktopsearch.service
         Console.WriteLine("Press Ctrl+C to stop the monitors.");
 
         // then wait for the user to press a key
-        var keepRunning = true;
+        var exitEvent = new ManualResetEvent(false);
         Console.CancelKeyPress += delegate(object sender, ConsoleCancelEventArgs e)
         {
-          Console.WriteLine("Stop detected.");
           e.Cancel = true;
-          keepRunning = false;
+          Console.WriteLine("Stop detected.");
+          exitEvent.Set();
         };
 
-        while (keepRunning)
-        {
-          // wait a little.
-          Task.Delay(1000).Wait();
-        }
+        exitEvent.WaitOne();
       }
       catch (Exception ex)
       {
