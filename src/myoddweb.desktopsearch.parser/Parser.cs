@@ -36,7 +36,12 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// The files event parser.
     /// </summary>
-    private FileSystemEventsParser _eventsParser;
+    private DirectoriesSystemEventsParser _directoriesEventsParser;
+
+    /// <summary>
+    /// The files event parser.
+    /// </summary>
+    private FilesSystemEventsParser _filesEventsParser;
 
     /// <summary>
     /// The logger that we will be using to log messages.
@@ -176,7 +181,7 @@ namespace myoddweb.desktopsearch.parser
       }
 
       // finally start the file parser.
-      StartFileSystemEventParser(ignorePaths, token);
+      StartSystemEventParsers(ignorePaths, token);
 
       return true;
     }
@@ -186,18 +191,22 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     /// <param name="ignorePaths"></param>
     /// <param name="token"></param>
-    private void StartFileSystemEventParser( IReadOnlyCollection<DirectoryInfo> ignorePaths, CancellationToken token )
+    private void StartSystemEventParsers( IReadOnlyCollection<DirectoryInfo> ignorePaths, CancellationToken token )
     {
-      _eventsParser = new FileSystemEventsParser(ignorePaths, _config.Timers.EventsParserMs, _logger);
-      _eventsParser.Start( token );
+      _filesEventsParser = new FilesSystemEventsParser(ignorePaths, _config.Timers.EventsParserMs, _logger);
+      _filesEventsParser.Start( token );
+
+      _directoriesEventsParser = new DirectoriesSystemEventsParser(ignorePaths, _config.Timers.EventsParserMs, _logger);
+      _directoriesEventsParser.Start(token);
     }
 
     /// <summary>
     /// Stop the file event parser.
     /// </summary>
-    private void StopFileSystemEventParser()
+    private void StopSystemEventParsers()
     {
-      _eventsParser?.Stop();
+      _filesEventsParser?.Stop();
+      _directoriesEventsParser?.Stop();
     }
 
     /// <summary>
@@ -262,7 +271,7 @@ namespace myoddweb.desktopsearch.parser
     private void OnFileTouched(FileSystemEventArgs e)
     {
       // It is posible that the event parser has not started yet.
-      _eventsParser?.AddFile(e);
+      _filesEventsParser?.Add(e);
     }
 
     /// <summary>
@@ -272,7 +281,7 @@ namespace myoddweb.desktopsearch.parser
     private void OnDirectoryTouched(FileSystemEventArgs e)
     {
       // It is posible that the event parser has not started yet.
-      _eventsParser?.AddDirectory(e);
+      _directoriesEventsParser?.Add(e);
     }
 
     /// <summary>
@@ -346,7 +355,7 @@ namespace myoddweb.desktopsearch.parser
     public void Stop()
     {
       StopWatchers();
-      StopFileSystemEventParser();
+      StopSystemEventParsers();
     }
   }
 }

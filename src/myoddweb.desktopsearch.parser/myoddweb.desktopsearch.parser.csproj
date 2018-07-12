@@ -42,7 +42,9 @@
   <ItemGroup>
     <Compile Include="IO\DirectoriesParser.cs" />
     <Compile Include="Helper\File.cs" />
-    <Compile Include="IO\FileSystemEventsParser.cs" />
+    <Compile Include="IO\DirectoriesSystemEventsParser.cs" />
+    <Compile Include="IO\FilesSystemEventsParser.cs" />
+    <Compile Include="IO\SystemEventsParser.cs" />
     <Compile Include="IO\DirectoriesWatcher.cs" />
     <Compile Include="IO\FilesWatcher.cs" />
     <Compile Include="IO\Watcher.cs" />
