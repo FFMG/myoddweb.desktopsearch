@@ -28,7 +28,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
   public delegate void ErrorEventHandler(ErrorEventArgs e);
 
-  internal class Watcher
+  internal abstract class Watcher
   {
     /// <summary>
     /// How often we will be remobing compledted tasks.
@@ -44,7 +44,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The logger that we will be using to log messages.
     /// </summary>
-    private readonly ILogger _logger;
+    protected ILogger Logger { get; }
 
     /// <summary>
     /// The actual file watcher.
@@ -59,7 +59,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The folder we are watching
     /// </summary>
-    private readonly DirectoryInfo _folder;
+    protected DirectoryInfo Folder { get; }
 
     /// <summary>
     /// All the tasks currently running
@@ -127,10 +127,10 @@ namespace myoddweb.desktopsearch.parser.IO
       _watcherTypes = watcherTypes;
 
       // the folder being watched.
-      _folder = folder ?? throw new ArgumentNullException(nameof(folder));
+      Folder = folder ?? throw new ArgumentNullException(nameof(folder));
 
       // save the logger.
-      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+      Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     #region Task Cleanup Timer
@@ -306,12 +306,12 @@ namespace myoddweb.desktopsearch.parser.IO
           if (_tasks.Count > 0)
           {
             // Log that we are stopping the tasks.
-            _logger.Verbose($"Waiting for {_tasks.Count} tasks to complete in the File watcher.");
+            Logger.Verbose($"Waiting for {_tasks.Count} tasks to complete in the Watcher.");
 
             Task.WaitAll(_tasks.ToArray(), _token);
 
             // done 
-            _logger.Verbose("Done.");
+            Logger.Verbose("Done.");
           }
         }
         catch (OperationCanceledException e)
@@ -370,7 +370,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
       _directoryWatcher = new FileSystemWatcher
       {
-        Path = _folder.FullName,
+        Path = Folder.FullName,
         NotifyFilter = NotifyFilters.DirectoryName,
         Filter = "*.*",
         IncludeSubdirectories = true,
@@ -394,7 +394,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
       _fileWatcher = new FileSystemWatcher
       {
-        Path = _folder.FullName,
+        Path = Folder.FullName,
         NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
         Filter = "*.*",
         IncludeSubdirectories = true,
@@ -414,9 +414,13 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     private void TokenCancellation()
     {
-      _logger.Verbose($"Stopping File watcher : {_folder}");
+      OnCancelling();
       Stop();
-      _logger.Verbose($"Done File watcher : {_folder}");
+      OnCancelled();
     }
+
+    protected abstract void OnCancelling();
+
+    protected abstract void OnCancelled();
   }
 }

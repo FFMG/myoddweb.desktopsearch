@@ -24,5 +24,15 @@ namespace myoddweb.desktopsearch.parser.IO
       base( WatcherTypes.Files, folder, logger)
     {
     }
+
+    protected override void OnCancelling()
+    {
+      Logger.Verbose($"Stopping Files watcher : {Folder}");
+    }
+
+    protected override void OnCancelled()
+    {
+      Logger.Verbose($"Done Files watcher : {Folder}");
+    }
   }
 }
