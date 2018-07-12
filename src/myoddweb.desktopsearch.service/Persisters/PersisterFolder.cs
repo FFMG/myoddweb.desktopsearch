@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Data.SQLite;
 using System.IO;
 using System.Linq;
@@ -26,52 +27,156 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class Persister 
   {
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateFolderAsync(DirectoryInfo directory, CancellationToken token)
+    public async Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
     {
-      return await AddOrUpdateFoldersAsync(new [] {directory}, token );
+      return await AddOrUpdateDirectoriesAsync(new [] {directory}, transaction, token );
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateFoldersAsync(IEnumerable<DirectoryInfo> directories, CancellationToken token)
+    public async Task<bool> AddOrUpdateDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, DbTransaction transaction, CancellationToken token )
     {
-      var transaction = DbConnection.BeginTransaction();
+      if (null != transaction)
+      {
+        // rebuild the list of directory with only those that need to be inserted.
+        return await InsertDirectoriesAsync(
+          await RebuildDirectoriesListAsync(directories, transaction, token).ConfigureAwait(false),
+          transaction, token).ConfigureAwait(false);
+      }
+
+      transaction = BeginTransaction();
       try
       {
-        if (await AddOrUpdateFoldersAsync(directories, transaction, token ))
+        if (await AddOrUpdateDirectoriesAsync(directories, transaction, token).ConfigureAwait(false))
         {
-          transaction.Commit();
+          Commit( transaction );
           return true;
         }
-        transaction.Rollback();
-        return false;
+        Rollback(transaction);
       }
       catch (Exception e)
       {
         _logger.Exception(e);
-        try
-        {
-          transaction.Rollback();
-        }
-        catch (Exception rollbackException)
-        {
-          _logger.Exception(rollbackException);
-        }
-        return false;
+        Rollback( transaction );
       }
+      return false;
     }
 
-    /// <summary>
-    /// Add multiple folders within a transaction.
-    /// </summary>
-    /// <param name="directories">The directories we will be adding</param>
-    /// <param name="transaction">The transaction.</param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<bool> AddOrUpdateFoldersAsync(IEnumerable<DirectoryInfo> directories, SQLiteTransaction transaction, CancellationToken token )
+    /// <inheritdoc />
+    public async Task<long> RenameDirectoryAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, DbTransaction transaction, CancellationToken token)
     {
-      // rebuild the list of directory with only those that need to be inserted.
-      return await InsertDirectoriesAsync(await RebuildDirectoriesListAsync(directories, transaction, token).ConfigureAwait(false), 
-        transaction, token).ConfigureAwait(false);
+      if (transaction != null)
+      {
+        var sqlDelete = $"UPDATE {TableFolders} SET path=@path1 WHERE path=@path2";
+        using (var cmd = CreateCommand(sqlDelete))
+        {
+          cmd.Transaction = transaction as SQLiteTransaction;
+          cmd.Parameters.Add("@path1", DbType.String);
+          cmd.Parameters.Add("@path2", DbType.String);
+          try
+          {
+            // are we cancelling?
+            if (token.IsCancellationRequested)
+            {
+              return -1;
+            }
+
+            cmd.Parameters["@path1"].Value = directory.FullName;
+            cmd.Parameters["@path2"].Value = oldDirectory.FullName;
+            if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
+            {
+              _logger.Error($"There was an issue renaming folder: {directory.FullName} to persister");
+              await AddOrUpdateDirectoryAsync(oldDirectory, transaction, token).ConfigureAwait(false);
+            }
+            return await GetDirectoryRowIdAsync(directory, transaction, token).ConfigureAwait(false);
+          }
+          catch (Exception ex)
+          {
+            _logger.Exception(ex);
+          }
+        }
+        return -1;
+      }
+
+      transaction = BeginTransaction();
+      try
+      {
+        var id = await RenameDirectoryAsync(directory, oldDirectory, transaction, token).ConfigureAwait(false);
+        if (id != -1 )
+        {
+          Commit(transaction);
+          return id;
+        }
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+      }
+      Rollback(transaction);
+      return -1;
+    }
+    /// <inheritdoc />
+    public async Task<bool> DeleteDirectoryAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
+    {
+      return await DeleteDirectoriesAsync(new[] { directory }, transaction, token);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DeleteDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, DbTransaction transaction, CancellationToken token)
+    {
+      // if we have nothing to do... we are done.
+      if (!directories.Any())
+      {
+        return true;
+      }
+
+      if (transaction != null)
+      {
+        var sqlDelete = $"DELETE FROM {TableFolders} WHERE path=@path";
+        using (var cmd = CreateCommand(sqlDelete))
+        {
+          cmd.Transaction = transaction as SQLiteTransaction;
+          cmd.Parameters.Add("@path", DbType.String);
+          foreach (var directory in directories)
+          {
+            try
+            {
+              // are we cancelling?
+              if (token.IsCancellationRequested)
+              {
+                return false;
+              }
+
+              cmd.Parameters["@path"].Value = directory.FullName;
+              if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
+              {
+                _logger.Error($"There was an issue deleting folder: {directory.FullName} from persister");
+              }
+            }
+            catch (Exception ex)
+            {
+              _logger.Exception(ex);
+            }
+          }
+        }
+        return true;
+      }
+
+      transaction = BeginTransaction();
+      try
+      {
+        if (await DeleteDirectoriesAsync(directories, transaction, token).ConfigureAwait(false))
+        {
+          Commit(transaction);
+          return true;
+        }
+        Rollback(transaction);
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        Rollback(transaction);
+      }
+      return false;
     }
 
     /// <summary>
@@ -81,7 +186,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> InsertDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, SQLiteTransaction transaction, CancellationToken token)
+    private async Task<bool> InsertDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, DbTransaction transaction, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!directories.Any())
@@ -95,7 +200,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sqlInsert = $"INSERT INTO {TableFolders} (id, path) VALUES (@id, @path)";
       using (var cmd = CreateCommand(sqlInsert))
       {
-        cmd.Transaction = transaction;
+        cmd.Transaction = transaction as SQLiteTransaction;
         cmd.Parameters.Add("@id", DbType.Int64);
         cmd.Parameters.Add("@path", DbType.String);
         foreach (var directory in directories)
@@ -130,13 +235,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> GetNextRowIdAsync(SQLiteTransaction transaction, CancellationToken token)
+    private async Task<long> GetNextRowIdAsync(DbTransaction transaction, CancellationToken token)
     {
       // we first look for it, and, if we find it then there is nothing to do.
-      const string sqlNextRowId = "SELECT max(id) from folders;";
+      var sqlNextRowId = $"SELECT max(id) from {TableFolders};";
       using (var cmd = CreateCommand(sqlNextRowId))
       {
-        cmd.Transaction = transaction;
+        cmd.Transaction = transaction as SQLiteTransaction;
 
         // are we cancelling?
         if (token.IsCancellationRequested)
@@ -156,13 +261,47 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <summary>
+    /// Get the id of a folder or -1.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<long> GetDirectoryRowIdAsync( FileSystemInfo directory, DbTransaction transaction, CancellationToken token )
+    {
+      // we first look for it, and, if we find it then there is nothing to do.
+      var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
+      using (var cmd = CreateCommand(sql))
+      {
+        cmd.Transaction = transaction as SQLiteTransaction;
+        cmd.Parameters.Add("@path", DbType.String);
+
+        // are we cancelling?
+        if (token.IsCancellationRequested)
+        {
+          return 0;
+        }
+
+        cmd.Parameters["@path"].Value = directory.FullName;
+        var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
+        if (null == value || value == DBNull.Value)
+        {
+          return -1;
+        }
+
+        // get the path id.
+        return (long)value;
+      }
+    }
+
+    /// <summary>
     /// Given a list of directories, re-create the ones that we need to insert.
     /// </summary>
     /// <param name="directories"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<DirectoryInfo>> RebuildDirectoriesListAsync(IEnumerable<DirectoryInfo> directories, SQLiteTransaction transaction, CancellationToken token )
+    private async Task<List<DirectoryInfo>> RebuildDirectoriesListAsync(IEnumerable<DirectoryInfo> directories, DbTransaction transaction, CancellationToken token )
     {
       // The list of directories we will be adding to the list.
       var actualDirectories = new List<DirectoryInfo>();
@@ -171,7 +310,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sqlGetRowId = $"SELECT id FROM {TableFolders} WHERE path=@path";
       using (var cmd = CreateCommand(sqlGetRowId))
       {
-        cmd.Transaction = transaction;
+        cmd.Transaction = transaction as SQLiteTransaction;
         cmd.Parameters.Add("@path", DbType.String);
         foreach (var directory in directories)
         {
@@ -197,18 +336,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
       }
       return actualDirectories;
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> DeleteFolderAsync(DirectoryInfo directory, CancellationToken token)
-    {
-      return await DeleteFoldersAsync(new[] { directory }, token);
-    }
-
-    /// <inheritdoc />
-    public Task<bool> DeleteFoldersAsync(IEnumerable<DirectoryInfo> directories, CancellationToken token)
-    {
-      throw new NotImplementedException();
     }
   }
 }

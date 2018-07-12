@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Data.Common;
 using System.Data.SQLite;
 using System.IO;
 using System.Threading.Tasks;
@@ -65,6 +66,42 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // update the db if need be.
       Update().Wait();
+    }
+
+    /// <inheritdoc/>
+    public DbTransaction BeginTransaction()
+    {
+      return DbConnection.BeginTransaction();
+    }
+
+    /// <inheritdoc/>
+    public bool Rollback(DbTransaction transaction )
+    {
+      try
+      {
+        transaction.Rollback();
+        return true;
+      }
+      catch (Exception rollbackException)
+      {
+        _logger.Exception(rollbackException);
+        return false;
+      }
+    }
+
+    /// <inheritdoc/>
+    public bool Commit(DbTransaction transaction)
+    {
+      try
+      {
+        transaction.Commit();
+        return true;
+      }
+      catch (Exception commitException)
+      {
+        _logger.Exception(commitException);
+        return false;
+      }
     }
 
     #region Commands

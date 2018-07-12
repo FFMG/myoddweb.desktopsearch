@@ -12,20 +12,31 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Logging;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.parser.IO
 {
   /// <inheritdoc />
   internal class DirectoriesSystemEventsParser : SystemEventsParser
   {
-    public DirectoriesSystemEventsParser(IReadOnlyCollection<DirectoryInfo> ignorePaths, int eventsParserMs, ILogger logger) :
+    /// <summary>
+    /// The folder persister that will allow us to add/remove folders.
+    /// </summary>
+    private readonly IPersister _persister;
+
+    public DirectoriesSystemEventsParser(
+      IPersister persister,
+      IReadOnlyCollection<DirectoryInfo> ignorePaths, int eventsParserMs, ILogger logger) :
       base( ignorePaths, eventsParserMs, logger)
     {
+      _persister = persister ?? throw new ArgumentNullException(nameof(persister));
     }
 
     #region Process Directory events
@@ -33,7 +44,6 @@ namespace myoddweb.desktopsearch.parser.IO
     /// Check if we can process this directory or not.
     /// </summary>
     /// <param name="directory"></param>
-    /// <param name="types"></param>
     /// <returns></returns>
     private bool CanProcessDirectory(DirectoryInfo directory)
     {
@@ -54,33 +64,37 @@ namespace myoddweb.desktopsearch.parser.IO
 
     #region Abstract Process events
     /// <inheritdoc />
-    protected override Task ProcessCreatedAsync(string fullPath, CancellationToken token)
+    protected override async Task ProcessCreatedAsync(string fullPath, CancellationToken token)
     {
       var directory = new DirectoryInfo(fullPath);
       if (!CanProcessDirectory(directory))
       {
-        return Task.FromResult<object>(null);
+        return;
       }
 
       // the given file is going to be processed.
       Logger.Verbose($"Directory: {fullPath} (Created)");
-      return Task.FromResult<object>(null);
+
+      // just add the folder.
+      await _persister.AddOrUpdateDirectoryAsync(directory, null, token);
     }
 
     /// <inheritdoc />
-    protected override Task ProcessDeletedAsync(string fullPath, CancellationToken token)
+    protected override async Task ProcessDeletedAsync(string fullPath, CancellationToken token)
     {
       var directory = new DirectoryInfo(fullPath);
 
       // we cannot call CanProcessFile as it is now deleted.
       if (Helper.File.IsSubDirectory(IgnorePaths, directory ))
       {
-        return Task.FromResult<object>(null);
+        return;
       }
 
       // the given file is going to be processed.
       Logger.Verbose($"File: {fullPath} (Deleted)");
-      return Task.FromResult<object>(null);
+
+      // just delete the folder.
+      await _persister.DeleteDirectoryAsync(directory, null, token);
     }
 
     /// <inheritdoc />
@@ -98,17 +112,34 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <inheritdoc />
-    protected override Task ProcessRenamedAsync(string fullPath, string oldFullPath, CancellationToken token)
+    protected override async Task ProcessRenamedAsync(string fullPath, string oldFullPath, CancellationToken token)
     {
+      var transaction = _persister.BeginTransaction();
       var directory = new DirectoryInfo(fullPath);
+      var oldDirectory = new DirectoryInfo(oldFullPath);
       if (!CanProcessDirectory(directory))
       {
-        return Task.FromResult<object>(null);
+        // delete the old folder only, in case it did exist.
+        if (!await _persister.DeleteDirectoryAsync(directory, transaction, token))
+        {
+          _persister.Rollback(transaction);
+          return;
+        }
+
+        _persister.Commit(transaction);
+        return;
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"Directory: {fullPath} > {oldFullPath} (Renamed)");
-      return Task.FromResult<object>(null);
+      Logger.Verbose($"Directory: {oldFullPath} > {fullPath} (Renamed)");
+
+      // first delete the old folder.
+      if (-1 == await _persister.RenameDirectoryAsync( directory, oldDirectory, transaction, token))
+      {
+        _persister.Rollback(transaction);
+        return;
+      }
+      _persister.Commit(transaction);
     }
     #endregion
   }

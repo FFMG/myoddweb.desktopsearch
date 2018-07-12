@@ -196,7 +196,7 @@ namespace myoddweb.desktopsearch.parser
       _filesEventsParser = new FilesSystemEventsParser(ignorePaths, _config.Timers.EventsParserMs, _logger);
       _filesEventsParser.Start( token );
 
-      _directoriesEventsParser = new DirectoriesSystemEventsParser(ignorePaths, _config.Timers.EventsParserMs, _logger);
+      _directoriesEventsParser = new DirectoriesSystemEventsParser( _perister, ignorePaths, _config.Timers.EventsParserMs, _logger);
       _directoriesEventsParser.Start(token);
     }
 
@@ -337,10 +337,10 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="directories"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ParseDirectoryAsync(IEnumerable<DirectoryInfo> directories, CancellationToken token)
+    private async Task<bool> ParseDirectoryAsync(IReadOnlyList<DirectoryInfo> directories, CancellationToken token)
     {
       // add the folder to the list.
-      if (!await _perister.AddOrUpdateFoldersAsync(directories, token).ConfigureAwait(false))
+      if (!await _perister.AddOrUpdateDirectoriesAsync(directories, null, token).ConfigureAwait(false))
       {
         return false;
       }

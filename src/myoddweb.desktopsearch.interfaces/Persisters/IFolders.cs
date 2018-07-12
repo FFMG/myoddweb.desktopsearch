@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System.Collections.Generic;
+using System.Data.Common;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,32 +27,46 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// Add or update an existing folder.
     /// </summary>
     /// <param name="directory"></param>
+    /// <param name="oldDirectory"></param>
+    /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateFolderAsync(DirectoryInfo directory, CancellationToken token);
+    Task<long> RenameDirectoryAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, DbTransaction transaction, CancellationToken token);
+
+    /// <summary>
+    /// Add or update an existing directory.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Update multiple directories at once.
     /// </summary>
     /// <param name="directories"></param>
+    /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateFoldersAsync(IEnumerable<DirectoryInfo> directories, CancellationToken token);
+    Task<bool> AddOrUpdateDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, DbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Delete a single folder.
     /// </summary>
     /// <param name="directory"></param>
+    /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFolderAsync(DirectoryInfo directory, CancellationToken token);
+    Task<bool> DeleteDirectoryAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Delete multiple folders.
     /// </summary>
     /// <param name="directories"></param>
+    /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFoldersAsync(IEnumerable<DirectoryInfo> directories, CancellationToken token);
+    Task<bool> DeleteDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, DbTransaction transaction, CancellationToken token);
   }
 }
