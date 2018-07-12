@@ -31,7 +31,7 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// The file watchers
     /// </summary>
-    private readonly List<FileWatcher> _watchers = new List<FileWatcher>();
+    private readonly List<Watcher> _watchers = new List<Watcher>();
 
     /// <summary>
     /// The files event parser.
@@ -223,20 +223,24 @@ namespace myoddweb.desktopsearch.parser
     {
       foreach (var path in paths)
       {
-        var watcher = new FileWatcher(path, _logger);
-        watcher.Error += OnFolderError;
-        watcher.FileChanged += OnFileTouched;
-        watcher.FileRenamed += OnFileTouched;
-        watcher.FileCreated += OnFileTouched;
-        watcher.FileDeleted += OnFileTouched;
+        var fileWatcher = new FilesWatcher(path, _logger);
+        fileWatcher.Error += OnFolderError;
+        fileWatcher.Changed += OnFileTouched;
+        fileWatcher.Renamed += OnFileTouched;
+        fileWatcher.Created += OnFileTouched;
+        fileWatcher.Deleted += OnFileTouched;
 
-        watcher.DirectoryChanged += OnDirectoryTouched;
-        watcher.DirectoryRenamed += OnDirectoryTouched;
-        watcher.DirectoryCreated += OnDirectoryTouched;
-        watcher.DirectoryDeleted += OnDirectoryTouched;
+        var directoryWatcher = new DirectoriesWatcher(path, _logger);
+        directoryWatcher.Changed += OnDirectoryTouched;
+        directoryWatcher.Renamed += OnDirectoryTouched;
+        directoryWatcher.Created += OnDirectoryTouched;
+        directoryWatcher.Deleted += OnDirectoryTouched;
 
-        watcher.Start( token );
-        _watchers.Add(watcher);
+        fileWatcher.Start(token);
+        directoryWatcher.Start(token);
+
+        _watchers.Add(fileWatcher);
+        _watchers.Add(directoryWatcher);
       }
       return true;
     }

@@ -43,7 +43,10 @@
     <Compile Include="IO\DirectoriesParser.cs" />
     <Compile Include="Helper\File.cs" />
     <Compile Include="IO\FileSystemEventsParser.cs" />
-    <Compile Include="IO\FileWatcher.cs" />
+    <Compile Include="IO\DirectoriesWatcher.cs" />
+    <Compile Include="IO\FilesWatcher.cs" />
+    <Compile Include="IO\Watcher.cs" />
+    <Compile Include="IO\WatcherTypes.cs" />
     <Compile Include="Parser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
