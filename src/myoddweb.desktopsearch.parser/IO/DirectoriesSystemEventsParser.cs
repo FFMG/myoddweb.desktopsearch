@@ -12,9 +12,10 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.parser.IO
@@ -29,53 +30,15 @@ namespace myoddweb.desktopsearch.parser.IO
 
     #region Process Directory events
     /// <summary>
-    /// Process a file/directory that was renamed.
-    /// </summary>
-    /// <param name="directory"></param>
-    /// <param name="renameEvent"></param>
-    /// <returns></returns>
-    private void ProcessRenameDirectoryInfo(DirectoryInfo directory, RenamedEventArgs renameEvent)
-    {
-      if (null == directory)
-      {
-        throw new ArgumentNullException(nameof(directory));
-      }
-
-      if (!CanProcessDirectory(directory, renameEvent.ChangeType))
-      {
-        return;
-      }
-
-      Logger.Verbose($"Directory: {renameEvent.OldFullPath} to {renameEvent.FullPath}");
-    }
-
-    /// <summary>
-    /// Parse a normal file event
-    /// </summary>
-    /// <param name="directory"></param>
-    /// <param name="fileEvent"></param>
-    /// <returns></returns>
-    private void ProcessDirectoryInfo(DirectoryInfo directory, FileSystemEventArgs fileEvent)
-    {
-      // it is a directory
-      if (!CanProcessDirectory(directory, fileEvent.ChangeType))
-      {
-        return;
-      }
-      Logger.Verbose($"Directory: {fileEvent.FullPath} ({fileEvent.ChangeType})");
-    }
-
-    /// <summary>
     /// Check if we can process this directory or not.
     /// </summary>
     /// <param name="directory"></param>
     /// <param name="types"></param>
     /// <returns></returns>
-    private bool CanProcessDirectory(DirectoryInfo directory, WatcherChangeTypes types)
+    private bool CanProcessDirectory(DirectoryInfo directory)
     {
-      // it is a file that we can read?
-      // it is a file that we can read?
-      if (!IsDeleted(types) && !Helper.File.CanReadDirectory(directory))
+      // it is a directory that we can read?
+      if (!Helper.File.CanReadDirectory(directory))
       {
         return false;
       }
@@ -87,19 +50,65 @@ namespace myoddweb.desktopsearch.parser.IO
       }
       return true;
     }
+    #endregion
 
+    #region Abstract Process events
     /// <inheritdoc />
-    protected override void ProcessEvent(string fullPath, FileSystemEventArgs e)
+    protected override Task ProcessCreatedAsync(string fullPath, CancellationToken token)
     {
       var directory = new DirectoryInfo(fullPath);
-      if (e is RenamedEventArgs renameEvent)
+      if (!CanProcessDirectory(directory))
       {
-        ProcessRenameDirectoryInfo(directory, renameEvent);
+        return Task.FromResult<object>(null);
       }
-      else
+
+      // the given file is going to be processed.
+      Logger.Verbose($"Directory: {fullPath} (Created)");
+      return Task.FromResult<object>(null);
+    }
+
+    /// <inheritdoc />
+    protected override Task ProcessDeletedAsync(string fullPath, CancellationToken token)
+    {
+      var directory = new DirectoryInfo(fullPath);
+
+      // we cannot call CanProcessFile as it is now deleted.
+      if (Helper.File.IsSubDirectory(IgnorePaths, directory ))
       {
-        ProcessDirectoryInfo(directory, e);
+        return Task.FromResult<object>(null);
       }
+
+      // the given file is going to be processed.
+      Logger.Verbose($"File: {fullPath} (Deleted)");
+      return Task.FromResult<object>(null);
+    }
+
+    /// <inheritdoc />
+    protected override Task ProcessChangedAsync(string fullPath, CancellationToken token)
+    {
+      var directory = new DirectoryInfo(fullPath);
+      if (!CanProcessDirectory(directory))
+      {
+        return Task.FromResult<object>(null);
+      }
+
+      // the given file is going to be processed.
+      Logger.Verbose($"Directory: {fullPath} (Changed)");
+      return Task.FromResult<object>(null);
+    }
+
+    /// <inheritdoc />
+    protected override Task ProcessRenamedAsync(string fullPath, string oldFullPath, CancellationToken token)
+    {
+      var directory = new DirectoryInfo(fullPath);
+      if (!CanProcessDirectory(directory))
+      {
+        return Task.FromResult<object>(null);
+      }
+
+      // the given file is going to be processed.
+      Logger.Verbose($"Directory: {fullPath} > {oldFullPath} (Renamed)");
+      return Task.FromResult<object>(null);
     }
     #endregion
   }

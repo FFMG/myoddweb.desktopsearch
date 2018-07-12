@@ -147,7 +147,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
         if (null != events)
         {
-          _tasks.Add(Task.Run(() => ProcessEvents(events), _token));
+          _tasks.Add(ProcessEventsAsync(events));
         }
       }
       catch (Exception exception)
@@ -196,6 +196,16 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <summary>
+    /// Check if the change type was created.
+    /// </summary>
+    /// <param name="types"></param>
+    /// <returns></returns>
+    protected static bool IsCreated(WatcherChangeTypes types)
+    {
+      return Is(types, WatcherChangeTypes.Created);
+    }
+
+    /// <summary>
     /// Check if the change type was deleted.
     /// </summary>
     /// <param name="types"></param>
@@ -204,28 +214,68 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       return Is( types, WatcherChangeTypes.Deleted);
     }
+
+    /// <summary>
+    /// Check if the change type was changed.
+    /// </summary>
+    /// <param name="types"></param>
+    /// <returns></returns>
+    protected static bool IsChanged(WatcherChangeTypes types)
+    {
+      return Is(types, WatcherChangeTypes.Changed);
+    }
+
+    /// <summary>
+    /// Check if the change type was renamed.
+    /// </summary>
+    /// <param name="types"></param>
+    /// <returns></returns>
+    protected static bool IsRenamed(WatcherChangeTypes types)
+    {
+      return Is(types, WatcherChangeTypes.Renamed);
+    }
     #endregion
 
     #region Process events
-
-    /// <summary>
-    /// This function is called when processing an event.
-    /// It should be non-blocking.
-    /// </summary>
-    /// <param name="fullPath"></param>
-    /// <param name="e"></param>
-    protected abstract void ProcessEvent(string fullPath, FileSystemEventArgs e);
-
     /// <summary>
     /// This function is called when processing a list of file events.
     /// It should be non-blocking.
     /// </summary>
     /// <param name="events"></param>
-    private void ProcessEvents(IEnumerable<FileSystemEventArgs> events)
+    private async Task ProcessEventsAsync(IEnumerable<FileSystemEventArgs> events)
     {
-      foreach (var e in events)
+      // try and do everything at once.
+      await Task.WhenAll(events.Select(ProcessEventAsync).ToArray()).ConfigureAwait( false );
+    }
+
+    private async Task ProcessEventAsync(FileSystemEventArgs e)
+    {
+      if (IsCreated(e.ChangeType))
       {
-        ProcessEvent(e.FullPath, e);
+        await ProcessCreatedAsync(e.FullPath, _token).ConfigureAwait(false);
+      }
+
+      if (IsDeleted(e.ChangeType))
+      {
+        await ProcessDeletedAsync(e.FullPath, _token).ConfigureAwait(false);
+      }
+
+      if (IsChanged(e.ChangeType))
+      {
+        await ProcessChangedAsync(e.FullPath, _token).ConfigureAwait(false);
+      }
+
+      if (IsRenamed(e.ChangeType))
+      {
+        if (e is RenamedEventArgs renameEvent)
+        {
+          await ProcessRenamedAsync(renameEvent.FullPath, renameEvent.OldFullPath, _token).ConfigureAwait(false);
+        }
+        else
+        {
+          Logger.Warning( $"A file, ({e.FullPath}), was marked as renamed, but the event was not.");
+          await ProcessChangedAsync(e.FullPath, _token).ConfigureAwait(false);
+        }
       }
     }
     #endregion
@@ -313,5 +363,36 @@ namespace myoddweb.desktopsearch.parser.IO
         _currentEvents.Add(fileSystemEventArgs);
       }
     }
+
+    #region Abstract Process events
+    /// <summary>
+    /// Process a created event
+    /// </summary>
+    /// <param name="fullPath"></param>
+    /// <param name="token"></param>
+    protected abstract Task ProcessCreatedAsync(string fullPath, CancellationToken token);
+
+    /// <summary>
+    /// Process a deleted event
+    /// </summary>
+    /// <param name="fullPath"></param>
+    /// <param name="token"></param>
+    protected abstract Task ProcessDeletedAsync(string fullPath, CancellationToken token);
+
+    /// <summary>
+    /// Process a created event
+    /// </summary>
+    /// <param name="fullPath"></param>
+    /// <param name="token"></param>
+    protected abstract Task ProcessChangedAsync(string fullPath, CancellationToken token);
+
+    /// <summary>
+    /// Process a renamed event
+    /// </summary>
+    /// <param name="fullPath"></param>
+    /// <param name="oldFullPath"></param>
+    /// <param name="token"></param>
+    protected abstract Task ProcessRenamedAsync(string fullPath, string oldFullPath, CancellationToken token );
+    #endregion
   }
 }
