@@ -29,12 +29,43 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
 
+      // the files tables
+      if (!await CreateFilesAsync().ConfigureAwait(false))
+      {
+        return false;
+      }
+
       // the folders table.
       if (!await CreateFoldersAsync().ConfigureAwait(false))
       {
         return false;
       }
 
+      return true;
+    }
+
+    private async Task<bool> CreateFilesAsync()
+    {
+      if (!await
+        ExecuteNonQueryAsync($"CREATE TABLE {TableFiles} (id integer PRIMARY KEY, folderid integer, name varchar(260))")
+          .ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFiles}_folderid_name ON {TableFiles}(folderid, name);").ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFiles}_folderid ON {TableFiles}(folderid);").ConfigureAwait(false))
+      {
+        return false;
+      }
       return true;
     }
 

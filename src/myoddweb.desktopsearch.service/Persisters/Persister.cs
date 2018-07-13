@@ -27,6 +27,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     #region Table names
     private const string TableConfig = "config";
     private const string TableFolders = "folders";
+    private const string TableFiles = "files";
     #endregion
 
     /// <summary>
@@ -68,6 +69,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       Update().Wait();
     }
 
+    #region Transactions
     /// <inheritdoc/>
     public DbTransaction BeginTransaction()
     {
@@ -88,6 +90,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
     }
+    #endregion
 
     /// <inheritdoc/>
     public bool Commit(DbTransaction transaction)

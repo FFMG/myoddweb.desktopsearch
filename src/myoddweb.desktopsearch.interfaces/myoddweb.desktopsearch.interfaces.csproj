@@ -47,6 +47,7 @@
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Logging\LogLevel.cs" />
     <Compile Include="Persisters\IConfig.cs" />
+    <Compile Include="Persisters\IFiles.cs" />
     <Compile Include="Persisters\IFolders.cs" />
     <Compile Include="Persisters\IPersister.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

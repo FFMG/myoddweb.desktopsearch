@@ -75,7 +75,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // the given file is going to be processed.
       Logger.Verbose($"Directory: {path} (Created)");
 
-      // just add the folder.
+      // just add the directory.
       await _persister.AddOrUpdateDirectoryAsync(directory, null, token);
     }
 

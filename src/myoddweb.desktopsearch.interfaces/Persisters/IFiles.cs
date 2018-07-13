@@ -12,30 +12,33 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System.Collections.Generic;
 using System.Data.Common;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IPersister : IConfig, IFolders, IFiles
+  public interface IFiles
   {
     /// <summary>
-    /// Get a database transaction.
+    /// Add or update a file to a folder.
     /// </summary>
+    /// <param name="file"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    DbTransaction BeginTransaction();
+    Task<bool> AddOrUpdateFileAsync( FileInfo file, DbTransaction transaction, CancellationToken token);
 
     /// <summary>
-    /// Rollback the current transaction.
+    /// Add or update multiple files.
     /// </summary>
+    /// <param name="files"></param>
     /// <param name="transaction"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    bool Rollback(DbTransaction transaction);
-
-    /// <summary>
-    /// Commit the current transaction.
-    /// </summary>
-    /// <param name="transaction"></param>
-    /// <returns></returns>
-    bool Commit(DbTransaction transaction);
+    Task<bool> AddOrUpdateFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token);
   }
 }

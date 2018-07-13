@@ -193,7 +193,7 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="token"></param>
     private void StartSystemEventParsers( IReadOnlyCollection<DirectoryInfo> ignorePaths, CancellationToken token )
     {
-      _filesEventsParser = new FilesSystemEventsParser(ignorePaths, _config.Timers.EventsParserMs, _logger);
+      _filesEventsParser = new FilesSystemEventsParser( _perister, ignorePaths, _config.Timers.EventsParserMs, _logger);
       _filesEventsParser.Start( token );
 
       _directoriesEventsParser = new DirectoriesSystemEventsParser( _perister, ignorePaths, _config.Timers.EventsParserMs, _logger);

@@ -12,20 +12,31 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Logging;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.parser.IO
 {
   /// <inheritdoc />
   internal class FilesSystemEventsParser : SystemEventsParser
   {
-    public FilesSystemEventsParser(IReadOnlyCollection<DirectoryInfo> ignorePaths, int eventsParserMs, ILogger logger) :
+    /// <summary>
+    /// The folder persister that will allow us to add/remove folders.
+    /// </summary>
+    private readonly IPersister _persister;
+
+    public FilesSystemEventsParser(
+      IPersister persister,
+      IReadOnlyCollection<DirectoryInfo> ignorePaths, int eventsParserMs, ILogger logger) :
       base( ignorePaths, eventsParserMs, logger)
     {
+      _persister = persister ?? throw new ArgumentNullException(nameof(persister));
     }
 
     #region Process File events
@@ -58,17 +69,19 @@ namespace myoddweb.desktopsearch.parser.IO
 
     #region Abstract Process events
     /// <inheritdoc />
-    protected override Task ProcessCreatedAsync(string fullPath, CancellationToken token)
+    protected override async Task ProcessCreatedAsync(string fullPath, CancellationToken token)
     {
       var file = Helper.File.FileInfo(fullPath, Logger );
       if (!CanProcessFile(file))
       {
-        return Task.FromResult<object>(null);
+        return;
       }
 
       // the given file is going to be processed.
       Logger.Verbose($"File: {fullPath} (Created)");
-      return Task.FromResult<object>(null);
+
+      // just add the file.
+      await _persister.AddOrUpdateFileAsync( file, null, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

@@ -98,7 +98,9 @@ namespace myoddweb.desktopsearch.service.Persisters
             // if we are here, we either renamed the directory or we managed 
             // to add add a new directory
             // in either cases, we can now return the id of this newly added path.
-            return await GetDirectoryRowIdAsync(directory, transaction, token).ConfigureAwait(false);
+            // we won't ask the function to insert a new file as we _just_ renamed it.
+            // so it has to exist...
+            return await GetFolderIdAsync(directory, transaction, token, false ).ConfigureAwait(false);
           }
           catch (Exception ex)
           {
@@ -130,6 +132,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       Rollback(transaction);
       return -1;
     }
+ 
     /// <inheritdoc />
     public async Task<bool> DeleteDirectoryAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
     {
@@ -196,6 +199,85 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <summary>
+    /// Get the next row ID we can use.
+    /// </summary>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<long> GetNextFolderIdAsync(DbTransaction transaction, CancellationToken token)
+    {
+      // we first look for it, and, if we find it then there is nothing to do.
+      var sqlNextRowId = $"SELECT max(id) from {TableFolders};";
+      using (var cmd = CreateCommand(sqlNextRowId))
+      {
+        cmd.Transaction = transaction as SQLiteTransaction;
+
+        // are we cancelling?
+        if (token.IsCancellationRequested)
+        {
+          return 0;
+        }
+
+        var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
+        if (null == value || value == DBNull.Value)
+        {
+          return 0;
+        }
+
+        // we could not find this path ... so just add it.
+        return ((long)value) + 1;
+      }
+    }
+
+    /// <summary>
+    /// Get the id of a folder or -1.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <param name="createIfNotFound"></param>
+    /// <returns></returns>
+    private async Task<long> GetFolderIdAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    {
+      // we first look for it, and, if we find it then there is nothing to do.
+      var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
+      using (var cmd = CreateCommand(sql))
+      {
+        cmd.Transaction = transaction as SQLiteTransaction;
+        cmd.Parameters.Add("@path", DbType.String);
+
+        // are we cancelling?
+        if (token.IsCancellationRequested)
+        {
+          return -1;
+        }
+
+        cmd.Parameters["@path"].Value = directory.FullName;
+        var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
+        if (null == value || value == DBNull.Value)
+        {
+          if (!createIfNotFound)
+          {
+            // we could not find it and we do not wish to go further.
+            return -1;
+          }
+
+          // try and add the folder, if that does not work, then we cannot go further.
+          if (!await AddOrUpdateDirectoryAsync(directory, transaction, token).ConfigureAwait(false))
+          {
+            return -1;
+          }
+
+          // try one more time to look for it .. and if we do not find it, then just return
+          return await GetFolderIdAsync(directory, transaction, token, false).ConfigureAwait(false);
+        }
+
+        // get the path id.
+        return (long)value;
+      }
+    }
+
+    /// <summary>
     /// Given a list of directories, re-create the ones that we need to insert.
     /// </summary>
     /// <param name="directories"></param>
@@ -211,7 +293,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // get the next id.
-      var nextId = await GetNextRowIdAsync(transaction, token).ConfigureAwait(false);
+      var nextId = await GetNextFolderIdAsync(transaction, token).ConfigureAwait(false);
 
       var sqlInsert = $"INSERT INTO {TableFolders} (id, path) VALUES (@id, @path)";
       using (var cmd = CreateCommand(sqlInsert))
@@ -243,71 +325,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
       }
       return true;
-    }
-
-    /// <summary>
-    /// Get the next row ID we can use.
-    /// </summary>
-    /// <param name="transaction"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<long> GetNextRowIdAsync(DbTransaction transaction, CancellationToken token)
-    {
-      // we first look for it, and, if we find it then there is nothing to do.
-      var sqlNextRowId = $"SELECT max(id) from {TableFolders};";
-      using (var cmd = CreateCommand(sqlNextRowId))
-      {
-        cmd.Transaction = transaction as SQLiteTransaction;
-
-        // are we cancelling?
-        if (token.IsCancellationRequested)
-        {
-          return 0;
-        }
-
-        var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
-        if (null == value || value == DBNull.Value )
-        {
-          return 0;
-        }
-
-        // we could not find this path ... so just add it.
-        return ((long)value)+1;
-      }
-    }
-
-    /// <summary>
-    /// Get the id of a folder or -1.
-    /// </summary>
-    /// <param name="directory"></param>
-    /// <param name="transaction"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<long> GetDirectoryRowIdAsync( FileSystemInfo directory, DbTransaction transaction, CancellationToken token )
-    {
-      // we first look for it, and, if we find it then there is nothing to do.
-      var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
-      using (var cmd = CreateCommand(sql))
-      {
-        cmd.Transaction = transaction as SQLiteTransaction;
-        cmd.Parameters.Add("@path", DbType.String);
-
-        // are we cancelling?
-        if (token.IsCancellationRequested)
-        {
-          return 0;
-        }
-
-        cmd.Parameters["@path"].Value = directory.FullName;
-        var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
-        if (null == value || value == DBNull.Value)
-        {
-          return -1;
-        }
-
-        // get the path id.
-        return (long)value;
-      }
     }
 
     /// <summary>
