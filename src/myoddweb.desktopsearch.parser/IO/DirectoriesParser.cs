@@ -73,8 +73,9 @@ namespace myoddweb.desktopsearch.parser.IO
     /// The call back function to check if we are parsing that directory or not.
     /// </summary>
     /// <param name="directory"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    private Task<bool> ParseDirectory(DirectoryInfo directory)
+    private Task<bool> ParseDirectory(DirectoryInfo directory, CancellationToken token )
     {
       if (!Helper.File.CanReadDirectory(directory))
       {

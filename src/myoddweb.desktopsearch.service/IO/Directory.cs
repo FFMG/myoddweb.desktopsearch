@@ -36,12 +36,12 @@ namespace myoddweb.desktopsearch.service.IO
     }
 
     /// <inheritdoc />
-    public async Task<bool> ParseDirectoriesAsync(DirectoryInfo directory, Func<DirectoryInfo, Task<bool>> parseSubDirectory, CancellationToken token)
+    public async Task<bool> ParseDirectoriesAsync(DirectoryInfo directory, CanParseDirectoryAsync parseSubDirectory, CancellationToken token)
     {
       try
       {
         // does the caller want us to get in this directory?
-        if (!await parseSubDirectory(directory).ConfigureAwait(false))
+        if (!await parseSubDirectory(directory, token).ConfigureAwait(false))
         {
           return true;
         }
@@ -84,7 +84,7 @@ namespace myoddweb.desktopsearch.service.IO
     }
 
     /// <inheritdoc />
-    public async Task<bool> ParseDirectoryAsync(DirectoryInfo directory, Func<FileSystemInfo, Task> actionFile, CancellationToken token)
+    public async Task<bool> ParseDirectoryAsync(DirectoryInfo directory, ParseFileAsync actionFile, CancellationToken token)
     {
       IEnumerable<FileSystemInfo> files;
       try
@@ -122,30 +122,7 @@ namespace myoddweb.desktopsearch.service.IO
           // all we can do is stop adding more to the list.
           break;
         }
-
-        tasks.Add(Task.Run(async () =>
-        {
-          try
-          {
-            await actionFile(file).ConfigureAwait(false);
-          }
-          catch (SecurityException)
-          {
-            // we cannot access/enumerate this file
-            // but we might as well continue
-            _logger.Verbose($"Security error while parsing file: {file.FullName}.");
-          }
-          catch (UnauthorizedAccessException)
-          {
-            // we cannot access/enumerate this file
-            // but we might as well continue
-            _logger.Verbose($"Unauthorized Access while parsing file: {file.FullName}.");
-          }
-          catch (Exception e)
-          {
-            _logger.Error($"Exception while parsing file: {file.FullName}. {e.Message}");
-          }
-        }, token));
+        tasks.Add(ParseFileActionAsync(actionFile, file, token));
       }
 
       // then wait for them all
@@ -153,6 +130,30 @@ namespace myoddweb.desktopsearch.service.IO
 
       // return if we did not cancel the request.
       return !token.IsCancellationRequested;
+    }
+
+    public async Task ParseFileActionAsync(ParseFileAsync actionFile, FileSystemInfo file, CancellationToken token)
+    {
+      try
+      {
+        await actionFile(file, token).ConfigureAwait(false);
+      }
+      catch (SecurityException)
+      {
+        // we cannot access/enumerate this file
+        // but we might as well continue
+        _logger.Verbose($"Security error while parsing file: {file.FullName}.");
+      }
+      catch (UnauthorizedAccessException)
+      {
+        // we cannot access/enumerate this file
+        // but we might as well continue
+        _logger.Verbose($"Unauthorized Access while parsing file: {file.FullName}.");
+      }
+      catch (Exception e)
+      {
+        _logger.Error($"Exception while parsing file: {file.FullName}. {e.Message}");
+      }
     }
   }
 }
