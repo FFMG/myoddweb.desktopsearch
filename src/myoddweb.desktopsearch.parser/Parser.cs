@@ -233,17 +233,18 @@ namespace myoddweb.desktopsearch.parser
       foreach (var path in paths)
       {
         var fileWatcher = new FilesWatcher(path, _logger);
-        fileWatcher.Error += OnFolderError;
-        fileWatcher.Changed += OnFileTouched;
-        fileWatcher.Renamed += OnFileTouched;
-        fileWatcher.Created += OnFileTouched;
-        fileWatcher.Deleted += OnFileTouched;
+        fileWatcher.ErrorAsync += OnFolderErrorAsync;
+        fileWatcher.ChangedAsync += OnFileTouchedAsync;
+        fileWatcher.RenamedAsync += OnFileTouchedAsync;
+        fileWatcher.CreatedAsync += OnFileTouchedAsync;
+        fileWatcher.DeletedAsync += OnFileTouchedAsync;
 
         var directoryWatcher = new DirectoriesWatcher(path, _logger);
-        directoryWatcher.Changed += OnDirectoryTouched;
-        directoryWatcher.Renamed += OnDirectoryTouched;
-        directoryWatcher.Created += OnDirectoryTouched;
-        directoryWatcher.Deleted += OnDirectoryTouched;
+        directoryWatcher.ErrorAsync += OnFolderErrorAsync;
+        directoryWatcher.ChangedAsync += OnDirectoryTouchedAsync;
+        directoryWatcher.RenamedAsync += OnDirectoryTouchedAsync;
+        directoryWatcher.CreatedAsync += OnDirectoryTouchedAsync;
+        directoryWatcher.DeletedAsync += OnDirectoryTouchedAsync;
 
         fileWatcher.Start(token);
         directoryWatcher.Start(token);
@@ -258,30 +259,36 @@ namespace myoddweb.desktopsearch.parser
     /// When the file watcher errors out.
     /// </summary>
     /// <param name="e"></param>
-    private void OnFolderError( ErrorEventArgs e)
+    /// <param name="token"></param>
+    private Task OnFolderErrorAsync( ErrorEventArgs e, CancellationToken token)
     {
       // the watcher raised an error
       _logger.Error( $"File watcher error: {e.GetException().Message}");
+      return Task.FromResult<object>(null);
     }
 
     /// <summary>
     /// When a file was changed
     /// </summary>
     /// <param name="e"></param>
-    private void OnFileTouched(FileSystemEventArgs e)
+    /// <param name="token"></param>
+    private Task OnFileTouchedAsync(FileSystemEventArgs e, CancellationToken token)
     {
       // It is posible that the event parser has not started yet.
       _filesEventsParser?.Add(e);
+      return Task.FromResult<object>(null);
     }
 
     /// <summary>
     /// When a directory has been changed.
     /// </summary>
     /// <param name="e"></param>
-    private void OnDirectoryTouched(FileSystemEventArgs e)
+    /// <param name="token"></param>
+    private Task OnDirectoryTouchedAsync(FileSystemEventArgs e, CancellationToken token )
     {
       // It is posible that the event parser has not started yet.
       _directoriesEventsParser?.Add(e);
+      return Task.FromResult<object>(null);
     }
 
     /// <summary>
