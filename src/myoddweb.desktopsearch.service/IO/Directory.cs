@@ -36,17 +36,17 @@ namespace myoddweb.desktopsearch.service.IO
     }
 
     /// <inheritdoc />
-    public async Task<bool> ParseDirectoriesAsync(DirectoryInfo directoryInfo, Func<DirectoryInfo, Task<bool>> parseSubDirectory, CancellationToken token)
+    public async Task<bool> ParseDirectoriesAsync(DirectoryInfo directory, Func<DirectoryInfo, Task<bool>> parseSubDirectory, CancellationToken token)
     {
       try
       {
         // does the caller want us to get in this directory?
-        if (!await parseSubDirectory(directoryInfo).ConfigureAwait(false))
+        if (!await parseSubDirectory(directory).ConfigureAwait(false))
         {
           return true;
         }
 
-        var dirs = directoryInfo.EnumerateDirectories();
+        var dirs = directory.EnumerateDirectories();
         foreach (var info in dirs)
         {
           // did we get a stop request?
@@ -66,17 +66,17 @@ namespace myoddweb.desktopsearch.service.IO
       {
         // we cannot access/enumerate this file
         // but we might as well continue
-        _logger.Verbose($"Security error while parsing directory: {directoryInfo.FullName}.");
+        _logger.Verbose($"Security error while parsing directory: {directory.FullName}.");
       }
       catch (UnauthorizedAccessException)
       {
         // we cannot access/enumerate this file
         // but we might as well continue
-        _logger.Verbose($"Unauthorized Access while parsing directory: {directoryInfo.FullName}.");
+        _logger.Verbose($"Unauthorized Access while parsing directory: {directory.FullName}.");
       }
       catch (Exception e)
       {
-        _logger.Error($"Exception while parsing directory: {directoryInfo.FullName}. {e.Message}");
+        _logger.Error($"Exception while parsing directory: {directory.FullName}. {e.Message}");
       }
 
       // if we are here, we parsed everything.
@@ -84,30 +84,30 @@ namespace myoddweb.desktopsearch.service.IO
     }
 
     /// <inheritdoc />
-    public async Task<bool> ParseDirectoryAsync(DirectoryInfo directoryInfo, Func<FileSystemInfo, Task> actionFile, CancellationToken token)
+    public async Task<bool> ParseDirectoryAsync(DirectoryInfo directory, Func<FileSystemInfo, Task> actionFile, CancellationToken token)
     {
       IEnumerable<FileSystemInfo> files;
       try
       {
-        files = directoryInfo.EnumerateFileSystemInfos();
+        files = directory.EnumerateFileSystemInfos();
       }
       catch (SecurityException)
       {
         // we cannot access/enumerate this file
         // but we might as well continue
-        _logger.Verbose($"Security error while parsing directory: {directoryInfo.FullName}.");
+        _logger.Verbose($"Security error while parsing directory: {directory.FullName}.");
         return true;
       }
       catch (UnauthorizedAccessException)
       {
         // we cannot access/enumerate this file
         // but we might as well continue
-        _logger.Verbose($"Unauthorized Access while parsing directory: {directoryInfo.FullName}.");
+        _logger.Verbose($"Unauthorized Access while parsing directory: {directory.FullName}.");
         return true;
       }
       catch (Exception e)
       {
-        _logger.Error($"Exception while parsing directory: {directoryInfo.FullName}. {e.Message}");
+        _logger.Error($"Exception while parsing directory: {directory.FullName}. {e.Message}");
         return true;
       }
       var tasks = new List<Task>();

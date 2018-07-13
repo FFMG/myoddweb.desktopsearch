@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security;
 using System.Security.AccessControl;
+using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.parser.Helper
 {
@@ -10,6 +11,44 @@ namespace myoddweb.desktopsearch.parser.Helper
   {
     private File()
     {
+    }
+
+    /// <summary>
+    /// Safely create a File info
+    /// </summary>
+    /// <param name="path"></param>
+    /// <param name="logger"></param>
+    /// <returns></returns>
+    public static FileInfo FileInfo(string path, ILogger logger )
+    {
+      try
+      {
+        return new FileInfo(path);
+      }
+      catch (Exception e)
+      {
+        logger?.Exception(e);
+        return null;
+      }
+    }
+
+    /// <summary>
+    /// Safely create a Directory info
+    /// </summary>
+    /// <param name="path"></param>
+    /// <param name="logger"></param>
+    /// <returns></returns>
+    public static DirectoryInfo DirectoryInfo(string path, ILogger logger)
+    {
+      try
+      {
+        return new DirectoryInfo(path);
+      }
+      catch (Exception e)
+      {
+        logger?.Exception(e);
+        return null;
+      }
     }
 
     /// <summary>
@@ -73,6 +112,10 @@ namespace myoddweb.desktopsearch.parser.Helper
     {
       try
       {
+        if (null == directoryInfo)
+        {
+          return false;
+        }
         if (!directoryInfo.Exists)
         {
           return false;
@@ -137,7 +180,17 @@ namespace myoddweb.desktopsearch.parser.Helper
       }
       foreach (var parent in parents)
       {
-        if (IsSubDirectory( new DirectoryInfo(parent), new DirectoryInfo(child) ))
+        var diParent = DirectoryInfo(parent, null);
+        if (null == diParent)
+        {
+          continue;
+        }
+        var diChild = DirectoryInfo(parent, null);
+        if (null == diChild)
+        {
+          continue;
+        }
+        if (IsSubDirectory( diParent, diChild ))
         {
           return true;
         }
@@ -183,9 +236,19 @@ namespace myoddweb.desktopsearch.parser.Helper
       {
         throw new ArgumentNullException(nameof(child));
       }
-      var parentDirectory = new DirectoryInfo(parent);
-      var childDirectory = new DirectoryInfo(child);
-      return IsSubDirectory(parentDirectory, childDirectory);
+      var diParent = DirectoryInfo(parent, null );
+      if (null == diParent)
+      {
+        return false;
+      }
+
+      var diChild = DirectoryInfo(child, null );
+      if (null == diChild)
+      {
+        return false;
+      }
+
+      return IsSubDirectory(diParent, diChild );
     }
 
     /// <summary>

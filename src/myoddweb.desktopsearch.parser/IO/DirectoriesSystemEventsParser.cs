@@ -64,25 +64,29 @@ namespace myoddweb.desktopsearch.parser.IO
 
     #region Abstract Process events
     /// <inheritdoc />
-    protected override async Task ProcessCreatedAsync(string fullPath, CancellationToken token)
+    protected override async Task ProcessCreatedAsync(string path, CancellationToken token)
     {
-      var directory = new DirectoryInfo(fullPath);
+      var directory = Helper.File.DirectoryInfo(path, Logger);
       if (!CanProcessDirectory(directory))
       {
         return;
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"Directory: {fullPath} (Created)");
+      Logger.Verbose($"Directory: {path} (Created)");
 
       // just add the folder.
       await _persister.AddOrUpdateDirectoryAsync(directory, null, token);
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessDeletedAsync(string fullPath, CancellationToken token)
+    protected override async Task ProcessDeletedAsync(string path, CancellationToken token)
     {
-      var directory = new DirectoryInfo(fullPath);
+      var directory = Helper.File.DirectoryInfo(path, Logger );
+      if (null == directory)
+      {
+        return;
+      }
 
       // we cannot call CanProcessFile as it is now deleted.
       if (Helper.File.IsSubDirectory(IgnorePaths, directory ))
@@ -91,36 +95,71 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {fullPath} (Deleted)");
+      Logger.Verbose($"File: {path} (Deleted)");
 
       // just delete the folder.
       await _persister.DeleteDirectoryAsync(directory, null, token);
     }
 
     /// <inheritdoc />
-    protected override Task ProcessChangedAsync(string fullPath, CancellationToken token)
+    protected override Task ProcessChangedAsync(string path, CancellationToken token)
     {
-      var directory = new DirectoryInfo(fullPath);
+      var directory = Helper.File.DirectoryInfo(path, Logger);
       if (!CanProcessDirectory(directory))
       {
         return Task.FromResult<object>(null);
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"Directory: {fullPath} (Changed)");
+      Logger.Verbose($"Directory: {path} (Changed)");
       return Task.FromResult<object>(null);
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessRenamedAsync(string fullPath, string oldFullPath, CancellationToken token)
+    protected override async Task ProcessRenamedAsync(string path, string oldPath, CancellationToken token)
     {
+      // get the new name as well as the one one
+      // either of those could be null
+      var directory = Helper.File.DirectoryInfo(path, Logger);
+      var oldDirectory = Helper.File.DirectoryInfo(oldPath, Logger);
+
+      // if both are null then we cannot do anything with it
+      if (null == directory && null == oldDirectory)
+      {
+        Logger.Error($"I was unable to use the renamed drectories, (old:{oldPath} / new:{path})");
+        return;
+      }
+
+      // we will need a transaction
       var transaction = _persister.BeginTransaction();
-      var directory = new DirectoryInfo(fullPath);
-      var oldDirectory = new DirectoryInfo(oldFullPath);
+
+      // if the old directory is null then we can use 
+      // the new directory only.
+      if (null == oldDirectory)
+      {
+        // but of course, only if it is usable as well...
+        if (!CanProcessDirectory(directory))
+        {
+          return;
+        }
+
+        // just add the new directlry.
+        if (!await _persister.AddOrUpdateDirectoryAsync(directory, transaction, token))
+        {
+          _persister.Rollback(transaction);
+          return;
+        }
+        _persister.Commit(transaction);
+        return;
+      }
+
+      // so we now know that the old directory is not null
+      // so the new directory could be null or not usubale.
+      // so, if we cannot use it, we will simply delete the old one.
       if (!CanProcessDirectory(directory))
       {
         // delete the old folder only, in case it did exist.
-        if (!await _persister.DeleteDirectoryAsync(directory, transaction, token))
+        if (!await _persister.DeleteDirectoryAsync(oldDirectory, transaction, token))
         {
           _persister.Rollback(transaction);
           return;
@@ -131,10 +170,12 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"Directory: {oldFullPath} > {fullPath} (Renamed)");
+      Logger.Verbose($"Directory: {oldPath} > {path} (Renamed)");
 
-      // first delete the old folder.
-      if (-1 == await _persister.RenameDirectoryAsync( directory, oldDirectory, transaction, token))
+      // at this point we know we have a new directory that we can use
+      // and an old directory that we can also use.
+      // so we want to rename the old one with the name of the new one.
+      if (-1 == await _persister.RenameOrAddDirectoryAsync( directory, oldDirectory, transaction, token))
       {
         _persister.Rollback(transaction);
         return;

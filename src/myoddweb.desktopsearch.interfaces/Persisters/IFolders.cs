@@ -24,14 +24,14 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IFolders
   {
     /// <summary>
-    /// Add or update an existing folder.
+    /// rename or add an existing folder.
     /// </summary>
     /// <param name="directory"></param>
     /// <param name="oldDirectory"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<long> RenameDirectoryAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, DbTransaction transaction, CancellationToken token);
+    Task<long> RenameOrAddDirectoryAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, DbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Add or update an existing directory.

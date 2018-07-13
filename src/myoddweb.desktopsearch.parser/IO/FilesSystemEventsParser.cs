@@ -36,6 +36,10 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <returns></returns>
     private bool CanProcessFile(FileInfo file)
     {
+      if (null == file)
+      {
+        return false;
+      }
       // it is a file that we can read?
       // we do not check delted files as they are ... deleted.
       if (!Helper.File.CanReadFile(file))
@@ -56,7 +60,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <inheritdoc />
     protected override Task ProcessCreatedAsync(string fullPath, CancellationToken token)
     {
-      var file = new FileInfo(fullPath);
+      var file = Helper.File.FileInfo(fullPath, Logger );
       if (!CanProcessFile(file))
       {
         return Task.FromResult<object>(null);
@@ -70,7 +74,11 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <inheritdoc />
     protected override Task ProcessDeletedAsync(string fullPath, CancellationToken token)
     {
-      var file = new FileInfo(fullPath);
+      var file = Helper.File.FileInfo(fullPath, Logger);
+      if (null == file)
+      {
+        return Task.FromResult<object>(null);
+      }
 
       // we cannot call CanProcessFile as it is now deleted.
       if (Helper.File.IsSubDirectory(IgnorePaths, file.Directory))
@@ -86,7 +94,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <inheritdoc />
     protected override Task ProcessChangedAsync(string fullPath, CancellationToken token)
     {
-      var file = new FileInfo(fullPath);
+      var file = Helper.File.FileInfo(fullPath, Logger);
       if (!CanProcessFile(file))
       {
         return Task.FromResult<object>(null);
@@ -100,7 +108,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <inheritdoc />
     protected override Task ProcessRenamedAsync(string fullPath, string oldFullPath, CancellationToken token)
     {
-      var file = new FileInfo(fullPath);
+      var file = Helper.File.FileInfo(fullPath, Logger);
       if (!CanProcessFile(file))
       {
         return Task.FromResult<object>(null);

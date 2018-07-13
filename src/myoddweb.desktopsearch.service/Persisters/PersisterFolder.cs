@@ -62,7 +62,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<long> RenameDirectoryAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, DbTransaction transaction, CancellationToken token)
+    public async Task<long> RenameOrAddDirectoryAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, DbTransaction transaction, CancellationToken token)
     {
       if (transaction != null)
       {
@@ -80,13 +80,24 @@ namespace myoddweb.desktopsearch.service.Persisters
               return -1;
             }
 
+            // try and replace path1 with path2
             cmd.Parameters["@path1"].Value = directory.FullName;
             cmd.Parameters["@path2"].Value = oldDirectory.FullName;
             if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
             {
+              // we could not rename it, this could be because of an error
+              // or because the old path simply does not exist.
+              // in that case we can try and simply add the new path.
               _logger.Error($"There was an issue renaming folder: {directory.FullName} to persister");
-              await AddOrUpdateDirectoryAsync(oldDirectory, transaction, token).ConfigureAwait(false);
+              if (!await AddOrUpdateDirectoryAsync(oldDirectory, transaction, token).ConfigureAwait(false))
+              {
+                return -1;
+              }
             }
+
+            // if we are here, we either renamed the directory or we managed 
+            // to add add a new directory
+            // in either cases, we can now return the id of this newly added path.
             return await GetDirectoryRowIdAsync(directory, transaction, token).ConfigureAwait(false);
           }
           catch (Exception ex)
@@ -97,10 +108,13 @@ namespace myoddweb.desktopsearch.service.Persisters
         return -1;
       }
 
+      // we were not given a transaction to work with
+      // so we will create one ourslves and wrap the code around it.
       transaction = BeginTransaction();
       try
       {
-        var id = await RenameDirectoryAsync(directory, oldDirectory, transaction, token).ConfigureAwait(false);
+        // try and rename, and if it worked then we can return the id.
+        var id = await RenameOrAddDirectoryAsync(directory, oldDirectory, transaction, token).ConfigureAwait(false);
         if (id != -1 )
         {
           Commit(transaction);
@@ -111,6 +125,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         _logger.Exception(e);
       }
+
+      // if we are here, it did not work.
       Rollback(transaction);
       return -1;
     }
