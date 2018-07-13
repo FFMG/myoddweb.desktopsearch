@@ -29,7 +29,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<bool> AddOrUpdateFileAsync(FileInfo file, DbTransaction transaction, CancellationToken token)
     {
-      return await AddOrUpdateFilesAsync(new [] { file }, transaction, token );
+      return await AddOrUpdateFilesAsync(new [] { file }, transaction, token ).ConfigureAwait(false); ;
     }
 
     /// <inheritdoc />
@@ -57,6 +57,41 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         _logger.Exception(e);
         Rollback( transaction );
+      }
+      return false;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DeleteFileAsync(FileInfo file, DbTransaction transaction, CancellationToken token)
+    {
+      return await DeleteFilesAsync(new[] { file }, transaction, token).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DeleteFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token)
+    {
+      if (null != transaction)
+      {
+        // rebuild the list of directory with only those that need to be inserted.
+        return await InsertFilesAsync(
+          await RebuildFilesListAsync(files, transaction, token).ConfigureAwait(false),
+          transaction, token).ConfigureAwait(false);
+      }
+
+      transaction = BeginTransaction();
+      try
+      {
+        if (await AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false))
+        {
+          Commit(transaction);
+          return true;
+        }
+        Rollback(transaction);
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        Rollback(transaction);
       }
       return false;
     }
@@ -106,7 +141,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             cmd.Parameters["@id"].Value = nextId++;
             cmd.Parameters["@folderid"].Value = folderId;
-            cmd.Parameters["@path"].Value = file.Name;
+            cmd.Parameters["@name"].Value = file.Name;
             if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding file: {file.FullName} to persister");

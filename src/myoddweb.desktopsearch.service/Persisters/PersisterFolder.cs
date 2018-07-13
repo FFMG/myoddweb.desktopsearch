@@ -29,7 +29,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
     {
-      return await AddOrUpdateDirectoriesAsync(new [] {directory}, transaction, token );
+      return await AddOrUpdateDirectoriesAsync(new [] {directory}, transaction, token ).ConfigureAwait(false); ;
     }
 
     /// <inheritdoc />
@@ -136,7 +136,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<bool> DeleteDirectoryAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
     {
-      return await DeleteDirectoriesAsync(new[] { directory }, transaction, token);
+      return await DeleteDirectoriesAsync(new[] { directory }, transaction, token).ConfigureAwait( false );
     }
 
     /// <inheritdoc />

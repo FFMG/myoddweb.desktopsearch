@@ -40,5 +40,23 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<bool> AddOrUpdateFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token);
+
+    /// <summary>
+    /// Delete a single file.
+    /// </summary>
+    /// <param name="file"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> DeleteFileAsync(FileInfo file, DbTransaction transaction, CancellationToken token);
+
+    /// <summary>
+    /// Delete multiple files.
+    /// </summary>
+    /// <param name="files"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> DeleteFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token);
   }
 }
