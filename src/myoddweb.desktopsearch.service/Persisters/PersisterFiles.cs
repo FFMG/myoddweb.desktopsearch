@@ -62,6 +62,102 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
+    public async Task<long> RenameOrAddFileAsync(FileInfo file, FileInfo oldFile, DbTransaction transaction, CancellationToken token)
+    {
+      if (transaction != null)
+      {
+        // this is the new folder, we might as well create it if it does not exit.
+        var folderId = await GetFolderIdAsync(file.Directory, transaction, token, true);
+        if (-1 == folderId)
+        {
+          // we cannot create the parent folder id
+          // so there is nothing more to do really.
+          return -1;
+        }
+
+        // get the old folder.
+        var oldFolderId = await GetFolderIdAsync(oldFile.Directory, transaction, token, true);
+        if (-1 == oldFolderId)
+        {
+          // this cannot be a renaming, as the parent dirctory does not exist.
+          // so we will just try and add it.
+          // by calling the 'GetFile' function and creating it if needed we will insert the file.
+          return await GetFileIdAsync( file, transaction, token, true );
+        }
+
+        // so we have an old folder id and a new folder id
+        var sql = $"UPDATE {TableFiles} SET name=@name1, folderid=@folderid1 WHERE name=@name2 and folderid=@folderid2";
+        using (var cmd = CreateCommand(sql))
+        {
+          cmd.Transaction = transaction as SQLiteTransaction;
+          cmd.Parameters.Add("@name1", DbType.String);
+          cmd.Parameters.Add("@name2", DbType.String);
+          cmd.Parameters.Add("@folderid1", DbType.Int64);
+          cmd.Parameters.Add("@folderid2", DbType.Int64);
+          try
+          {
+            // are we cancelling?
+            if (token.IsCancellationRequested)
+            {
+              return -1;
+            }
+
+            // try and replace path1 with path2
+            cmd.Parameters["@name1"].Value = file.Name;
+            cmd.Parameters["@name2"].Value = oldFile.Name;
+            cmd.Parameters["@folderid1"].Value = folderId;
+            cmd.Parameters["@folderid2"].Value = oldFolderId;
+            if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
+            {
+              // we could not rename it, this could be because of an error
+              // or because the old path simply does not exist.
+              // in that case we can try and simply add the new path.
+              _logger.Error($"There was an issue renaming folder: {file.FullName} to persister");
+              if (!await AddOrUpdateFileAsync(file, transaction, token).ConfigureAwait(false))
+              {
+                return -1;
+              }
+            }
+
+            // if we are here, we either renamed the file
+            // or we managed to add add it
+            // in either cases, we can now return the id of this newly added file.
+            // we won't ask the function to insert a new file as we _just_ renamed it.
+            // so it has to exist...
+            return await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
+          }
+          catch (Exception ex)
+          {
+            _logger.Exception(ex);
+          }
+        }
+        return -1;
+      }
+
+      // we were not given a transaction to work with
+      // so we will create one ourslves and wrap the code around it.
+      transaction = BeginTransaction();
+      try
+      {
+        // try and rename, and if it worked then we can return the id.
+        var id = await RenameOrAddFileAsync(file, oldFile, transaction, token).ConfigureAwait(false);
+        if (id != -1)
+        {
+          Commit(transaction);
+          return id;
+        }
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+      }
+
+      // if we are here, it did not work.
+      Rollback(transaction);
+      return -1;
+    }
+
+    /// <inheritdoc />
     public async Task<bool> DeleteFileAsync(FileInfo file, DbTransaction transaction, CancellationToken token)
     {
       return await DeleteFilesAsync(new[] { file }, transaction, token).ConfigureAwait(false);
@@ -334,8 +430,8 @@ namespace myoddweb.desktopsearch.service.Persisters
           return -1;
         }
 
-        cmd.Parameters["@folderid"].Value = file.Name;
-        cmd.Parameters["@name"].Value = folderid;
+        cmd.Parameters["@folderid"].Value = folderid;
+        cmd.Parameters["@name"].Value = file.Name;
         var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
         if (null == value || value == DBNull.Value)
         {

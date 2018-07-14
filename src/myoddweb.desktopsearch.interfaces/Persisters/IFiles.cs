@@ -42,6 +42,16 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     Task<bool> AddOrUpdateFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token);
 
     /// <summary>
+    /// Rename a file
+    /// </summary>
+    /// <param name="file"></param>
+    /// <param name="oldFile"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<long> RenameOrAddFileAsync(FileInfo file, FileInfo oldFile, DbTransaction transaction, CancellationToken token);
+
+    /// <summary>
     /// Delete a single file.
     /// </summary>
     /// <param name="file"></param>

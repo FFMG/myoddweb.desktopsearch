@@ -29,7 +29,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
     {
-      return await AddOrUpdateDirectoriesAsync(new [] {directory}, transaction, token ).ConfigureAwait(false); ;
+      return await AddOrUpdateDirectoriesAsync(new [] {directory}, transaction, token ).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -66,8 +66,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       if (transaction != null)
       {
-        var sqlDelete = $"UPDATE {TableFolders} SET path=@path1 WHERE path=@path2";
-        using (var cmd = CreateCommand(sqlDelete))
+        var sql = $"UPDATE {TableFolders} SET path=@path1 WHERE path=@path2";
+        using (var cmd = CreateCommand(sql))
         {
           cmd.Transaction = transaction as SQLiteTransaction;
           cmd.Parameters.Add("@path1", DbType.String);

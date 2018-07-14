@@ -120,17 +120,71 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <inheritdoc />
-    protected override Task ProcessRenamedAsync(string fullPath, string oldFullPath, CancellationToken token)
+    protected override async Task ProcessRenamedAsync(string path, string oldPath, CancellationToken token)
     {
-      var file = Helper.File.FileInfo(fullPath, Logger);
+      // get the new name as well as the one one
+      // either of those could be null
+      var file = Helper.File.FileInfo( path, Logger);
+      var oldFile = Helper.File.FileInfo( oldPath, Logger);
+
+      // if both are null then we cannot do anything with it
+      if (null == file && null == oldFile)
+      {
+        Logger.Error($"I was unable to use the renamed files, (old:{oldPath} / new:{path})");
+        return;
+      }
+
+      // we will need a transaction
+      var transaction = _persister.BeginTransaction();
+
+      // if the old directory is null then we can use 
+      // the new directory only.
+      if (null == oldFile)
+      {
+        // but of course, only if it is usable as well...
+        if (!CanProcessFile(file))
+        {
+          return;
+        }
+
+        // just add the new directly.
+        if (!await _persister.AddOrUpdateFileAsync(file, transaction, token).ConfigureAwait(false))
+        {
+          _persister.Rollback(transaction);
+          return;
+        }
+        _persister.Commit(transaction);
+        return;
+      }
+
+      // so we now know that the old file is not null
+      // so the new directory could be null and/or not usubale.
+      // so, if we cannot use it, we will simply delete the old one.
       if (!CanProcessFile(file))
       {
-        return Task.FromResult<object>(null);
+        // delete the old folder only, in case it did exist.
+        if (!await _persister.DeleteFileAsync(oldFile, transaction, token).ConfigureAwait(false))
+        {
+          _persister.Rollback(transaction);
+          return;
+        }
+
+        _persister.Commit(transaction);
+        return;
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {fullPath} > {oldFullPath} (Renamed)");
-      return Task.FromResult<object>(null);
+      Logger.Verbose($"File: {path} > {oldPath} (Renamed)");
+
+      // at this point we know we have a new file that we can use
+      // and an old directory that we can also use.
+      // so we want to rename the old one with the name of the new one.
+      if (-1 == await _persister.RenameOrAddFileAsync(file, oldFile, transaction, token).ConfigureAwait(false))
+      {
+        _persister.Rollback(transaction);
+        return;
+      }
+      _persister.Commit(transaction);
     }
     #endregion
   }

@@ -142,7 +142,7 @@ namespace myoddweb.desktopsearch.parser.IO
           return;
         }
 
-        // just add the new directlry.
+        // just add the new directly.
         if (!await _persister.AddOrUpdateDirectoryAsync(directory, transaction, token).ConfigureAwait(false))
         {
           _persister.Rollback(transaction);
@@ -168,7 +168,7 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      // the given file is going to be processed.
+      // the given directory is going to be processed.
       Logger.Verbose($"Directory: {oldPath} > {path} (Renamed)");
 
       // at this point we know we have a new directory that we can use
