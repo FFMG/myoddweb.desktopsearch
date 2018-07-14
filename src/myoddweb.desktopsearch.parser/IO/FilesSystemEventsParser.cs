@@ -12,7 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -85,23 +84,25 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <inheritdoc />
-    protected override Task ProcessDeletedAsync(string fullPath, CancellationToken token)
+    protected async override Task ProcessDeletedAsync(string fullPath, CancellationToken token)
     {
       var file = Helper.File.FileInfo(fullPath, Logger);
       if (null == file)
       {
-        return Task.FromResult<object>(null);
+        return;
       }
 
       // we cannot call CanProcessFile as it is now deleted.
       if (Helper.File.IsSubDirectory(IgnorePaths, file.Directory))
       {
-        return Task.FromResult<object>(null);
+        return;
       }
 
       // the given file is going to be processed.
       Logger.Verbose($"File: {fullPath} (Deleted)");
-      return Task.FromResult<object>(null);
+
+      // just delete the folder.
+      await _persister.DeleteFileAsync(file, null, token);
     }
 
     /// <inheritdoc />

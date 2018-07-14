@@ -12,7 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -88,7 +87,7 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      // we cannot call CanProcessFile as it is now deleted.
+      // we cannot call CanProcessDirectory as it is now deleted.
       if (Helper.File.IsSubDirectory(IgnorePaths, directory ))
       {
         return;

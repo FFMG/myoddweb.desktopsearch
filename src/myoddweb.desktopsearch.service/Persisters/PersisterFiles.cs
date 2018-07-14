@@ -70,18 +70,60 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<bool> DeleteFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token)
     {
+      // if we have nothing to do... we are done.
+      if (!files.Any())
+      {
+        return true;
+      }
+
       if (null != transaction)
       {
-        // rebuild the list of directory with only those that need to be inserted.
-        return await InsertFilesAsync(
-          await RebuildFilesListAsync(files, transaction, token).ConfigureAwait(false),
-          transaction, token).ConfigureAwait(false);
+        var sqlDelete = $"DELETE FROM {TableFiles} WHERE folderid=@folderid and name=@name";
+        using (var cmd = CreateCommand(sqlDelete))
+        {
+          cmd.Transaction = transaction as SQLiteTransaction;
+          cmd.Parameters.Add("@folderid", DbType.Int64);
+          cmd.Parameters.Add("@name", DbType.String);
+          foreach (var file in files)
+          {
+            try
+            {
+              // are we cancelling?
+              if (token.IsCancellationRequested)
+              {
+                return false;
+              }
+
+              // get the folder id, no need to create it.
+              var folderid = await GetFolderIdAsync(file.Directory, transaction, token, false);
+              if (-1 == folderid)
+              {
+                _logger.Warning($"Could not delete file: {file.FullName}, could not locate the parent folder?");
+                continue;
+              }
+
+              cmd.Parameters["@folderid"].Value = folderid;
+              cmd.Parameters["@name"].Value = file.Name;
+              if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
+              {
+                _logger.Warning($"Could not delete file: {file.FullName}, does it still exist?");
+              }
+            }
+            catch (Exception ex)
+            {
+              _logger.Exception(ex);
+            }
+          }
+        }
+
+        // we are done.
+        return true;
       }
 
       transaction = BeginTransaction();
       try
       {
-        if (await AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false))
+        if (await DeleteFilesAsync(files, transaction, token).ConfigureAwait(false))
         {
           Commit(transaction);
           return true;
