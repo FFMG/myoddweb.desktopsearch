@@ -75,7 +75,7 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"Directory: {path} (Created)");
 
       // just add the directory.
-      await _persister.AddOrUpdateDirectoryAsync(directory, null, token);
+      await _persister.AddOrUpdateDirectoryAsync(directory, null, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -97,7 +97,7 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"File: {path} (Deleted)");
 
       // just delete the folder.
-      await _persister.DeleteDirectoryAsync(directory, null, token);
+      await _persister.DeleteDirectoryAsync(directory, null, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -143,7 +143,7 @@ namespace myoddweb.desktopsearch.parser.IO
         }
 
         // just add the new directlry.
-        if (!await _persister.AddOrUpdateDirectoryAsync(directory, transaction, token))
+        if (!await _persister.AddOrUpdateDirectoryAsync(directory, transaction, token).ConfigureAwait(false))
         {
           _persister.Rollback(transaction);
           return;
@@ -158,7 +158,7 @@ namespace myoddweb.desktopsearch.parser.IO
       if (!CanProcessDirectory(directory))
       {
         // delete the old folder only, in case it did exist.
-        if (!await _persister.DeleteDirectoryAsync(oldDirectory, transaction, token))
+        if (!await _persister.DeleteDirectoryAsync(oldDirectory, transaction, token).ConfigureAwait(false))
         {
           _persister.Rollback(transaction);
           return;
@@ -174,7 +174,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // at this point we know we have a new directory that we can use
       // and an old directory that we can also use.
       // so we want to rename the old one with the name of the new one.
-      if (-1 == await _persister.RenameOrAddDirectoryAsync( directory, oldDirectory, transaction, token))
+      if (-1 == await _persister.RenameOrAddDirectoryAsync( directory, oldDirectory, transaction, token).ConfigureAwait(false))
       {
         _persister.Rollback(transaction);
         return;

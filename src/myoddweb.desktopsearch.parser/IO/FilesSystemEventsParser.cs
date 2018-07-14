@@ -84,7 +84,7 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <inheritdoc />
-    protected async override Task ProcessDeletedAsync(string fullPath, CancellationToken token)
+    protected override async Task ProcessDeletedAsync(string fullPath, CancellationToken token)
     {
       var file = Helper.File.FileInfo(fullPath, Logger);
       if (null == file)
@@ -102,7 +102,7 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"File: {fullPath} (Deleted)");
 
       // just delete the folder.
-      await _persister.DeleteFileAsync(file, null, token);
+      await _persister.DeleteFileAsync(file, null, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

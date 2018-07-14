@@ -29,7 +29,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<bool> AddOrUpdateFileAsync(FileInfo file, DbTransaction transaction, CancellationToken token)
     {
-      return await AddOrUpdateFilesAsync(new [] { file }, transaction, token ).ConfigureAwait(false); ;
+      return await AddOrUpdateFilesAsync(new [] { file }, transaction, token ).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -95,7 +95,7 @@ namespace myoddweb.desktopsearch.service.Persisters
               }
 
               // get the folder id, no need to create it.
-              var folderid = await GetFolderIdAsync(file.Directory, transaction, token, false);
+              var folderid = await GetFolderIdAsync(file.Directory, transaction, token, false).ConfigureAwait( false );
               if (-1 == folderid)
               {
                 _logger.Warning($"Could not delete file: {file.FullName}, could not locate the parent folder?");
@@ -260,7 +260,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> GetNextFileIdAsync(DbTransaction transaction, CancellationToken token)
+    private async Task<long> GetNextFileIdAsync(DbTransaction transaction, CancellationToken token )
     {
       // we first look for it, and, if we find it then there is nothing to do.
       var sqlNextRowId = $"SELECT max(id) from {TableFiles};";
@@ -284,5 +284,81 @@ namespace myoddweb.desktopsearch.service.Persisters
         return ((long)value) + 1;
       }
     }
+
+    /// <summary>
+    /// Get the id of a file or -1.
+    /// </summary>
+    /// <param name="file"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <param name="createIfNotFound"></param>
+    /// <returns></returns>
+    private async Task<long> GetFileIdAsync(FileInfo file, DbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    {
+      // get the folder id
+      var folderid = await GetFolderIdAsync(file.Directory, transaction, token, false ).ConfigureAwait(false);
+      if (-1 == folderid)
+      {
+        if (!createIfNotFound)
+        {
+          return -1;
+        }
+
+        // add the file, if we get an error now, there is nothing we can do about it.
+        if (!await AddOrUpdateFileAsync(file, transaction, token).ConfigureAwait(false))
+        {
+          return -1;
+        }
+
+        // try and look for it
+        folderid = await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
+        if (-1 == folderid)
+        {
+          // we cannot get the folder that we just add!
+          _logger.Error( $"I could not find the folder that I _just_ added! (path: {file.FullName}).");
+          return -1;
+        }
+      }
+
+      // we first look for it, and, if we find it then there is nothing to do.
+      var sql = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid and name=@name";
+      using (var cmd = CreateCommand(sql))
+      {
+        cmd.Transaction = transaction as SQLiteTransaction;
+        cmd.Parameters.Add("@folderid", DbType.Int64);
+        cmd.Parameters.Add("@name", DbType.String);
+
+        // are we cancelling?
+        if (token.IsCancellationRequested)
+        {
+          return -1;
+        }
+
+        cmd.Parameters["@folderid"].Value = file.Name;
+        cmd.Parameters["@name"].Value = folderid;
+        var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
+        if (null == value || value == DBNull.Value)
+        {
+          if (!createIfNotFound)
+          {
+            // we could not find it and we do not wish to go further.
+            return -1;
+          }
+
+          // try and add the folder, if that does not work, then we cannot go further.
+          if (!await AddOrUpdateFileAsync(file, transaction, token).ConfigureAwait(false))
+          {
+            return -1;
+          }
+
+          // try one more time to look for it .. and if we do not find it, then just return
+          return await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
+        }
+
+        // get the path id.
+        return (long)value;
+      }
+    }
+
   }
 }
