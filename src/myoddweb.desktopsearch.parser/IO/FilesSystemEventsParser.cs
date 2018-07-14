@@ -162,13 +162,17 @@ namespace myoddweb.desktopsearch.parser.IO
       // so, if we cannot use it, we will simply delete the old one.
       if (!CanProcessFile(file))
       {
-        // delete the old folder only, in case it did exist.
-        if (!await _persister.DeleteFileAsync(oldFile, transaction, token).ConfigureAwait(false))
+        // if the old path is not an ignored path
+        // then we might be able to delete that file.
+        if (!Helper.File.IsSubDirectory(IgnorePaths, oldFile.Directory))
         {
-          _persister.Rollback(transaction);
-          return;
+          // delete the old folder only, in case it did exist.
+          if (!await _persister.DeleteFileAsync(oldFile, transaction, token).ConfigureAwait(false))
+          {
+            _persister.Rollback(transaction);
+            return;
+          }
         }
-
         _persister.Commit(transaction);
         return;
       }
