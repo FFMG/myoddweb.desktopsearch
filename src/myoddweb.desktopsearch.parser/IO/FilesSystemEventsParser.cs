@@ -182,9 +182,6 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      // we will need a transaction
-      var transaction = _persister.BeginTransaction();
-
       // if the old directory is null then we can use 
       // the new directory only.
       if (null == oldFile)
@@ -196,12 +193,10 @@ namespace myoddweb.desktopsearch.parser.IO
         }
 
         // just add the new directly.
-        if (!await _persister.AddOrUpdateFileAsync(file, transaction, token).ConfigureAwait(false))
+        if (!await _persister.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false))
         {
-          _persister.Rollback(transaction);
-          return;
+          Logger.Error( $"Unable to add file {file.FullName} during rename.");
         }
-        _persister.Commit(transaction);
         return;
       }
 
@@ -212,16 +207,16 @@ namespace myoddweb.desktopsearch.parser.IO
       {
         // if the old path is not an ignored path
         // then we might be able to delete that file.
-        if (!Helper.File.IsSubDirectory(IgnorePaths, oldFile.Directory))
+        if (Helper.File.IsSubDirectory(IgnorePaths, oldFile.Directory))
         {
-          // delete the old folder only, in case it did exist.
-          if (!await _persister.DeleteFileAsync(oldFile, transaction, token).ConfigureAwait(false))
-          {
-            _persister.Rollback(transaction);
-            return;
-          }
+          return;
         }
-        _persister.Commit(transaction);
+
+        // delete the old folder only, in case it did exist.
+        if (!await _persister.DeleteFileAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
+        {
+          Logger.Error( $"Unable to remove old file {oldPath} durring rename");
+        }
         return;
       }
 
@@ -231,12 +226,10 @@ namespace myoddweb.desktopsearch.parser.IO
       // at this point we know we have a new file that we can use
       // and an old directory that we can also use.
       // so we want to rename the old one with the name of the new one.
-      if (-1 == await _persister.RenameOrAddFileAsync(file, oldFile, transaction, token).ConfigureAwait(false))
+      if (-1 == await _persister.RenameOrAddFileAsync(file, oldFile, _currentTransaction, token).ConfigureAwait(false))
       {
-        _persister.Rollback(transaction);
-        return;
+        Logger.Error( $"Unable to rename file {path} > {oldPath}");
       }
-      _persister.Commit(transaction);
     }
     #endregion
   }

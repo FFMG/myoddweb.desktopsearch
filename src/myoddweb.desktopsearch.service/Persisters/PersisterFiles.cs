@@ -125,9 +125,9 @@ namespace myoddweb.desktopsearch.service.Persisters
               // we could not rename it, this could be because of an error
               // or because the old path simply does not exist.
               // in that case we can try and simply add the new path.
-              _logger.Error($"There was an issue renaming folder: {file.FullName} to persister");
               if (!await AddOrUpdateFileAsync(file, transaction, token).ConfigureAwait(false))
               {
+                _logger.Error($"There was an issue renaming file: {file.FullName} to persister");
                 return -1;
               }
             }
