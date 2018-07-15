@@ -244,10 +244,39 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="events"></param>
     private async Task ProcessEventsAsync(IEnumerable<FileSystemEventArgs> events)
     {
-      // try and do everything at once.
-      await Task.WhenAll(events.Select(ProcessEventAsync).ToArray()).ConfigureAwait( false );
+      // assume errors...
+      var hadErrors = true;
+      try
+      {
+        // we are starting to process events.
+        ProcessEventsStart();
+
+        // try and do everything at once.
+        await Task.WhenAll(events.Select(ProcessEventAsync).ToArray()).ConfigureAwait(false);
+
+        // if we are here, then we had no errors
+        hadErrors = false;
+      }
+      catch (Exception e)
+      {
+        // we had an error
+        hadErrors = true;
+
+        // log it
+        Logger.Exception(e);
+      }
+      finally
+      {
+        // end the work and log if we had any errors.
+        ProcessEventsEnd( hadErrors );
+      }
     }
 
+    /// <summary>
+    /// Process a single event.
+    /// </summary>
+    /// <param name="e"></param>
+    /// <returns></returns>
     private async Task ProcessEventAsync(FileSystemEventArgs e)
     {
       if (IsCreated(e.ChangeType))
@@ -365,6 +394,17 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     #region Abstract Process events
+    /// <summary>
+    /// We are starting to process events
+    /// </summary>
+    protected abstract void ProcessEventsStart();
+
+    /// <summary>
+    /// We finished processing events.
+    /// </summary>
+    /// <param name="hadErrors">Was there any errors?</param>
+    protected abstract void ProcessEventsEnd( bool hadErrors );
+
     /// <summary>
     /// Process a created event
     /// </summary>

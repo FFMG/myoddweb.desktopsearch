@@ -40,6 +40,9 @@ namespace myoddweb.desktopsearch.service
       const string errorMsg = "An application error occurred. Please contact the adminstrator " +
                               "with the following information:\n\n";
 
+      Console.WriteLine(errorMsg);
+      Console.WriteLine(ex.Message);
+
       // Since we can't prevent the app from terminating, log this to the event log.
       if (!EventLog.SourceExists("ThreadException"))
       {

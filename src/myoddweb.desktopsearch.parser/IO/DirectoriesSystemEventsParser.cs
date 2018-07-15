@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,6 +30,11 @@ namespace myoddweb.desktopsearch.parser.IO
     /// The folder persister that will allow us to add/remove folders.
     /// </summary>
     private readonly IPersister _persister;
+
+    /// <summary>
+    /// The current transaction.
+    /// </summary>
+    private DbTransaction _currentTransaction;
 
     public DirectoriesSystemEventsParser(
       IPersister persister,
@@ -63,6 +69,48 @@ namespace myoddweb.desktopsearch.parser.IO
 
     #region Abstract Process events
     /// <inheritdoc />
+    protected override void ProcessEventsStart()
+    {
+      if (_currentTransaction != null)
+      {
+        Logger.Warning("Trying to start an event processing when the previous one does not seem to have ended.");
+        return;
+      }
+      _currentTransaction = _persister.BeginTransaction();
+    }
+
+    /// <inheritdoc />
+    protected override void ProcessEventsEnd(bool hadErrors)
+    {
+      if (_currentTransaction == null)
+      {
+        Logger.Warning("Trying to complete an event processing when it does not seem to have been started.");
+        return;
+      }
+
+      try
+      {
+        if (hadErrors)
+        {
+          _persister.Rollback(_currentTransaction);
+        }
+        else
+        {
+          _persister.Commit(_currentTransaction);
+        }
+      }
+      catch (Exception e)
+      {
+        Logger.Exception(e);
+        throw;
+      }
+      finally
+      {
+        _currentTransaction = null;
+      }
+    }
+
+    /// <inheritdoc />
     protected override async Task ProcessCreatedAsync(string path, CancellationToken token)
     {
       var directory = Helper.File.DirectoryInfo(path, Logger);
@@ -75,7 +123,7 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"Directory: {path} (Created)");
 
       // just add the directory.
-      await _persister.AddOrUpdateDirectoryAsync(directory, null, token).ConfigureAwait(false);
+      await _persister.AddOrUpdateDirectoryAsync(directory, _currentTransaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -97,7 +145,7 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"File: {path} (Deleted)");
 
       // just delete the folder.
-      await _persister.DeleteDirectoryAsync(directory, null, token).ConfigureAwait(false);
+      await _persister.DeleteDirectoryAsync(directory, _currentTransaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
