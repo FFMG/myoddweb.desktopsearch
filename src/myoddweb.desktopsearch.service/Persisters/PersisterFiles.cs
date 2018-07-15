@@ -16,7 +16,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -87,13 +86,27 @@ namespace myoddweb.desktopsearch.service.Persisters
 
         // so we have an old folder id and a new folder id
         var sql = $"UPDATE {TableFiles} SET name=@name1, folderid=@folderid1 WHERE name=@name2 and folderid=@folderid2";
-        using (var cmd = CreateCommand(sql))
+        using (var cmd = CreateDbCommand(sql, transaction))
         {
-          cmd.Transaction = transaction as SQLiteTransaction;
-          cmd.Parameters.Add("@name1", DbType.String);
-          cmd.Parameters.Add("@name2", DbType.String);
-          cmd.Parameters.Add("@folderid1", DbType.Int64);
-          cmd.Parameters.Add("@folderid2", DbType.Int64);
+          var pName1 = cmd.CreateParameter();
+          pName1.DbType = DbType.String;
+          pName1.ParameterName = "@name1";
+          cmd.Parameters.Add( pName1);
+
+          var pName2 = cmd.CreateParameter();
+          pName2.DbType = DbType.String;
+          pName2.ParameterName = "@name2";
+          cmd.Parameters.Add(pName2);
+
+          var pFolderId1 = cmd.CreateParameter();
+          pFolderId1.DbType = DbType.Int64;
+          pFolderId1.ParameterName = "@folderid1";
+          cmd.Parameters.Add(pFolderId1);
+
+          var pFolderId2 = cmd.CreateParameter();
+          pFolderId2.DbType = DbType.Int64;
+          pFolderId2.ParameterName = "@folderid2";
+          cmd.Parameters.Add(pFolderId2);
           try
           {
             // are we cancelling?
@@ -175,11 +188,17 @@ namespace myoddweb.desktopsearch.service.Persisters
       if (null != transaction)
       {
         var sqlDelete = $"DELETE FROM {TableFiles} WHERE folderid=@folderid and name=@name";
-        using (var cmd = CreateCommand(sqlDelete))
+        using (var cmd = CreateDbCommand(sqlDelete, transaction))
         {
-          cmd.Transaction = transaction as SQLiteTransaction;
-          cmd.Parameters.Add("@folderid", DbType.Int64);
-          cmd.Parameters.Add("@name", DbType.String);
+          var pFolderId = cmd.CreateParameter();
+          pFolderId.DbType = DbType.Int64;
+          pFolderId.ParameterName = "@folderid";
+          cmd.Parameters.Add(pFolderId);
+
+          var pName = cmd.CreateParameter();
+          pName.DbType = DbType.String;
+          pName.ParameterName = "@name";
+          cmd.Parameters.Add(pName);
           foreach (var file in files)
           {
             try
@@ -253,12 +272,22 @@ namespace myoddweb.desktopsearch.service.Persisters
       var nextId = await GetNextFileIdAsync(transaction, token).ConfigureAwait(false);
 
       var sqlInsert = $"INSERT INTO {TableFiles} (id, folderid, name) VALUES (@id, @folderid, @name)";
-      using (var cmd = CreateCommand(sqlInsert))
+      using (var cmd = CreateDbCommand(sqlInsert, transaction))
       {
-        cmd.Transaction = transaction as SQLiteTransaction;
-        cmd.Parameters.Add("@id", DbType.Int64);
-        cmd.Parameters.Add("@folderid", DbType.Int64);
-        cmd.Parameters.Add("@name", DbType.String);
+        var pId = cmd.CreateParameter();
+        pId.DbType = DbType.Int64;
+        pId.ParameterName = "@id";
+        cmd.Parameters.Add(pId);
+
+        var pFolderId = cmd.CreateParameter();
+        pFolderId.DbType = DbType.Int64;
+        pFolderId.ParameterName = "@folderid";
+        cmd.Parameters.Add(pFolderId);
+
+        var pName = cmd.CreateParameter();
+        pName.DbType = DbType.String;
+        pName.ParameterName = "@name";
+        cmd.Parameters.Add(pName);
         foreach (var file in files)
         {
           try
@@ -308,11 +337,17 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // we first look for it, and, if we find it then there is nothing to do.
       var sqlGetRowId = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid AND name=@name";
-      using (var cmd = CreateCommand(sqlGetRowId))
+      using (var cmd = CreateDbCommand(sqlGetRowId, transaction))
       {
-        cmd.Transaction = transaction as SQLiteTransaction;
-        cmd.Parameters.Add("@folderid", DbType.Int64);
-        cmd.Parameters.Add("@name", DbType.String);
+        var pFolderId = cmd.CreateParameter();
+        pFolderId.DbType = DbType.Int64;
+        pFolderId.ParameterName = "@folderid";
+        cmd.Parameters.Add(pFolderId);
+
+        var pName = cmd.CreateParameter();
+        pName.DbType = DbType.String;
+        pName.ParameterName = "@name";
+        cmd.Parameters.Add(pName);
         foreach (var file in files)
         {
           // are we cancelling?
@@ -360,10 +395,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       // we first look for it, and, if we find it then there is nothing to do.
       var sqlNextRowId = $"SELECT max(id) from {TableFiles};";
-      using (var cmd = CreateCommand(sqlNextRowId))
+      using (var cmd = CreateDbCommand(sqlNextRowId, transaction))
       {
-        cmd.Transaction = transaction as SQLiteTransaction;
-
         // are we cancelling?
         if (token.IsCancellationRequested)
         {
@@ -418,11 +451,17 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // we first look for it, and, if we find it then there is nothing to do.
       var sql = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid and name=@name";
-      using (var cmd = CreateCommand(sql))
+      using (var cmd = CreateDbCommand(sql, transaction ))
       {
-        cmd.Transaction = transaction as SQLiteTransaction;
-        cmd.Parameters.Add("@folderid", DbType.Int64);
-        cmd.Parameters.Add("@name", DbType.String);
+        var pFolderId = cmd.CreateParameter();
+        pFolderId.DbType = DbType.Int64;
+        pFolderId.ParameterName = "@folderid";
+        cmd.Parameters.Add(pFolderId);
+
+        var pName = cmd.CreateParameter();
+        pName.DbType = DbType.String;
+        pName.ParameterName = "@name";
+        cmd.Parameters.Add(pName);
 
         // are we cancelling?
         if (token.IsCancellationRequested)

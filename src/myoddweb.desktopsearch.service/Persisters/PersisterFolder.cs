@@ -67,11 +67,17 @@ namespace myoddweb.desktopsearch.service.Persisters
       if (transaction != null)
       {
         var sql = $"UPDATE {TableFolders} SET path=@path1 WHERE path=@path2";
-        using (var cmd = CreateCommand(sql))
+        using (var cmd = CreateDbCommand(sql, transaction))
         {
-          cmd.Transaction = transaction as SQLiteTransaction;
-          cmd.Parameters.Add("@path1", DbType.String);
-          cmd.Parameters.Add("@path2", DbType.String);
+          var pPath1 = cmd.CreateParameter();
+          pPath1.DbType = DbType.String;
+          pPath1.ParameterName = "@path1";
+          cmd.Parameters.Add(pPath1);
+
+          var pPath2 = cmd.CreateParameter();
+          pPath2.DbType = DbType.String;
+          pPath2.ParameterName = "@path2";
+          cmd.Parameters.Add(pPath2);
           try
           {
             // are we cancelling?
@@ -151,10 +157,12 @@ namespace myoddweb.desktopsearch.service.Persisters
       if (transaction != null)
       {
         var sqlDelete = $"DELETE FROM {TableFolders} WHERE path=@path";
-        using (var cmd = CreateCommand(sqlDelete))
+        using (var cmd = CreateDbCommand(sqlDelete, transaction))
         {
-          cmd.Transaction = transaction as SQLiteTransaction;
-          cmd.Parameters.Add("@path", DbType.String);
+          var pPath = cmd.CreateParameter();
+          pPath.DbType = DbType.String;
+          pPath.ParameterName = "@path";
+          cmd.Parameters.Add(pPath);
           foreach (var directory in directories)
           {
             try
@@ -210,10 +218,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       // we first look for it, and, if we find it then there is nothing to do.
       var sqlNextRowId = $"SELECT max(id) from {TableFolders};";
-      using (var cmd = CreateCommand(sqlNextRowId))
+      using (var cmd = CreateDbCommand(sqlNextRowId, transaction))
       {
-        cmd.Transaction = transaction as SQLiteTransaction;
-
         // are we cancelling?
         if (token.IsCancellationRequested)
         {
@@ -243,10 +249,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       // we first look for it, and, if we find it then there is nothing to do.
       var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
-      using (var cmd = CreateCommand(sql))
+      using (var cmd = CreateDbCommand(sql, transaction))
       {
-        cmd.Transaction = transaction as SQLiteTransaction;
-        cmd.Parameters.Add("@path", DbType.String);
+        var pPath = cmd.CreateParameter();
+        pPath.DbType = DbType.String;
+        pPath.ParameterName = "@path";
+        cmd.Parameters.Add(pPath);
 
         // are we cancelling?
         if (token.IsCancellationRequested)
@@ -298,11 +306,17 @@ namespace myoddweb.desktopsearch.service.Persisters
       var nextId = await GetNextFolderIdAsync(transaction, token).ConfigureAwait(false);
 
       var sqlInsert = $"INSERT INTO {TableFolders} (id, path) VALUES (@id, @path)";
-      using (var cmd = CreateCommand(sqlInsert))
+      using (var cmd = CreateDbCommand(sqlInsert, transaction))
       {
-        cmd.Transaction = transaction as SQLiteTransaction;
-        cmd.Parameters.Add("@id", DbType.Int64);
-        cmd.Parameters.Add("@path", DbType.String);
+        var pId = cmd.CreateParameter();
+        pId.DbType = DbType.Int64;
+        pId.ParameterName = "@id";
+        cmd.Parameters.Add(pId);
+
+        var pPath = cmd.CreateParameter();
+        pPath.DbType = DbType.String;
+        pPath.ParameterName = "@path";
+        cmd.Parameters.Add(pPath);
         foreach (var directory in directories)
         {
           try
@@ -343,10 +357,12 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // we first look for it, and, if we find it then there is nothing to do.
       var sqlGetRowId = $"SELECT id FROM {TableFolders} WHERE path=@path";
-      using (var cmd = CreateCommand(sqlGetRowId))
+      using (var cmd = CreateDbCommand(sqlGetRowId, transaction))
       {
-        cmd.Transaction = transaction as SQLiteTransaction;
-        cmd.Parameters.Add("@path", DbType.String);
+        var pPath = cmd.CreateParameter();
+        pPath.DbType = DbType.String;
+        pPath.ParameterName = "@path";
+        cmd.Parameters.Add(pPath);
         foreach (var directory in directories)
         {
           // are we cancelling?

@@ -12,6 +12,9 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
+using System.Data.Common;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.service.Persisters
@@ -21,22 +24,22 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Create the database to the latest version
     /// </summary>
-    protected async Task<bool> CreateDatabase()
+    protected async Task<bool> CreateDatabase(DbTransaction transaction)
     {
       // create the config table.
-      if (!await CreateConfigAsync().ConfigureAwait(false))
+      if (!await CreateConfigAsync(transaction).ConfigureAwait(false))
       {
         return false;
       }
 
       // the files tables
-      if (!await CreateFilesAsync().ConfigureAwait(false))
+      if (!await CreateFilesAsync(transaction).ConfigureAwait(false))
       {
         return false;
       }
 
       // the folders table.
-      if (!await CreateFoldersAsync().ConfigureAwait(false))
+      if (!await CreateFoldersAsync(transaction).ConfigureAwait(false))
       {
         return false;
       }
@@ -44,10 +47,10 @@ namespace myoddweb.desktopsearch.service.Persisters
       return true;
     }
 
-    private async Task<bool> CreateFilesAsync()
+    private async Task<bool> CreateFilesAsync(DbTransaction transaction)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableFiles} (id integer PRIMARY KEY, folderid integer, name varchar(260))")
+        ExecuteNonQueryAsync($"CREATE TABLE {TableFiles} (id integer PRIMARY KEY, folderid integer, name varchar(260))", transaction)
           .ConfigureAwait(false))
       {
         return false;
@@ -55,14 +58,14 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFiles}_folderid_name ON {TableFiles}(folderid, name);").ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFiles}_folderid_name ON {TableFiles}(folderid, name);", transaction).ConfigureAwait(false))
       {
         return false;
       }
 
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFiles}_folderid ON {TableFiles}(folderid);").ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFiles}_folderid ON {TableFiles}(folderid);", transaction).ConfigureAwait(false))
       {
         return false;
       }
@@ -73,10 +76,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Create the folders table
     /// </summary>
     /// <returns></returns>
-    private async Task<bool> CreateFoldersAsync()
+    private async Task<bool> CreateFoldersAsync(DbTransaction transaction)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableFolders} (id integer PRIMARY KEY, path varchar(260))")
+        ExecuteNonQueryAsync($"CREATE TABLE {TableFolders} (id integer PRIMARY KEY, path varchar(260))", transaction)
           .ConfigureAwait(false))
       {
         return false;
@@ -84,7 +87,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       if ( 
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolders}_path ON {TableFolders}(path); ").ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolders}_path ON {TableFolders}(path); ", transaction).ConfigureAwait(false))
       {
         return false;
       }
@@ -96,17 +99,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Create the configuration table
     /// </summary>
     /// <returns></returns>
-    private async Task<bool> CreateConfigAsync()
+    private async Task<bool> CreateConfigAsync(DbTransaction transaction)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableConfig} (name varchar(20), value varchar(255))")
+        ExecuteNonQueryAsync($"CREATE TABLE {TableConfig} (name varchar(20), value varchar(255))", transaction)
           .ConfigureAwait(false))
       {
         return false;
       }
 
       if (!await
-        ExecuteNonQueryAsync($"CREATE INDEX index_{TableConfig}_name ON {TableConfig}(name); ").ConfigureAwait(false))
+        ExecuteNonQueryAsync($"CREATE INDEX index_{TableConfig}_name ON {TableConfig}(name); ", transaction).ConfigureAwait(false))
       {
         return false;
       }
@@ -118,11 +121,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Check if the table exists.
     /// </summary>
     /// <param name="name"></param>
+    /// <param name="transaction"></param>
     /// <returns></returns>
-    protected bool TableExists(string name)
+    protected bool TableExists(string name, DbTransaction transaction)
     {
       var sql = $"SELECT name FROM sqlite_master WHERE type='table' AND name='{name}';";
-      using (var command = CreateCommand(sql))
+      using (var command = CreateDbCommand(sql, transaction))
       {
         var reader = command.ExecuteReader();
         try
@@ -143,9 +147,25 @@ namespace myoddweb.desktopsearch.service.Persisters
     protected async Task Update()
     {
       // if the config table does not exis, then we have to asume it is brand new.
-      if (!TableExists(TableConfig))
+      var transaction = BeginTransaction();
+      try
       {
-        await CreateDatabase().ConfigureAwait(false);
+        if (!TableExists(TableConfig, transaction ))
+        {
+          if (!await CreateDatabase(transaction).ConfigureAwait(false))
+          {
+            Rollback(transaction);
+          }
+          else
+          {
+            Commit(transaction);
+          }
+        }
+      }
+      catch (Exception e)
+      {
+        Rollback(transaction);
+        _logger.Exception(e);
       }
     }
   }

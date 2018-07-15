@@ -19,6 +19,14 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IPersister : IConfig, IFolders, IFiles
   {
     /// <summary>
+    /// Create a command with a transaction.
+    /// </summary>
+    /// <param name="sql"></param>
+    /// <param name="transaction"></param>
+    /// <returns></returns>
+    DbCommand CreateDbCommand(string sql, DbTransaction transaction);
+      
+    /// <summary>
     /// Get a database transaction.
     /// </summary>
     /// <returns></returns>

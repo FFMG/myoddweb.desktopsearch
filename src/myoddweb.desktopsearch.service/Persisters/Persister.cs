@@ -108,30 +108,31 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     #region Commands
-    protected SQLiteCommand CreateCommand(string sql)
+    /// <inheritdoc/>
+    public DbCommand CreateDbCommand(string sql, DbTransaction transaction )
     {
-      return CreateCommand(DbConnection, sql);
+      return CreateDbCommand(DbConnection, sql, transaction );
     }
 
-    protected static SQLiteCommand CreateCommand(SQLiteConnection connection, string sql)
+    protected static SQLiteCommand CreateDbCommand(SQLiteConnection connection, string sql, DbTransaction transaction)
     {
       if (null == connection)
       {
         throw new Exception("The database is not open!");
       }
-      return new SQLiteCommand(sql, connection);
+      return new SQLiteCommand(sql, connection, transaction as SQLiteTransaction );
     }
 
-    private async Task<bool> ExecuteNonQueryAsync(string sql)
+    private async Task<bool> ExecuteNonQueryAsync(string sql, DbTransaction transaction )
     {
-      return await ExecuteNonQueryAsync(DbConnection, sql).ConfigureAwait(false);
+      return await ExecuteNonQueryAsync(DbConnection, sql, transaction ).ConfigureAwait(false);
     }
 
-    protected async Task<bool> ExecuteNonQueryAsync(SQLiteConnection destination, string sql)
+    protected async Task<bool> ExecuteNonQueryAsync(SQLiteConnection destination, string sql, DbTransaction transaction )
     {
       try
       {
-        using (var command = CreateCommand(destination, sql))
+        using (var command = CreateDbCommand(destination, sql, transaction ))
         {
           await command.ExecuteNonQueryAsync().ConfigureAwait(false);
         }

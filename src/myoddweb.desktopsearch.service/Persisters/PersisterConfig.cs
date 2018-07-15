@@ -12,6 +12,8 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System.Data.Common;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.service.Persisters
@@ -19,10 +21,10 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class Persister
   {
     /// <inheritdoc />
-    public async Task<string> GetConfigValueAsync(string name, string defaultValue)
+    public async Task<string> GetConfigValueAsync(string name, string defaultValue, DbTransaction transaction )
     {
       var sql = $"SELECT value FROM {TableConfig} WHERE name='{name}';";
-      using (var command = CreateCommand(sql))
+      using (var command = CreateDbCommand(sql, transaction ))
       {
         var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
         try
@@ -40,27 +42,20 @@ namespace myoddweb.desktopsearch.service.Persisters
       return defaultValue;
     }
 
-    /// <summary>
-    /// Get a configuration value.
-    /// @NB this a very simnple function, it is up to the caller to check for nulls and make
-    ///     sure that the resulting objects can be properly cast to whatever values.
-    /// </summary>
-    /// <param name="name">The value we are looking for.</param>
-    /// <param name="value">The value in case the data does not exist in the db.</param>
-    /// <returns>Either the default value or the actual value.</returns>
-    public async Task<bool> SetConfigValueAsync(string name, string value)
+    /// <inheritdoc />
+    public async Task<bool> SetConfigValueAsync(string name, string value, DbTransaction transaction)
     {
-      var current = await GetConfigValueAsync(name, null).ConfigureAwait(false);
+      var current = await GetConfigValueAsync(name, null, transaction).ConfigureAwait(false);
       if (null == current)
       {
         return
           await
-            ExecuteNonQueryAsync($"insert into {TableConfig} (name, value) values ('{name}', '{value}')")
+            ExecuteNonQueryAsync($"insert into {TableConfig} (name, value) values ('{name}', '{value}')", transaction)
               .ConfigureAwait(false);
       }
       return
         await
-          ExecuteNonQueryAsync($"update {TableConfig} set value='{value}' where name='{name}'").ConfigureAwait(false);
+          ExecuteNonQueryAsync($"update {TableConfig} set value='{value}' where name='{name}'", transaction).ConfigureAwait(false);
     }
   }
 }
