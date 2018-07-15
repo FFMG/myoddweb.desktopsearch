@@ -117,11 +117,53 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <summary>
-    /// Cleanup all the completed tasks
+    /// Rebuild all the system events and remove duplicates.
     /// </summary>
-    /// <param name="sender"></param>
-    /// <param name="e"></param>
-    private void SystemEventsProcess(object sender, ElapsedEventArgs e)
+    public List<FileSystemEventArgs> RebuildSystemEventsInLock()
+    {
+      if (!_currentEvents.Any() )
+      {
+        return null;
+      }
+
+      // the re-created list.
+      var rebuiltEvents = new List<FileSystemEventArgs>();
+
+      foreach (var currentEvent in _currentEvents)
+      {
+        // remove the duplicate
+        if (IsChanged(currentEvent.ChangeType))
+        {
+          // we will add this event below
+          // so we can remove all the previous 'changed' events.
+          // that way, the last one in the list will be the most 'up-to-date' ones.
+          rebuiltEvents.RemoveAll(e => e.ChangeType == currentEvent.ChangeType && e.FullPath == currentEvent.FullPath);
+
+          // we know that this event is changed
+          // but if we have some 'created' events for the same file
+          // then there is no need to add the changed events.
+          if (rebuiltEvents.Any(e => IsCreated(e.ChangeType) && e.FullPath == currentEvent.FullPath))
+          {
+            // Windows sometime flags an item as changed _and_ created.
+            // we just need to worry about the created one.
+            continue;
+          }
+        }
+
+        // then add the event
+        rebuiltEvents.Add( currentEvent );
+      }
+
+      // if we have noting to return, just return null
+      return rebuiltEvents.Any() ? rebuiltEvents : null;
+    }
+
+      /// <summary>
+      /// Cleanup all the completed tasks
+      /// </summary>
+      /// <param name="sender"></param>
+      /// <param name="e"></param>
+      private void SystemEventsProcess(object sender, ElapsedEventArgs e)
     {
       try
       {
@@ -132,14 +174,11 @@ namespace myoddweb.desktopsearch.parser.IO
         List<FileSystemEventArgs> events = null;
         lock (_lock)
         {
-          if (_currentEvents.Count > 0)
-          {
-            // the events.
-            events = _currentEvents.Select(s => s).ToList();
+          // the events.
+          events = RebuildSystemEventsInLock();
 
-            // clear the current values within the lock
-            _currentEvents.Clear();
-          }
+          // clear the current values within the lock
+          _currentEvents.Clear();
 
           // remove the completed events.
           _tasks.RemoveAll(t => t.IsCompleted);
