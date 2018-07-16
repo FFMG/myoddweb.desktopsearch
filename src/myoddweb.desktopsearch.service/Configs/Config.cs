@@ -82,6 +82,10 @@ namespace myoddweb.desktopsearch.service.Configs
             loggers.Add(new ConfigConsoleLogger(ll));
             break;
 
+          case "File":
+            loggers.Add(new ConfigFileLogger(logger.Path, ll));
+            break;
+
           default:
             throw new ArgumentException( $"The Logger type '{logger.Type}' is unknown!");
         }

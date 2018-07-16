@@ -12,26 +12,32 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Collections.Generic;
-using System.ComponentModel;
+
+using System;
+using System.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
-using Newtonsoft.Json;
+using ILogger = myoddweb.desktopsearch.interfaces.Configs.ILogger;
 
 namespace myoddweb.desktopsearch.service.Configs
 {
-  internal class ConfigLogger
+  internal class ConfigFileLogger : ILogger
   {
-    [JsonProperty(Required = Required.Always)]
-    public string Type { get; protected set; }
+    public LogLevel LogLevel { get; }
 
-    /// <summary>
-    /// Path only used for certain loggers.
-    /// </summary>
-    [DefaultValue(null)]
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public string Path { get; protected set; }
+    public DirectoryInfo BaseDirectoryInfo { get; }
 
-    [JsonProperty(Required = Required.Always)]
-    public List<LogLevel> LogLevels { get; protected set; }
+    public ConfigFileLogger( string path, LogLevel ll)
+    {
+      BaseDirectoryInfo = path != null ? new DirectoryInfo(path) : throw new ArgumentNullException(path);
+      if (!BaseDirectoryInfo.Exists)
+      {
+        BaseDirectoryInfo.Create();
+      }
+      if (!BaseDirectoryInfo.Exists)
+      {
+        throw new ArgumentException($"I was unable to create the path: {path}");
+      }
+      LogLevel = ll;
+    }
   }
 }

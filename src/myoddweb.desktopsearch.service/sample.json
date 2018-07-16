@@ -6,7 +6,16 @@
         "Warning",
         "Information"
       ],
-      "Error", "Warning", "Information"
+      "Type": "Console"
+    },
+    {
+      "LogLevels": [
+        "Error",
+        "Warning",
+        "Information"
+      ],
+      "Type": "File",
+      "Path" :  "./" 
     }
   ],
   "Timers": {

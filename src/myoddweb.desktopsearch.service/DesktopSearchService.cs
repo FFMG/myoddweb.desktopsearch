@@ -125,11 +125,26 @@ namespace myoddweb.desktopsearch.service
       var loggers = new List<interfaces.Logging.ILogger>();
       foreach (var configLogger in configLoggers)
       {
-        if (configLogger is ConfigConsoleLogger)
+        switch (configLogger)
         {
-          var logger = new ConsoleLogger(configLogger.LogLevel);
-          logger.Information("Running as a console.");
-          loggers.Add( logger );
+          case ConfigFileLogger dl:
+          {
+            var logger = new FileLogger( dl.BaseDirectoryInfo, dl.LogLevel);
+            logger.Information("Started logger.");
+            loggers.Add(logger);
+          }
+          break;
+
+          case ConfigConsoleLogger cl:
+          {
+            var logger = new ConsoleLogger(cl.LogLevel);
+            logger.Information("Running as a console.");
+            loggers.Add( logger );
+          }
+          break;
+
+          default:
+            throw new ArgumentException( $"Unknown Config logger type: '{configLogger}'");
         }
       }
       return new Loggers(loggers);

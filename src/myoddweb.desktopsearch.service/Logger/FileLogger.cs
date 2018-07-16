@@ -13,11 +13,14 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Diagnostics;
+using System.IO;
+using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.service.Logger
 {
-  internal class ConsoleLogger : ILogger
+  internal class FileLogger : ILogger
   {
     private readonly object _lock = new object();
 
@@ -26,9 +29,26 @@ namespace myoddweb.desktopsearch.service.Logger
     /// </summary>
     private readonly LogLevel _logLevel;
 
-    public ConsoleLogger(LogLevel logLevel)
+    /// <summary>
+    /// The full path name
+    /// </summary>
+    private readonly string _fileName;
+
+    public FileLogger(DirectoryInfo baseDirectory, LogLevel logLevel)
     {
       _logLevel = logLevel;
+
+      var now = DateTime.UtcNow;
+      var timestamp = now.ToString("yyyy-MM-dd");
+      _fileName = Path.Combine( baseDirectory.FullName, $"Log.{timestamp}.log");
+      if (!File.Exists(_fileName))
+      {
+        File.Create(_fileName);
+      }
+      if (!File.Exists(_fileName))
+      {
+        throw new ArgumentException($"I was unable to create the log: {_fileName}");
+      }
     }
 
     /// <summary>
@@ -45,34 +65,77 @@ namespace myoddweb.desktopsearch.service.Logger
     /// Write a message with the given color, to the screen
     /// </summary>
     /// <param name="logLevel"></param>
-    /// <param name="color"></param>
     /// <param name="message"></param>
-    private void WriteLine(LogLevel logLevel, ConsoleColor color, string message)
+    private void WriteLine(LogLevel logLevel, string message)
     {
       if (!CanLog(logLevel))
       {
         return;
       }
 
-      lock (_lock)
+      // use the time before the lock...
+      var now = DateTime.UtcNow;
+      var timestamp = now.ToString("yyyy/MM/dd HH:mm:ss");
+
+      // the log level message
+      var logMessage = LogMessage(logLevel);
+
+      const int timeOut = 100;
+      var stopwatch = new Stopwatch();
+      stopwatch.Start();
+      while (true)
       {
-        var currentColor = Console.ForegroundColor;
         try
         {
-          Console.ForegroundColor = color;
-          Console.WriteLine(message);
+          // try and get the lock
+          lock (_lock)
+          {
+            File.AppendAllText(_fileName, $"[{timestamp}] : [{logMessage}] {message}{Environment.NewLine}");
+          }
+          break;
         }
-        finally
+        catch
         {
-          Console.ForegroundColor = currentColor;
+          //File not available, conflict with other class instances or application
         }
+
+        if (stopwatch.ElapsedMilliseconds > timeOut)
+        {
+          //Give up.
+          break;
+        }
+        //Wait and Retry
+        Task.Delay(5).Wait();
+      }
+      stopwatch.Stop();
+    }
+
+    private static string LogMessage(LogLevel logLevel)
+    {
+      switch (logLevel)
+      {
+        case LogLevel.None:
+          return "None";
+        case LogLevel.Verbose:
+          return "Verbose";
+        case LogLevel.Information:
+          return "Information";
+        case LogLevel.Warning:
+          return "Warning";
+        case LogLevel.Error:
+          return "Error";
+        case LogLevel.All:
+          return "All";
+
+        default:
+          throw new ArgumentOutOfRangeException(nameof(logLevel), logLevel, null);
       }
     }
 
     /// <inheritdoc />
     public void Error(string message)
     {
-      WriteLine(LogLevel.Error, ConsoleColor.Red, message);
+      WriteLine(LogLevel.Error, message);
     }
 
     /// <inheritdoc />
@@ -97,19 +160,19 @@ namespace myoddweb.desktopsearch.service.Logger
     /// <inheritdoc />
     public void Warning(string message)
     {
-      WriteLine(LogLevel.Warning, ConsoleColor.Yellow, message);
+      WriteLine(LogLevel.Warning, message);
     }
 
     /// <inheritdoc />
     public void Information(string message)
     {
-      WriteLine(LogLevel.Information, ConsoleColor.Blue, message);
+      WriteLine(LogLevel.Information, message);
     }
 
     /// <inheritdoc />
     public void Verbose(string message)
     {
-      WriteLine(LogLevel.Verbose, ConsoleColor.White, message);
+      WriteLine(LogLevel.Verbose, message);
     }
   }
 }
