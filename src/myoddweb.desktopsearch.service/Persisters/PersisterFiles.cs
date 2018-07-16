@@ -127,7 +127,7 @@ namespace myoddweb.desktopsearch.service.Persisters
               // in that case we can try and simply add the new path.
               if (!await AddOrUpdateFileAsync(file, transaction, token).ConfigureAwait(false))
               {
-                _logger.Error($"There was an issue renaming file: {file.FullName} to persister");
+                _logger.Error($"There was an issue renaming the file: {file.FullName} to persister");
                 return -1;
               }
             }
