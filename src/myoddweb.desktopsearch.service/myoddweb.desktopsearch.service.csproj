@@ -68,6 +68,7 @@
   <ItemGroup>
     <Compile Include="ArgumentsParser.cs" />
     <Compile Include="Configs\Config.cs" />
+    <Compile Include="Configs\ConfigConsoleLogger.cs" />
     <Compile Include="Configs\ConfigLoggers.cs" />
     <Compile Include="Configs\ConfigPaths.cs" />
     <Compile Include="Configs\ConfigTimers.cs" />
@@ -75,6 +76,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="IO\Directory.cs" />
+    <Compile Include="Logger\Loggers.cs" />
     <Compile Include="Logger\ConsoleLogger.cs" />
     <Compile Include="Persisters\Persister.cs" />
     <Compile Include="Persisters\PersisterConfig.cs" />

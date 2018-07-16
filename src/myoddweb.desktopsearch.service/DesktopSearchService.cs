@@ -30,6 +30,7 @@ using myoddweb.desktopsearch.service.Persisters;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using Directory = myoddweb.desktopsearch.service.IO.Directory;
+using ILogger = myoddweb.desktopsearch.interfaces.Configs.ILogger;
 
 namespace myoddweb.desktopsearch.service
 {
@@ -119,17 +120,19 @@ namespace myoddweb.desktopsearch.service
     /// Create the logger interface
     /// </summary>
     /// <returns></returns>
-    private static interfaces.Logging.ILogger CreateLogger( bool isService )
+    private static interfaces.Logging.ILogger CreateLogger( IEnumerable<ILogger> configLoggers)
     {
-      if (!isService)
+      var loggers = new List<interfaces.Logging.ILogger>();
+      foreach (var configLogger in configLoggers)
       {
-        var logger = new ConsoleLogger(LogLevel.All);
-        logger.Information("Running as a console.");
-        return logger;
+        if (configLogger is ConfigConsoleLogger)
+        {
+          var logger = new ConsoleLogger(configLogger.LogLevel);
+          logger.Information("Running as a console.");
+          loggers.Add( logger );
+        }
       }
-
-      // we need to create something for the service.
-      throw new NotSupportedException();
+      return new Loggers(loggers);
     }
 
     /// <summary>
@@ -148,7 +151,7 @@ namespace myoddweb.desktopsearch.service
         var config = CreateConfig();
 
         // and the logger
-        var logger = CreateLogger(isService);
+        var logger = CreateLogger(config.Loggers );
 
         // create the cancellation source
         _cancellationTokenSource = new CancellationTokenSource();

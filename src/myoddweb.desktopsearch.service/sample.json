@@ -2,9 +2,11 @@
   "Loggers": [
     {
       "LogLevels": [
-        "Verbose"
+        "Error",
+        "Warning",
+        "Information"
       ],
-      "Type": "Console"
+      "Error", "Warning", "Information"
     }
   ],
   "Timers": {
