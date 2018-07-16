@@ -347,7 +347,28 @@ namespace myoddweb.desktopsearch.parser.IO
         {
           try
           {
-            await ProcessRenamedAsync(renameEvent.FullPath, renameEvent.OldFullPath, _token).ConfigureAwait(false);
+            // there are some cases where we get a rename event with no old name
+            // so we cannot really delete the old one
+            // so we will just fire as if it was a new one
+            // @see https://referencesource.microsoft.com/#system/services/io/system/io/FileSystemWatcher.cs
+            // with an explaination of what could have happened.
+            if (renameEvent.OldName == null)
+            {
+              Logger.Warning( $"Received a 'rename' event without an old file name, so processing event as a new one, {e.FullPath}");
+              await ProcessCreatedAsync(e.FullPath, _token).ConfigureAwait(false);
+            }
+            if (renameEvent.Name == null)
+            {
+              // if we got an old name without a new name
+              // then we cannot really rename anything at all.
+              // all we can do is remove the old one.
+              Logger.Warning($"Received a 'rename' event without a new file name, so processing event as delete old one, {renameEvent.OldFullPath}");
+              await ProcessDeletedAsync(renameEvent.OldFullPath, _token).ConfigureAwait(false);
+            }
+            else
+            {
+              await ProcessRenamedAsync(renameEvent.FullPath, renameEvent.OldFullPath, _token).ConfigureAwait(false);
+            }
           }
           catch
           {
