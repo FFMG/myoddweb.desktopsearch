@@ -66,7 +66,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       if (transaction != null)
       {
         // this is the new folder, we might as well create it if it does not exit.
-        var folderId = await GetFolderIdAsync(file.Directory, transaction, token, true);
+        var folderId = await GetDirectoryIdAsync(file.Directory, transaction, token, true);
         if (-1 == folderId)
         {
           // we cannot create the parent folder id
@@ -75,7 +75,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
 
         // get the old folder.
-        var oldFolderId = await GetFolderIdAsync(oldFile.Directory, transaction, token, true);
+        var oldFolderId = await GetDirectoryIdAsync(oldFile.Directory, transaction, token, true);
         if (-1 == oldFolderId)
         {
           // this cannot be a renaming, as the parent dirctory does not exist.
@@ -210,7 +210,7 @@ namespace myoddweb.desktopsearch.service.Persisters
               }
 
               // get the folder id, no need to create it.
-              var folderid = await GetFolderIdAsync(file.Directory, transaction, token, false).ConfigureAwait( false );
+              var folderid = await GetDirectoryIdAsync(file.Directory, transaction, token, false).ConfigureAwait( false );
               if (-1 == folderid)
               {
                 _logger.Warning($"Could not delete file: {file.FullName}, could not locate the parent folder?");
@@ -221,7 +221,7 @@ namespace myoddweb.desktopsearch.service.Persisters
               cmd.Parameters["@name"].Value = file.Name;
               if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
               {
-                _logger.Information($"Could not delete file: {file.FullName}, does it still exist?");
+                _logger.Warning($"Could not delete file: {file.FullName}, does it still exist?");
               }
             }
             catch (Exception ex)
@@ -251,6 +251,12 @@ namespace myoddweb.desktopsearch.service.Persisters
         Rollback(transaction);
       }
       return false;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> FileExistsAsync(FileInfo file, DbTransaction transaction, CancellationToken token)
+    {
+      return (await GetFileIdAsync(file, transaction, token, false ).ConfigureAwait(false) != -1);
     }
 
     /// <summary>
@@ -299,7 +305,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // Get the folder for this file and insert it, if need be.
-            var folderId = await GetFolderIdAsync(file.Directory, transaction, token, true ).ConfigureAwait(false);
+            var folderId = await GetDirectoryIdAsync(file.Directory, transaction, token, true ).ConfigureAwait(false);
             if (-1 == folderId)
             {
               _logger.Error( $"I was unable to insert {file.FullName} as I could not locate and insert the directory!");
@@ -363,7 +369,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // Get the folder for this file and insert it, if need be.
-          var folderId = await GetFolderIdAsync(file.Directory, transaction, token, true).ConfigureAwait(false);
+          var folderId = await GetDirectoryIdAsync(file.Directory, transaction, token, true).ConfigureAwait(false);
           if (-1 == folderId)
           {
             _logger.Error($"I was unable to insert {file.FullName} as I could not locate and insert the directory!");
@@ -425,7 +431,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<long> GetFileIdAsync(FileInfo file, DbTransaction transaction, CancellationToken token, bool createIfNotFound)
     {
       // get the folder id
-      var folderid = await GetFolderIdAsync(file.Directory, transaction, token, false ).ConfigureAwait(false);
+      var folderid = await GetDirectoryIdAsync(file.Directory, transaction, token, false ).ConfigureAwait(false);
       if (-1 == folderid)
       {
         if (!createIfNotFound)

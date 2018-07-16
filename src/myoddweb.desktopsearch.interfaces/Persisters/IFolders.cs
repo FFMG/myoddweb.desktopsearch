@@ -67,5 +67,14 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<bool> DeleteDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, DbTransaction transaction, CancellationToken token);
+
+    /// <summary>
+    /// Check that we have the directory on record.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> DirectoryExistsAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token);
   }
 }

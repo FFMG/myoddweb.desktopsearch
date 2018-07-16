@@ -149,8 +149,12 @@ namespace myoddweb.desktopsearch.parser.IO
       // the given file is going to be processed.
       Logger.Verbose($"File: {fullPath} (Deleted)");
 
-      // just delete the folder.
-      await _persister.DeleteFileAsync(file, _currentTransaction, token).ConfigureAwait(false);
+      // do we have the file on record?
+      if (await _persister.FileExistsAsync(file, _currentTransaction, token).ConfigureAwait(false))
+      {
+        // just delete the folder.
+        await _persister.DeleteFileAsync(file, _currentTransaction, token).ConfigureAwait(false);
+      }
     }
 
     /// <inheritdoc />

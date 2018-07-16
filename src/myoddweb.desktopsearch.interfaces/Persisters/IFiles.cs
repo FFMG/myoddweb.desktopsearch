@@ -68,5 +68,14 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<bool> DeleteFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token);
+
+    /// <summary>
+    /// Check that we have the file on record.
+    /// </summary>
+    /// <param name="file"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> FileExistsAsync(FileInfo file, DbTransaction transaction, CancellationToken token );
   }
 }

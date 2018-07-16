@@ -16,7 +16,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -106,7 +105,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             // in either cases, we can now return the id of this newly added path.
             // we won't ask the function to insert a new file as we _just_ renamed it.
             // so it has to exist...
-            return await GetFolderIdAsync(directory, transaction, token, false ).ConfigureAwait(false);
+            return await GetDirectoryIdAsync(directory, transaction, token, false ).ConfigureAwait(false);
           }
           catch (Exception ex)
           {
@@ -176,7 +175,7 @@ namespace myoddweb.desktopsearch.service.Persisters
               cmd.Parameters["@path"].Value = directory.FullName;
               if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
               {
-                _logger.Information($"Could not delete folder: {directory.FullName}, does it still exist?");
+                _logger.Warning($"Could not delete folder: {directory.FullName}, does it still exist?");
               }
             }
             catch (Exception ex)
@@ -208,13 +207,19 @@ namespace myoddweb.desktopsearch.service.Persisters
       return false;
     }
 
+    /// <inheritdoc />
+    public async Task<bool> DirectoryExistsAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
+    {
+      return await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false) != -1;
+    }
+
     /// <summary>
     /// Get the next row ID we can use.
     /// </summary>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> GetNextFolderIdAsync(DbTransaction transaction, CancellationToken token)
+    private async Task<long> GetNextDirectoryIdAsync(DbTransaction transaction, CancellationToken token)
     {
       // we first look for it, and, if we find it then there is nothing to do.
       var sqlNextRowId = $"SELECT max(id) from {TableFolders};";
@@ -245,7 +250,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    private async Task<long> GetFolderIdAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    private async Task<long> GetDirectoryIdAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token, bool createIfNotFound)
     {
       // we first look for it, and, if we find it then there is nothing to do.
       var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
@@ -279,7 +284,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // try one more time to look for it .. and if we do not find it, then just return
-          return await GetFolderIdAsync(directory, transaction, token, false).ConfigureAwait(false);
+          return await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
         }
 
         // get the path id.
@@ -303,7 +308,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // get the next id.
-      var nextId = await GetNextFolderIdAsync(transaction, token).ConfigureAwait(false);
+      var nextId = await GetNextDirectoryIdAsync(transaction, token).ConfigureAwait(false);
 
       var sqlInsert = $"INSERT INTO {TableFolders} (id, path) VALUES (@id, @path)";
       using (var cmd = CreateDbCommand(sqlInsert, transaction))
