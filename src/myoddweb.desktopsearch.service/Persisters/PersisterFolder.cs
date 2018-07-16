@@ -176,7 +176,7 @@ namespace myoddweb.desktopsearch.service.Persisters
               cmd.Parameters["@path"].Value = directory.FullName;
               if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
               {
-                _logger.Warning($"Could not delete folder: {directory.FullName}, does it still exist?");
+                _logger.Information($"Could not delete folder: {directory.FullName}, does it still exist?");
               }
             }
             catch (Exception ex)

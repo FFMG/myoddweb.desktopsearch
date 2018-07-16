@@ -221,7 +221,7 @@ namespace myoddweb.desktopsearch.service.Persisters
               cmd.Parameters["@name"].Value = file.Name;
               if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
               {
-                _logger.Warning($"Could not delete file: {file.FullName}, does it still exist?");
+                _logger.Information($"Could not delete file: {file.FullName}, does it still exist?");
               }
             }
             catch (Exception ex)
