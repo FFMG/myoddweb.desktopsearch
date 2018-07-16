@@ -1,4 +1,12 @@
 ﻿{
+  "Loggers": [
+    {
+      "LogLevels": [
+        "Verbose"
+      ],
+      "Type": "Console"
+    }
+  ],
   "Timers": {
     "EventsParserMs": 10000
   },
