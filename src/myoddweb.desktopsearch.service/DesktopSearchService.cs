@@ -119,7 +119,7 @@ namespace myoddweb.desktopsearch.service
     /// Create the logger interface
     /// </summary>
     /// <returns></returns>
-    private static ILogger CreateLogger( bool isService )
+    private static interfaces.Logging.ILogger CreateLogger( bool isService )
     {
       if (!isService)
       {

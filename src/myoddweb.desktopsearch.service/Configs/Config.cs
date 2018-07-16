@@ -12,7 +12,7 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 using myoddweb.desktopsearch.interfaces.Configs;
@@ -28,6 +28,9 @@ namespace myoddweb.desktopsearch.service.Configs
     [DefaultValue(null)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public ITimers Timers { get; protected set; }
+
+    [JsonProperty(Required = Required.Always)]
+    public List<ILogger> Loggers { get; protected set; }
 
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context)
@@ -45,10 +48,12 @@ namespace myoddweb.desktopsearch.service.Configs
     /// </summary>
     /// <param name="paths"></param>
     /// <param name="timers"></param>
-    public Config(ConfigPaths paths, ConfigTimers timers )
+    /// <param name="loggers"></param>
+    public Config(ConfigPaths paths, ConfigTimers timers, List<ConfigLogger> loggers )
     {
       Paths = paths;
       Timers = timers;
+      //Loggers = loggers as List<ILogger>;
     }
   }
 }

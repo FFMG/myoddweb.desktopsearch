@@ -13,25 +13,15 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
-using System.Collections.Generic;
+using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.interfaces.Configs
 {
-  public interface IConfig
+  public interface ILogger
   {
     /// <summary>
-    /// The paths information.
+    /// The level we will be logging with.
     /// </summary>
-    IPaths Paths { get; }
-
-    /// <summary>
-    /// All the timers.
-    /// </summary>
-    ITimers Timers { get; }
-
-    /// <summary>
-    /// All the loggers
-    /// </summary>
-    List<ILogger> Loggers { get; }
+    LogLevel LogLevel { get; }
   }
 }
