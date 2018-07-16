@@ -252,6 +252,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     private async Task<long> GetDirectoryIdAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token, bool createIfNotFound)
     {
+      if (null == directory)
+      {
+        throw new ArgumentNullException(nameof(directory), "The given directory is null");
+      }
+
       // we first look for it, and, if we find it then there is nothing to do.
       var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
       using (var cmd = CreateDbCommand(sql, transaction))

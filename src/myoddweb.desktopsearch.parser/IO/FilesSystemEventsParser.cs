@@ -216,6 +216,12 @@ namespace myoddweb.desktopsearch.parser.IO
           return;
         }
 
+        // if the old file does not exist on record ... then there is nothing more for us to do .
+        if (!await _persister.FileExistsAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
+        {
+          return;
+        }
+
         // delete the old folder only, in case it did exist.
         if (!await _persister.DeleteFileAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
         {

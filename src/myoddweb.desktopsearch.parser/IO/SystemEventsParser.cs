@@ -318,31 +318,55 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <returns></returns>
     private async Task ProcessEventAsync(FileSystemEventArgs e)
     {
-      if (IsCreated(e.ChangeType))
+      try
       {
-        await ProcessCreatedAsync(e.FullPath, _token).ConfigureAwait(false);
-      }
+        if (IsCreated(e.ChangeType))
+        {
+          await ProcessCreatedAsync(e.FullPath, _token).ConfigureAwait(false);
+        }
 
-      if (IsDeleted(e.ChangeType))
-      {
-        await ProcessDeletedAsync(e.FullPath, _token).ConfigureAwait(false);
-      }
+        if (IsDeleted(e.ChangeType))
+        {
+          await ProcessDeletedAsync(e.FullPath, _token).ConfigureAwait(false);
+        }
 
-      if (IsChanged(e.ChangeType))
+        if (IsChanged(e.ChangeType))
+        {
+          await ProcessChangedAsync(e.FullPath, _token).ConfigureAwait(false);
+        }
+      }
+      catch
       {
-        await ProcessChangedAsync(e.FullPath, _token).ConfigureAwait(false);
+        Logger.Error($"There was an error trying to process game event {e.FullPath}!");
+        throw;
       }
 
       if (IsRenamed(e.ChangeType))
       {
         if (e is RenamedEventArgs renameEvent)
         {
-          await ProcessRenamedAsync(renameEvent.FullPath, renameEvent.OldFullPath, _token).ConfigureAwait(false);
+          try
+          {
+            await ProcessRenamedAsync(renameEvent.FullPath, renameEvent.OldFullPath, _token).ConfigureAwait(false);
+          }
+          catch
+          {
+            Logger.Error( $"There was an error trying to rename {renameEvent.OldFullPath} to {renameEvent.FullPath}!");
+            throw;
+          }
         }
         else
         {
-          Logger.Warning( $"A file, ({e.FullPath}), was marked as renamed, but the event was not.");
-          await ProcessChangedAsync(e.FullPath, _token).ConfigureAwait(false);
+          try
+          {
+            Logger.Warning($"A file, ({e.FullPath}), was marked as renamed, but the event was not.");
+            await ProcessChangedAsync(e.FullPath, _token).ConfigureAwait(false);
+          }
+          catch
+          {
+            Logger.Error($"There was an error trying to process rename game event {e.FullPath}!");
+            throw;
+          }
         }
       }
     }
