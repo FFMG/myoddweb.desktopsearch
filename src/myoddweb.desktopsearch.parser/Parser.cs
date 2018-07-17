@@ -346,14 +346,31 @@ namespace myoddweb.desktopsearch.parser
     /// <returns></returns>
     private async Task<bool> ParseDirectoryAsync(IReadOnlyList<DirectoryInfo> directories, CancellationToken token)
     {
-      // add the folder to the list.
-      if (!await _perister.AddOrUpdateDirectoriesAsync(directories, null, token).ConfigureAwait(false))
+      // get a transaction
+      var transaction = _perister.BeginTransaction();
+      try
       {
-        return false;
+        // add the folder to the list.
+        if (!await _perister.AddOrUpdateDirectoriesAsync(directories, transaction, token).ConfigureAwait(false))
+        {
+          _perister.Rollback(transaction);
+          return false;
+        }
+
+        // we can commit our code.
+        _perister.Commit(transaction);
+
+        // all done
+        return true;
+      }
+      catch (Exception e)
+      {
+        _perister.Rollback(transaction);
+        _logger.Exception(e);
       }
 
-      // we always parse sub directories
-      return true;
+      // if we are here
+      return false;
     }
 
     /// <summary>

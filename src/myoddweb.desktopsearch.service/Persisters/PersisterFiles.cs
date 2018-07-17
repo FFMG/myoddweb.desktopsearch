@@ -34,139 +34,103 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<bool> AddOrUpdateFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token)
     {
-      if (null != transaction)
+      if (null == transaction)
       {
-        // rebuild the list of directory with only those that need to be inserted.
-        return await InsertFilesAsync(
-          await RebuildFilesListAsync(files, transaction, token).ConfigureAwait(false),
-          transaction, token).ConfigureAwait(false);
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
       }
 
-      transaction = BeginTransaction();
-      try
-      {
-        if (await AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false))
-        {
-          Commit( transaction );
-          return true;
-        }
-        Rollback(transaction);
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
-        Rollback( transaction );
-      }
-      return false;
+      // rebuild the list of directory with only those that need to be inserted.
+      return await InsertFilesAsync(
+        await RebuildFilesListAsync(files, transaction, token).ConfigureAwait(false),
+        transaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async Task<long> RenameOrAddFileAsync(FileInfo file, FileInfo oldFile, DbTransaction transaction, CancellationToken token)
     {
-      if (transaction != null)
+      if (null == transaction)
       {
-        // this is the new folder, we might as well create it if it does not exit.
-        var folderId = await GetDirectoryIdAsync(file.Directory, transaction, token, true);
-        if (-1 == folderId)
-        {
-          // we cannot create the parent folder id
-          // so there is nothing more to do really.
-          return -1;
-        }
-
-        // get the old folder.
-        var oldFolderId = await GetDirectoryIdAsync(oldFile.Directory, transaction, token, true);
-        if (-1 == oldFolderId)
-        {
-          // this cannot be a renaming, as the parent dirctory does not exist.
-          // so we will just try and add it.
-          // by calling the 'GetFile' function and creating it if needed we will insert the file.
-          return await GetFileIdAsync( file, transaction, token, true );
-        }
-
-        // so we have an old folder id and a new folder id
-        var sql = $"UPDATE {TableFiles} SET name=@name1, folderid=@folderid1 WHERE name=@name2 and folderid=@folderid2";
-        using (var cmd = CreateDbCommand(sql, transaction))
-        {
-          var pName1 = cmd.CreateParameter();
-          pName1.DbType = DbType.String;
-          pName1.ParameterName = "@name1";
-          cmd.Parameters.Add( pName1);
-
-          var pName2 = cmd.CreateParameter();
-          pName2.DbType = DbType.String;
-          pName2.ParameterName = "@name2";
-          cmd.Parameters.Add(pName2);
-
-          var pFolderId1 = cmd.CreateParameter();
-          pFolderId1.DbType = DbType.Int64;
-          pFolderId1.ParameterName = "@folderid1";
-          cmd.Parameters.Add(pFolderId1);
-
-          var pFolderId2 = cmd.CreateParameter();
-          pFolderId2.DbType = DbType.Int64;
-          pFolderId2.ParameterName = "@folderid2";
-          cmd.Parameters.Add(pFolderId2);
-          try
-          {
-            // are we cancelling?
-            if (token.IsCancellationRequested)
-            {
-              return -1;
-            }
-
-            // try and replace path1 with path2
-            cmd.Parameters["@name1"].Value = file.Name;
-            cmd.Parameters["@name2"].Value = oldFile.Name;
-            cmd.Parameters["@folderid1"].Value = folderId;
-            cmd.Parameters["@folderid2"].Value = oldFolderId;
-            if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
-            {
-              // we could not rename it, this could be because of an error
-              // or because the old path simply does not exist.
-              // in that case we can try and simply add the new path.
-              if (!await AddOrUpdateFileAsync(file, transaction, token).ConfigureAwait(false))
-              {
-                _logger.Error($"There was an issue renaming the file: {file.FullName} to persister");
-                return -1;
-              }
-            }
-
-            // if we are here, we either renamed the file
-            // or we managed to add add it
-            // in either cases, we can now return the id of this newly added file.
-            // we won't ask the function to insert a new file as we _just_ renamed it.
-            // so it has to exist...
-            return await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
-          }
-          catch (Exception ex)
-          {
-            _logger.Exception(ex);
-          }
-        }
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+      }
+      // this is the new folder, we might as well create it if it does not exit.
+      var folderId = await GetDirectoryIdAsync(file.Directory, transaction, token, true);
+      if (-1 == folderId)
+      {
+        // we cannot create the parent folder id
+        // so there is nothing more to do really.
         return -1;
       }
 
-      // we were not given a transaction to work with
-      // so we will create one ourslves and wrap the code around it.
-      transaction = BeginTransaction();
-      try
+      // get the old folder.
+      var oldFolderId = await GetDirectoryIdAsync(oldFile.Directory, transaction, token, true);
+      if (-1 == oldFolderId)
       {
-        // try and rename, and if it worked then we can return the id.
-        var id = await RenameOrAddFileAsync(file, oldFile, transaction, token).ConfigureAwait(false);
-        if (id != -1)
-        {
-          Commit(transaction);
-          return id;
-        }
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
+        // this cannot be a renaming, as the parent dirctory does not exist.
+        // so we will just try and add it.
+        // by calling the 'GetFile' function and creating it if needed we will insert the file.
+        return await GetFileIdAsync( file, transaction, token, true );
       }
 
-      // if we are here, it did not work.
-      Rollback(transaction);
+      // so we have an old folder id and a new folder id
+      var sql = $"UPDATE {TableFiles} SET name=@name1, folderid=@folderid1 WHERE name=@name2 and folderid=@folderid2";
+      using (var cmd = CreateDbCommand(sql, transaction))
+      {
+        var pName1 = cmd.CreateParameter();
+        pName1.DbType = DbType.String;
+        pName1.ParameterName = "@name1";
+        cmd.Parameters.Add( pName1);
+
+        var pName2 = cmd.CreateParameter();
+        pName2.DbType = DbType.String;
+        pName2.ParameterName = "@name2";
+        cmd.Parameters.Add(pName2);
+
+        var pFolderId1 = cmd.CreateParameter();
+        pFolderId1.DbType = DbType.Int64;
+        pFolderId1.ParameterName = "@folderid1";
+        cmd.Parameters.Add(pFolderId1);
+
+        var pFolderId2 = cmd.CreateParameter();
+        pFolderId2.DbType = DbType.Int64;
+        pFolderId2.ParameterName = "@folderid2";
+        cmd.Parameters.Add(pFolderId2);
+        try
+        {
+          // are we cancelling?
+          if (token.IsCancellationRequested)
+          {
+            return -1;
+          }
+
+          // try and replace path1 with path2
+          cmd.Parameters["@name1"].Value = file.Name;
+          cmd.Parameters["@name2"].Value = oldFile.Name;
+          cmd.Parameters["@folderid1"].Value = folderId;
+          cmd.Parameters["@folderid2"].Value = oldFolderId;
+          if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
+          {
+            // we could not rename it, this could be because of an error
+            // or because the old path simply does not exist.
+            // in that case we can try and simply add the new path.
+            if (!await AddOrUpdateFileAsync(file, transaction, token).ConfigureAwait(false))
+            {
+              _logger.Error($"There was an issue renaming the file: {file.FullName} to persister");
+              return -1;
+            }
+          }
+
+          // if we are here, we either renamed the file
+          // or we managed to add add it
+          // in either cases, we can now return the id of this newly added file.
+          // we won't ask the function to insert a new file as we _just_ renamed it.
+          // so it has to exist...
+          return await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
+        }
+      }
       return -1;
     }
 
@@ -185,72 +149,57 @@ namespace myoddweb.desktopsearch.service.Persisters
         return true;
       }
 
-      if (null != transaction)
+      if (null == transaction)
       {
-        var sqlDelete = $"DELETE FROM {TableFiles} WHERE folderid=@folderid and name=@name";
-        using (var cmd = CreateDbCommand(sqlDelete, transaction))
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+      }
+
+      var sqlDelete = $"DELETE FROM {TableFiles} WHERE folderid=@folderid and name=@name";
+      using (var cmd = CreateDbCommand(sqlDelete, transaction))
+      {
+        var pFolderId = cmd.CreateParameter();
+        pFolderId.DbType = DbType.Int64;
+        pFolderId.ParameterName = "@folderid";
+        cmd.Parameters.Add(pFolderId);
+
+        var pName = cmd.CreateParameter();
+        pName.DbType = DbType.String;
+        pName.ParameterName = "@name";
+        cmd.Parameters.Add(pName);
+        foreach (var file in files)
         {
-          var pFolderId = cmd.CreateParameter();
-          pFolderId.DbType = DbType.Int64;
-          pFolderId.ParameterName = "@folderid";
-          cmd.Parameters.Add(pFolderId);
-
-          var pName = cmd.CreateParameter();
-          pName.DbType = DbType.String;
-          pName.ParameterName = "@name";
-          cmd.Parameters.Add(pName);
-          foreach (var file in files)
+          try
           {
-            try
+            // are we cancelling?
+            if (token.IsCancellationRequested)
             {
-              // are we cancelling?
-              if (token.IsCancellationRequested)
-              {
-                return false;
-              }
-
-              // get the folder id, no need to create it.
-              var folderid = await GetDirectoryIdAsync(file.Directory, transaction, token, false).ConfigureAwait( false );
-              if (-1 == folderid)
-              {
-                _logger.Warning($"Could not delete file: {file.FullName}, could not locate the parent folder?");
-                continue;
-              }
-
-              cmd.Parameters["@folderid"].Value = folderid;
-              cmd.Parameters["@name"].Value = file.Name;
-              if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
-              {
-                _logger.Warning($"Could not delete file: {file.FullName}, does it still exist?");
-              }
+              return false;
             }
-            catch (Exception ex)
+
+            // get the folder id, no need to create it.
+            var folderid = await GetDirectoryIdAsync(file.Directory, transaction, token, false).ConfigureAwait( false );
+            if (-1 == folderid)
             {
-              _logger.Exception(ex);
+              _logger.Warning($"Could not delete file: {file.FullName}, could not locate the parent folder?");
+              continue;
+            }
+
+            cmd.Parameters["@folderid"].Value = folderid;
+            cmd.Parameters["@name"].Value = file.Name;
+            if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
+            {
+              _logger.Warning($"Could not delete file: {file.FullName}, does it still exist?");
             }
           }
+          catch (Exception ex)
+          {
+            _logger.Exception(ex);
+          }
         }
-
-        // we are done.
-        return true;
       }
 
-      transaction = BeginTransaction();
-      try
-      {
-        if (await DeleteFilesAsync(files, transaction, token).ConfigureAwait(false))
-        {
-          Commit(transaction);
-          return true;
-        }
-        Rollback(transaction);
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
-        Rollback(transaction);
-      }
-      return false;
+      // we are done.
+      return true;
     }
 
     /// <inheritdoc />
