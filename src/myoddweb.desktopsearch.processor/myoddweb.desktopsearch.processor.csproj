@@ -4,14 +4,13 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{22E5A150-C0AD-4715-8A42-47C50D74BAAE}</ProjectGuid>
+    <ProjectGuid>{82E17E00-292F-452B-BE8D-0411C52A83FB}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>myoddweb.desktopsearch.parser</RootNamespace>
-    <AssemblyName>myoddweb.desktopsearch.parser</AssemblyName>
+    <RootNamespace>myoddweb.desktopsearch.processor</RootNamespace>
+    <AssemblyName>myoddweb.desktopsearch.processor</AssemblyName>
     <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -41,23 +40,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="IO\DirectoriesParser.cs" />
-    <Compile Include="Helper\File.cs" />
-    <Compile Include="IO\DirectoriesSystemEventsParser.cs" />
-    <Compile Include="IO\FilesSystemEventsParser.cs" />
-    <Compile Include="IO\SystemEventsParser.cs" />
-    <Compile Include="IO\DirectoriesWatcher.cs" />
-    <Compile Include="IO\FilesWatcher.cs" />
-    <Compile Include="IO\Watcher.cs" />
-    <Compile Include="IO\WatcherTypes.cs" />
-    <Compile Include="parser.cs" />
+    <Compile Include="processor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\myoddweb.desktopsearch.interfaces\myoddweb.desktopsearch.interfaces.csproj">
-      <Project>{B1B3597E-D169-47A0-8CA8-FD543EF817D9}</Project>
-      <Name>myoddweb.desktopsearch.interfaces</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
