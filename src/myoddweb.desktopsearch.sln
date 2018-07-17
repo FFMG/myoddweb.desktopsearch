@@ -9,11 +9,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.inte
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.parser", "myoddweb.desktopsearch.parser\myoddweb.desktopsearch.parser.csproj", "{22E5A150-C0AD-4715-8A42-47C50D74BAAE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.parser.test", "myoddweb.desktopsearch.parser.test\myoddweb.desktopsearch.parser.test.csproj", "{01DDB99F-4FF9-4911-AEEE-F360531A203D}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.processor", "myoddweb.desktopsearch.processor\myoddweb.desktopsearch.processor.csproj", "{82E17E00-292F-452B-BE8D-0411C52A83FB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.helper", "myoddweb.desktopsearch.helper\myoddweb.desktopsearch.helper.csproj", "{3D64478E-CB04-40BF-8A18-51989856746F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.helper.test", "myoddweb.desktopsearch.helper.test\myoddweb.desktopsearch.helper.test.csproj", "{01DDB99F-4FF9-4911-AEEE-F360531A203D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,10 +33,6 @@ Global
 		{22E5A150-C0AD-4715-8A42-47C50D74BAAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{22E5A150-C0AD-4715-8A42-47C50D74BAAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{22E5A150-C0AD-4715-8A42-47C50D74BAAE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{01DDB99F-4FF9-4911-AEEE-F360531A203D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{01DDB99F-4FF9-4911-AEEE-F360531A203D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{01DDB99F-4FF9-4911-AEEE-F360531A203D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{01DDB99F-4FF9-4911-AEEE-F360531A203D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{82E17E00-292F-452B-BE8D-0411C52A83FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{82E17E00-292F-452B-BE8D-0411C52A83FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{82E17E00-292F-452B-BE8D-0411C52A83FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -45,6 +41,10 @@ Global
 		{3D64478E-CB04-40BF-8A18-51989856746F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3D64478E-CB04-40BF-8A18-51989856746F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3D64478E-CB04-40BF-8A18-51989856746F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{01DDB99F-4FF9-4911-AEEE-F360531A203D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{01DDB99F-4FF9-4911-AEEE-F360531A203D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{01DDB99F-4FF9-4911-AEEE-F360531A203D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{01DDB99F-4FF9-4911-AEEE-F360531A203D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

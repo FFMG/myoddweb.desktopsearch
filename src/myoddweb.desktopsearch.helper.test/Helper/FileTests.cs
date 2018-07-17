@@ -121,7 +121,7 @@ namespace myoddweb.desktopsearch.parser.test.Helper
     public void IsChildOfMultipleParentsWithEmptyList()
     {
       Assert.IsFalse(
-        File.IsSubDirectory(new List<string>{}, "c:\\")
+        File.IsSubDirectory(new List<string>(), "c:\\")
       );
     }
 
