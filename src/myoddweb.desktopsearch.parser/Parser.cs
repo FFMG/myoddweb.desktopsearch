@@ -318,7 +318,7 @@ namespace myoddweb.desktopsearch.parser
           if (!await ParseDirectoryAsync(directoriesParser.Directories, token).ConfigureAwait(false))
           {
             stopwatch.Stop();
-            _logger.Warning($"Parsing was cancelled (Elapsed:{stopwatch.Elapsed:g})");
+            _logger.Warning($"Parsing was cancelled (Time Elapsed: {stopwatch.Elapsed:g})");
             return false;
           }
 
@@ -328,7 +328,7 @@ namespace myoddweb.desktopsearch.parser
 
         // stop the watch and log how many items we found.
         stopwatch.Stop();
-        _logger.Information($"Parsed {totalDirectories} directories (Elapsed:{stopwatch.Elapsed:g})");
+        _logger.Information($"Parsed {totalDirectories} directories (Time Elapsed: {stopwatch.Elapsed:g})");
         return true;
       }
       catch (Exception e)

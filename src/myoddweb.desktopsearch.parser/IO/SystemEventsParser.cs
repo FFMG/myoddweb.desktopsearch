@@ -312,37 +312,94 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <summary>
-    /// Process a single event.
+    /// Try and process a created file event.
     /// </summary>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task ProcessEventAsync(FileSystemEventArgs e)
+    private async Task TryProcessCreatedAsync(FileSystemEventArgs e)
     {
       try
       {
-        if (IsCreated(e.ChangeType))
+        if (!IsCreated(e.ChangeType))
         {
-          await ProcessCreatedAsync(e.FullPath, _token).ConfigureAwait(false);
+          return;
         }
 
-        if (IsDeleted(e.ChangeType))
-        {
-          await ProcessDeletedAsync(e.FullPath, _token).ConfigureAwait(false);
-        }
-
-        if (IsChanged(e.ChangeType))
-        {
-          await ProcessChangedAsync(e.FullPath, _token).ConfigureAwait(false);
-        }
+        await ProcessCreatedAsync(e.FullPath, _token).ConfigureAwait(false);
       }
       catch
       {
-        Logger.Error($"There was an error trying to process game event {e.FullPath}!");
+        Logger.Error($"There was an error trying to process created game event {e.FullPath}!");
+
+        // the exception is logged
         throw;
       }
+    }
 
-      if (IsRenamed(e.ChangeType))
+    /// <summary>
+    /// Try and process a deleted file event.
+    /// </summary>
+    /// <param name="e"></param>
+    /// <returns></returns>
+    private async Task TryProcessDeletedAsync(FileSystemEventArgs e)
+    {
+      try
       {
+        if (!IsDeleted(e.ChangeType))
+        {
+          return;
+        }
+
+        await ProcessDeletedAsync(e.FullPath, _token).ConfigureAwait(false);
+      }
+      catch
+      {
+        Logger.Error($"There was an error trying to process deleted game event {e.FullPath}!");
+
+        // the exception is logged
+        throw;
+      }
+    }
+
+    /// <summary>
+    /// Try and process a changed file event.
+    /// </summary>
+    /// <param name="e"></param>
+    /// <returns></returns>
+    private async Task TryProcessChangedAsync(FileSystemEventArgs e)
+    {
+      try
+      {
+        if (!IsChanged(e.ChangeType))
+        {
+          return;
+        }
+
+        await ProcessChangedAsync(e.FullPath, _token).ConfigureAwait(false);
+      }
+      catch
+      {
+        Logger.Error($"There was an error trying to process changed game event {e.FullPath}!");
+
+        // the exception is logged
+        throw;
+      }
+    }
+
+    /// <summary>
+    /// Try and process a changed file event.
+    /// </summary>
+    /// <param name="e"></param>
+    /// <returns></returns>
+    private async Task TryProcessRenamedAsync(FileSystemEventArgs e)
+    {
+      try
+      {
+        if (!IsRenamed(e.ChangeType))
+        {
+          return;
+        }
+
         if (e is RenamedEventArgs renameEvent)
         {
           try
@@ -354,10 +411,10 @@ namespace myoddweb.desktopsearch.parser.IO
             // with an explaination of what could have happened.
             if (renameEvent.OldName == null)
             {
-              Logger.Warning( $"Received a 'rename' event without an old file name, so processing event as a new one, {e.FullPath}");
+              Logger.Warning($"Received a 'rename' event without an old file name, so processing event as a new one, {e.FullPath}");
               await ProcessCreatedAsync(e.FullPath, _token).ConfigureAwait(false);
             }
-            if (renameEvent.Name == null)
+            else if (renameEvent.Name == null)
             {
               // if we got an old name without a new name
               // then we cannot really rename anything at all.
@@ -367,12 +424,13 @@ namespace myoddweb.desktopsearch.parser.IO
             }
             else
             {
+              // we have both a new and old name...
               await ProcessRenamedAsync(renameEvent.FullPath, renameEvent.OldFullPath, _token).ConfigureAwait(false);
             }
           }
           catch
           {
-            Logger.Error( $"There was an error trying to rename {renameEvent.OldFullPath} to {renameEvent.FullPath}!");
+            Logger.Error($"There was an error trying to rename {renameEvent.OldFullPath} to {renameEvent.FullPath}!");
             throw;
           }
         }
@@ -390,6 +448,33 @@ namespace myoddweb.desktopsearch.parser.IO
           }
         }
       }
+      catch
+      {
+        Logger.Error($"There was an error trying to process renamed game event {e.FullPath}!");
+
+        // the exception is logged
+        throw;
+      }
+    }
+
+    /// <summary>
+    /// Process a single event.
+    /// </summary>
+    /// <param name="e"></param>
+    /// <returns></returns>
+    private async Task ProcessEventAsync(FileSystemEventArgs e)
+    {
+      // try process as created.
+      await TryProcessCreatedAsync(e).ConfigureAwait(false);
+
+      // try process as deleted.
+      await TryProcessDeletedAsync(e).ConfigureAwait(false);
+
+      // try process as changed.
+      await TryProcessChangedAsync(e).ConfigureAwait(false);
+
+      // process as a renamed event
+      await TryProcessRenamedAsync(e).ConfigureAwait(false);
     }
     #endregion
 
