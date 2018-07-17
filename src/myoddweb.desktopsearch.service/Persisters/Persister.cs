@@ -30,15 +30,18 @@ namespace myoddweb.desktopsearch.service.Persisters
     private const string TableFiles = "files";
     #endregion
 
+    #region Member variables
+
     /// <summary>
     /// The sqlite connection.
     /// </summary>
-    private SQLiteConnection DbConnection { get; }
+    private readonly SQLiteConnection _dbConnection;
 
     /// <summary>
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
+    #endregion
 
     public Persister(ILogger logger)
     {
@@ -62,8 +65,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // try and open the database.
-      DbConnection = new SQLiteConnection($"Data Source={source};Version=3;");
-      DbConnection.Open();
+      _dbConnection = new SQLiteConnection($"Data Source={source};Version=3;");
+      _dbConnection.Open();
 
       // update the db if need be.
       Update().Wait();
@@ -73,7 +76,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc/>
     public DbTransaction BeginTransaction()
     {
-      return DbConnection.BeginTransaction();
+      return _dbConnection.BeginTransaction();
     }
 
     /// <inheritdoc/>
@@ -90,7 +93,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
     }
-    #endregion
 
     /// <inheritdoc/>
     public bool Commit(DbTransaction transaction)
@@ -106,15 +108,16 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
     }
+    #endregion
 
     #region Commands
     /// <inheritdoc/>
     public DbCommand CreateDbCommand(string sql, DbTransaction transaction )
     {
-      return CreateDbCommand(DbConnection, sql, transaction );
+      return CreateDbCommand(_dbConnection, sql, transaction );
     }
 
-    protected static SQLiteCommand CreateDbCommand(SQLiteConnection connection, string sql, DbTransaction transaction)
+    private static SQLiteCommand CreateDbCommand(SQLiteConnection connection, string sql, DbTransaction transaction)
     {
       if (null == connection)
       {
@@ -125,10 +128,10 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     private async Task<bool> ExecuteNonQueryAsync(string sql, DbTransaction transaction )
     {
-      return await ExecuteNonQueryAsync(DbConnection, sql, transaction ).ConfigureAwait(false);
+      return await ExecuteNonQueryAsync(_dbConnection, sql, transaction ).ConfigureAwait(false);
     }
 
-    protected async Task<bool> ExecuteNonQueryAsync(SQLiteConnection destination, string sql, DbTransaction transaction )
+    private async Task<bool> ExecuteNonQueryAsync(SQLiteConnection destination, string sql, DbTransaction transaction )
     {
       try
       {
