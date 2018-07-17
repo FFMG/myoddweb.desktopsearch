@@ -70,6 +70,15 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     Task<bool> DeleteFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token);
 
     /// <summary>
+    /// Delete multiple files from a directory.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> DeleteFilesAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token);
+
+    /// <summary>
     /// Check that we have the file on record.
     /// </summary>
     /// <param name="file"></param>

@@ -161,6 +161,10 @@ namespace myoddweb.desktopsearch.service.Persisters
             Commit(transaction);
           }
         }
+        else
+        {
+          Commit(transaction);
+        }
       }
       catch (Exception e)
       {

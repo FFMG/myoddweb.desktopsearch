@@ -140,6 +140,9 @@ namespace myoddweb.desktopsearch.service.Persisters
               return false;
             }
 
+            // try and delete files given directory info.
+            await DeleteFilesAsync(directory, transaction, token ).ConfigureAwait(false);
+
             cmd.Parameters["@path"].Value = directory.FullName;
             if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
             {

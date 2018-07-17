@@ -203,6 +203,57 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
+    public async Task<bool> DeleteFilesAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
+    {
+      if (null == transaction)
+      {
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+      }
+
+      // get the folder id, we do not want to create the folder.
+      var folderid = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
+      if (folderid == -1)
+      {
+        // there was no error.
+        return true;
+      }
+
+      var sql = $"DELETE FROM {TableFiles} WHERE folderid=@folderid";
+      using (var cmd = CreateDbCommand(sql, transaction))
+      {
+        var pFolderId = cmd.CreateParameter();
+        pFolderId.DbType = DbType.Int64;
+        pFolderId.ParameterName = "@folderid";
+        cmd.Parameters.Add(pFolderId);
+        try
+        {
+          // are we cancelling?
+          if (token.IsCancellationRequested)
+          {
+            return false;
+          }
+
+          // set the folder id.
+          cmd.Parameters["@folderid"].Value = folderid;
+
+          // delete the files.
+          var deletedFiles = await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+
+          // and give a message...
+          _logger.Information($"Deleted {deletedFiles} file(s) from folder {directory.FullName} ({folderid})?");
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
+          return false;
+        }
+      }
+
+      // we are done.
+      return true;
+    }
+
+    /// <inheritdoc />
     public async Task<bool> FileExistsAsync(FileInfo file, DbTransaction transaction, CancellationToken token)
     {
       return (await GetFileIdAsync(file, transaction, token, false ).ConfigureAwait(false) != -1);
@@ -449,6 +500,5 @@ namespace myoddweb.desktopsearch.service.Persisters
         return (long)value;
       }
     }
-
   }
 }
