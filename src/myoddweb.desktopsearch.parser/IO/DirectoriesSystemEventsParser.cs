@@ -216,8 +216,23 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"Directory: {oldPath} > {path} (Renamed)");
 
       // at this point we know we have a new directory that we can use
-      // and an old directory that we can also use.
-      // so we want to rename the old one with the name of the new one.
+      // and an old directory that we could also use.
+      //
+      // if we do not have the old directory on record then it is not a rename
+      // but rather is is a new one.
+      if (!await _persister.DirectoryExistsAsync(oldDirectory, _currentTransaction, token).ConfigureAwait(false))
+      {
+        // just add the new directly.
+        if (!await _persister.AddOrUpdateDirectoryAsync( directory, _currentTransaction, token).ConfigureAwait(false))
+        {
+          Logger.Error($"Unable to add directory {path} during rename.");
+        }
+        return;
+      }
+
+      // we have the old name on record so we can try and rename it.
+      // if we ever have an issue, it could be because we are trying to rename to
+      // something that already exists.
       if (-1 == await _persister.RenameOrAddDirectoryAsync( directory, oldDirectory, _currentTransaction, token).ConfigureAwait(false))
       {
         Logger.Error($"Unable to rename directory {path} > {oldPath}");

@@ -240,7 +240,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           var deletedFiles = await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false);
 
           // and give a message...
-          _logger.Information($"Deleted {deletedFiles} file(s) from folder {directory.FullName} ({folderid})?");
+          _logger.Verbose($"Deleted {deletedFiles} file(s) from folder {directory.FullName} ({folderid}).");
         }
         catch (Exception ex)
         {

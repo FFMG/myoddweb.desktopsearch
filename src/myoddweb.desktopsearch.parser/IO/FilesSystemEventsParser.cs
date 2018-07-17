@@ -199,7 +199,7 @@ namespace myoddweb.desktopsearch.parser.IO
         // just add the new directly.
         if (!await _persister.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false))
         {
-          Logger.Error( $"Unable to add file {file.FullName} during rename.");
+          Logger.Error( $"Unable to add file {path} during rename.");
         }
         return;
       }
@@ -234,8 +234,23 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"File: {path} > {oldPath} (Renamed)");
 
       // at this point we know we have a new file that we can use
-      // and an old directory that we can also use.
-      // so we want to rename the old one with the name of the new one.
+      // and an old file that we could also use.
+      //
+      // if we do not have the old file on record then it is not a rename
+      // but rather is is a new one.
+      if (!await _persister.FileExistsAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
+      {
+        // just add the new directly.
+        if (!await _persister.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false))
+        {
+          Logger.Error($"Unable to add file {path} during rename.");
+        }
+        return;
+      }
+
+      // we have the old name on record so we can try and rename it.
+      // if we ever have an issue, it could be because we are trying to rename to
+      // something that already exists.
       if (-1 == await _persister.RenameOrAddFileAsync(file, oldFile, _currentTransaction, token).ConfigureAwait(false))
       {
         Logger.Error( $"Unable to rename file {path} > {oldPath}");
