@@ -22,8 +22,8 @@ using System.ServiceProcess;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Configs;
-using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.parser;
+using myoddweb.desktopsearch.processor;
 using myoddweb.desktopsearch.service.Configs;
 using myoddweb.desktopsearch.service.Logger;
 using myoddweb.desktopsearch.service.Persisters;
@@ -45,6 +45,11 @@ namespace myoddweb.desktopsearch.service
     /// This is the parser we are currently working with.
     /// </summary>
     private Parser _parser;
+
+    /// <summary>
+    /// The files/folders processor.
+    /// </summary>
+    private Processor _processor;
 
     /// <summary>
     /// The cancellation source
@@ -97,7 +102,7 @@ namespace myoddweb.desktopsearch.service
     #region ServiceBase overrides
     protected override void OnStart(string[] args)
     {
-      StartParser(true);
+      StartParserAndProcessor();
     }
 
     protected override void OnStop()
@@ -153,9 +158,8 @@ namespace myoddweb.desktopsearch.service
     /// <summary>
     /// Start the process as a service or as a console app.
     /// </summary>
-    /// <param name="isService"></param>
     /// <returns></returns>
-    private bool StartParser( bool isService )
+    private bool StartParserAndProcessor()
     {
       var errorDuringStartup = false;
       try
@@ -168,12 +172,24 @@ namespace myoddweb.desktopsearch.service
         // and the logger
         var logger = CreateLogger(config.Loggers );
 
+        // the persister
+        var persister = new Persister(logger);
+
+        // the directory parser
+        var directory = new Directory(logger);
+
         // create the cancellation source
         _cancellationTokenSource = new CancellationTokenSource();
 
         // and we can now create and start the parser.
-        _parser = new Parser( config, new Persister(logger), logger, new Directory(logger) );
+        _parser = new Parser( config, persister, logger, directory );
+
+        // create the processor
+        _processor = new Processor();
+
+        // we can now start the parser as well as the processor
         _parser.Start(_cancellationTokenSource.Token );
+        _processor.Start(_cancellationTokenSource.Token);
       }
       catch (AggregateException)
       {
@@ -210,9 +226,11 @@ namespace myoddweb.desktopsearch.service
 
       _cancellationTokenSource?.Cancel();
       _parser?.Stop();
+      _processor?.Stop();
 
       _cancellationTokenSource = null;
       _parser = null;
+      _processor = null;
     }
 
     /// <summary>
@@ -382,7 +400,7 @@ namespace myoddweb.desktopsearch.service
     {
       try
       {
-        if (!StartParser(false))
+        if (!StartParserAndProcessor())
         {
           return;
         }
