@@ -185,7 +185,7 @@ namespace myoddweb.desktopsearch.service
         _parser = new Parser( config, persister, logger, directory );
 
         // create the processor
-        _processor = new Processor();
+        _processor = new Processor(config, persister, logger, directory);
 
         // we can now start the parser as well as the processor
         _parser.Start(_cancellationTokenSource.Token );

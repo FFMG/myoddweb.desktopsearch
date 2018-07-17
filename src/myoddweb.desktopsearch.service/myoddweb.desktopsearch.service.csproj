@@ -97,6 +97,10 @@
       <Project>{22e5a150-c0ad-4715-8a42-47c50d74baae}</Project>
       <Name>myoddweb.desktopsearch.parser</Name>
     </ProjectReference>
+    <ProjectReference Include="..\myoddweb.desktopsearch.processor\myoddweb.desktopsearch.processor.csproj">
+      <Project>{82E17E00-292F-452B-BE8D-0411C52A83FB}</Project>
+      <Name>myoddweb.desktopsearch.processor</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

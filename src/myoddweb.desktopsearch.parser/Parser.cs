@@ -80,16 +80,6 @@ namespace myoddweb.desktopsearch.parser
     }
 
     /// <summary>
-    /// Start parsing.
-    /// </summary>
-    public void Start( CancellationToken token )
-    {
-      var thread = new Thread(async () => await WorkAsync(token).ConfigureAwait(false));
-      thread.Start();
-      _logger.Information("Parser started");
-    }
-
-    /// <summary>
     /// Do all the parsing work,
     /// </summary>
     /// <param name="token"></param>
@@ -303,6 +293,16 @@ namespace myoddweb.desktopsearch.parser
 
       // if we are here
       return false;
+    }
+
+    /// <summary>
+    /// Start parsing.
+    /// </summary>
+    public void Start(CancellationToken token)
+    {
+      var thread = new Thread(async () => await WorkAsync(token).ConfigureAwait(false));
+      thread.Start();
+      _logger.Information("Parser started");
     }
 
     /// <summary>
