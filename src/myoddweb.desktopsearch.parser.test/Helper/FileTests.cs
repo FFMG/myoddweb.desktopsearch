@@ -17,7 +17,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
-using File = myoddweb.desktopsearch.parser.Helper.File;
+using File = myoddweb.desktopsearch.helper.File;
 
 namespace myoddweb.desktopsearch.parser.test.Helper
 {

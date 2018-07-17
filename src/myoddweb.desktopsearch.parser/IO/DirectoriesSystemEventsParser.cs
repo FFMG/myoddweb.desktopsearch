@@ -53,13 +53,13 @@ namespace myoddweb.desktopsearch.parser.IO
     private bool CanProcessDirectory(DirectoryInfo directory)
     {
       // it is a directory that we can read?
-      if (!Helper.File.CanReadDirectory(directory))
+      if (!helper.File.CanReadDirectory(directory))
       {
         return false;
       }
 
       // do we monitor this directory?
-      if (Helper.File.IsSubDirectory(IgnorePaths, directory))
+      if (helper.File.IsSubDirectory(IgnorePaths, directory))
       {
         return false;
       }
@@ -113,7 +113,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <inheritdoc />
     protected override async Task ProcessCreatedAsync(string path, CancellationToken token)
     {
-      var directory = Helper.File.DirectoryInfo(path, Logger);
+      var directory = helper.File.DirectoryInfo(path, Logger);
       if (!CanProcessDirectory(directory))
       {
         return;
@@ -129,14 +129,14 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <inheritdoc />
     protected override async Task ProcessDeletedAsync(string path, CancellationToken token)
     {
-      var directory = Helper.File.DirectoryInfo(path, Logger );
+      var directory = helper.File.DirectoryInfo(path, Logger );
       if (null == directory)
       {
         return;
       }
 
       // we cannot call CanProcessDirectory as it is now deleted.
-      if (Helper.File.IsSubDirectory(IgnorePaths, directory ))
+      if (helper.File.IsSubDirectory(IgnorePaths, directory ))
       {
         return;
       }
@@ -155,7 +155,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <inheritdoc />
     protected override Task ProcessChangedAsync(string path, CancellationToken token)
     {
-      var directory = Helper.File.DirectoryInfo(path, Logger);
+      var directory = helper.File.DirectoryInfo(path, Logger);
       if (!CanProcessDirectory(directory))
       {
         return Task.FromResult<object>(null);
@@ -171,8 +171,8 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       // get the new name as well as the one one
       // either of those could be null
-      var directory = Helper.File.DirectoryInfo(path, Logger);
-      var oldDirectory = Helper.File.DirectoryInfo(oldPath, Logger);
+      var directory = helper.File.DirectoryInfo(path, Logger);
+      var oldDirectory = helper.File.DirectoryInfo(oldPath, Logger);
 
       // if both are null then we cannot do anything with it
       if (null == directory && null == oldDirectory)

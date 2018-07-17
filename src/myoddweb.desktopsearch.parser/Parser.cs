@@ -19,9 +19,9 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
-using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 using myoddweb.desktopsearch.parser.IO;
+using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.parser
 {
@@ -90,74 +90,6 @@ namespace myoddweb.desktopsearch.parser
     }
 
     /// <summary>
-    /// Get all the paths we want to ignore.
-    /// </summary>
-    /// <returns></returns>
-    private IReadOnlyCollection<DirectoryInfo> GetIgnorePaths()
-    {
-      var paths = new List<DirectoryInfo>();
-
-      // get all the paths we want to ignore.
-      foreach (var path in _config.Paths.IgnoredPaths)
-      {
-        try
-        {
-          var expendedVariable = Environment.ExpandEnvironmentVariables(path);
-          paths.Add(new DirectoryInfo(expendedVariable ));
-        }
-        catch (Exception e)
-        {
-          _logger.Exception(e);
-        }
-      }
-      return paths;
-    }
-
-    /// <summary>
-    /// Get all the start paths so we can monitor them.
-    /// As well as parse them all.
-    /// </summary>
-    /// <returns></returns>
-    private IReadOnlyCollection<DirectoryInfo> GetStartPaths()
-    {
-      var drvs = DriveInfo.GetDrives();
-      var paths = new List<DirectoryInfo>();
-      foreach (var drv in drvs)
-      {
-        switch (drv.DriveType)
-        {
-          case DriveType.Fixed:
-            if (_config.Paths.ParseFixedDrives)
-            {
-              paths.Add(new DirectoryInfo(drv.Name));
-            }
-            break;
-
-          case DriveType.Removable:
-            if (_config.Paths.ParseRemovableDrives)
-            {
-              paths.Add(new DirectoryInfo(drv.Name));
-            }
-            break;
-        }
-      }
-
-      // then we try and add the folders as given by the user
-      // but if the ones given by the user is a child of the ones 
-      // we already have, then there is no point in adding it.
-      foreach (var path in _config.Paths.Paths )
-      {
-        if (!Helper.File.IsSubDirectory(paths, new DirectoryInfo(path)))
-        {
-          paths.Add( new DirectoryInfo(path));
-        }
-      }
-
-      // This is the list of all the paths we want to parse.
-      return paths;
-    }
-
-    /// <summary>
     /// Do all the parsing work,
     /// </summary>
     /// <param name="token"></param>
@@ -165,8 +97,8 @@ namespace myoddweb.desktopsearch.parser
     private async Task<bool> WorkAsync(CancellationToken token)
     {
       // get all the paths we will be working with.
-      var paths = GetStartPaths();
-      var ignorePaths = GetIgnorePaths();
+      var paths = helper.IO.Paths.GetStartPaths( _config.Paths );
+      var ignorePaths = helper.IO.Paths.GetIgnorePaths(_config.Paths, _logger );
 
       // first we get a full list of files/directories.
       if (!await ParseAllDirectoriesAsync(paths, ignorePaths, token).ConfigureAwait(false))

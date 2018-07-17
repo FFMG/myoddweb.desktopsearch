@@ -5,9 +5,9 @@ using System.Security;
 using System.Security.AccessControl;
 using myoddweb.desktopsearch.interfaces.Logging;
 
-namespace myoddweb.desktopsearch.parser.Helper
+namespace myoddweb.desktopsearch.helper
 {
-  internal class File
+  public class File
   {
     private File()
     {

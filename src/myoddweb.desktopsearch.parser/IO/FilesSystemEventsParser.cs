@@ -58,13 +58,13 @@ namespace myoddweb.desktopsearch.parser.IO
       }
       // it is a file that we can read?
       // we do not check delted files as they are ... deleted.
-      if (!Helper.File.CanReadFile(file))
+      if (!helper.File.CanReadFile(file))
       {
         return false;
       }
 
       // do we monitor this directory?
-      if (Helper.File.IsSubDirectory(IgnorePaths, file.Directory))
+      if (helper.File.IsSubDirectory(IgnorePaths, file.Directory))
       {
         return false;
       }
@@ -118,7 +118,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <inheritdoc />
     protected override async Task ProcessCreatedAsync(string fullPath, CancellationToken token)
     {
-      var file = Helper.File.FileInfo(fullPath, Logger );
+      var file = helper.File.FileInfo(fullPath, Logger );
       if (!CanProcessFile(file))
       {
         return;
@@ -134,14 +134,14 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <inheritdoc />
     protected override async Task ProcessDeletedAsync(string fullPath, CancellationToken token)
     {
-      var file = Helper.File.FileInfo(fullPath, Logger);
+      var file = helper.File.FileInfo(fullPath, Logger);
       if (null == file)
       {
         return;
       }
 
       // we cannot call CanProcessFile as it is now deleted.
-      if (Helper.File.IsSubDirectory(IgnorePaths, file.Directory))
+      if (helper.File.IsSubDirectory(IgnorePaths, file.Directory))
       {
         return;
       }
@@ -160,7 +160,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <inheritdoc />
     protected override Task ProcessChangedAsync(string fullPath, CancellationToken token)
     {
-      var file = Helper.File.FileInfo(fullPath, Logger);
+      var file = helper.File.FileInfo(fullPath, Logger);
       if (!CanProcessFile(file))
       {
         return Task.FromResult<object>(null);
@@ -176,8 +176,8 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       // get the new name as well as the one one
       // either of those could be null
-      var file = Helper.File.FileInfo( path, Logger);
-      var oldFile = Helper.File.FileInfo( oldPath, Logger);
+      var file = helper.File.FileInfo( path, Logger);
+      var oldFile = helper.File.FileInfo( oldPath, Logger);
 
       // if both are null then we cannot do anything with it
       if (null == file && null == oldFile)
@@ -211,7 +211,7 @@ namespace myoddweb.desktopsearch.parser.IO
       {
         // if the old path is not an ignored path
         // then we might be able to delete that file.
-        if (Helper.File.IsSubDirectory(IgnorePaths, oldFile.Directory))
+        if (helper.File.IsSubDirectory(IgnorePaths, oldFile.Directory))
         {
           return;
         }

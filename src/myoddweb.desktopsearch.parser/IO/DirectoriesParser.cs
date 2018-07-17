@@ -77,13 +77,13 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <returns></returns>
     private Task<bool> ParseDirectory(DirectoryInfo directory, CancellationToken token )
     {
-      if (!Helper.File.CanReadDirectory(directory))
+      if (!helper.File.CanReadDirectory(directory))
       {
         _logger.Warning($"Cannot Parse Directory: {directory.FullName}");
         return Task.FromResult(false);
       }
 
-      if (!Helper.File.IsSubDirectory(_ignorePaths, directory))
+      if (!helper.File.IsSubDirectory(_ignorePaths, directory))
       {
         // add this directory to our list.
         Directories.Add(directory);
