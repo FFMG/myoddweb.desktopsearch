@@ -34,16 +34,6 @@ namespace myoddweb.desktopsearch.parser
     private readonly List<Watcher> _watchers = new List<Watcher>();
 
     /// <summary>
-    /// The files event parser.
-    /// </summary>
-    private DirectoriesSystemEventsParser _directoriesEventsParser;
-
-    /// <summary>
-    /// The files event parser.
-    /// </summary>
-    private FilesSystemEventsParser _filesEventsParser;
-
-    /// <summary>
     /// The logger that we will be using to log messages.
     /// </summary>
     private readonly ILogger _logger;
@@ -94,12 +84,6 @@ namespace myoddweb.desktopsearch.parser
       {
         return false;
       }
-
-      // get the ignore path.
-      var ignorePaths = helper.IO.Paths.GetIgnorePaths(_config.Paths, _logger);
-
-      // finally start the file parser.
-      StartSystemEventParsers(ignorePaths, token);
 
       // we then watch for files/folder changes.
       if (!StartWatchers(paths, token))
@@ -209,20 +193,6 @@ namespace myoddweb.desktopsearch.parser
     }
 
     /// <summary>
-    /// Start the file event parser that will process files changes,
-    /// </summary>
-    /// <param name="ignorePaths"></param>
-    /// <param name="token"></param>
-    private void StartSystemEventParsers(IReadOnlyCollection<DirectoryInfo> ignorePaths, CancellationToken token)
-    {
-      _filesEventsParser = new FilesSystemEventsParser(_perister, ignorePaths, _config.Timers.EventsParserMs, _logger);
-      _filesEventsParser.Start(token);
-
-      _directoriesEventsParser = new DirectoriesSystemEventsParser(_perister, ignorePaths, _config.Timers.EventsParserMs, _logger);
-      _directoriesEventsParser.Start(token);
-    }
-
-    /// <summary>
     /// Start to watch all the folders and sub folders.
     /// </summary>
     /// <param name="paths"></param>
@@ -230,10 +200,15 @@ namespace myoddweb.desktopsearch.parser
     /// <returns></returns>
     private bool StartWatchers(IEnumerable<DirectoryInfo> paths, CancellationToken token)
     {
+      // get the ignore path
+      var ignorePaths = helper.IO.Paths.GetIgnorePaths(_config.Paths, _logger);
       foreach (var path in paths)
       {
-        var fileWatcher = new FilesWatcher(path, _logger, _filesEventsParser);
-        var directoryWatcher = new DirectoriesWatcher(path, _logger, _directoriesEventsParser);
+        // the file watcher.
+        var fileWatcher = new FilesWatcher(path, _logger, new FilesSystemEventsParser(_perister, ignorePaths, _config.Timers.EventsParserMs, _logger) );
+
+        // and directory watcher.
+        var directoryWatcher = new DirectoriesWatcher(path, _logger, new DirectoriesSystemEventsParser(_perister, ignorePaths, _config.Timers.EventsParserMs, _logger) );
 
         fileWatcher.Start(token);
         directoryWatcher.Start(token);
@@ -251,25 +226,7 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     public void Stop()
     {
-      StopWatchers();
-      StopSystemEventParsers();
-    }
-
-    /// <summary>
-    /// Stop the file event parser.
-    /// </summary>
-    private void StopSystemEventParsers()
-    {
-      _filesEventsParser?.Stop();
-      _directoriesEventsParser?.Stop();
-    }
-
-    /// <summary>
-    /// Stop the file watcher
-    /// </summary>
-    private void StopWatchers()
-    {
-      // are we watching?
+      // Stop the file watcher
       foreach (var watcher in _watchers)
       {
         watcher?.Stop();

@@ -292,6 +292,8 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     public void Stop()
     {
+      EventsParser?.Stop();
+
       // stop the cleanup timer
       // we don't need it anymore.
       StopTasksCleanupTimer();
@@ -363,6 +365,9 @@ namespace myoddweb.desktopsearch.parser.IO
 
       // register the token cancellation
       _cancellationTokenRegistration = _token.Register(TokenCancellation);
+
+      // start the event parser.
+      EventsParser?.Start( _token );
 
       // start the file watcher
       StartFilesWatcher();
