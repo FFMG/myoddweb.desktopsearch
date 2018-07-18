@@ -233,11 +233,21 @@ namespace myoddweb.desktopsearch.parser
         var totalDirectories = 0;
         foreach (var path in paths)
         {
-          var directoriesParser = new DirectoriesParser(path, _logger, _directory);
-          await directoriesParser.SearchAsync(token).ConfigureAwait(false);
+          // check if we need to break out
+          if (token.IsCancellationRequested)
+          {
+            break;
+          }
+
+          // get all the directories.
+          var directories = await _directory.ParseDirectoriesAsync(path, token).ConfigureAwait(false);
+          if (directories == null)
+          {
+            continue;
+          }
 
           // process all the files.
-          if (!await ParseDirectoryAsync(directoriesParser.Directories, token).ConfigureAwait(false))
+          if (!await ParseDirectoryAsync(directories, token).ConfigureAwait(false))
           {
             stopwatch.Stop();
             _logger.Warning($"Parsing was cancelled (Time Elapsed: {stopwatch.Elapsed:g})");
@@ -245,7 +255,7 @@ namespace myoddweb.desktopsearch.parser
           }
 
           // get the number of directories parsed.
-          totalDirectories += directoriesParser.Directories.Count;
+          totalDirectories += directories.Count;
         }
 
         // stop the watch and log how many items we found.

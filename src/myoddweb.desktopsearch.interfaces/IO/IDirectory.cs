@@ -12,6 +12,8 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,7 +30,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="path">The start path</param>
     /// <param name="token">The cancelation token to cancel the runningtask.</param>
     /// <returns>success or false if the operation was cancelled.</returns>
-    Task<bool> ParseDirectoriesAsync( DirectoryInfo path, CancellationToken token );
+    Task<IReadOnlyList<DirectoryInfo>> ParseDirectoriesAsync( DirectoryInfo path, CancellationToken token );
 
     /// <summary>
     /// Parse all the files in a directory

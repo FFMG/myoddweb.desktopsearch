@@ -176,7 +176,7 @@ namespace myoddweb.desktopsearch.service
         var persister = new Persister(logger);
 
         // the directory parser
-        var directory = new Directory(logger);
+        var directory = new Directory(logger, config.Paths );
 
         // create the cancellation source
         _cancellationTokenSource = new CancellationTokenSource();

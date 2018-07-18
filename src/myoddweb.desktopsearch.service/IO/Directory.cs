@@ -81,14 +81,13 @@ namespace myoddweb.desktopsearch.service.IO
     /// The call back function to check if we are parsing that directory or not.
     /// </summary>
     /// <param name="directory"></param>
-    /// <param name="token"></param>
     /// <returns></returns>
-    private Task<bool> ParseDirectory(DirectoryInfo directory, CancellationToken token)
+    private bool ParseDirectory(DirectoryInfo directory)
     {
       if (!helper.File.CanReadDirectory(directory))
       {
         _logger.Warning($"Cannot Parse Directory: {directory.FullName}");
-        return Task.FromResult(false);
+        return false;
       }
 
       if (!helper.File.IsSubDirectory(IgnorePaths, directory))
@@ -97,27 +96,28 @@ namespace myoddweb.desktopsearch.service.IO
         Directories.Add(directory);
 
         // we will be parsing it and the sub-directories.
-        return Task.FromResult(true);
+        return true;
       }
 
       // we are ignoreing this.
       _logger.Verbose($"Ignoring: {directory.FullName} and sub-directories.");
 
       // we are not parsing this
-      return Task.FromResult(false);
+      return false;
     }
 
     /// <inheritdoc />
-    public async Task<bool> ParseDirectoriesAsync(DirectoryInfo directory, CancellationToken token)
+    public async Task<IReadOnlyList<DirectoryInfo>> ParseDirectoriesAsync(DirectoryInfo directory, CancellationToken token)
     {
-      // reset what we found
+      // reset what we might have found already
       Directories.Clear();
-      if (await _ParseDirectoriesAsync(directory, token))
-      {
-        return true;
-      }
-      Directories.Clear();
-      return false;
+
+      // and rebuild the directory,
+      await BuildDirectoryListAsync(directory, token);
+      
+      // if we cancelled then we return null
+      // this will help to force the callers to bail out as well.
+      return token.IsCancellationRequested ? null : Directories;
     }
 
     /// <summary>
@@ -126,14 +126,14 @@ namespace myoddweb.desktopsearch.service.IO
     /// <param name="directory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> _ParseDirectoriesAsync(DirectoryInfo directory, CancellationToken token)
+    private async Task BuildDirectoryListAsync(DirectoryInfo directory, CancellationToken token)
     {
       try
       {
         // does the caller want us to get in this directory?
-        if (!await ParseDirectory(directory, token).ConfigureAwait(false))
+        if (!ParseDirectory(directory))
         {
-          return true;
+          return;
         }
 
         var dirs = directory.EnumerateDirectories();
@@ -142,14 +142,11 @@ namespace myoddweb.desktopsearch.service.IO
           // did we get a stop request?
           if (token.IsCancellationRequested)
           {
-            return false;
+            return;
           }
 
           // we can parse this directory now.
-          if (!await _ParseDirectoriesAsync(info, token).ConfigureAwait(false))
-          {
-            return false;
-          }
+          await BuildDirectoryListAsync(info, token).ConfigureAwait(false);
         }
       }
       catch (SecurityException)
@@ -168,9 +165,6 @@ namespace myoddweb.desktopsearch.service.IO
       {
         _logger.Error($"Exception while parsing directory: {directory.FullName}. {e.Message}");
       }
-
-      // if we are here, we parsed everything.
-      return !token.IsCancellationRequested;
     }
 
     /// <inheritdoc />
