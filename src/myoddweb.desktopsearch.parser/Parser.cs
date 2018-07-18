@@ -95,18 +95,17 @@ namespace myoddweb.desktopsearch.parser
         return false;
       }
 
-      // we then watch for files/folder changes.
-      if( !StartWatchers(paths, token ))
-      {
-        return false;
-      }
-
       // get the ignore path.
       var ignorePaths = helper.IO.Paths.GetIgnorePaths(_config.Paths, _logger);
 
       // finally start the file parser.
       StartSystemEventParsers(ignorePaths, token);
 
+      // we then watch for files/folder changes.
+      if (!StartWatchers(paths, token))
+      {
+        return false;
+      }
       return true;
     }
 
