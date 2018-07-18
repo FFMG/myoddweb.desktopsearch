@@ -88,10 +88,9 @@ namespace myoddweb.desktopsearch.parser
     {
       // get all the paths we will be working with.
       var paths = helper.IO.Paths.GetStartPaths( _config.Paths );
-      var ignorePaths = helper.IO.Paths.GetIgnorePaths(_config.Paths, _logger );
 
       // first we get a full list of files/directories.
-      if (!await ParseAllDirectoriesAsync(paths, ignorePaths, token).ConfigureAwait(false))
+      if (!await ParseAllDirectoriesAsync(paths, token).ConfigureAwait(false))
       {
         return false;
       }
@@ -101,6 +100,9 @@ namespace myoddweb.desktopsearch.parser
       {
         return false;
       }
+
+      // get the ignore path.
+      var ignorePaths = helper.IO.Paths.GetIgnorePaths(_config.Paths, _logger);
 
       // finally start the file parser.
       StartSystemEventParsers(ignorePaths, token);
@@ -217,12 +219,10 @@ namespace myoddweb.desktopsearch.parser
     /// Parse all the directories.
     /// </summary>
     /// <param name="paths"></param>
-    /// <param name="ignorePaths"></param>
     /// <param name="token"></param>
     /// <returns></returns>
     private async Task<bool> ParseAllDirectoriesAsync(
       IEnumerable<DirectoryInfo> paths,
-      IReadOnlyCollection<DirectoryInfo> ignorePaths, 
       CancellationToken token)
     {
       try
@@ -233,7 +233,7 @@ namespace myoddweb.desktopsearch.parser
         var totalDirectories = 0;
         foreach (var path in paths)
         {
-          var directoriesParser = new DirectoriesParser(path, ignorePaths, _logger, _directory);
+          var directoriesParser = new DirectoriesParser(path, _logger, _directory);
           await directoriesParser.SearchAsync(token).ConfigureAwait(false);
 
           // process all the files.

@@ -12,15 +12,12 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.IO
 {
-  public delegate Task<bool> CanParseDirectoryAsync(DirectoryInfo directory, CancellationToken token );
-
   public delegate Task ParseFileAsync(FileSystemInfo file, CancellationToken token);
 
   public interface IDirectory
@@ -29,10 +26,9 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// Parse a directory and look for sub folders.
     /// </summary>
     /// <param name="path">The start path</param>
-    /// <param name="parseSubDirectory">Called when a directory is found, return true if we want to parse it further,</param>
     /// <param name="token">The cancelation token to cancel the runningtask.</param>
     /// <returns>success or false if the operation was cancelled.</returns>
-    Task<bool> ParseDirectoriesAsync( DirectoryInfo path, CanParseDirectoryAsync parseSubDirectory, CancellationToken token );
+    Task<bool> ParseDirectoriesAsync( DirectoryInfo path, CancellationToken token );
 
     /// <summary>
     /// Parse all the files in a directory

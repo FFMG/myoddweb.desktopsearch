@@ -18,8 +18,9 @@ using System.IO;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.IO;
-using myoddweb.desktopsearch.interfaces.Logging;
+using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.service.IO
 {
@@ -30,18 +31,107 @@ namespace myoddweb.desktopsearch.service.IO
     /// </summary>
     private readonly ILogger _logger;
 
-    public Directory(ILogger logger)
+    /// <summary>
+    /// The paths information, (ignored paths and so on).
+    /// </summary>
+    private readonly IPaths _paths;
+
+    /// <summary>
+    /// The current ignored paths
+    /// </summary>
+    private IReadOnlyCollection<DirectoryInfo> _ignorePaths;
+
+    /// <summary>
+    /// The list of directories we found.
+    /// </summary>
+    public List<DirectoryInfo> Directories { get; } = new List<DirectoryInfo>();
+
+    /// <summary>
+    /// Getter function to get the ignore paths.
+    /// </summary>
+    private IEnumerable<DirectoryInfo> IgnorePaths
     {
+      get
+      {
+        if (null != _ignorePaths)
+        {
+          return _ignorePaths;
+        }
+
+        _ignorePaths = helper.IO.Paths.GetIgnorePaths(_paths, _logger);
+        return _ignorePaths;
+      }
+    }
+
+    /// <summary>
+    /// Constructor.
+    /// </summary>
+    /// <param name="logger"></param>
+    /// <param name="paths"></param>
+    public Directory(ILogger logger, IPaths paths )
+    {
+      // The logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      // The path
+      _paths = paths ?? throw new ArgumentNullException(nameof(paths));
+    }
+
+    /// <summary>
+    /// The call back function to check if we are parsing that directory or not.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private Task<bool> ParseDirectory(DirectoryInfo directory, CancellationToken token)
+    {
+      if (!helper.File.CanReadDirectory(directory))
+      {
+        _logger.Warning($"Cannot Parse Directory: {directory.FullName}");
+        return Task.FromResult(false);
+      }
+
+      if (!helper.File.IsSubDirectory(IgnorePaths, directory))
+      {
+        // add this directory to our list.
+        Directories.Add(directory);
+
+        // we will be parsing it and the sub-directories.
+        return Task.FromResult(true);
+      }
+
+      // we are ignoreing this.
+      _logger.Verbose($"Ignoring: {directory.FullName} and sub-directories.");
+
+      // we are not parsing this
+      return Task.FromResult(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> ParseDirectoriesAsync(DirectoryInfo directory, CanParseDirectoryAsync parseSubDirectory, CancellationToken token)
+    public async Task<bool> ParseDirectoriesAsync(DirectoryInfo directory, CancellationToken token)
+    {
+      // reset what we found
+      Directories.Clear();
+      if (await _ParseDirectoriesAsync(directory, token))
+      {
+        return true;
+      }
+      Directories.Clear();
+      return false;
+    }
+
+    /// <summary>
+    /// Recuring parse of the directories.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> _ParseDirectoriesAsync(DirectoryInfo directory, CancellationToken token)
     {
       try
       {
         // does the caller want us to get in this directory?
-        if (!await parseSubDirectory(directory, token).ConfigureAwait(false))
+        if (!await ParseDirectory(directory, token).ConfigureAwait(false))
         {
           return true;
         }
@@ -56,7 +146,7 @@ namespace myoddweb.desktopsearch.service.IO
           }
 
           // we can parse this directory now.
-          if (!await ParseDirectoriesAsync(info, parseSubDirectory, token).ConfigureAwait(false))
+          if (!await _ParseDirectoriesAsync(info, token).ConfigureAwait(false))
           {
             return false;
           }
@@ -80,7 +170,7 @@ namespace myoddweb.desktopsearch.service.IO
       }
 
       // if we are here, we parsed everything.
-      return true;
+      return !token.IsCancellationRequested;
     }
 
     /// <inheritdoc />
