@@ -171,7 +171,7 @@ namespace myoddweb.desktopsearch.parser.IO
         StopSystemEventsTimer();
 
         // clean up the tasks.
-        List<FileSystemEventArgs> events = null;
+        List<FileSystemEventArgs> events;
         lock (_lock)
         {
           // the events.

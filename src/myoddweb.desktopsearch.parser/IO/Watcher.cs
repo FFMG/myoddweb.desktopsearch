@@ -35,16 +35,28 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     private const int TaskTimerTimeOutInMs = 30000;
 
+    #region Attributes
+    /// <summary>
+    /// The logger that we will be using to log messages.
+    /// </summary>
+    protected ILogger Logger { get; }
+
+    /// <summary>
+    /// The folder we are watching
+    /// </summary>
+    protected DirectoryInfo Folder { get; }
+
+    /// <summary>
+    /// The system event parser
+    /// </summary>
+    protected SystemEventsParser EventsParser { get; }
+    #endregion
+
     #region Member variables
     /// <summary>
     /// The type of folders we are watching
     /// </summary>
     private readonly WatcherTypes _watcherTypes;
-
-    /// <summary>
-    /// The logger that we will be using to log messages.
-    /// </summary>
-    protected ILogger Logger { get; }
 
     /// <summary>
     /// The actual file watcher.
@@ -55,11 +67,6 @@ namespace myoddweb.desktopsearch.parser.IO
     /// The actual file watcher.
     /// </summary>
     private FileSystemWatcher _directoryWatcher;
-
-    /// <summary>
-    /// The folder we are watching
-    /// </summary>
-    protected DirectoryInfo Folder { get; }
 
     /// <summary>
     /// All the tasks currently running
@@ -121,7 +128,8 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="watcherTypes"></param>
     /// <param name="folder"></param>
     /// <param name="logger"></param>
-    protected Watcher ( WatcherTypes watcherTypes, DirectoryInfo folder, ILogger logger)
+    /// <param name="parser"></param>
+    protected Watcher ( WatcherTypes watcherTypes, DirectoryInfo folder, ILogger logger, SystemEventsParser parser )
     {
       // save the type of folders we are watching.
       _watcherTypes = watcherTypes;
@@ -131,9 +139,15 @@ namespace myoddweb.desktopsearch.parser.IO
 
       // save the logger.
       Logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      // save the event parser.
+      EventsParser = parser ?? throw new ArgumentNullException(nameof(parser));
     }
 
     #region Task Cleanup Timer
+    /// <summary>
+    /// Start the cleanup timer
+    /// </summary>
     private void StartTasksCleanupTimer()
     {
       if (null != _tasksTimer)
@@ -419,8 +433,14 @@ namespace myoddweb.desktopsearch.parser.IO
       OnCancelled();
     }
 
+    /// <summary>
+    /// Called when we are cancelling the worker, (it has not being cancelled).
+    /// </summary>
     protected abstract void OnCancelling();
 
+    /// <summary>
+    /// Called when we have cancelled the work.
+    /// </summary>
     protected abstract void OnCancelled();
   }
 }

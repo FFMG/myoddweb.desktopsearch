@@ -13,25 +13,62 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.parser.IO
 {
   internal class DirectoriesWatcher : Watcher
   {
-    public DirectoriesWatcher(DirectoryInfo folder, ILogger logger) : 
-      base( WatcherTypes.Directories, folder, logger)
+    public DirectoriesWatcher(DirectoryInfo folder, ILogger logger, SystemEventsParser parser) :
+      base( WatcherTypes.Directories, folder, logger, parser)
     {
+      ErrorAsync += OnFolderErrorAsync;
+      ChangedAsync += OnDirectoryTouchedAsync;
+      RenamedAsync += OnDirectoryTouchedAsync;
+      CreatedAsync += OnDirectoryTouchedAsync;
+      DeletedAsync += OnDirectoryTouchedAsync;
     }
 
+    #region Directories Events
+    /// <summary>
+    /// When the file watcher errors out.
+    /// </summary>
+    /// <param name="e"></param>
+    /// <param name="token"></param>
+    private Task OnFolderErrorAsync(ErrorEventArgs e, CancellationToken token)
+    {
+      // the watcher raised an error
+      Logger.Error($"File watcher error: {e.GetException().Message}");
+      return Task.FromResult<object>(null);
+    }
+
+    /// <summary>
+    /// When a directory has been changed.
+    /// </summary>
+    /// <param name="e"></param>
+    /// <param name="token"></param>
+    private Task OnDirectoryTouchedAsync(FileSystemEventArgs e, CancellationToken token)
+    {
+      // It is posible that the event parser has not started yet.
+      EventsParser?.Add(e);
+      return Task.FromResult<object>(null);
+    }
+    #endregion
+
+    #region Cancel
+    /// <inheritdoc/>
     protected override void OnCancelling()
     {
       Logger.Verbose($"Stopping Directories watcher : {Folder}");
     }
 
+    /// <inheritdoc/>
     protected override void OnCancelled()
     {
       Logger.Verbose($"Done Directories watcher : {Folder}");
     }
+    #endregion
   }
 }

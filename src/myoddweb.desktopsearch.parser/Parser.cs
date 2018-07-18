@@ -111,119 +111,12 @@ namespace myoddweb.desktopsearch.parser
     }
 
     /// <summary>
-    /// Start the file event parser that will process files changes,
-    /// </summary>
-    /// <param name="ignorePaths"></param>
-    /// <param name="token"></param>
-    private void StartSystemEventParsers( IReadOnlyCollection<DirectoryInfo> ignorePaths, CancellationToken token )
-    {
-      _filesEventsParser = new FilesSystemEventsParser( _perister, ignorePaths, _config.Timers.EventsParserMs, _logger);
-      _filesEventsParser.Start( token );
-
-      _directoriesEventsParser = new DirectoriesSystemEventsParser( _perister, ignorePaths, _config.Timers.EventsParserMs, _logger);
-      _directoriesEventsParser.Start(token);
-    }
-
-    /// <summary>
-    /// Stop the file event parser.
-    /// </summary>
-    private void StopSystemEventParsers()
-    {
-      _filesEventsParser?.Stop();
-      _directoriesEventsParser?.Stop();
-    }
-
-    /// <summary>
-    /// Stop the file watcher
-    /// </summary>
-    private void StopWatchers()
-    {
-      // are we watching?
-      foreach (var watcher in _watchers)
-      {
-        watcher?.Stop();
-      }
-      _watchers.Clear();
-    }
-
-    /// <summary>
-    /// Start to watch all the folders and sub folders.
-    /// </summary>
-    /// <param name="paths"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private bool StartWatchers( IEnumerable<DirectoryInfo> paths, CancellationToken token )
-    {
-      foreach (var path in paths)
-      {
-        var fileWatcher = new FilesWatcher(path, _logger);
-        fileWatcher.ErrorAsync += OnFolderErrorAsync;
-        fileWatcher.ChangedAsync += OnFileTouchedAsync;
-        fileWatcher.RenamedAsync += OnFileTouchedAsync;
-        fileWatcher.CreatedAsync += OnFileTouchedAsync;
-        fileWatcher.DeletedAsync += OnFileTouchedAsync;
-
-        var directoryWatcher = new DirectoriesWatcher(path, _logger);
-        directoryWatcher.ErrorAsync += OnFolderErrorAsync;
-        directoryWatcher.ChangedAsync += OnDirectoryTouchedAsync;
-        directoryWatcher.RenamedAsync += OnDirectoryTouchedAsync;
-        directoryWatcher.CreatedAsync += OnDirectoryTouchedAsync;
-        directoryWatcher.DeletedAsync += OnDirectoryTouchedAsync;
-
-        fileWatcher.Start(token);
-        directoryWatcher.Start(token);
-
-        _watchers.Add(fileWatcher);
-        _watchers.Add(directoryWatcher);
-      }
-      return true;
-    }
-
-    /// <summary>
-    /// When the file watcher errors out.
-    /// </summary>
-    /// <param name="e"></param>
-    /// <param name="token"></param>
-    private Task OnFolderErrorAsync( ErrorEventArgs e, CancellationToken token)
-    {
-      // the watcher raised an error
-      _logger.Error( $"File watcher error: {e.GetException().Message}");
-      return Task.FromResult<object>(null);
-    }
-
-    /// <summary>
-    /// When a file was changed
-    /// </summary>
-    /// <param name="e"></param>
-    /// <param name="token"></param>
-    private Task OnFileTouchedAsync(FileSystemEventArgs e, CancellationToken token)
-    {
-      // It is posible that the event parser has not started yet.
-      _filesEventsParser?.Add(e);
-      return Task.FromResult<object>(null);
-    }
-
-    /// <summary>
-    /// When a directory has been changed.
-    /// </summary>
-    /// <param name="e"></param>
-    /// <param name="token"></param>
-    private Task OnDirectoryTouchedAsync(FileSystemEventArgs e, CancellationToken token )
-    {
-      // It is posible that the event parser has not started yet.
-      _directoriesEventsParser?.Add(e);
-      return Task.FromResult<object>(null);
-    }
-
-    /// <summary>
     /// Parse all the directories.
     /// </summary>
     /// <param name="paths"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ParseAllDirectoriesAsync(
-      IEnumerable<DirectoryInfo> paths,
-      CancellationToken token)
+    private async Task<bool> ParseAllDirectoriesAsync( IEnumerable<DirectoryInfo> paths, CancellationToken token)
     {
       try
       {
@@ -247,7 +140,7 @@ namespace myoddweb.desktopsearch.parser
           }
 
           // process all the files.
-          if (!await ParseDirectoryAsync(directories, token).ConfigureAwait(false))
+          if (!await PersistDirectories(directories, token).ConfigureAwait(false))
           {
             stopwatch.Stop();
             _logger.Warning($"Parsing was cancelled (Time Elapsed: {stopwatch.Elapsed:g})");
@@ -276,7 +169,7 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="directories"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ParseDirectoryAsync(IReadOnlyList<DirectoryInfo> directories, CancellationToken token)
+    private async Task<bool> PersistDirectories(IReadOnlyList<DirectoryInfo> directories, CancellationToken token)
     {
       // get a transaction
       var transaction = _perister.BeginTransaction();
@@ -305,6 +198,7 @@ namespace myoddweb.desktopsearch.parser
       return false;
     }
 
+    #region Start Parsing
     /// <summary>
     /// Start parsing.
     /// </summary>
@@ -316,6 +210,44 @@ namespace myoddweb.desktopsearch.parser
     }
 
     /// <summary>
+    /// Start the file event parser that will process files changes,
+    /// </summary>
+    /// <param name="ignorePaths"></param>
+    /// <param name="token"></param>
+    private void StartSystemEventParsers(IReadOnlyCollection<DirectoryInfo> ignorePaths, CancellationToken token)
+    {
+      _filesEventsParser = new FilesSystemEventsParser(_perister, ignorePaths, _config.Timers.EventsParserMs, _logger);
+      _filesEventsParser.Start(token);
+
+      _directoriesEventsParser = new DirectoriesSystemEventsParser(_perister, ignorePaths, _config.Timers.EventsParserMs, _logger);
+      _directoriesEventsParser.Start(token);
+    }
+
+    /// <summary>
+    /// Start to watch all the folders and sub folders.
+    /// </summary>
+    /// <param name="paths"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private bool StartWatchers(IEnumerable<DirectoryInfo> paths, CancellationToken token)
+    {
+      foreach (var path in paths)
+      {
+        var fileWatcher = new FilesWatcher(path, _logger, _filesEventsParser);
+        var directoryWatcher = new DirectoriesWatcher(path, _logger, _directoriesEventsParser);
+
+        fileWatcher.Start(token);
+        directoryWatcher.Start(token);
+
+        _watchers.Add(fileWatcher);
+        _watchers.Add(directoryWatcher);
+      }
+      return true;
+    }
+    #endregion
+
+    #region Stop Parsing
+    /// <summary>
     /// Stop parsing
     /// </summary>
     public void Stop()
@@ -323,5 +255,28 @@ namespace myoddweb.desktopsearch.parser
       StopWatchers();
       StopSystemEventParsers();
     }
+
+    /// <summary>
+    /// Stop the file event parser.
+    /// </summary>
+    private void StopSystemEventParsers()
+    {
+      _filesEventsParser?.Stop();
+      _directoriesEventsParser?.Stop();
+    }
+
+    /// <summary>
+    /// Stop the file watcher
+    /// </summary>
+    private void StopWatchers()
+    {
+      // are we watching?
+      foreach (var watcher in _watchers)
+      {
+        watcher?.Stop();
+      }
+      _watchers.Clear();
+    }
+    #endregion
   }
 }
