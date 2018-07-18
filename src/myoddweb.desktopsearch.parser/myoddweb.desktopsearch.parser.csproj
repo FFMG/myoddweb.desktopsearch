@@ -41,7 +41,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="IO\DirectoriesParser.cs" />
     <Compile Include="IO\DirectoriesSystemEventsParser.cs" />
     <Compile Include="IO\FilesSystemEventsParser.cs" />
     <Compile Include="IO\SystemEventsParser.cs" />
