@@ -110,25 +110,25 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessCreatedAsync(string fullPath, CancellationToken token)
+    protected override async Task ProcessCreatedAsync(IFileSystemEvent e, CancellationToken token)
     {
-      var file = helper.File.FileInfo(fullPath, Logger );
+      var file = e.File;
       if (!CanProcessFile(file))
       {
         return;
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {fullPath} (Created)");
+      Logger.Verbose($"File: {e.FullName} (Created)");
 
       // just add the file.
       await _persister.AddOrUpdateFileAsync( file, _currentTransaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessDeletedAsync(string fullPath, CancellationToken token)
+    protected override async Task ProcessDeletedAsync(IFileSystemEvent e, CancellationToken token)
     {
-      var file = helper.File.FileInfo(fullPath, Logger);
+      var file = e.File;
       if (null == file)
       {
         return;
@@ -141,7 +141,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {fullPath} (Deleted)");
+      Logger.Verbose($"File: {e.FullName} (Deleted)");
 
       // do we have the file on record?
       if (await _persister.FileExistsAsync(file, _currentTransaction, token).ConfigureAwait(false))
@@ -152,31 +152,31 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <inheritdoc />
-    protected override Task ProcessChangedAsync(string fullPath, CancellationToken token)
+    protected override Task ProcessChangedAsync(IFileSystemEvent e, CancellationToken token)
     {
-      var file = helper.File.FileInfo(fullPath, Logger);
+      var file = e.File;
       if (!CanProcessFile(file))
       {
         return Task.CompletedTask;
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {fullPath} (Changed)");
+      Logger.Verbose($"File: {e.FullName} (Changed)");
       return Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessRenamedAsync(string path, string oldPath, CancellationToken token)
+    protected override async Task ProcessRenamedAsync(IFileSystemEvent e, CancellationToken token)
     {
       // get the new name as well as the one one
       // either of those could be null
-      var file = helper.File.FileInfo( path, Logger);
-      var oldFile = helper.File.FileInfo( oldPath, Logger);
+      var file = e.File;
+      var oldFile = e.OldFile;
 
       // if both are null then we cannot do anything with it
       if (null == file && null == oldFile)
       {
-        Logger.Error($"I was unable to use the renamed files, (old:{oldPath} / new:{path})");
+        Logger.Error($"I was unable to use the renamed files, (old:{e.OldFullName} / new:{e.FullName})");
         return;
       }
 
@@ -193,7 +193,7 @@ namespace myoddweb.desktopsearch.parser.IO
         // just add the new directly.
         if (!await _persister.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false))
         {
-          Logger.Error( $"Unable to add file {path} during rename.");
+          Logger.Error( $"Unable to add file {e.FullName} during rename.");
         }
         return;
       }
@@ -219,13 +219,13 @@ namespace myoddweb.desktopsearch.parser.IO
         // delete the old folder only, in case it did exist.
         if (!await _persister.DeleteFileAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
         {
-          Logger.Error( $"Unable to remove old file {oldPath} durring rename");
+          Logger.Error( $"Unable to remove old file {e.OldFullName} durring rename");
         }
         return;
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {path} > {oldPath} (Renamed)");
+      Logger.Verbose($"File: {e.OldFullName} > {e.FullName} (Renamed)");
 
       // at this point we know we have a new file that we can use
       // and an old file that we could also use.
@@ -237,7 +237,7 @@ namespace myoddweb.desktopsearch.parser.IO
         // just add the new directly.
         if (!await _persister.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false))
         {
-          Logger.Error($"Unable to add file {path} during rename.");
+          Logger.Error($"Unable to add file {e.FullName} during rename.");
         }
         return;
       }
@@ -247,7 +247,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // something that already exists.
       if (-1 == await _persister.RenameOrAddFileAsync(file, oldFile, _currentTransaction, token).ConfigureAwait(false))
       {
-        Logger.Error( $"Unable to rename file {path} > {oldPath}");
+        Logger.Error( $"Unable to rename file {e.OldFullName} > {e.FullName}");
       }
     }
     #endregion

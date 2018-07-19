@@ -40,7 +40,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The list of current/unprocessed events.
     /// </summary>
-    private readonly List<FileSystemEventArgs> _currentEvents = new List<FileSystemEventArgs>();
+    private readonly List<IFileSystemEvent> _currentEvents = new List<IFileSystemEvent>();
 
     /// <summary>
     /// The cancellation source
@@ -120,7 +120,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// Rebuild all the system events and remove duplicates.
     /// </summary>
-    public List<FileSystemEventArgs> RebuildSystemEventsInLock()
+    public List<IFileSystemEvent> RebuildSystemEventsInLock()
     {
       if (!_currentEvents.Any() )
       {
@@ -128,22 +128,22 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // the re-created list.
-      var rebuiltEvents = new List<FileSystemEventArgs>();
+      var rebuiltEvents = new List<IFileSystemEvent>();
 
       foreach (var currentEvent in _currentEvents)
       {
         // remove the duplicate
-        if (IsChanged(currentEvent.ChangeType))
+        if (currentEvent.Is(WatcherChangeTypes.Changed))
         {
           // we will add this event below
           // so we can remove all the previous 'changed' events.
           // that way, the last one in the list will be the most 'up-to-date' ones.
-          rebuiltEvents.RemoveAll(e => e.ChangeType == currentEvent.ChangeType && e.FullPath == currentEvent.FullPath);
+          rebuiltEvents.RemoveAll(e => e.ChangeType == currentEvent.ChangeType && e.FullName == currentEvent.FullName);
 
           // we know that this event is changed
           // but if we have some 'created' events for the same file
           // then there is no need to add the changed events.
-          if (rebuiltEvents.Any(e => IsCreated(e.ChangeType) && e.FullPath == currentEvent.FullPath))
+          if (rebuiltEvents.Any(e => e.Is( WatcherChangeTypes.Created ) && e.FullName == currentEvent.FullName))
           {
             // Windows sometime flags an item as changed _and_ created.
             // we just need to worry about the created one.
@@ -172,7 +172,7 @@ namespace myoddweb.desktopsearch.parser.IO
         StopSystemEventsTimer();
 
         // clean up the tasks.
-        List<FileSystemEventArgs> events;
+        List<IFileSystemEvent> events;
         lock (_lock)
         {
           // the events.
@@ -229,60 +229,13 @@ namespace myoddweb.desktopsearch.parser.IO
     }
     #endregion
 
-    #region Watcher Change Types
-    private static bool Is(WatcherChangeTypes types, WatcherChangeTypes type)
-    {
-      return (types & type) == type;
-    }
-
-    /// <summary>
-    /// Check if the change type was created.
-    /// </summary>
-    /// <param name="types"></param>
-    /// <returns></returns>
-    protected static bool IsCreated(WatcherChangeTypes types)
-    {
-      return Is(types, WatcherChangeTypes.Created);
-    }
-
-    /// <summary>
-    /// Check if the change type was deleted.
-    /// </summary>
-    /// <param name="types"></param>
-    /// <returns></returns>
-    protected static bool IsDeleted(WatcherChangeTypes types)
-    {
-      return Is( types, WatcherChangeTypes.Deleted);
-    }
-
-    /// <summary>
-    /// Check if the change type was changed.
-    /// </summary>
-    /// <param name="types"></param>
-    /// <returns></returns>
-    protected static bool IsChanged(WatcherChangeTypes types)
-    {
-      return Is(types, WatcherChangeTypes.Changed);
-    }
-
-    /// <summary>
-    /// Check if the change type was renamed.
-    /// </summary>
-    /// <param name="types"></param>
-    /// <returns></returns>
-    protected static bool IsRenamed(WatcherChangeTypes types)
-    {
-      return Is(types, WatcherChangeTypes.Renamed);
-    }
-    #endregion
-
     #region Process events
     /// <summary>
     /// This function is called when processing a list of file events.
     /// It should be non-blocking.
     /// </summary>
     /// <param name="events"></param>
-    private async Task ProcessEventsAsync(IEnumerable<FileSystemEventArgs> events)
+    private async Task ProcessEventsAsync(IEnumerable<IFileSystemEvent> events)
     {
       // assume errors...
       var hadErrors = true;
@@ -317,20 +270,20 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessCreatedAsync(FileSystemEventArgs e)
+    private async Task TryProcessCreatedAsync(IFileSystemEvent e)
     {
       try
       {
-        if (!IsCreated(e.ChangeType))
+        if (!e.Is( WatcherChangeTypes.Created))
         {
           return;
         }
 
-        await ProcessCreatedAsync(e.FullPath, _token).ConfigureAwait(false);
+        await ProcessCreatedAsync(e, _token).ConfigureAwait(false);
       }
       catch
       {
-        Logger.Error($"There was an error trying to process created game event {e.FullPath}!");
+        Logger.Error($"There was an error trying to process created game event {e.FullName}!");
 
         // the exception is logged
         throw;
@@ -342,20 +295,20 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessDeletedAsync(FileSystemEventArgs e)
+    private async Task TryProcessDeletedAsync(IFileSystemEvent e)
     {
       try
       {
-        if (!IsDeleted(e.ChangeType))
+        if (!e.Is(WatcherChangeTypes.Deleted))
         {
           return;
         }
 
-        await ProcessDeletedAsync(e.FullPath, _token).ConfigureAwait(false);
+        await ProcessDeletedAsync(e, _token).ConfigureAwait(false);
       }
       catch
       {
-        Logger.Error($"There was an error trying to process deleted game event {e.FullPath}!");
+        Logger.Error($"There was an error trying to process deleted game event {e.FullName}!");
 
         // the exception is logged
         throw;
@@ -367,20 +320,20 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessChangedAsync(FileSystemEventArgs e)
+    private async Task TryProcessChangedAsync(IFileSystemEvent e)
     {
       try
       {
-        if (!IsChanged(e.ChangeType))
+        if (!e.Is(WatcherChangeTypes.Changed))
         {
           return;
         }
 
-        await ProcessChangedAsync(e.FullPath, _token).ConfigureAwait(false);
+        await ProcessChangedAsync(e, _token).ConfigureAwait(false);
       }
       catch
       {
-        Logger.Error($"There was an error trying to process changed game event {e.FullPath}!");
+        Logger.Error($"There was an error trying to process changed game event {e.FullName}!");
 
         // the exception is logged
         throw;
@@ -392,68 +345,21 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessRenamedAsync(FileSystemEventArgs e)
+    private async Task TryProcessRenamedAsync(IFileSystemEvent e)
     {
       try
       {
-        if (!IsRenamed(e.ChangeType))
+        if (!e.Is(WatcherChangeTypes.Renamed))
         {
           return;
         }
 
-        if (e is RenamedEventArgs renameEvent)
-        {
-          try
-          {
-            // there are some cases where we get a rename event with no old name
-            // so we cannot really delete the old one
-            // so we will just fire as if it was a new one
-            // @see https://referencesource.microsoft.com/#system/services/io/system/io/FileSystemWatcher.cs
-            // with an explaination of what could have happened.
-            if (renameEvent.OldName == null)
-            {
-              Logger.Warning($"Received a 'rename' event without an old file name, so processing event as a new one, {e.FullPath}");
-              await ProcessCreatedAsync(e.FullPath, _token).ConfigureAwait(false);
-            }
-            else if (renameEvent.Name == null)
-            {
-              // if we got an old name without a new name
-              // then we cannot really rename anything at all.
-              // all we can do is remove the old one.
-              Logger.Warning($"Received a 'rename' event without a new file name, so processing event as delete old one, {renameEvent.OldFullPath}");
-              await ProcessDeletedAsync(renameEvent.OldFullPath, _token).ConfigureAwait(false);
-            }
-            else
-            {
-              // we have both a new and old name...
-              await ProcessRenamedAsync(renameEvent.FullPath, renameEvent.OldFullPath, _token).ConfigureAwait(false);
-            }
-          }
-          catch
-          {
-            Logger.Error($"There was an error trying to rename {renameEvent.OldFullPath} to {renameEvent.FullPath}!");
-            throw;
-          }
-        }
-        else
-        {
-          try
-          {
-            Logger.Warning($"A file, ({e.FullPath}), was marked as renamed, but the event was not.");
-            await ProcessChangedAsync(e.FullPath, _token).ConfigureAwait(false);
-          }
-          catch
-          {
-            Logger.Error($"There was an error trying to process rename game event {e.FullPath}!");
-            throw;
-          }
-        }
+        // we have both a new and old name...
+        await ProcessRenamedAsync(e, _token).ConfigureAwait(false);
       }
       catch
       {
-        Logger.Error($"There was an error trying to process renamed game event {e.FullPath}!");
-
-        // the exception is logged
+        Logger.Error($"There was an error trying to rename {e.OldFullName} to {e.FullName}!");
         throw;
       }
     }
@@ -463,7 +369,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task ProcessEventAsync(FileSystemEventArgs e)
+    private async Task ProcessEventAsync(IFileSystemEvent e)
     {
       // try process as created.
       await TryProcessCreatedAsync(e).ConfigureAwait(false);
@@ -555,7 +461,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// Add a file event to the list.
     /// </summary>
     /// <param name="fileSystemEventArgs"></param>
-    public void Add(FileSystemEventArgs fileSystemEventArgs)
+    public void Add(IFileSystemEvent fileSystemEventArgs)
     {
       lock (_lock)
       {
@@ -585,31 +491,30 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// Process a created event
     /// </summary>
-    /// <param name="fullPath"></param>
+    /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessCreatedAsync(string fullPath, CancellationToken token);
+    protected abstract Task ProcessCreatedAsync(IFileSystemEvent fileSystemEvent, CancellationToken token);
 
     /// <summary>
     /// Process a deleted event
     /// </summary>
-    /// <param name="fullPath"></param>
+    /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessDeletedAsync(string fullPath, CancellationToken token);
+    protected abstract Task ProcessDeletedAsync(IFileSystemEvent fileSystemEvent, CancellationToken token);
 
     /// <summary>
     /// Process a created event
     /// </summary>
-    /// <param name="fullPath"></param>
+    /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessChangedAsync(string fullPath, CancellationToken token);
+    protected abstract Task ProcessChangedAsync(IFileSystemEvent fileSystemEvent, CancellationToken token);
 
     /// <summary>
     /// Process a renamed event
     /// </summary>
-    /// <param name="fullPath"></param>
-    /// <param name="oldFullPath"></param>
+    /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessRenamedAsync(string fullPath, string oldFullPath, CancellationToken token );
+    protected abstract Task ProcessRenamedAsync(IFileSystemEvent fileSystemEvent, CancellationToken token );
     #endregion
   }
 }

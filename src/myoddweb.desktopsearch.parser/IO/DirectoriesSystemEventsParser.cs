@@ -105,25 +105,25 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessCreatedAsync(string path, CancellationToken token)
+    protected override async Task ProcessCreatedAsync(IFileSystemEvent e, CancellationToken token)
     {
-      var directory = helper.File.DirectoryInfo(path, Logger);
+      var directory = e.Directory;
       if (!CanProcessDirectory(directory))
       {
         return;
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"Directory: {path} (Created)");
+      Logger.Verbose($"Directory: {e.FullName} (Created)");
 
       // just add the directory.
       await _persister.AddOrUpdateDirectoryAsync(directory, _currentTransaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessDeletedAsync(string path, CancellationToken token)
+    protected override async Task ProcessDeletedAsync(IFileSystemEvent e, CancellationToken token)
     {
-      var directory = helper.File.DirectoryInfo(path, Logger );
+      var directory = e.Directory;
       if (null == directory)
       {
         return;
@@ -136,7 +136,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {path} (Deleted)");
+      Logger.Verbose($"File: {e.FullName} (Deleted)");
 
       // do we have the directory on record?
       if (await _persister.DirectoryExistsAsync(directory, _currentTransaction, token).ConfigureAwait(false))
@@ -147,31 +147,31 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <inheritdoc />
-    protected override Task ProcessChangedAsync(string path, CancellationToken token)
+    protected override Task ProcessChangedAsync(IFileSystemEvent e, CancellationToken token)
     {
-      var directory = helper.File.DirectoryInfo(path, Logger);
+      var directory = e.Directory;
       if (!CanProcessDirectory(directory))
       {
         return Task.CompletedTask;
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"Directory: {path} (Changed)");
+      Logger.Verbose($"Directory: {e.FullName} (Changed)");
       return Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessRenamedAsync(string path, string oldPath, CancellationToken token)
+    protected override async Task ProcessRenamedAsync(IFileSystemEvent e, CancellationToken token)
     {
       // get the new name as well as the one one
       // either of those could be null
-      var directory = helper.File.DirectoryInfo(path, Logger);
-      var oldDirectory = helper.File.DirectoryInfo(oldPath, Logger);
+      var directory = e.Directory;
+      var oldDirectory = e.OldDirectory;
 
       // if both are null then we cannot do anything with it
       if (null == directory && null == oldDirectory)
       {
-        Logger.Error($"I was unable to use the renamed drectories, (old:{oldPath} / new:{path})");
+        Logger.Error($"I was unable to use the renamed drectories, (old:{e.OldFullName} / new:{e.FullName})");
         return;
       }
 
@@ -188,7 +188,7 @@ namespace myoddweb.desktopsearch.parser.IO
         // just add the new directly.
         if (!await _persister.AddOrUpdateDirectoryAsync(directory, _currentTransaction, token).ConfigureAwait(false))
         {
-          Logger.Error($"Unable to add directory {path} during rename.");
+          Logger.Error($"Unable to add directory {e.FullName} during rename.");
         }
         return;
       }
@@ -201,13 +201,13 @@ namespace myoddweb.desktopsearch.parser.IO
         // delete the old folder only, in case it did exist.
         if (!await _persister.DeleteDirectoryAsync(oldDirectory, _currentTransaction, token).ConfigureAwait(false))
         {
-          Logger.Error($"Unable to remove old file {oldPath} durring rename");
+          Logger.Error($"Unable to remove old file {e.OldFullName} durring rename");
         }
         return;
       }
 
       // the given directory is going to be processed.
-      Logger.Verbose($"Directory: {oldPath} > {path} (Renamed)");
+      Logger.Verbose($"Directory: {e.OldFullName} > {e.FullName} (Renamed)");
 
       // at this point we know we have a new directory that we can use
       // and an old directory that we could also use.
@@ -219,7 +219,7 @@ namespace myoddweb.desktopsearch.parser.IO
         // just add the new directly.
         if (!await _persister.AddOrUpdateDirectoryAsync( directory, _currentTransaction, token).ConfigureAwait(false))
         {
-          Logger.Error($"Unable to add directory {path} during rename.");
+          Logger.Error($"Unable to add directory {e.FullName} during rename.");
         }
         return;
       }
@@ -229,7 +229,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // something that already exists.
       if (-1 == await _persister.RenameOrAddDirectoryAsync( directory, oldDirectory, _currentTransaction, token).ConfigureAwait(false))
       {
-        Logger.Error($"Unable to rename directory {path} > {oldPath}");
+        Logger.Error($"Unable to rename directory {e.OldFullName} > {e.FullName}");
       }
     }
     #endregion

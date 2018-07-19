@@ -12,9 +12,12 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.parser.IO
@@ -37,10 +40,10 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="e"></param>
     /// <param name="token"></param>
-    private Task OnFolderErrorAsync(ErrorEventArgs e, CancellationToken token)
+    private Task OnFolderErrorAsync(Exception e, CancellationToken token)
     {
       // the watcher raised an error
-      Logger.Error($"File watcher error: {e.GetException().Message}");
+      Logger.Error($"File watcher error: {e.Message}");
       return Task.CompletedTask;
     }
 
@@ -49,7 +52,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="e"></param>
     /// <param name="token"></param>
-    private async Task OnDirectoryTouchedAsync(FileSystemEventArgs e, CancellationToken token)
+    private async Task OnDirectoryTouchedAsync(IFileSystemEvent e, CancellationToken token)
     {
       // It is posible that the event parser has not started yet.
       await Task.Run(() => EventsParser.Add(e), token).ConfigureAwait(false);
