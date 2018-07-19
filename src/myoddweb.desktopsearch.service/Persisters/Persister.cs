@@ -26,9 +26,10 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class Persister : IPersister
   {
     #region Table names
-    private const string TableConfig = "config";
-    private const string TableFolders = "folders";
-    private const string TableFiles = "files";
+    private const string TableConfig = "Config";
+    private const string TableFolders = "Folders";
+    private const string TableFolderUpdates = "FolderUpdates";
+    private const string TableFiles = "Files";
     #endregion
 
     #region Member variables

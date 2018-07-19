@@ -12,37 +12,15 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Data.Common;
-using System.Threading.Tasks;
-
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IPersister : IConfig, IFolders, IFolderUpdates, IFiles
+  /// <summary>
+  /// The various folder changes 
+  /// </summary>
+  public enum FolderUpdateType
   {
-    /// <summary>
-    /// Create a command with a transaction.
-    /// </summary>
-    /// <param name="sql"></param>
-    /// <param name="transaction"></param>
-    /// <returns></returns>
-    DbCommand CreateDbCommand(string sql, DbTransaction transaction);
-      
-    /// <summary>
-    /// Get a database transaction.
-    /// </summary>
-    /// <returns></returns>
-    Task<DbTransaction> BeginTransactionAsync();
-
-    /// <summary>
-    /// Rollback the current transaction.
-    /// </summary>
-    /// <returns></returns>
-    bool Rollback();
-
-    /// <summary>
-    /// Commit the current transaction.
-    /// </summary>
-    /// <returns></returns>
-    bool Commit();
+    Created,
+    Deleted,
+    Changed
   }
 }

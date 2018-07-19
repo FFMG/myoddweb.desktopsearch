@@ -12,7 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
 using System.Data.Common;
 using System.Threading.Tasks;
@@ -44,6 +43,12 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
 
+      // the folders update table.
+      if (!await CreateFoldersUpdateAsync(transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
+
       return true;
     }
 
@@ -66,6 +71,38 @@ namespace myoddweb.desktopsearch.service.Persisters
       if (
         !await
           ExecuteNonQueryAsync($"CREATE INDEX index_{TableFiles}_folderid ON {TableFiles}(folderid);", transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
+      return true;
+    }
+
+    /// <summary>
+    /// Create the updates table.
+    /// </summary>
+    /// <param name="transaction"></param>
+    /// <returns></returns>
+    private async Task<bool> CreateFoldersUpdateAsync(DbTransaction transaction)
+    {
+      if (!await
+        ExecuteNonQueryAsync($"CREATE TABLE {TableFolderUpdates} (folderid integer, type integer, ticks integer)", transaction)
+          .ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // index to get the last 'x' updated folders.
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolderUpdates}_ticks ON {TableFolderUpdates}(ticks); ", transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // the folderid index so we can add/remove folders once processed.
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolderUpdates}_folderid ON {TableFolderUpdates}(folderid); ", transaction).ConfigureAwait(false))
       {
         return false;
       }

@@ -20,6 +20,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
@@ -93,7 +94,13 @@ namespace myoddweb.desktopsearch.service.Persisters
           // in either cases, we can now return the id of this newly added path.
           // we won't ask the function to insert a new file as we _just_ renamed it.
           // so it has to exist...
-          return await GetDirectoryIdAsync(directory, transaction, token, false ).ConfigureAwait(false);
+          var folderId = await GetDirectoryIdAsync(directory, transaction, token, false ).ConfigureAwait(false);
+
+          // touch that folder as deleted
+          await TouchDirectoryAsync(folderId, FolderUpdateType.Changed, transaction, token).ConfigureAwait(false);
+
+          // we are done
+          return folderId;
         }
         catch (Exception ex)
         {
@@ -143,6 +150,10 @@ namespace myoddweb.desktopsearch.service.Persisters
             // try and delete files given directory info.
             await DeleteFilesAsync(directory, transaction, token ).ConfigureAwait(false);
 
+            // touch that folder as deleted
+            await TouchDirectoryAsync(directory, FolderUpdateType.Deleted, transaction, token).ConfigureAwait(false);
+
+            // then do the actual delete.
             cmd.Parameters["@path"].Value = directory.FullName;
             if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
             {
@@ -290,12 +301,19 @@ namespace myoddweb.desktopsearch.service.Persisters
               return false;
             }
 
-            cmd.Parameters["@id"].Value = nextId++;
+            cmd.Parameters["@id"].Value = nextId;
             cmd.Parameters["@path"].Value = directory.FullName;
             if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding folder: {directory.FullName} to persister");
+              continue;
             }
+
+            // touch that folder as created
+            await TouchDirectoryAsync(nextId, FolderUpdateType.Created, transaction, token).ConfigureAwait(false);
+
+            // we can now move on to the next folder id.
+            ++nextId;
           }
           catch (Exception ex)
           {

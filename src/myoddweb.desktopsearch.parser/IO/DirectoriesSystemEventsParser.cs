@@ -147,17 +147,19 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <inheritdoc />
-    protected override Task ProcessChangedAsync(IFileSystemEvent e, CancellationToken token)
+    protected override async Task ProcessChangedAsync(IFileSystemEvent e, CancellationToken token)
     {
       var directory = e.Directory;
       if (!CanProcessDirectory(directory))
       {
-        return Task.CompletedTask;
+        return;
       }
 
       // the given file is going to be processed.
       Logger.Verbose($"Directory: {e.FullName} (Changed)");
-      return Task.CompletedTask;
+
+      // then make sure to touch the folder accordingly
+      await _persister.TouchDirectoryAsync(directory, FolderUpdateType.Changed, _currentTransaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
