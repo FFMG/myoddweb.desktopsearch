@@ -40,5 +40,12 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="token"></param>
     /// <returns></returns>
     Task<bool> ParseDirectoryAsync(DirectoryInfo path, ParseFileAsync actionFile, CancellationToken token);
+
+    /// <summary>
+    /// Check if the given directory is ignored or not.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <returns></returns>
+    bool IsIgnored(DirectoryInfo directory);
   }
 }

@@ -19,6 +19,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.parser.IO
@@ -59,7 +60,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The folders we are ignoring.
     /// </summary>
-    protected IEnumerable<DirectoryInfo> IgnorePaths;
+    protected IDirectory Directory;
 
     /// <summary>
     /// The lock so we can add/remove data
@@ -77,10 +78,10 @@ namespace myoddweb.desktopsearch.parser.IO
     private readonly int _eventsTimeOutInMs;
     #endregion
 
-    protected SystemEventsParser(IReadOnlyCollection<DirectoryInfo> ignorePaths, int eventsParserMs, ILogger logger)
+    protected SystemEventsParser(IDirectory directory, int eventsParserMs, ILogger logger)
     {
-      // the paths we want to ignore.
-      IgnorePaths = ignorePaths ?? throw new ArgumentNullException(nameof(ignorePaths));
+      // the directories handler
+      Directory = directory ?? throw new ArgumentNullException(nameof(directory));
 
       if (eventsParserMs <= 0)
       {

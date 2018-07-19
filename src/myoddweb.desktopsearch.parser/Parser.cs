@@ -201,14 +201,13 @@ namespace myoddweb.desktopsearch.parser
     private bool StartWatchers(IEnumerable<DirectoryInfo> paths, CancellationToken token)
     {
       // get the ignore path
-      var ignorePaths = helper.IO.Paths.GetIgnorePaths(_config.Paths, _logger);
       foreach (var path in paths)
       {
         // the file watcher.
-        var fileWatcher = new FilesWatcher(path, _logger, new FilesSystemEventsParser(_perister, ignorePaths, _config.Timers.EventsParserMs, _logger) );
+        var fileWatcher = new FilesWatcher(path, _logger, new FilesSystemEventsParser(_perister, _directory, _config.Timers.EventsParserMs, _logger) );
 
         // and directory watcher.
-        var directoryWatcher = new DirectoriesWatcher(path, _logger, new DirectoriesSystemEventsParser(_perister, ignorePaths, _config.Timers.EventsParserMs, _logger) );
+        var directoryWatcher = new DirectoriesWatcher(path, _logger, new DirectoriesSystemEventsParser(_perister, _directory, _config.Timers.EventsParserMs, _logger) );
 
         fileWatcher.Start(token);
         directoryWatcher.Start(token);

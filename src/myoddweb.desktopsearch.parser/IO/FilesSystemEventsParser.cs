@@ -13,11 +13,11 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Collections.Generic;
 using System.Data.Common;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -36,10 +36,8 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     private DbTransaction _currentTransaction;
 
-    public FilesSystemEventsParser(
-      IPersister persister,
-      IReadOnlyCollection<DirectoryInfo> ignorePaths, int eventsParserMs, ILogger logger) :
-      base( ignorePaths, eventsParserMs, logger)
+    public FilesSystemEventsParser( IPersister persister, IDirectory directory, int eventsParserMs, ILogger logger) : 
+      base( directory, eventsParserMs, logger)
     {
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
     }
@@ -64,11 +62,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // do we monitor this directory?
-      if (helper.File.IsSubDirectory(IgnorePaths, file.Directory))
-      {
-        return false;
-      }
-      return true;
+      return !Directory.IsIgnored( file.Directory);
     }
     #endregion
 
@@ -141,7 +135,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // we cannot call CanProcessFile as it is now deleted.
-      if (helper.File.IsSubDirectory(IgnorePaths, file.Directory))
+      if (Directory.IsIgnored(file.Directory))
       {
         return;
       }
@@ -211,7 +205,7 @@ namespace myoddweb.desktopsearch.parser.IO
       {
         // if the old path is not an ignored path
         // then we might be able to delete that file.
-        if (helper.File.IsSubDirectory(IgnorePaths, oldFile.Directory))
+        if (Directory.IsIgnored(oldFile.Directory))
         {
           return;
         }

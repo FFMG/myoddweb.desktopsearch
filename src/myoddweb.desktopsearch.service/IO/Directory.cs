@@ -120,53 +120,6 @@ namespace myoddweb.desktopsearch.service.IO
       return token.IsCancellationRequested ? null : Directories;
     }
 
-    /// <summary>
-    /// Recuring parse of the directories.
-    /// </summary>
-    /// <param name="directory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task BuildDirectoryListAsync(DirectoryInfo directory, CancellationToken token)
-    {
-      try
-      {
-        // does the caller want us to get in this directory?
-        if (!ParseDirectory(directory))
-        {
-          return;
-        }
-
-        var dirs = directory.EnumerateDirectories();
-        foreach (var info in dirs)
-        {
-          // did we get a stop request?
-          if (token.IsCancellationRequested)
-          {
-            return;
-          }
-
-          // we can parse this directory now.
-          await BuildDirectoryListAsync(info, token).ConfigureAwait(false);
-        }
-      }
-      catch (SecurityException)
-      {
-        // we cannot access/enumerate this file
-        // but we might as well continue
-        _logger.Verbose($"Security error while parsing directory: {directory.FullName}.");
-      }
-      catch (UnauthorizedAccessException)
-      {
-        // we cannot access/enumerate this file
-        // but we might as well continue
-        _logger.Verbose($"Unauthorized Access while parsing directory: {directory.FullName}.");
-      }
-      catch (Exception e)
-      {
-        _logger.Error($"Exception while parsing directory: {directory.FullName}. {e.Message}");
-      }
-    }
-
     /// <inheritdoc />
     public async Task<bool> ParseDirectoryAsync(DirectoryInfo directory, ParseFileAsync actionFile, CancellationToken token)
     {
@@ -216,7 +169,20 @@ namespace myoddweb.desktopsearch.service.IO
       return !token.IsCancellationRequested;
     }
 
-    public async Task ParseFileActionAsync(ParseFileAsync actionFile, FileSystemInfo file, CancellationToken token)
+    /// <inheritdoc />
+    public bool IsIgnored(DirectoryInfo directory)
+    {
+      return helper.File.IsSubDirectory(IgnorePaths, directory);
+    }
+
+    /// <summary>
+    /// Add the file if posible.
+    /// </summary>
+    /// <param name="actionFile"></param>
+    /// <param name="file"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task ParseFileActionAsync(ParseFileAsync actionFile, FileSystemInfo file, CancellationToken token)
     {
       try
       {
@@ -237,6 +203,53 @@ namespace myoddweb.desktopsearch.service.IO
       catch (Exception e)
       {
         _logger.Error($"Exception while parsing file: {file.FullName}. {e.Message}");
+      }
+    }
+
+    /// <summary>
+    /// Recuring parse of the directories.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task BuildDirectoryListAsync(DirectoryInfo directory, CancellationToken token)
+    {
+      try
+      {
+        // does the caller want us to get in this directory?
+        if (!ParseDirectory(directory))
+        {
+          return;
+        }
+
+        var dirs = directory.EnumerateDirectories();
+        foreach (var info in dirs)
+        {
+          // did we get a stop request?
+          if (token.IsCancellationRequested)
+          {
+            return;
+          }
+
+          // we can parse this directory now.
+          await BuildDirectoryListAsync(info, token).ConfigureAwait(false);
+        }
+      }
+      catch (SecurityException)
+      {
+        // we cannot access/enumerate this file
+        // but we might as well continue
+        _logger.Verbose($"Security error while parsing directory: {directory.FullName}.");
+      }
+      catch (UnauthorizedAccessException)
+      {
+        // we cannot access/enumerate this file
+        // but we might as well continue
+        _logger.Verbose($"Unauthorized Access while parsing directory: {directory.FullName}.");
+      }
+      catch (Exception e)
+      {
+        _logger.Error($"Exception while parsing directory: {directory.FullName}. {e.Message}");
       }
     }
   }
