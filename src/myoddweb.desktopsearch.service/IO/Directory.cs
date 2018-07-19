@@ -175,6 +175,22 @@ namespace myoddweb.desktopsearch.service.IO
       return helper.File.IsSubDirectory(IgnorePaths, directory);
     }
 
+    /// <inheritdoc />
+    public bool IsIgnored(FileInfo file)
+    {
+      // if the directory itself is ignored
+      // then the file has to be ignored.
+      if (IsIgnored(file.Directory))
+      {
+        return true;
+      }
+
+      // we now need to check if that particular file itslef is ignored.
+
+      // otherwise it is not ignored.
+      return false;
+    }
+
     /// <summary>
     /// Add the file if posible.
     /// </summary>

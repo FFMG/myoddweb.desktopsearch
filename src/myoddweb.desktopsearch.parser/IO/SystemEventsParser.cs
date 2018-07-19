@@ -559,7 +559,14 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       lock (_lock)
       {
-        _currentEvents.Add(fileSystemEventArgs);
+        try
+        {
+          _currentEvents.Add(fileSystemEventArgs);
+        }
+        catch (Exception e)
+        {
+          Logger.Exception(e);
+        }
       }
     }
 

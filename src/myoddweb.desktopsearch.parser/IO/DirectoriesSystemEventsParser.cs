@@ -152,12 +152,12 @@ namespace myoddweb.desktopsearch.parser.IO
       var directory = helper.File.DirectoryInfo(path, Logger);
       if (!CanProcessDirectory(directory))
       {
-        return Task.FromResult<object>(null);
+        return Task.CompletedTask;
       }
 
       // the given file is going to be processed.
       Logger.Verbose($"Directory: {path} (Changed)");
-      return Task.FromResult<object>(null);
+      return Task.CompletedTask;
     }
 
     /// <inheritdoc />

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security;
 using System.Security.AccessControl;
 using myoddweb.desktopsearch.interfaces.Logging;
@@ -210,14 +211,9 @@ namespace myoddweb.desktopsearch.helper
       {
         throw new ArgumentNullException(nameof(parents));
       }
-      foreach (var parent in parents)
-      {
-        if (IsSubDirectory( parent, child))
-        {
-          return true;
-        }
-      }
-      return false;
+
+      // if the directory is a child of any of the parents 
+      return parents.Any(parent => IsSubDirectory(parent, child));
     }
 
     /// <summary>

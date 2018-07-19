@@ -47,5 +47,12 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="directory"></param>
     /// <returns></returns>
     bool IsIgnored(DirectoryInfo directory);
+
+    /// <summary>
+    /// Check if the given file is ignored or not.
+    /// </summary>
+    /// <param name="file"></param>
+    /// <returns></returns>
+    bool IsIgnored(FileInfo file);
   }
 }

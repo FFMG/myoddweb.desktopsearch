@@ -41,7 +41,7 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       // the watcher raised an error
       Logger.Error($"File watcher error: {e.GetException().Message}");
-      return Task.FromResult<object>(null);
+      return Task.CompletedTask;
     }
 
     /// <summary>
@@ -49,11 +49,10 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="e"></param>
     /// <param name="token"></param>
-    private Task OnFileTouchedAsync(FileSystemEventArgs e, CancellationToken token)
+    private async Task OnFileTouchedAsync(FileSystemEventArgs e, CancellationToken token)
     {
       // It is posible that the event parser has not started yet.
-      EventsParser.Add(e);
-      return Task.FromResult<object>(null);
+      await Task.Run(() => EventsParser.Add(e), token).ConfigureAwait( false );
     }
     #endregion
 

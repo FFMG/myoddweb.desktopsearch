@@ -62,7 +62,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // do we monitor this directory?
-      return !Directory.IsIgnored( file.Directory);
+      return !Directory.IsIgnored( file);
     }
     #endregion
 
@@ -135,7 +135,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // we cannot call CanProcessFile as it is now deleted.
-      if (Directory.IsIgnored(file.Directory))
+      if (Directory.IsIgnored(file))
       {
         return;
       }
@@ -157,12 +157,12 @@ namespace myoddweb.desktopsearch.parser.IO
       var file = helper.File.FileInfo(fullPath, Logger);
       if (!CanProcessFile(file))
       {
-        return Task.FromResult<object>(null);
+        return Task.CompletedTask;
       }
 
       // the given file is going to be processed.
       Logger.Verbose($"File: {fullPath} (Changed)");
-      return Task.FromResult<object>(null);
+      return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -205,7 +205,7 @@ namespace myoddweb.desktopsearch.parser.IO
       {
         // if the old path is not an ignored path
         // then we might be able to delete that file.
-        if (Directory.IsIgnored(oldFile.Directory))
+        if (Directory.IsIgnored(oldFile))
         {
           return;
         }
