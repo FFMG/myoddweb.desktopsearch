@@ -92,7 +92,7 @@ namespace myoddweb.desktopsearch.helper
         {
           return false;
         }
-        if (file.Exists)
+        if (!file.Exists)
         {
           return false;
         }
