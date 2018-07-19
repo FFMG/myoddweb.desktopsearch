@@ -32,7 +32,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     #endregion
 
     #region Member variables
+    /// <summary>
+    /// The current transaction
+    /// </summary>
+    private DbTransaction _transaction;
 
+    /// <summary>
+    /// Our lock
+    /// </summary>
+    private readonly object _lock = new object();
+    
     /// <summary>
     /// The sqlite connection.
     /// </summary>
@@ -75,17 +84,71 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     #region Transactions
     /// <inheritdoc/>
-    public DbTransaction BeginTransaction()
+    public async Task<DbTransaction> BeginTransactionAsync()
     {
-      return _dbConnection.BeginTransaction();
+      var lockWasTaken = false;
+      var temp = _lock;
+      try
+      {
+        while (true)
+        {
+          Monitor.TryEnter(temp, 5, ref lockWasTaken);
+          {
+            // did we get the lock?
+            if (!lockWasTaken)
+            {
+              await Task.Yield();
+              continue;
+            }
+
+            // we have the lock, can we get the transaction?
+            if (_transaction != null)
+            {
+              // we do not have the transaction
+              // release the lock
+              // and continue waiting.
+              lockWasTaken = false;
+              Monitor.Exit(temp);
+              await Task.Yield();
+              continue;
+            }
+
+            // set the value
+            _transaction = _dbConnection.BeginTransaction();
+
+            // release the lock
+            lockWasTaken = false;
+            Monitor.Exit(temp);
+
+            // all good
+            return _transaction;
+          }
+        }
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        return null;
+      }
+      finally
+      {
+        if (lockWasTaken)
+        {
+          Monitor.Exit(temp);
+        }
+      }
     }
 
     /// <inheritdoc/>
-    public bool Rollback(DbTransaction transaction )
+    public bool Rollback()
     {
       try
       {
-        transaction.Rollback();
+        if (null == _transaction)
+        {
+          throw new ArgumentNullException(nameof(_transaction));
+        }
+        _transaction.Rollback();
         return true;
       }
       catch (Exception rollbackException)
@@ -93,20 +156,32 @@ namespace myoddweb.desktopsearch.service.Persisters
         _logger.Exception(rollbackException);
         return false;
       }
+      finally
+      {
+        _transaction = null;
+      }
     }
 
     /// <inheritdoc/>
-    public bool Commit(DbTransaction transaction)
+    public bool Commit()
     {
       try
       {
-        transaction.Commit();
+        if (null == _transaction)
+        {
+          throw new ArgumentNullException( nameof(_transaction));
+        }
+        _transaction.Commit();
         return true;
       }
       catch (Exception commitException)
       {
         _logger.Exception(commitException);
         return false;
+      }
+      finally
+      {
+        _transaction = null;
       }
     }
     #endregion

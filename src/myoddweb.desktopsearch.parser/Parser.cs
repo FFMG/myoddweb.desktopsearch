@@ -155,25 +155,25 @@ namespace myoddweb.desktopsearch.parser
     private async Task<bool> PersistDirectories(IReadOnlyList<DirectoryInfo> directories, CancellationToken token)
     {
       // get a transaction
-      var transaction = _perister.BeginTransaction();
+      var transaction = await _perister.BeginTransactionAsync().ConfigureAwait(false);
       try
       {
         // add the folder to the list.
         if (!await _perister.AddOrUpdateDirectoriesAsync(directories, transaction, token).ConfigureAwait(false))
         {
-          _perister.Rollback(transaction);
+          _perister.Rollback();
           return false;
         }
 
         // we can commit our code.
-        _perister.Commit(transaction);
+        _perister.Commit();
 
         // all done
         return true;
       }
       catch (Exception e)
       {
-        _perister.Rollback(transaction);
+        _perister.Rollback();
         _logger.Exception(e);
       }
 

@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Data.Common;
+using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
@@ -30,20 +31,18 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// Get a database transaction.
     /// </summary>
     /// <returns></returns>
-    DbTransaction BeginTransaction();
+    Task<DbTransaction> BeginTransactionAsync();
 
     /// <summary>
     /// Rollback the current transaction.
     /// </summary>
-    /// <param name="transaction"></param>
     /// <returns></returns>
-    bool Rollback(DbTransaction transaction);
+    bool Rollback();
 
     /// <summary>
     /// Commit the current transaction.
     /// </summary>
-    /// <param name="transaction"></param>
     /// <returns></returns>
-    bool Commit(DbTransaction transaction);
+    bool Commit();
   }
 }

@@ -81,7 +81,7 @@ namespace myoddweb.desktopsearch.parser.IO
         Logger.Warning("Trying to start an event processing when the previous one does not seem to have ended.");
         return;
       }
-      _currentTransaction = _persister.BeginTransaction();
+      _currentTransaction = _persister.BeginTransactionAsync().Result;
     }
 
     /// <inheritdoc />
@@ -97,11 +97,11 @@ namespace myoddweb.desktopsearch.parser.IO
       {
         if (hadErrors)
         {
-          _persister.Rollback(_currentTransaction);
+          _persister.Rollback();
         }
         else
         {
-          _persister.Commit(_currentTransaction);
+          _persister.Commit();
         }
       }
       catch (Exception e)

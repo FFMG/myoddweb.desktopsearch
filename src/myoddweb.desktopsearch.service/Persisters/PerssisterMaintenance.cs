@@ -147,28 +147,28 @@ namespace myoddweb.desktopsearch.service.Persisters
     protected async Task Update()
     {
       // if the config table does not exis, then we have to asume it is brand new.
-      var transaction = BeginTransaction();
+      var transaction = await BeginTransactionAsync().ConfigureAwait(false);
       try
       {
         if (!TableExists(TableConfig, transaction ))
         {
           if (!await CreateDatabase(transaction).ConfigureAwait(false))
           {
-            Rollback(transaction);
+            Rollback();
           }
           else
           {
-            Commit(transaction);
+            Commit();
           }
         }
         else
         {
-          Commit(transaction);
+          Commit();
         }
       }
       catch (Exception e)
       {
-        Rollback(transaction);
+        Rollback();
         _logger.Exception(e);
       }
     }
