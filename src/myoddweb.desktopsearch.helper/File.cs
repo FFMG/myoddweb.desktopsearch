@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Security;
 using System.Security.AccessControl;
+using System.Security.Principal;
 using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.helper
@@ -83,12 +84,21 @@ namespace myoddweb.desktopsearch.helper
       }
     }
 
-    public static bool CanReadFile(FileSystemInfo file)
+    public static bool CanReadFile(FileInfo file)
     {
       try
       {
-        System.IO.File.Open(file.FullName, FileMode.Open, FileAccess.Read).Dispose();
-        return true;
+        if (file == null )
+        {
+          return false;
+        }
+        if (file.Exists)
+        {
+          return false;
+        }
+        var accessControlList = file.GetAccessControl();
+        var accessRules = accessControlList?.GetAccessRules(true, true, typeof(SecurityIdentifier));
+        return CanRead(accessRules);
       }
       catch (IOException)
       {
@@ -99,6 +109,10 @@ namespace myoddweb.desktopsearch.helper
         return false;
       }
       catch (UnauthorizedAccessException)
+      {
+        return false;
+      }
+      catch (Exception)
       {
         return false;
       }
@@ -117,41 +131,19 @@ namespace myoddweb.desktopsearch.helper
         {
           return false;
         }
+
         if (!directoryInfo.Exists)
         {
           return false;
         }
+
         var accessControlList = directoryInfo.GetAccessControl();
-
-        var accessRules =
-          accessControlList?.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
-        if (accessRules == null)
-        {
-          return false;
-        }
-
-        var readAllow = false;
-        var readDeny = false;
-        foreach (FileSystemAccessRule rule in accessRules)
-        {
-          if ((FileSystemRights.Read & rule.FileSystemRights) != FileSystemRights.Read)
-          {
-            continue;
-          }
-
-          switch (rule.AccessControlType)
-          {
-            case AccessControlType.Allow:
-              readAllow = true;
-              break;
-
-            case AccessControlType.Deny:
-              readDeny = true;
-              break;
-          }
-        }
-
-        return readAllow && !readDeny;
+        var accessRules = accessControlList?.GetAccessRules(true, true, typeof(SecurityIdentifier));
+        return CanRead(accessRules);
+      }
+      catch (IOException)
+      {
+        return false;
       }
       catch (UnauthorizedAccessException)
       {
@@ -165,6 +157,37 @@ namespace myoddweb.desktopsearch.helper
       {
         return false;
       }
+    }
+
+    private static bool CanRead(AuthorizationRuleCollection accessRules)
+    {
+      if (accessRules == null)
+      {
+        return false;
+      }
+
+      var readAllow = false;
+      var readDeny = false;
+      foreach (FileSystemAccessRule rule in accessRules)
+      {
+        if ((FileSystemRights.Read & rule.FileSystemRights) != FileSystemRights.Read)
+        {
+          continue;
+        }
+
+        switch (rule.AccessControlType)
+        {
+          case AccessControlType.Allow:
+            readAllow = true;
+            break;
+
+          case AccessControlType.Deny:
+            readDeny = true;
+            break;
+        }
+      }
+
+      return readAllow && !readDeny;
     }
 
     /// <summary>
