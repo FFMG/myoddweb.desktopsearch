@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -121,52 +122,59 @@ namespace myoddweb.desktopsearch.service.IO
     }
 
     /// <inheritdoc />
-    public async Task<bool> ParseDirectoryAsync(DirectoryInfo directory, ParseFileAsync actionFile, CancellationToken token)
+    public Task<IReadOnlyList<FileInfo>> ParseDirectoryAsync(DirectoryInfo directory, CancellationToken token)
     {
-      IEnumerable<FileSystemInfo> files;
+      // sanity check
+      if (!helper.File.CanReadDirectory(directory))
+      {
+        _logger.Warning($"Cannot Parse Directory: {directory.FullName}");
+        return null;
+      }
+
+      IEnumerable<FileInfo> files;
       try
       {
-        files = directory.EnumerateFileSystemInfos();
+        files = directory.EnumerateFiles();
       }
       catch (SecurityException)
       {
         // we cannot access/enumerate this file
         // but we might as well continue
         _logger.Verbose($"Security error while parsing directory: {directory.FullName}.");
-        return true;
+        return null;
       }
       catch (UnauthorizedAccessException)
       {
         // we cannot access/enumerate this file
         // but we might as well continue
         _logger.Verbose($"Unauthorized Access while parsing directory: {directory.FullName}.");
-        return true;
+        return null;
       }
       catch (Exception e)
       {
         _logger.Error($"Exception while parsing directory: {directory.FullName}. {e.Message}");
-        return true;
+        return null;
       }
-      var tasks = new List<Task>();
+
+      var posibleFiles = new List<FileInfo>();
       foreach (var file in files)
       {
         // did we get a stop request?
         if (token.IsCancellationRequested)
         {
-          // we cannot just return here
-          // as we might have some taks already stated.
-          // they all have a token, so they will stop at some point.
-          // all we can do is stop adding more to the list.
-          break;
+          // we were asked to stop, so just break out.
+          return null;
         }
-        tasks.Add(ParseFileActionAsync(actionFile, file, token));
+
+        if (!helper.File.CanReadFile(file))
+        {
+          continue;
+        }
+        posibleFiles.Add(file);
       }
 
-      // then wait for them all
-      await Task.WhenAll(tasks).ConfigureAwait(false);
-
-      // return if we did not cancel the request.
-      return !token.IsCancellationRequested;
+      // if we found nothing we return null.
+      return Task.FromResult<IReadOnlyList<FileInfo>>(posibleFiles.Any() ? posibleFiles : null);
     }
 
     /// <inheritdoc />
@@ -189,37 +197,6 @@ namespace myoddweb.desktopsearch.service.IO
 
       // otherwise it is not ignored.
       return false;
-    }
-
-    /// <summary>
-    /// Add the file if posible.
-    /// </summary>
-    /// <param name="actionFile"></param>
-    /// <param name="file"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task ParseFileActionAsync(ParseFileAsync actionFile, FileSystemInfo file, CancellationToken token)
-    {
-      try
-      {
-        await actionFile(file, token).ConfigureAwait(false);
-      }
-      catch (SecurityException)
-      {
-        // we cannot access/enumerate this file
-        // but we might as well continue
-        _logger.Verbose($"Security error while parsing file: {file.FullName}.");
-      }
-      catch (UnauthorizedAccessException)
-      {
-        // we cannot access/enumerate this file
-        // but we might as well continue
-        _logger.Verbose($"Unauthorized Access while parsing file: {file.FullName}.");
-      }
-      catch (Exception e)
-      {
-        _logger.Error($"Exception while parsing file: {file.FullName}. {e.Message}");
-      }
     }
 
     /// <summary>

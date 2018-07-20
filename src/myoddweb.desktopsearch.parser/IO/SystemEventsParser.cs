@@ -85,7 +85,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
       if (eventsParserMs <= 0)
       {
-        throw new ArgumentException( $"The event timeout, ({eventsParserMs}), cannot be zero or negative.");
+        throw new ArgumentException($"The event timeout, ({eventsParserMs}), cannot be zero or negative.");
       }
       _eventsTimeOutInMs = eventsParserMs;
 
@@ -122,7 +122,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     public List<IFileSystemEvent> RebuildSystemEventsInLock()
     {
-      if (!_currentEvents.Any() )
+      if (!_currentEvents.Any())
       {
         return null;
       }
@@ -143,7 +143,7 @@ namespace myoddweb.desktopsearch.parser.IO
           // we know that this event is changed
           // but if we have some 'created' events for the same file
           // then there is no need to add the changed events.
-          if (rebuiltEvents.Any(e => e.Is( WatcherChangeTypes.Created ) && e.FullName == currentEvent.FullName))
+          if (rebuiltEvents.Any(e => e.Is(WatcherChangeTypes.Created) && e.FullName == currentEvent.FullName))
           {
             // Windows sometime flags an item as changed _and_ created.
             // we just need to worry about the created one.
@@ -152,19 +152,19 @@ namespace myoddweb.desktopsearch.parser.IO
         }
 
         // then add the event
-        rebuiltEvents.Add( currentEvent );
+        rebuiltEvents.Add(currentEvent);
       }
 
       // if we have noting to return, just return null
       return rebuiltEvents.Any() ? rebuiltEvents : null;
     }
 
-      /// <summary>
-      /// Cleanup all the completed tasks
-      /// </summary>
-      /// <param name="sender"></param>
-      /// <param name="e"></param>
-      private void SystemEventsProcess(object sender, ElapsedEventArgs e)
+    /// <summary>
+    /// Cleanup all the completed tasks
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void SystemEventsProcess(object sender, ElapsedEventArgs e)
     {
       try
       {
@@ -192,7 +192,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
       catch (Exception exception)
       {
-        Logger.Exception( exception);
+        Logger.Exception(exception);
       }
       finally
       {
@@ -261,7 +261,7 @@ namespace myoddweb.desktopsearch.parser.IO
       finally
       {
         // end the work and log if we had any errors.
-        ProcessEventsEnd( hadErrors );
+        ProcessEventsEnd(hadErrors);
       }
     }
 
@@ -274,7 +274,7 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       try
       {
-        if (!e.Is( WatcherChangeTypes.Created))
+        if (!e.Is(WatcherChangeTypes.Created))
         {
           return;
         }
@@ -388,7 +388,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// Start watching for the folder changes.
     /// </summary>
-    public void Start( CancellationToken token )
+    public void Start(CancellationToken token)
     {
       // stop what might have already started.
       Stop();
@@ -399,9 +399,10 @@ namespace myoddweb.desktopsearch.parser.IO
       // register the token cancellation
       _cancellationTokenRegistration = _token.Register(TokenCancellation);
 
+      //Start the system events timer.
       StartSystemEventsTimer();
     }
-    
+
     /// <summary>
     /// Stop the folder monitoring.
     /// </summary>
@@ -486,7 +487,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// We finished processing events.
     /// </summary>
     /// <param name="hadErrors">Was there any errors?</param>
-    protected abstract void ProcessEventsEnd( bool hadErrors );
+    protected abstract void ProcessEventsEnd(bool hadErrors);
 
     /// <summary>
     /// Process a created event
@@ -514,7 +515,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessRenamedAsync(IFileSystemEvent fileSystemEvent, CancellationToken token );
+    protected abstract Task ProcessRenamedAsync(IFileSystemEvent fileSystemEvent, CancellationToken token);
     #endregion
   }
 }

@@ -13,10 +13,14 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Timers;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using myoddweb.desktopsearch.processor.Processors;
 
 namespace myoddweb.desktopsearch.processor
 {
@@ -24,24 +28,44 @@ namespace myoddweb.desktopsearch.processor
   {
     #region Member variables
     /// <summary>
+    /// All the tasks currently running
+    /// </summary>
+    private readonly List<Task> _tasks = new List<Task>();
+
+    /// <summary>
+    /// The cancellation source
+    /// </summary>
+    private CancellationToken _token;
+
+    /// <summary>
+    /// When we register a token
+    /// </summary>
+    private CancellationTokenRegistration _cancellationTokenRegistration;
+
+    /// <summary>
     /// The logger that we will be using to log messages.
     /// </summary>
     private readonly ILogger _logger;
 
     /// <summary>
-    /// The directory parser we will be using.
-    /// </summary>
-    private readonly IDirectory _directory;
-
-    /// <summary>
-    /// The persister.
-    /// </summary>
-    private readonly IPersister _perister;
-
-    /// <summary>
     /// The system configuration
     /// </summary>
     private readonly interfaces.Configs.IConfig _config;
+
+    /// <summary>
+    /// The lock so we can add/remove data
+    /// </summary>
+    private readonly object _lock = new object();
+
+    /// <summary>
+    /// The timer so we can clear some completed taks.
+    /// </summary>
+    private System.Timers.Timer _tasksTimer;
+
+    /// <summary>
+    /// All the processors.
+    /// </summary>
+    private readonly List<IProcessor> _processors;
     #endregion
 
     public Processor(interfaces.Configs.IConfig config, IPersister persister, ILogger logger, IDirectory directory)
@@ -49,21 +73,127 @@ namespace myoddweb.desktopsearch.processor
       // set the config values.
       _config = config ?? throw new ArgumentNullException(nameof(config));
 
-      // set the persister.
-      _perister = persister ?? throw new ArgumentNullException(nameof(persister));
-
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-      // save the directory parser
-      _directory = directory ?? throw new ArgumentNullException(nameof(directory));
+      // Create the various processors, they will not start doing anything just yet
+      // or at least, they shouldn't
+      _processors = new List<IProcessor>
+      {
+        new Folders( persister, logger, directory )
+      };
     }
 
+    #region Events Process Timer
+    /// <summary>
+    /// Start the event processor timer
+    /// </summary>
+    private void StartEventsProcessorTimer()
+    {
+      if (null != _tasksTimer)
+      {
+        return;
+      }
+
+      lock (_lock)
+      {
+        if (_tasksTimer != null)
+        {
+          return;
+        }
+
+        _tasksTimer = new System.Timers.Timer(_config.Timers.EventsProcessorMs)
+        {
+          AutoReset = false,
+          Enabled = true
+        };
+        _tasksTimer.Elapsed += EventsProcessor;
+      }
+    }
+
+    /// <summary>
+    /// Stop the heartbeats.
+    /// </summary>
+    private void StopEventsProcessorTimer()
+    {
+      if (_tasksTimer == null)
+      {
+        return;
+      }
+
+      lock (_lock)
+      {
+        if (_tasksTimer == null)
+        {
+          return;
+        }
+
+        _tasksTimer.Enabled = false;
+        _tasksTimer.Stop();
+        _tasksTimer.Dispose();
+        _tasksTimer = null;
+      }
+    }
+    #endregion
+
+    private void EventsProcessor(object sender, ElapsedEventArgs e)
+    {
+      try
+      {
+        // stop the timer
+        StopEventsProcessorTimer();
+
+        // do the actual work.
+        lock (_lock)
+        {
+          //  get all the processors to do their work.
+          foreach (var processor in _processors)
+          {
+            _tasks.Add( processor.WorkAsync( _token ));
+          }
+
+          // remove the completed events.
+          _tasks.RemoveAll(t => t.IsCompleted);
+        }
+
+      }
+      catch (Exception exception)
+      {
+        _logger.Exception(exception);
+      }
+      finally
+      {
+        if (!_token.IsCancellationRequested)
+        {
+          // restart the timer.
+          StartEventsProcessorTimer();
+        }
+      }
+    }
+
+    #region Start/Stop functions
     /// <summary>
     /// Start processor.
     /// </summary>
     public void Start(CancellationToken token)
     {
+      // stop what might have already started.
+      Stop();
+
+      // start the source.
+      _token = token;
+
+      // register the token cancellation
+      _cancellationTokenRegistration = _token.Register(TokenCancellation);
+
+      // start the processors
+      foreach (var processor in _processors)
+      {
+        processor.Start();
+      }
+
+      // we can start the timers.
+      StartEventsProcessorTimer();
     }
 
     /// <summary>
@@ -71,6 +201,52 @@ namespace myoddweb.desktopsearch.processor
     /// </summary>
     public void Stop()
     {
+      // stop the timer
+      StopEventsProcessorTimer();
+
+      try
+      {
+        //  stop the processors
+        foreach (var processor in _processors)
+        {
+          processor.Stop();
+        }
+
+        if (_tasks.Count > 0)
+        {
+          // Log that we are stopping the tasks.
+          _logger.Verbose($"Waiting for {_tasks.Count} tasks to complete in the File System Events Timer.");
+
+          // then wait...
+          Task.WaitAll(_tasks.ToArray(), _token);
+
+          // done 
+          _logger.Verbose("Done.");
+        }
+      }
+      catch (OperationCanceledException e)
+      {
+        // ignore the cancelled exceptions.
+        if (e.CancellationToken != _token)
+        {
+          throw;
+        }
+      }
+      finally
+      {
+        _cancellationTokenRegistration.Dispose();
+      }
     }
+
+    /// <summary>
+    /// Called when the token has been cancelled.
+    /// </summary>
+    private void TokenCancellation()
+    {
+      _logger.Verbose("Stopping Events parser");
+      Stop();
+      _logger.Verbose("Done events parser");
+    }
+    #endregion
   }
 }

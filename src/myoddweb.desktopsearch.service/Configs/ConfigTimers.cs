@@ -23,5 +23,9 @@ namespace myoddweb.desktopsearch.service.Configs
     [DefaultValue(10000)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int EventsParserMs { get; protected set; }
+
+    [DefaultValue(10000)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public int EventsProcessorMs { get; protected set; }
   }
 }

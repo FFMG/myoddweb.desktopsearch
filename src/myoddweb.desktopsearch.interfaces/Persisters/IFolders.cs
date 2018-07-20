@@ -76,5 +76,14 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<bool> DirectoryExistsAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token);
+
+    /// <summary>
+    /// Get the directory info if posible, otherwise return null if we have no record of it.
+    /// </summary>
+    /// <param name="directoryId"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<DirectoryInfo> GetDirectoryAsync(long directoryId, DbTransaction transaction, CancellationToken token);
   }
 }

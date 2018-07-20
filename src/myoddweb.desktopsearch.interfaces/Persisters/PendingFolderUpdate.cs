@@ -12,18 +12,27 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-namespace myoddweb.desktopsearch.interfaces.Configs
+namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface ITimers
+  public class PendingFolderUpdate
   {
     /// <summary>
-    /// How often we want to parse file events.
+    /// The folder id with a pending update
     /// </summary>
-    int EventsParserMs { get; }
+    public long FolderId { get; }
 
     /// <summary>
-    /// How often we want to process changed/created/deleted 
+    /// The pending update type.
     /// </summary>
-    int EventsProcessorMs { get; }
+    public FolderUpdateType PendingUpdateType { get; }
+
+    public PendingFolderUpdate(long folderId, FolderUpdateType pendingUpdateType)
+    {
+      // set the folder id.
+      FolderId = folderId;
+
+      // the pending update type.
+      PendingUpdateType = pendingUpdateType;
+    }
   }
 }

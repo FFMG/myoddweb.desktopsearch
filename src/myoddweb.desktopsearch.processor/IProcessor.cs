@@ -12,18 +12,28 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-namespace myoddweb.desktopsearch.interfaces.Configs
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace myoddweb.desktopsearch.processor
 {
-  public interface ITimers
+  internal interface IProcessor
   {
     /// <summary>
-    /// How often we want to parse file events.
+    /// The processor can start their work.
     /// </summary>
-    int EventsParserMs { get; }
+    void Start();
 
     /// <summary>
-    /// How often we want to process changed/created/deleted 
+    /// We are telling the processor to do some work.
     /// </summary>
-    int EventsProcessorMs { get; }
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task WorkAsync( CancellationToken token );
+
+    /// <summary>
+    /// We are telling the processor to stop whatever they are doing.
+    /// </summary>
+    void Stop();
   }
 }

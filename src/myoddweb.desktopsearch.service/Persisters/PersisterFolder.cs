@@ -177,6 +177,46 @@ namespace myoddweb.desktopsearch.service.Persisters
       return await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false) != -1;
     }
 
+    /// <inheritdoc />
+    public async Task<DirectoryInfo> GetDirectoryAsync(long directoryId, DbTransaction transaction, CancellationToken token)
+    {
+      if (null == transaction)
+      {
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+      }
+
+      try
+      {
+        // we want to get the latest updated folders.
+        var sql = $"SELECT path FROM {TableFolders} WHERE id = @id";
+        using (var cmd = CreateDbCommand(sql, transaction))
+        {
+          var pId = cmd.CreateParameter();
+          pId.DbType = DbType.Int64;
+          pId.ParameterName = "@id";
+          cmd.Parameters.Add(pId);
+
+          // set the folder id.
+          cmd.Parameters["@id"].Value = directoryId;
+
+          // get the path
+          var path = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
+          if (null == path || path == DBNull.Value)
+          {
+            return null;
+          }
+
+          // return the valid paths.
+          return new DirectoryInfo( (string)path );
+        }
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        return null;
+      }
+    }
+
     /// <summary>
     /// Get the next row ID we can use.
     /// </summary>

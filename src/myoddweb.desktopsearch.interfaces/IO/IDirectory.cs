@@ -20,8 +20,6 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.IO
 {
-  public delegate Task ParseFileAsync(FileSystemInfo file, CancellationToken token);
-
   public interface IDirectory
   {
     /// <summary>
@@ -36,10 +34,9 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// Parse all the files in a directory
     /// </summary>
     /// <param name="path"></param>
-    /// <param name="actionFile">When a file is found, we will be calling this function.</param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> ParseDirectoryAsync(DirectoryInfo path, ParseFileAsync actionFile, CancellationToken token);
+    Task<IReadOnlyList<FileInfo>> ParseDirectoryAsync(DirectoryInfo path, CancellationToken token);
 
     /// <summary>
     /// Check if the given directory is ignored or not.

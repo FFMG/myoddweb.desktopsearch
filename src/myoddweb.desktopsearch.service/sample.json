@@ -19,7 +19,8 @@
     }
   ],
   "Timers": {
-    "EventsParserMs": 10000
+    "EventsParserMs": 10000,
+    "EventsProcessorMs": 10000
   },
   "Paths": {
     "ParseFixedDrives": true,
