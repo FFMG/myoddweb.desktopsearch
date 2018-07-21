@@ -217,28 +217,19 @@ namespace myoddweb.desktopsearch.processor.Processors
         // then get the ones in the file.
         var filesOnFile = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait(false);
 
-        // files to add ... files to remove
-        var filesToAdd = filesOnFile?.Select( f => f ).ToList();
-        var filesToRemove = filesOnRecord?.Select(f => f).ToList();
-        if (filesOnRecord != null && filesToAdd != null )
-        {
-          foreach (var fr in filesOnRecord)
-          {
-            filesToAdd.RemoveAll(f => f.FullName == fr.FullName);
-          }
+        // we want to add all the files that are on disk but not on record.
+        var filesToAdd = helper.File.RelativeComplement( filesOnRecord, filesOnFile );
 
-          foreach (var fr in filesOnFile)
-          {
-            filesToRemove.RemoveAll(f => f.FullName == fr.FullName);
-          }
-        }
+        // we want to remove all the files that are on record but not on file.
+        var filesToRemove = helper.File.RelativeComplement(filesOnFile, filesOnRecord);
 
-        if (filesToRemove != null && filesToRemove.Any())
+        // We know that the helper functions never return anything null...
+        if (filesToRemove.Any())
         {
           await _perister.DeleteFilesAsync(filesToRemove, transaction, token).ConfigureAwait(false);
         }
 
-        if (filesToAdd != null && filesToAdd.Any())
+        if (filesToAdd.Any())
         {
           await _perister.AddOrUpdateFilesAsync(filesToAdd, transaction, token).ConfigureAwait(false);
         }

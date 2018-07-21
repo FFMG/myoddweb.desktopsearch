@@ -46,6 +46,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\myoddweb.desktopsearch.helper\myoddweb.desktopsearch.helper.csproj">
+      <Project>{3d64478e-cb04-40bf-8a18-51989856746f}</Project>
+      <Name>myoddweb.desktopsearch.helper</Name>
+    </ProjectReference>
     <ProjectReference Include="..\myoddweb.desktopsearch.interfaces\myoddweb.desktopsearch.interfaces.csproj">
       <Project>{B1B3597E-D169-47A0-8CA8-FD543EF817D9}</Project>
       <Name>myoddweb.desktopsearch.interfaces</Name>
