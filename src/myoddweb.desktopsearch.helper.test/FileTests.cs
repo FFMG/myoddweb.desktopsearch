@@ -12,13 +12,15 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using NUnit.Framework;
 using File = myoddweb.desktopsearch.helper.File;
 
-namespace myoddweb.desktopsearch.parser.test.Helper
+namespace myoddweb.desktopsearch.parser.test
 {
   [TestFixture]
   internal class FileTests
@@ -140,14 +142,28 @@ namespace myoddweb.desktopsearch.parser.test.Helper
     }
 
     [Test]
-    public void IsNotChildOfMultipleParents()
+    public void ChildCannotBeNull()
     {
-      Assert.IsFalse(
+      Assert.Throws<ArgumentNullException>(() =>
         File.IsSubDirectory( new List<string>
         {
           "D:\\A\\B\\",
           "c:\\A\\B\\C\\"
-        }, "c:\\A\\B\\")
+        }, 
+        null)
+      );
+    }
+
+    [Test]
+    public void IsNotChildOfMultipleParents()
+    {
+      Assert.IsFalse(
+        File.IsSubDirectory(new List<string>
+          {
+            "D:\\A\\B\\",
+            "c:\\A\\B\\C\\"
+          },
+          "c:\\A\\B\\")
       );
     }
 
@@ -161,6 +177,476 @@ namespace myoddweb.desktopsearch.parser.test.Helper
           "c:\\A\\B\\C\\"
         }, "c:\\A\\B\\")
       );
+    }
+
+    [Test]
+    public void SimpleUnion()
+    {
+      var fisA = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt")
+      };
+      var fisB = new List<FileInfo>
+      {
+        new FileInfo("z:\\b.txt")
+      };
+
+      var fisU = File.Union(fisA, fisB);
+      Assert.AreEqual( 2, fisU.Count);
+      Assert.IsTrue( fisU.Any( f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fisU.Any(f => f.FullName == "z:\\b.txt"));
+
+      // nothing has changed
+      Assert.AreEqual(1, fisA.Count);
+      Assert.IsTrue(fisA.Any(f => f.FullName == "z:\\a.txt"));
+
+      Assert.AreEqual(1, fisB.Count);
+      Assert.IsTrue(fisB.Any(f => f.FullName == "z:\\b.txt"));
+    }
+
+    [Test]
+    public void RemoveDuplicateUnion()
+    {
+      var fisA = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt")
+      };
+      var fisB = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt")
+      };
+
+      var fisU = File.Union(fisA, fisB);
+      Assert.AreEqual(2, fisU.Count);
+      Assert.IsTrue(fisU.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fisU.Any(f => f.FullName == "z:\\b.txt"));
+
+      // nothing has changed
+      Assert.AreEqual(1, fisA.Count);
+      Assert.IsTrue(fisA.Any(f => f.FullName == "z:\\a.txt"));
+
+      Assert.AreEqual(2, fisB.Count);
+      Assert.IsTrue(fisB.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fisB.Any(f => f.FullName == "z:\\b.txt"));
+    }
+
+
+    [Test]
+    public void UnionFirstListIsEmptyList()
+    {
+      var fisA = new List<FileInfo>();
+      var fisB = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt")
+      };
+
+      var fisU = File.Union(fisA, fisB);
+      Assert.AreEqual(2, fisU.Count);
+      Assert.IsTrue(fisU.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fisU.Any(f => f.FullName == "z:\\b.txt"));
+
+      // nothing has changed
+      Assert.AreEqual(0, fisA.Count);
+
+      Assert.AreEqual(2, fisB.Count);
+      Assert.IsTrue(fisB.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fisB.Any(f => f.FullName == "z:\\b.txt"));
+    }
+
+    [Test]
+    public void UnionFirstListIsNullList()
+    {
+      var fis = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt")
+      };
+
+      var fisU = File.Union(null, fis);
+      Assert.AreEqual(2, fisU.Count);
+      Assert.IsTrue(fisU.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fisU.Any(f => f.FullName == "z:\\b.txt"));
+
+      Assert.AreEqual(2, fis.Count);
+      Assert.IsTrue(fis.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fis.Any(f => f.FullName == "z:\\b.txt"));
+    }
+
+    [Test]
+    public void UnionSecondListIsEmpty()
+    {
+      var fisA = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt")
+      };
+      var fisB = new List<FileInfo>();
+
+      var fisU = File.Union(fisA, fisB);
+      Assert.AreEqual(2, fisU.Count);
+      Assert.IsTrue(fisU.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fisU.Any(f => f.FullName == "z:\\b.txt"));
+
+      // nothing has changed
+      Assert.AreEqual(2, fisA.Count);
+      Assert.IsTrue(fisA.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fisA.Any(f => f.FullName == "z:\\b.txt"));
+
+      Assert.AreEqual(0, fisB.Count);
+    }
+
+    [Test]
+    public void UnionSecondListIsNullList()
+    {
+      var fis = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt")
+      };
+
+      var fisU = File.Union(fis, null);
+      Assert.AreEqual(2, fisU.Count);
+      Assert.IsTrue(fisU.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fisU.Any(f => f.FullName == "z:\\b.txt"));
+
+      Assert.AreEqual(2, fis.Count);
+      Assert.IsTrue(fis.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fis.Any(f => f.FullName == "z:\\b.txt"));
+    }
+
+    [Test]
+    public void UnionBothNull()
+    {
+      var fisU = File.Union(null, null);
+      Assert.IsInstanceOf<List<FileInfo>>(fisU);
+      Assert.AreEqual(0, fisU.Count);
+    }
+
+    [Test]
+    public void IntersectionBothNull()
+    {
+      var fisI = File.Intersection(null, null);
+      Assert.IsInstanceOf<List<FileInfo>>(fisI);
+      Assert.AreEqual(0, fisI.Count);
+    }
+
+    [Test]
+    public void IntersectionFirstListIsNullList()
+    {
+      var fis = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt")
+      };
+
+      var fisI = File.Intersection(null, fis);
+      Assert.IsInstanceOf<List<FileInfo>>(fisI);
+      Assert.AreEqual(0, fisI.Count);
+
+      Assert.AreEqual(2, fis.Count);
+      Assert.IsTrue(fis.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fis.Any(f => f.FullName == "z:\\b.txt"));
+    }
+
+    [Test]
+    public void IntersectionSecondListIsNullList()
+    {
+      var fis = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt")
+      };
+
+      var fisI = File.Intersection(fis, null);
+      Assert.IsInstanceOf<List<FileInfo>>(fisI);
+      Assert.AreEqual(0, fisI.Count);
+
+      Assert.AreEqual(2, fis.Count);
+      Assert.IsTrue(fis.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fis.Any(f => f.FullName == "z:\\b.txt"));
+    }
+
+    [Test]
+    public void SimpleIntersection()
+    {
+      var fisA = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt")
+      };
+      var fisB = new List<FileInfo>
+      {
+        new FileInfo("z:\\b.txt"),
+        new FileInfo("z:\\c.txt")
+      };
+
+      var fisI = File.Intersection(fisA, fisB);
+      Assert.AreEqual(1, fisI.Count);
+      Assert.IsTrue(fisI.Any(f => f.FullName == "z:\\b.txt"));
+
+      // nothing has changed
+      Assert.AreEqual(2, fisA.Count);
+      Assert.IsTrue(fisA.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fisA.Any(f => f.FullName == "z:\\b.txt"));
+
+      Assert.AreEqual(2, fisB.Count);
+      Assert.IsTrue(fisB.Any(f => f.FullName == "z:\\b.txt"));
+      Assert.IsTrue(fisB.Any(f => f.FullName == "z:\\c.txt"));
+    }
+
+    [Test]
+    public void SimpleIntersectionWithDuplicates()
+    {
+      var fisA = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt"),
+        new FileInfo("z:\\b.txt")
+      };
+      var fisB = new List<FileInfo>
+      {
+        new FileInfo("z:\\b.txt"),
+        new FileInfo("z:\\b.txt"),
+        new FileInfo("z:\\c.txt")
+      };
+
+      var fisI = File.Intersection(fisA, fisB);
+      Assert.AreEqual(1, fisI.Count);
+      Assert.IsTrue(fisI.Any(f => f.FullName == "z:\\b.txt"));
+
+      // nothing has changed
+      Assert.AreEqual(3, fisA.Count);
+      Assert.IsTrue(fisA.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.AreEqual(2, fisA.Count(f => f.FullName == "z:\\b.txt"));
+
+      Assert.AreEqual(3, fisB.Count);
+      Assert.IsTrue(fisB.Any(f => f.FullName == "z:\\b.txt"));
+      Assert.AreEqual(2, fisB.Count(f => f.FullName == "z:\\b.txt"));
+    }
+
+    [Test]
+    public void ExactIntersection()
+    {
+      var fisA = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt")
+      };
+      var fisB = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt")
+      };
+
+      var fisI = File.Intersection(fisA, fisB);
+      Assert.AreEqual(1, fisI.Count);
+      Assert.IsTrue(fisI.Any(f => f.FullName == "z:\\a.txt"));
+
+      // nothing has changed
+      Assert.AreEqual(1, fisA.Count);
+      Assert.IsTrue(fisA.Any(f => f.FullName == "z:\\a.txt"));
+
+      Assert.AreEqual(1, fisB.Count);
+      Assert.IsTrue(fisB.Any(f => f.FullName == "z:\\a.txt"));
+    }
+
+    [Test]
+    public void NoIntersectionAtAll()
+    {
+      var fisA = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt")
+      };
+      var fisB = new List<FileInfo>
+      {
+        new FileInfo("z:\\b.txt")
+      };
+
+      var fisI = File.Intersection(fisA, fisB);
+      Assert.AreEqual(0, fisI.Count);
+      Assert.IsInstanceOf<List<FileInfo>>(fisI);
+
+      // nothing has changed
+      Assert.AreEqual(1, fisA.Count);
+      Assert.IsTrue(fisA.Any(f => f.FullName == "z:\\a.txt"));
+
+      Assert.AreEqual(1, fisB.Count);
+      Assert.IsTrue(fisB.Any(f => f.FullName == "z:\\b.txt"));
+    }
+
+    [Test]
+    public void RemoveDuplicates()
+    {
+      var fis = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\a.txt")
+      };
+
+      var fisD = File.Distinct(fis);
+      Assert.AreEqual(1, fisD.Count);
+      Assert.IsTrue(fisD.Any(f => f.FullName == "z:\\a.txt"));
+
+      // nothing has changed
+      Assert.AreEqual(4, fis.Count(f => f.FullName == "z:\\a.txt"));
+    }
+
+    [Test]
+    public void RemoveDuplicatesSimple()
+    {
+      var fis = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt"),
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\a.txt")
+      };
+
+      var fisD = File.Distinct(fis);
+      Assert.AreEqual(2, fisD.Count);
+      Assert.IsTrue(fisD.Any(f => f.FullName == "z:\\a.txt"));
+      Assert.IsTrue(fisD.Any(f => f.FullName == "z:\\b.txt"));
+
+      // nothing has changed
+      Assert.AreEqual(3, fis.Count(f => f.FullName == "z:\\a.txt"));
+      Assert.AreEqual(1, fis.Count(f => f.FullName == "z:\\b.txt"));
+    }
+
+    [Test]
+    public void ComplementWithNullB()
+    {
+      var fis = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt"),
+      };
+      var fisC = File.RelativeComplement(fis, null );
+
+      Assert.AreEqual(0, fisC.Count);
+      Assert.IsInstanceOf<List<FileInfo>>(fisC);
+    }
+
+    [Test]
+    public void ComplementWithNullA()
+    {
+      var fis = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt"),
+      };
+      var fisC = File.RelativeComplement(null, fis);
+
+      Assert.AreEqual(2, fisC.Count);
+      Assert.AreEqual(1, fisC.Count(f => f.FullName == "z:\\a.txt"));
+      Assert.AreEqual(1, fisC.Count(f => f.FullName == "z:\\b.txt"));
+    }
+
+    [Test]
+    public void ComplementWithDumplicates()
+    {
+      var fisA = new List<FileInfo>
+      {
+        new FileInfo("z:\\c.txt"),
+      };
+
+      var fisB = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt"),
+        new FileInfo("z:\\a.txt")
+      };
+      var fisC = File.RelativeComplement(fisA, fisB);
+
+      Assert.AreEqual(2, fisC.Count);
+      Assert.AreEqual(1, fisC.Count(f => f.FullName == "z:\\a.txt"));
+      Assert.AreEqual(1, fisC.Count(f => f.FullName == "z:\\b.txt"));
+
+      Assert.AreEqual(3, fisB.Count);
+      Assert.AreEqual(2, fisB.Count(f => f.FullName == "z:\\a.txt"));
+      Assert.AreEqual(1, fisB.Count(f => f.FullName == "z:\\b.txt"));
+    }
+
+    [Test]
+    public void ComplementWithDumplicatesAndNullA()
+    {
+      var fis = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt"),
+        new FileInfo("z:\\a.txt")
+      };
+      var fisC = File.RelativeComplement(null, fis);
+
+      Assert.AreEqual(2, fisC.Count);
+      Assert.AreEqual(1, fisC.Count(f => f.FullName == "z:\\a.txt"));
+      Assert.AreEqual(1, fisC.Count(f => f.FullName == "z:\\b.txt"));
+
+      Assert.AreEqual(3, fis.Count);
+      Assert.AreEqual(2, fis.Count(f => f.FullName == "z:\\a.txt"));
+      Assert.AreEqual(1, fis.Count(f => f.FullName == "z:\\b.txt"));
+    }
+
+    [Test]
+    public void SimpleComplement()
+    {
+      var fisA = new List<FileInfo>
+      {
+        new FileInfo("z:\\c.txt"),
+      };
+
+      var fisB = new List<FileInfo>
+      {
+        new FileInfo("z:\\a.txt"),
+        new FileInfo("z:\\b.txt"),
+        new FileInfo("z:\\c.txt")
+      };
+      var fisC = File.RelativeComplement(fisA, fisB);
+
+      Assert.AreEqual(2, fisC.Count);
+      Assert.AreEqual(1, fisC.Count(f => f.FullName == "z:\\a.txt"));
+      Assert.AreEqual(1, fisC.Count(f => f.FullName == "z:\\b.txt"));
+
+      Assert.AreEqual(1, fisA.Count);
+      Assert.AreEqual(1, fisA.Count(f => f.FullName == "z:\\c.txt"));
+
+      Assert.AreEqual(3, fisB.Count);
+      Assert.AreEqual(1, fisB.Count(f => f.FullName == "z:\\a.txt"));
+      Assert.AreEqual(1, fisB.Count(f => f.FullName == "z:\\b.txt"));
+      Assert.AreEqual(1, fisB.Count(f => f.FullName == "z:\\c.txt"));
+    }
+
+    [Test]
+    public void BothNullDirectoryInfoCompare()
+    {
+      Assert.Throws<ArgumentNullException>(() => File.Equals(null, null));
+    }
+
+    [Test]
+    public void NullLhsDirectoryInfoCompare()
+    {
+      Assert.Throws<ArgumentNullException>(() => File.Equals(null, new DirectoryInfo("c:/test/")));
+    }
+
+    [Test]
+    public void NullRhsDirectoryInfoCompare()
+    {
+      Assert.Throws<ArgumentNullException>(() => File.Equals( new DirectoryInfo("c:/test/"), null ));
+    }
+
+    [TestCase("c:/", "c:/")]
+    [TestCase("c:\\", "c:\\")]
+    [TestCase("c:\\Test", "c://Test")]
+    [TestCase("c:\\Test\\", "c://Test")]
+    [TestCase("c://Test//", "c://Test")]
+    [TestCase("c://Test//Test2", "c://Test//Test2//")]
+    [TestCase("c://TEST//", "c://TEST")]
+    [TestCase("c://root//", "c://ROOT")]
+    public void DirectoriesAreEqual( string lhs, string rhs)
+    {
+      Assert.IsTrue( 
+        File.Equals(new DirectoryInfo(lhs), new DirectoryInfo(rhs)));
     }
   }
 }

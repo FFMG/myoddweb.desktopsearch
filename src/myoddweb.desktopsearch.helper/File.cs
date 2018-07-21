@@ -9,12 +9,8 @@ using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.helper
 {
-  public class File
+  public static class File
   {
-    private File()
-    {
-    }
-
     /// <summary>
     /// Safely create a File info
     /// </summary>
@@ -84,6 +80,11 @@ namespace myoddweb.desktopsearch.helper
       }
     }
 
+    /// <summary>
+    /// Check if a file can be read by this process
+    /// </summary>
+    /// <param name="file"></param>
+    /// <returns></returns>
     public static bool CanReadFile(FileInfo file)
     {
       try
@@ -159,6 +160,11 @@ namespace myoddweb.desktopsearch.helper
       }
     }
 
+    /// <summary>
+    /// Check if we are able to read an item given the access rules.
+    /// </summary>
+    /// <param name="accessRules"></param>
+    /// <returns></returns>
     private static bool CanRead(AuthorizationRuleCollection accessRules)
     {
       if (accessRules == null)
@@ -202,15 +208,23 @@ namespace myoddweb.desktopsearch.helper
       {
         throw new ArgumentNullException(nameof(parents));
       }
+      if (null == child)
+      {
+        throw new ArgumentNullException(nameof(child));
+      }
+      var diChild = DirectoryInfo(child, null);
+      if (null == diChild)
+      {
+        throw new ArgumentNullException(nameof(child));
+      }
       foreach (var parent in parents)
       {
+        if (null == parent)
+        {
+          throw new ArgumentNullException(nameof(child));
+        }
         var diParent = DirectoryInfo(parent, null);
         if (null == diParent)
-        {
-          continue;
-        }
-        var diChild = DirectoryInfo(parent, null);
-        if (null == diChild)
         {
           continue;
         }
@@ -286,9 +300,9 @@ namespace myoddweb.desktopsearch.helper
       {
         throw new ArgumentNullException(nameof(child));
       }
-      var pFullName = parent.FullName.TrimEnd('\\', '/');
-      var cFullName = child.FullName.TrimEnd('\\', '/');
-      if (string.Equals(pFullName, cFullName, StringComparison.OrdinalIgnoreCase))
+
+      // are they equal?
+      if (Equals(parent, child))
       {
         return true;
       }
@@ -300,6 +314,168 @@ namespace myoddweb.desktopsearch.helper
 
       // if we made it this far, it is not the same.
       return false;
+    }
+
+    /// <summary>
+    /// Check if 2 directories are equal
+    /// </summary>
+    /// <param name="diA"></param>
+    /// <param name="diB"></param>
+    /// <returns></returns>
+    public static bool Equals( DirectoryInfo diA, DirectoryInfo diB)
+    {
+      if (null == diA)
+      {
+        throw new ArgumentNullException( nameof(diA));
+      }
+      if (null == diB)
+      {
+        throw new ArgumentNullException(nameof(diB));
+      }
+
+      // quick check 
+      if (string.Equals(diA.FullName, diB.FullName, StringComparison.OrdinalIgnoreCase))
+      {
+        return true;
+      }
+
+      // cleanup check
+      var pFullName = diA.FullName.Replace( '/', '\\').TrimEnd('\\');
+      var cFullName = diB.FullName.Replace('/', '\\').TrimEnd('\\');
+      return string.Equals(pFullName, cFullName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Get the union of A and B
+    /// Basically A+B without dublicates.
+    /// </summary>
+    /// <param name="fisA"></param>
+    /// <param name="fisB"></param>
+    /// <returns></returns>
+    public static List<FileInfo> Union(List<FileInfo> fisA, List<FileInfo> fisB)
+    {
+      // if they are both null then the union has to be an empty list.
+      if (fisA == null && fisB == null )
+      {
+        return new List<FileInfo>();
+      }
+
+      // if A is null then B is not
+      // the union of both has to be B
+      if (fisA == null)
+      {
+        return fisB;
+      }
+
+      // if B is null then A is not
+      // the union of both has to be A
+      if (fisB == null)
+      {
+        return fisA;
+      }
+
+      // make a copy of it so we do not change fisA
+      var fisUnion = fisA.Select( fi => fi ).ToList();
+      foreach (var fiB in fisB)
+      {
+        if (fisUnion.Any(fi => fiB.FullName == fi.FullName))
+        {
+          continue;
+        }
+        fisUnion.Add(fiB);
+      }
+
+      // return the newly created list
+      return fisUnion;
+    }
+
+    /// <summary>
+    /// Get the intersection of A and B
+    /// Those are the files that are in both B and A
+    /// </summary>
+    /// <param name="fisA"></param>
+    /// <param name="fisB"></param>
+    /// <returns></returns>
+    public static List<FileInfo> Intersection(List<FileInfo> fisA, List<FileInfo> fisB)
+    {
+      // if either A or B are null then it does not matter what is in the 
+      // other collection as the first one has to be empty.
+      if (fisA == null || fisB == null)
+      {
+        return new List<FileInfo>();
+      }
+
+      // start with an empty list
+      var fisIntersection = new List<FileInfo>();
+      foreach (var fiB in fisB)
+      {
+        // if this file is never in B then there is no intersection.
+        if (fisA.All(fi => fiB.FullName != fi.FullName))
+        {
+          continue;
+        }
+        fisIntersection.Add(fiB);
+      }
+
+      // return the newly created list
+      return Distinct(fisIntersection);
+    }
+
+    /// <summary>
+    /// Remove duplicates in file info
+    /// </summary>
+    /// <param name="fis"></param>
+    /// <returns></returns>
+    public static List<FileInfo> Distinct(List<FileInfo> fis)
+    {
+      return fis.GroupBy(fi => fi.FullName).Select(fi => fi.First()).ToList();
+    }
+
+    /// <summary>
+    /// Get the relative complement
+    /// Return the list of elements that are in B but not in A
+    /// </summary>
+    /// <param name="fisA"></param>
+    /// <param name="fisB"></param>
+    /// <returns></returns>
+    public static List<FileInfo> RelativeComplement(List<FileInfo> fisA, List<FileInfo> fisB)
+    {
+      // if they are both empty then the complement is nothing.
+      if (null == fisA && null == fisB)
+      {
+        return new List<FileInfo>();
+      }
+
+      // if we have a null A then everything in B is the relative
+      // complement as they never intercet.
+      if (null == fisA)
+      {
+        return Distinct(fisB);
+      }
+
+      // If B is empty then it will never intercet with A
+      // so there is no complement values.
+      if (null == fisB)
+      {
+        return new List<FileInfo>();
+      }
+      
+      // we can now go around B and find all the ones that are _not_ in A
+      // A = {2,3,4}
+      // B = {3,4,5}
+      // RC = {5}
+      var fisRelativeComplement = new List<FileInfo>();
+      foreach (var fi in fisB)
+      {
+        if (fisA.Any(fiA => fi.FullName == fiA.FullName))
+        {
+          continue;
+        }
+        fisRelativeComplement.Add(fi);
+      }
+
+      // return the relatibe complements.
+      return Distinct(fisRelativeComplement);
     }
   }
 }
