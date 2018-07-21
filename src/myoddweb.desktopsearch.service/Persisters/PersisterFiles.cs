@@ -259,6 +259,62 @@ namespace myoddweb.desktopsearch.service.Persisters
       return (await GetFileIdAsync(file, transaction, token, false ).ConfigureAwait(false) != -1);
     }
 
+    /// <inheritdoc />
+    public async Task<List<FileInfo>> GetFilesAsync(long directoryId, DbTransaction transaction, CancellationToken token)
+    {
+      if (null == transaction)
+      {
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+      }
+
+      // look for the directory
+      var directory = await GetDirectoryAsync(directoryId, transaction, token).ConfigureAwait(false);
+      if (null == directory)
+      {
+        // with no directory, there is nothing we can do.
+        return null;
+      }
+
+      // the pending updates
+      var fileInfos = new List<FileInfo>();
+      try
+      {
+        // we want to get the latest updated folders.
+        var sql = $"SELECT name FROM {TableFiles} WHERE folderid=@id";
+        using (var cmd = CreateDbCommand(sql, transaction))
+        {
+          var pId = cmd.CreateParameter();
+          pId.DbType = DbType.Int64;
+          pId.ParameterName = "@id";
+          cmd.Parameters.Add(pId);
+
+          // set the folder id.
+          cmd.Parameters["@id"].Value = directoryId;
+          var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
+          while (reader.Read())
+          {
+            // are we cancelling?
+            if (token.IsCancellationRequested)
+            {
+              return null;
+            }
+
+            // add this update
+            fileInfos.Add(new FileInfo(
+              Path.Combine( directory.FullName, (string)reader["name"] )));
+          }
+        }
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        return null;
+      }
+
+      // return whatever we found
+      return token.IsCancellationRequested ? null : fileInfos;
+    }
+
     /// <summary>
     /// Given a list of files, re-create the ones that we need to insert.
     /// </summary>

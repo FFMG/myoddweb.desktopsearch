@@ -14,9 +14,11 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -172,8 +174,9 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="folderId"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task WorkDeletedAsync(long folderId, CancellationToken token)
+    public Task WorkDeletedAsync(long folderId, CancellationToken token)
     {
+      return Task.CompletedTask;
     }
 
     /// <summary>
@@ -184,6 +187,78 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     public async Task WorkChangedAsync(long folderId, CancellationToken token)
     {
+      var transaction = await _perister.BeginTransactionAsync().ConfigureAwait(false);
+      try
+      {
+        // Get the files currently on record
+        // this can be null if we have nothing.
+        var filesOnRecord = await _perister.GetFilesAsync(folderId, transaction, token).ConfigureAwait(false);
+
+        // look for the directory name, if we found nothing on record
+        // then we will have to go and look in the database.
+        DirectoryInfo directory;
+        if (null == filesOnRecord || !filesOnRecord.Any())
+        {
+          directory = await _perister.GetDirectoryAsync(folderId, transaction, token).ConfigureAwait(false);
+        }
+        else
+        {
+          var fi = filesOnRecord.First();
+          directory = fi.Directory;
+        }
+
+        // if we have no directory then we have nothing...
+        if (directory == null)
+        {
+          _perister.Rollback();
+          return;
+        }
+
+        // then get the ones in the file.
+        var filesOnFile = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait(false);
+
+        // files to add ... files to remove
+        var filesToAdd = filesOnFile?.Select( f => f ).ToList();
+        var filesToRemove = filesOnRecord?.Select(f => f).ToList();
+        if (filesOnRecord != null && filesToAdd != null )
+        {
+          foreach (var fr in filesOnRecord)
+          {
+            filesToAdd.RemoveAll(f => f.FullName == fr.FullName);
+          }
+
+          foreach (var fr in filesOnFile)
+          {
+            filesToRemove.RemoveAll(f => f.FullName == fr.FullName);
+          }
+        }
+
+        if (filesToRemove != null && filesToRemove.Any())
+        {
+          await _perister.DeleteFilesAsync(filesToRemove, transaction, token).ConfigureAwait(false);
+        }
+
+        if (filesToAdd != null && filesToAdd.Any())
+        {
+          await _perister.AddOrUpdateFilesAsync(filesToAdd, transaction, token).ConfigureAwait(false);
+        }
+
+        // if we cancelled the tansaction
+        // then we must just rollback
+        if (!token.IsCancellationRequested)
+        {
+          _perister.Commit();
+        }
+        else
+        {
+          _perister.Rollback();
+        }
+      }
+      catch (Exception e)
+      {
+        _perister.Rollback();
+        _logger.Exception(e);
+      }
     }
 
     /// <summary>

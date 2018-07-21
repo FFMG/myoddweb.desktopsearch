@@ -207,7 +207,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // return the valid paths.
-          return new DirectoryInfo( (string)path );
+          return helper.File.DirectoryInfo( (string)path, _logger );
         }
       }
       catch (Exception e)

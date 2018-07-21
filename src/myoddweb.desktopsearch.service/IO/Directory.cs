@@ -108,7 +108,7 @@ namespace myoddweb.desktopsearch.service.IO
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<DirectoryInfo>> ParseDirectoriesAsync(DirectoryInfo directory, CancellationToken token)
+    public async Task<List<DirectoryInfo>> ParseDirectoriesAsync(DirectoryInfo directory, CancellationToken token)
     {
       // reset what we might have found already
       Directories.Clear();
@@ -122,13 +122,13 @@ namespace myoddweb.desktopsearch.service.IO
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<FileInfo>> ParseDirectoryAsync(DirectoryInfo directory, CancellationToken token)
+    public Task<List<FileInfo>> ParseDirectoryAsync(DirectoryInfo directory, CancellationToken token)
     {
       // sanity check
       if (!helper.File.CanReadDirectory(directory))
       {
         _logger.Warning($"Cannot Parse Directory: {directory.FullName}");
-        return null;
+        return Task.FromResult<List<FileInfo>>(null);
       }
 
       IEnumerable<FileInfo> files;
@@ -141,19 +141,19 @@ namespace myoddweb.desktopsearch.service.IO
         // we cannot access/enumerate this file
         // but we might as well continue
         _logger.Verbose($"Security error while parsing directory: {directory.FullName}.");
-        return null;
+        return Task.FromResult<List<FileInfo>>(null);
       }
       catch (UnauthorizedAccessException)
       {
         // we cannot access/enumerate this file
         // but we might as well continue
         _logger.Verbose($"Unauthorized Access while parsing directory: {directory.FullName}.");
-        return null;
+        return Task.FromResult<List<FileInfo>>(null);
       }
       catch (Exception e)
       {
         _logger.Error($"Exception while parsing directory: {directory.FullName}. {e.Message}");
-        return null;
+        return Task.FromResult<List<FileInfo>>(null);
       }
 
       var posibleFiles = new List<FileInfo>();
@@ -163,7 +163,7 @@ namespace myoddweb.desktopsearch.service.IO
         if (token.IsCancellationRequested)
         {
           // we were asked to stop, so just break out.
-          return null;
+          return Task.FromResult<List<FileInfo>>(null);
         }
 
         if (!helper.File.CanReadFile(file))
@@ -174,7 +174,7 @@ namespace myoddweb.desktopsearch.service.IO
       }
 
       // if we found nothing we return null.
-      return Task.FromResult<IReadOnlyList<FileInfo>>(posibleFiles.Any() ? posibleFiles : null);
+      return Task.FromResult(posibleFiles.Any() ? posibleFiles : null);
     }
 
     /// <inheritdoc />
