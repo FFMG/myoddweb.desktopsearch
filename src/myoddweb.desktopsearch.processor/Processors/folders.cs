@@ -102,15 +102,15 @@ namespace myoddweb.desktopsearch.processor.Processors
 
           switch (pendingFolderUpdate.PendingUpdateType )
           {
-            case FolderUpdateType.Created:
+            case UpdateType.Created:
               await WorkCreatedAsync(pendingFolderUpdate.FolderId, token).ConfigureAwait(false);
               break;
 
-            case FolderUpdateType.Deleted:
+            case UpdateType.Deleted:
               await WorkDeletedAsync(pendingFolderUpdate.FolderId, token).ConfigureAwait(false);
               break;
 
-            case FolderUpdateType.Changed:
+            case UpdateType.Changed:
               // renamed or content/settingss changed
               await WorkChangedAsync(pendingFolderUpdate.FolderId, token).ConfigureAwait(false);
               break;

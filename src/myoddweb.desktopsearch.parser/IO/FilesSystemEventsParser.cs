@@ -54,6 +54,7 @@ namespace myoddweb.desktopsearch.parser.IO
       {
         return false;
       }
+
       // it is a file that we can read?
       // we do not check delted files as they are ... deleted.
       if (!helper.File.CanReadFile(file))
@@ -152,17 +153,20 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <inheritdoc />
-    protected override Task ProcessChangedAsync(IFileSystemEvent e, CancellationToken token)
+    protected override async Task ProcessChangedAsync(IFileSystemEvent e, CancellationToken token)
     {
       var file = e.File;
       if (!CanProcessFile(file))
       {
-        return Task.CompletedTask;
+        return;
       }
 
       // the given file is going to be processed.
       Logger.Verbose($"File: {e.FullName} (Changed)");
-      return Task.CompletedTask;
+
+
+      // then make sure to touch the folder accordingly
+      await _persister.TouchFileAsync(file, UpdateType.Changed, _currentTransaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

@@ -14,13 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  /// <summary>
-  /// The various folder changes 
-  /// </summary>
-  public enum FolderUpdateType
+  public class PendingFileUpdate
   {
-    Created,
-    Deleted,
-    Changed
   }
 }

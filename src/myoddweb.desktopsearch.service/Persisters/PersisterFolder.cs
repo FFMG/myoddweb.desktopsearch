@@ -96,8 +96,8 @@ namespace myoddweb.desktopsearch.service.Persisters
           // so it has to exist...
           var folderId = await GetDirectoryIdAsync(directory, transaction, token, false ).ConfigureAwait(false);
 
-          // touch that folder as deleted
-          await TouchDirectoryAsync(folderId, FolderUpdateType.Changed, transaction, token).ConfigureAwait(false);
+          // touch that folder as changed
+          await TouchDirectoryAsync(folderId, UpdateType.Changed, transaction, token).ConfigureAwait(false);
 
           // we are done
           return folderId;
@@ -151,7 +151,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             await DeleteFilesAsync(directory, transaction, token ).ConfigureAwait(false);
 
             // touch that folder as deleted
-            await TouchDirectoryAsync(directory, FolderUpdateType.Deleted, transaction, token).ConfigureAwait(false);
+            await TouchDirectoryAsync(directory, UpdateType.Deleted, transaction, token).ConfigureAwait(false);
 
             // then do the actual delete.
             cmd.Parameters["@path"].Value = directory.FullName;
@@ -350,7 +350,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // touch that folder as created
-            await TouchDirectoryAsync(nextId, FolderUpdateType.Created, transaction, token).ConfigureAwait(false);
+            await TouchDirectoryAsync(nextId, UpdateType.Created, transaction, token).ConfigureAwait(false);
 
             // we can now move on to the next folder id.
             ++nextId;

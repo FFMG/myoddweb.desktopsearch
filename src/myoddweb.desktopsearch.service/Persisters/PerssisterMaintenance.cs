@@ -49,6 +49,10 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
 
+      if (!await CreateFilesUpdateAsync(transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
       return true;
     }
 
@@ -103,6 +107,38 @@ namespace myoddweb.desktopsearch.service.Persisters
       if (
         !await
           ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolderUpdates}_folderid ON {TableFolderUpdates}(folderid); ", transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
+      return true;
+    }
+
+    /// <summary>
+    /// Create the updates table.
+    /// </summary>
+    /// <param name="transaction"></param>
+    /// <returns></returns>
+    private async Task<bool> CreateFilesUpdateAsync(DbTransaction transaction)
+    {
+      if (!await
+        ExecuteNonQueryAsync($"CREATE TABLE {TableFileUpdates} (fileid integer, type integer, ticks integer)", transaction)
+          .ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // index to get the last 'x' updated files.
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFileUpdates}_ticks ON {TableFileUpdates}(ticks); ", transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // the files index so we can add/remove files once processed.
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFileUpdates}_fileid ON {TableFileUpdates}(fileid); ", transaction).ConfigureAwait(false))
       {
         return false;
       }

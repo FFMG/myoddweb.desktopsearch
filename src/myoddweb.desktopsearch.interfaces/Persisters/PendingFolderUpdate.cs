@@ -24,9 +24,9 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <summary>
     /// The pending update type.
     /// </summary>
-    public FolderUpdateType PendingUpdateType { get; }
+    public UpdateType PendingUpdateType { get; }
 
-    public PendingFolderUpdate(long folderId, FolderUpdateType pendingUpdateType)
+    public PendingFolderUpdate(long folderId, UpdateType pendingUpdateType)
     {
       // set the folder id.
       FolderId = folderId;

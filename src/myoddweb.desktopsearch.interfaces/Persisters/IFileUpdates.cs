@@ -20,54 +20,64 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IFolderUpdates
+  public interface IFileUpdates
   {
     /// <summary>
-    /// Flag a folder as having changed.
+    /// Flag a file as having changed.
     /// </summary>
-    /// <param name="directory"></param>
+    /// <param name="file"></param>
     /// <param name="type"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchDirectoryAsync(DirectoryInfo directory, UpdateType type, DbTransaction transaction, CancellationToken token);
+    Task<bool> TouchFileAsync(FileInfo file, UpdateType type, DbTransaction transaction, CancellationToken token);
 
     /// <summary>
-    /// Flag a folder as having changed.
+    /// Flag a file as having changed.
     /// </summary>
-    /// <param name="folderId"></param>
+    /// <param name="fileId"></param>
     /// <param name="type"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchDirectoryAsync(long folderId, UpdateType type, DbTransaction transaction, CancellationToken token);
+    Task<bool> TouchFileAsync(long fileId, UpdateType type, DbTransaction transaction, CancellationToken token);
 
     /// <summary>
-    /// Flag that we have processed the given directory
+    /// Touch a list of files
     /// </summary>
-    /// <param name="directory"></param>
+    /// <param name="fileIds"></param>
+    /// <param name="type"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkDirectoryProcessedAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token);
+    Task<bool> TouchFilesAsync( IEnumerable<long> fileIds, UpdateType type, DbTransaction transaction, CancellationToken token);
 
     /// <summary>
-    /// Flag that we have processed the given directory
+    /// Flag that we have processed the given file
     /// </summary>
-    /// <param name="folderId"></param>
+    /// <param name="file"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkDirectoryProcessedAsync(long folderId, DbTransaction transaction, CancellationToken token);
+    Task<bool> MarkFileProcessedAsync(FileInfo file, DbTransaction transaction, CancellationToken token);
 
     /// <summary>
-    /// Flag that we have processed the given directory
+    /// Flag that we have processed the given file
     /// </summary>
-    /// <param name="folderIds"></param>
+    /// <param name="fileId"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkDirectoriesProcessedAsync(IEnumerable<long> folderIds, DbTransaction transaction, CancellationToken token);
+    Task<bool> MarkFileProcessedAsync(long fileId, DbTransaction transaction, CancellationToken token);
+
+    /// <summary>
+    /// Flag that we have processed the given file
+    /// </summary>
+    /// <param name="fileIds"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> MarkFilesProcessedAsync(IEnumerable<long> fileIds, DbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Get a number of pending updates.
@@ -76,6 +86,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync( long limit, DbTransaction transaction, CancellationToken token);
+    Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync(long limit, DbTransaction transaction, CancellationToken token);
   }
 }

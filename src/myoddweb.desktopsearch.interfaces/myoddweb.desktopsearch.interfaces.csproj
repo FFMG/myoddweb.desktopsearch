@@ -49,9 +49,11 @@
     <Compile Include="IO\IFileSystemEvent.cs" />
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Logging\LogLevel.cs" />
-    <Compile Include="Persisters\FolderUpdateType.cs" />
+    <Compile Include="Persisters\PendingFileUpdate.cs" />
+    <Compile Include="Persisters\UpdateType.cs" />
     <Compile Include="Persisters\IConfig.cs" />
     <Compile Include="Persisters\IFiles.cs" />
+    <Compile Include="Persisters\IFileUpdates.cs" />
     <Compile Include="Persisters\IFolders.cs" />
     <Compile Include="Persisters\IFolderUpdates.cs" />
     <Compile Include="Persisters\IPersister.cs" />

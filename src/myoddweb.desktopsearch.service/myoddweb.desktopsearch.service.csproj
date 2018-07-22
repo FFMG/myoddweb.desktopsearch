@@ -83,6 +83,7 @@
     <Compile Include="Persisters\Persister.cs" />
     <Compile Include="Persisters\PersisterConfig.cs" />
     <Compile Include="Persisters\PersisterFiles.cs" />
+    <Compile Include="Persisters\PersisterFileUpdates.cs" />
     <Compile Include="Persisters\PersisterFolder.cs" />
     <Compile Include="Persisters\PersisterFolderUpdates.cs" />
     <Compile Include="Persisters\PerssisterMaintenance.cs" />

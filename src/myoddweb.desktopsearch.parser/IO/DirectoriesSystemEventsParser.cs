@@ -159,7 +159,7 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"Directory: {e.FullName} (Changed)");
 
       // then make sure to touch the folder accordingly
-      await _persister.TouchDirectoryAsync(directory, FolderUpdateType.Changed, _currentTransaction, token).ConfigureAwait(false);
+      await _persister.TouchDirectoryAsync(directory, UpdateType.Changed, _currentTransaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

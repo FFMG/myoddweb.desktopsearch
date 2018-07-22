@@ -20,6 +20,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
@@ -124,7 +125,10 @@ namespace myoddweb.desktopsearch.service.Persisters
           // in either cases, we can now return the id of this newly added file.
           // we won't ask the function to insert a new file as we _just_ renamed it.
           // so it has to exist...
-          return await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
+          var fileId = await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
+
+          // touch that file as changed
+          await TouchFileAsync(fileId, UpdateType.Changed, transaction, token).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -177,14 +181,26 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // get the folder id, no need to create it.
-            var folderid = await GetDirectoryIdAsync(file.Directory, transaction, token, false).ConfigureAwait( false );
-            if (-1 == folderid)
+            var folderId = await GetDirectoryIdAsync(file.Directory, transaction, token, false).ConfigureAwait( false );
+            if (-1 == folderId)
             {
               _logger.Warning($"Could not delete file: {file.FullName}, could not locate the parent folder?");
               continue;
             }
 
-            cmd.Parameters["@folderid"].Value = folderid;
+            // get the file ids
+            var fileIds = await GetFileIdsAsync(folderId, transaction, token).ConfigureAwait(false);
+
+            // if we have no ids... then no point in going further
+            if (!fileIds.Any())
+            {
+              continue;
+            }
+
+            // touch that folder as changed
+            await TouchFilesAsync(fileIds, UpdateType.Deleted, transaction, token).ConfigureAwait(false);
+
+            cmd.Parameters["@folderid"].Value = folderId;
             cmd.Parameters["@name"].Value = file.Name;
             if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
             {
@@ -368,13 +384,20 @@ namespace myoddweb.desktopsearch.service.Persisters
               return false;
             }
 
-            cmd.Parameters["@id"].Value = nextId++;
+            cmd.Parameters["@id"].Value = nextId;
             cmd.Parameters["@folderid"].Value = folderId;
             cmd.Parameters["@name"].Value = file.Name;
             if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding file: {file.FullName} to persister");
+              continue;
             }
+
+            // touch that folder as created
+            await TouchFileAsync(nextId, UpdateType.Created, transaction, token).ConfigureAwait(false);
+
+            // we can now move on to the next folder id.
+            ++nextId;
           }
           catch (Exception ex)
           {
@@ -554,6 +577,52 @@ namespace myoddweb.desktopsearch.service.Persisters
 
         // get the path id.
         return (long)value;
+      }
+    }
+
+    /// <summary>
+    /// Get the id of all the files that 'belong' to a folder.
+    /// </summary>
+    /// <param name="folderId"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<List<long>> GetFileIdsAsync(long folderId, DbTransaction transaction, CancellationToken token)
+    {
+      try
+      {
+        // we first look for it, and, if we find it then there is nothing to do.
+        var sql = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid";
+        using (var cmd = CreateDbCommand(sql, transaction))
+        {
+          var fileIds = new List<long>();
+          var pFolderId = cmd.CreateParameter();
+          pFolderId.DbType = DbType.Int64;
+          pFolderId.ParameterName = "@folderid";
+          cmd.Parameters.Add(pFolderId);
+
+          cmd.Parameters["@folderid"].Value = folderId;
+          var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
+          while (reader.Read())
+          {
+            // are we cancelling?
+            if (token.IsCancellationRequested)
+            {
+              return null;
+            }
+
+            // add this id to the list.
+            fileIds.Add((long)reader["id"]);
+          }
+
+          // return all the files we found.
+          return fileIds;
+        }
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        throw;
       }
     }
   }

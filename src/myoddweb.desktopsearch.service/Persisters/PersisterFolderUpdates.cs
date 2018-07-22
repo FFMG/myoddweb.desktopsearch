@@ -27,13 +27,11 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class Persister
   {
     /// <inheritdoc />
-    public async Task<bool> TouchDirectoryAsync(DirectoryInfo directory, FolderUpdateType type,
-      DbTransaction transaction, CancellationToken token)
+    public async Task<bool> TouchDirectoryAsync(DirectoryInfo directory, UpdateType type, DbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
-        throw new ArgumentNullException(nameof(transaction),
-          "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
       }
 
       var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
@@ -47,19 +45,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchDirectoryAsync(long folderId, FolderUpdateType type, DbTransaction transaction,
-      CancellationToken token)
+    public async Task<bool> TouchDirectoryAsync(long folderId, UpdateType type, DbTransaction transaction,CancellationToken token)
     {
       // if it is not a valid id then there is nothing for us to do.
       if (folderId < 0)
       {
-        return true;
+        return !token.IsCancellationRequested;
       }
 
       if (null == transaction)
       {
-        throw new ArgumentNullException(nameof(transaction),
-          "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
       }
 
       // first mark that folder id as procesed.
@@ -108,8 +104,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkDirectoryProcessedAsync(DirectoryInfo directory, DbTransaction transaction,
-      CancellationToken token)
+    public async Task<bool> MarkDirectoryProcessedAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
     {
       var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
       if (-1 == folderId)
@@ -197,7 +192,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             // add this update
             pendingUpdates.Add(new PendingFolderUpdate(
                 (long)reader["folderid"],
-                (FolderUpdateType)(long)reader["type"]
+                (UpdateType)(long)reader["type"]
               ));
           }
         }
