@@ -29,6 +29,11 @@ namespace myoddweb.desktopsearch.parser
   {
     #region Member variables
     /// <summary>
+    /// The currently running task
+    /// </summary>
+    private Task _runningTask;
+
+    /// <summary>
     /// The file watchers
     /// </summary>
     private readonly List<Watcher> _watchers = new List<Watcher>();
@@ -187,8 +192,12 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     public void Start(CancellationToken token)
     {
-      var thread = new Thread(async () => await WorkAsync(token).ConfigureAwait(false));
-      thread.Start();
+      if (_runningTask != null && !_runningTask.IsCompleted)
+      {
+        Task.WaitAll(_runningTask);
+        _runningTask = null;
+      }
+      _runningTask = WorkAsync(token);
       _logger.Information("Parser started");
     }
 
@@ -231,6 +240,13 @@ namespace myoddweb.desktopsearch.parser
         watcher?.Stop();
       }
       _watchers.Clear();
+
+      // wait for the main task itself to complete.
+      if (_runningTask != null && !_runningTask.IsCompleted)
+      {
+        Task.WaitAll(_runningTask);
+        _runningTask = null;
+      }
     }
     #endregion
   }
