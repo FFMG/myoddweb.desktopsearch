@@ -38,6 +38,10 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(Required = Required.Always)]
     public List<ILogger> Loggers { get; protected set; }
 
+    [DefaultValue(null)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public IProcessors Processors { get; protected set; }
+
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context)
     {
@@ -45,6 +49,12 @@ namespace myoddweb.desktopsearch.service.Configs
       {
         // set the default values.
         Timers = JsonConvert.DeserializeObject<ConfigTimers>("{}");
+      }
+
+      if (null == Processors)
+      {
+        // set the default values.
+        Processors = JsonConvert.DeserializeObject<ConfigProcessor>("{}");
       }
     }
 
@@ -54,11 +64,13 @@ namespace myoddweb.desktopsearch.service.Configs
     /// <param name="paths"></param>
     /// <param name="timers"></param>
     /// <param name="loggers"></param>
-    public Config(ConfigPaths paths, ConfigTimers timers, IEnumerable<ConfigLogger> loggers)
+    /// <param name="processor"></param>
+    public Config(ConfigPaths paths, ConfigTimers timers, IEnumerable<ConfigLogger> loggers, ConfigProcessor processor )
     {
       Paths = paths;
       Timers = timers;
       Loggers = RecreateLoggers(loggers);
+      Processors = processor;
     }
 
     /// <summary>

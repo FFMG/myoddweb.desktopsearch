@@ -18,7 +18,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -27,9 +26,12 @@ namespace myoddweb.desktopsearch.processor.Processors
 {
   internal class Folders : IProcessor
   {
-    private const long NumberOfFoldersToProcess = 20;
-
     #region Member Variables
+    /// <summary>
+    /// The number of folders we want to process.
+    /// </summary>
+    private readonly long _numberOfFoldersToProcess;
+
     /// <summary>
     /// The logger that we will be using to log messages.
     /// </summary>
@@ -51,7 +53,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     private bool _canWork;
     #endregion
 
-    public Folders(IPersister persister, ILogger logger, IDirectory directory)
+    public Folders(long numberOfFoldersToProcessPerEvent, IPersister persister, ILogger logger, IDirectory directory)
     {
       // set the persister.
       _perister = persister ?? throw new ArgumentNullException(nameof(persister));
@@ -61,6 +63,8 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       // save the directory parser
       _directory = directory ?? throw new ArgumentNullException(nameof(directory));
+
+      _numberOfFoldersToProcess = numberOfFoldersToProcessPerEvent;
     }
 
     /// <inheritdoc />
@@ -279,12 +283,17 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
     }
 
+    /// <summary>
+    /// Get the folder updates
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
     private async Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync(CancellationToken token)
     {
       var transaction = await _perister.BeginTransactionAsync().ConfigureAwait(false);
       try
       {
-        var pendingUpdates = await _perister.GetPendingFolderUpdatesAsync(NumberOfFoldersToProcess, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _perister.GetPendingFolderUpdatesAsync(_numberOfFoldersToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _perister.Rollback();

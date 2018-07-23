@@ -44,6 +44,7 @@
     <Compile Include="Configs\IConfig.cs" />
     <Compile Include="Configs\ILogger.cs" />
     <Compile Include="Configs\IPaths.cs" />
+    <Compile Include="Configs\IProcessors.cs" />
     <Compile Include="Configs\ITimers.cs" />
     <Compile Include="IO\IDirectory.cs" />
     <Compile Include="IO\IFileSystemEvent.cs" />

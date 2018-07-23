@@ -12,30 +12,18 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Collections.Generic;
-
 namespace myoddweb.desktopsearch.interfaces.Configs
 {
-  public interface IConfig
+  public interface IProcessors
   {
     /// <summary>
-    /// The paths information.
+    /// How many folders we will be processing at a time.
     /// </summary>
-    IPaths Paths { get; }
+    long NumberOfFoldersToProcessPerEvent { get; }
 
     /// <summary>
-    /// All the timers.
+    /// How many files we will be processing at a time.
     /// </summary>
-    ITimers Timers { get; }
-
-    /// <summary>
-    /// All the loggers
-    /// </summary>
-    List<ILogger> Loggers { get; }
-
-    /// <summary>
-    /// The processors variables
-    /// </summary>
-    IProcessors Processors { get; }
+    long NumberOfFilesToProcessPerEvent { get; }
   }
 }

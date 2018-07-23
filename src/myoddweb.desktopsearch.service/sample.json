@@ -22,6 +22,10 @@
     "EventsParserMs": 10000,
     "EventsProcessorMs": 10000
   },
+  "Processors": {
+    "NumberOfFoldersToProcessPerEvent": 100,
+    "NumberOfFilesToProcessPerEvent": 100
+  },
   "Paths": {
     "ParseFixedDrives": true,
     "ParseRemovableDrives": false,

@@ -72,6 +72,7 @@
     <Compile Include="Configs\ConfigConsoleLogger.cs" />
     <Compile Include="Configs\ConfigLoggers.cs" />
     <Compile Include="Configs\ConfigPaths.cs" />
+    <Compile Include="Configs\ConfigProcessor.cs" />
     <Compile Include="Configs\ConfigTimers.cs" />
     <Compile Include="DesktopSearchService.cs">
       <SubType>Component</SubType>
