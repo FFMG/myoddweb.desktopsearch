@@ -16,5 +16,23 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
 {
   public class PendingFileUpdate
   {
+    /// <summary>
+    /// The folder id with a pending update
+    /// </summary>
+    public long FileId { get; }
+
+    /// <summary>
+    /// The pending update type.
+    /// </summary>
+    public UpdateType PendingUpdateType { get; }
+
+    public PendingFileUpdate(long fileId, UpdateType pendingUpdateType)
+    {
+      // set the file id.
+      FileId = fileId;
+
+      // the pending update type.
+      PendingUpdateType = pendingUpdateType;
+    }
   }
 }

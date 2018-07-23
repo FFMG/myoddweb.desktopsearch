@@ -95,5 +95,14 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<List<FileInfo>> GetFilesAsync(long directoryId, DbTransaction transaction, CancellationToken token);
+
+    /// <summary>
+    /// Get a file information
+    /// </summary>
+    /// <param name="fileId"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<FileInfo> GetFileAsync(long fileId, DbTransaction transaction, CancellationToken token);
   }
 }

@@ -23,10 +23,10 @@ namespace myoddweb.desktopsearch.service.Configs
   {
     [DefaultValue(100)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public long NumberOfFoldersToProcessPerEvent { get; }
+    public long NumberOfFoldersToProcessPerEvent { get; protected set; }
 
     [DefaultValue(100)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public long NumberOfFilesToProcessPerEvent { get; }
+    public long NumberOfFilesToProcessPerEvent { get; protected set; }
   }
 }

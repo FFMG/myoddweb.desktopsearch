@@ -331,6 +331,63 @@ namespace myoddweb.desktopsearch.service.Persisters
       return token.IsCancellationRequested ? null : fileInfos;
     }
 
+    /// <inheritdoc />
+    public async Task<FileInfo> GetFileAsync(long fileId, DbTransaction transaction, CancellationToken token)
+    {
+      if (null == transaction)
+      {
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+      }
+
+      // the pending updates
+      FileInfo file = null;
+      try
+      {
+        // we want to get the latest updated folders.
+        var sql = $"SELECT folderid, name FROM {TableFiles} WHERE id=@id";
+        using (var cmd = CreateDbCommand(sql, transaction))
+        {
+          var pId = cmd.CreateParameter();
+          pId.DbType = DbType.Int64;
+          pId.ParameterName = "@id";
+          cmd.Parameters.Add(pId);
+
+          // set the folder id.
+          cmd.Parameters["@id"].Value = fileId;
+          var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
+          if (reader.Read())
+          {
+            // are we cancelling?
+            if (token.IsCancellationRequested)
+            {
+              return null;
+            }
+
+            // get the directory
+            var directory = await GetDirectoryAsync((long) reader["folderid"], transaction, token).ConfigureAwait(false);
+
+            // sanity check
+            if (null == directory)
+            {
+              _logger.Error( $"The file '{(string)reader["name"]}'({fileId}) is on record, but the fodler ({(long)reader["folderid"]}) does not exist!");
+              return null;
+            }
+
+            // we can now rebuild the file info.
+            file = new FileInfo( Path.Combine(directory.FullName, (string)reader["name"]));
+          }
+        }
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        return null;
+      }
+
+      // return whatever we found
+      return token.IsCancellationRequested ? null : file;
+    }
+
     /// <summary>
     /// Given a list of files, re-create the ones that we need to insert.
     /// </summary>

@@ -55,6 +55,9 @@ namespace myoddweb.desktopsearch.processor.Processors
 
     public Folders(long numberOfFoldersToProcessPerEvent, IPersister persister, ILogger logger, IDirectory directory)
     {
+      // the number of folders to process.
+      _numberOfFoldersToProcess = numberOfFoldersToProcessPerEvent;
+
       // set the persister.
       _perister = persister ?? throw new ArgumentNullException(nameof(persister));
 
@@ -63,8 +66,6 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       // save the directory parser
       _directory = directory ?? throw new ArgumentNullException(nameof(directory));
-
-      _numberOfFoldersToProcess = numberOfFoldersToProcessPerEvent;
     }
 
     /// <inheritdoc />
@@ -82,14 +83,14 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <inheritdoc />
     public async Task WorkAsync(CancellationToken token)
     {
+      // if we cannot work ... then don't
+      if (false == _canWork)
+      {
+        return;
+      }
+
       try
       {
-        // if we cannot work ... then don't
-        if (false == _canWork)
-        {
-          return;
-        }
-
         var pendingUpdates = await GetPendingFolderUpdatesAsync(token);
         if (null == pendingUpdates || !pendingUpdates.Any())
         {
@@ -163,7 +164,17 @@ namespace myoddweb.desktopsearch.processor.Processors
             }
           }
         }
-        _perister.Commit();
+
+        // if we cancelled the tansaction
+        // then we must just rollback
+        if (!token.IsCancellationRequested)
+        {
+          _perister.Commit();
+        }
+        else
+        {
+          _perister.Rollback();
+        }
       }
       catch (Exception e)
       {
@@ -272,8 +283,15 @@ namespace myoddweb.desktopsearch.processor.Processors
           _perister.Rollback();
           return false;
         }
-        _perister.Commit();
-        return true;
+        // if we cancelled the tansaction
+        // then we must just rollback
+        if (!token.IsCancellationRequested)
+        {
+          _perister.Commit();
+          return true;
+        }
+        _perister.Rollback();
+        return false;
       }
       catch (Exception e)
       {
@@ -300,8 +318,16 @@ namespace myoddweb.desktopsearch.processor.Processors
           _logger.Error( "Unable to get any pending folder updates." );
           return null;
         }
-        _perister.Commit();
-        return pendingUpdates;
+        // if we cancelled the tansaction
+        // then we must just rollback
+        if (!token.IsCancellationRequested)
+        {
+          _perister.Commit();
+          return pendingUpdates;
+        }
+
+        _perister.Rollback();
+        return null;
       }
       catch (Exception e)
       {

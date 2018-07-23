@@ -186,9 +186,46 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync(long limit, DbTransaction transaction, CancellationToken token)
+    public async Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync(long limit, DbTransaction transaction, CancellationToken token)
     {
-      throw new NotImplementedException();
+      if (null == transaction)
+      {
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+      }
+
+      // the pending updates
+      var pendingUpdates = new List<PendingFileUpdate>();
+      try
+      {
+        // we want to get the latest updated folders.
+        var sql = $"SELECT fileid, type FROM {TableFileUpdates} ORDER BY ticks DESC LIMIT {limit}";
+        using (var cmd = CreateDbCommand(sql, transaction))
+        {
+          var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
+          while (reader.Read())
+          {
+            // are we cancelling?
+            if (token.IsCancellationRequested)
+            {
+              return null;
+            }
+
+            // add this update
+            pendingUpdates.Add(new PendingFileUpdate(
+              (long)reader["fileid"],
+              (UpdateType)(long)reader["type"]
+            ));
+          }
+        }
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        return null;
+      }
+
+      // return whatever we found
+      return token.IsCancellationRequested ? null : pendingUpdates;
     }
   }
 }
