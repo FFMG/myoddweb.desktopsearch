@@ -65,7 +65,7 @@ namespace myoddweb.desktopsearch.service.Configs
     /// <param name="timers"></param>
     /// <param name="loggers"></param>
     /// <param name="processor"></param>
-    public Config(ConfigPaths paths, ConfigTimers timers, IEnumerable<ConfigLogger> loggers, ConfigProcessor processor )
+    public Config(ConfigPaths paths, ConfigTimers timers, ConfigProcessor processor, IEnumerable<ConfigLogger> loggers )
     {
       Paths = paths;
       Timers = timers;
