@@ -43,7 +43,7 @@ namespace myoddweb.desktopsearch.parser.IO
     private Task OnFolderErrorAsync(Exception e, CancellationToken token)
     {
       // the watcher raised an error
-      Logger.Error($"File watcher error: {e.Message}");
+      Logger.Error($"File watcher error: {e.Message} (Directory)");
       return Task.CompletedTask;
     }
 
@@ -52,10 +52,10 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="e"></param>
     /// <param name="token"></param>
-    private async Task OnDirectoryTouchedAsync(IFileSystemEvent e, CancellationToken token)
+    private Task OnDirectoryTouchedAsync(IFileSystemEvent e, CancellationToken token)
     {
       // It is posible that the event parser has not started yet.
-      await Task.Run(() => EventsParser.Add(e), token).ConfigureAwait(false);
+      return Task.Run(() => EventsParser.Add(e), token);
     }
     #endregion
 

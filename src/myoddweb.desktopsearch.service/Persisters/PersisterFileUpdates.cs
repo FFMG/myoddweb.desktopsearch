@@ -42,7 +42,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // then we can do the update
-      return await TouchFilesAsync(new [] {fileId}, type, transaction, token);
+      return await TouchFilesAsync(new [] {fileId}, type, transaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -73,7 +73,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // first mark that folder id as procesed.
-      if (!await MarkFilesProcessedAsync( ids, transaction, token))
+      if (!await MarkFilesProcessedAsync( ids, transaction, token).ConfigureAwait(false))
       {
         return false;
       }

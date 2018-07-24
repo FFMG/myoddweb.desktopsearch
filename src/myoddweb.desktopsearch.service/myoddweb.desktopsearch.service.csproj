@@ -81,6 +81,7 @@
     <Compile Include="Logger\FileLogger.cs" />
     <Compile Include="Logger\Loggers.cs" />
     <Compile Include="Logger\ConsoleLogger.cs" />
+    <Compile Include="Persisters\NoopPersister.cs" />
     <Compile Include="Persisters\Persister.cs" />
     <Compile Include="Persisters\PersisterConfig.cs" />
     <Compile Include="Persisters\PersisterFiles.cs" />

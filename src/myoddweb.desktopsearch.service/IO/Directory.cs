@@ -114,7 +114,7 @@ namespace myoddweb.desktopsearch.service.IO
       Directories.Clear();
 
       // and rebuild the directory,
-      await BuildDirectoryListAsync(directory, token);
+      await BuildDirectoryListAsync(directory, token).ConfigureAwait(false);
       
       // if we cancelled then we return null
       // this will help to force the callers to bail out as well.

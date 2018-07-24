@@ -63,9 +63,14 @@ namespace myoddweb.desktopsearch.parser.IO
     protected IDirectory Directory;
 
     /// <summary>
-    /// The lock so we can add/remove data
+    /// The lock so we can add/remove files events
     /// </summary>
-    private readonly object _lock = new object();
+    private readonly object _lockEvents = new object();
+
+    /// <summary>
+    /// The lock so we can add/remove tasks
+    /// </summary>
+    private readonly object _lockTasks = new object();
 
     /// <summary>
     /// The timer so we can clear some completed taks.
@@ -101,7 +106,7 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      lock (_lock)
+      lock (_lockTasks)
       {
         if (_tasksTimer != null)
         {
@@ -120,43 +125,67 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// Rebuild all the system events and remove duplicates.
     /// </summary>
-    public List<IFileSystemEvent> RebuildSystemEventsInLock()
+    public List<IFileSystemEvent> RebuildSystemEvents()
     {
-      if (!_currentEvents.Any())
+      lock (_lockEvents)
       {
-        return null;
-      }
-
-      // the re-created list.
-      var rebuiltEvents = new List<IFileSystemEvent>();
-
-      foreach (var currentEvent in _currentEvents)
-      {
-        // remove the duplicate
-        if (currentEvent.Is(WatcherChangeTypes.Changed))
+        try
         {
-          // we will add this event below
-          // so we can remove all the previous 'changed' events.
-          // that way, the last one in the list will be the most 'up-to-date' ones.
-          rebuiltEvents.RemoveAll(e => e.ChangeType == currentEvent.ChangeType && e.FullName == currentEvent.FullName);
-
-          // we know that this event is changed
-          // but if we have some 'created' events for the same file
-          // then there is no need to add the changed events.
-          if (rebuiltEvents.Any(e => e.Is(WatcherChangeTypes.Created) && e.FullName == currentEvent.FullName))
+          // ReSharper disable once InconsistentlySynchronizedField
+          if (!_currentEvents.Any())
           {
-            // Windows sometime flags an item as changed _and_ created.
-            // we just need to worry about the created one.
-            continue;
+            return null;
           }
+
+          // the re-created list.
+          var rebuiltEvents = new List<IFileSystemEvent>();
+
+          // ReSharper disable once InconsistentlySynchronizedField
+          foreach (var currentEvent in _currentEvents)
+          {
+            // remove the duplicate
+            if (currentEvent.Is(WatcherChangeTypes.Changed))
+            {
+              // we will add this event below
+              // so we can remove all the previous 'changed' events.
+              // that way, the last one in the list will be the most 'up-to-date' ones.
+              rebuiltEvents.RemoveAll(e =>
+                e.ChangeType == currentEvent.ChangeType && e.FullName == currentEvent.FullName);
+
+              // we know that this event is changed
+              // but if we have some 'created' events for the same file
+              // then there is no need to add the changed events.
+              if (rebuiltEvents.Any(e => e.Is(WatcherChangeTypes.Created) && e.FullName == currentEvent.FullName))
+              {
+                // Windows sometime flags an item as changed _and_ created.
+                // we just need to worry about the created one.
+                continue;
+              }
+            }
+
+            // then add the event
+            rebuiltEvents.Add(currentEvent);
+          }
+
+          // clear the current values within the lock
+          _currentEvents.Clear();
+
+          // if we have noting to return, just return null
+          return rebuiltEvents.Any() ? rebuiltEvents : null;
         }
+        catch (Exception e)
+        {
+          //  something in the current events is hurting
+          // so we might as well get rid of it here.
+          _currentEvents.Clear();
 
-        // then add the event
-        rebuiltEvents.Add(currentEvent);
+          // log it
+          Logger.Exception(e);
+
+          // return nothing.
+          return null;
+        }
       }
-
-      // if we have noting to return, just return null
-      return rebuiltEvents.Any() ? rebuiltEvents : null;
     }
 
     /// <summary>
@@ -171,23 +200,17 @@ namespace myoddweb.desktopsearch.parser.IO
         // stop the timer
         StopSystemEventsTimer();
 
-        // clean up the tasks.
-        List<IFileSystemEvent> events;
-        lock (_lock)
-        {
-          // the events.
-          events = RebuildSystemEventsInLock();
-
-          // clear the current values within the lock
-          _currentEvents.Clear();
-
-          // remove the completed events.
-          _tasks.RemoveAll(t => t.IsCompleted);
-        }
-
+        // the events.
+        var events = RebuildSystemEvents();
         if (null != events)
         {
-          _tasks.Add(ProcessEventsAsync(events));
+          lock (_lockTasks)
+          {
+            _tasks.Add(ProcessEventsAsync(events));
+
+          // remove the completed events.
+            _tasks.RemoveAll(t => t.IsCompleted);
+          }
         }
       }
       catch (Exception exception)
@@ -214,7 +237,7 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      lock (_lock)
+      lock (_lockTasks)
       {
         if (_tasksTimer == null)
         {
@@ -412,7 +435,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // we don't need it anymore.
       StopSystemEventsTimer();
 
-      lock (_lock)
+      lock (_lockTasks)
       {
         //  cancel all the tasks.
         _tasks.RemoveAll(t => t.IsCompleted);
@@ -464,7 +487,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="fileSystemEventArgs"></param>
     public void Add(IFileSystemEvent fileSystemEventArgs)
     {
-      lock (_lock)
+      lock (_lockEvents)
       {
         try
         {

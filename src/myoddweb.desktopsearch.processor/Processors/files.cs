@@ -85,7 +85,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        var pendingUpdates = await GetPendingFileUpdatesAsync(token);
+        var pendingUpdates = await GetPendingFileUpdatesAsync(token).ConfigureAwait(false);
         if (null == pendingUpdates || !pendingUpdates.Any())
         {
           return;

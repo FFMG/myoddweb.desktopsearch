@@ -54,7 +54,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
       }
       // this is the new folder, we might as well create it if it does not exit.
-      var folderId = await GetDirectoryIdAsync(file.Directory, transaction, token, true);
+      var folderId = await GetDirectoryIdAsync(file.Directory, transaction, token, true).ConfigureAwait(false);
       if (-1 == folderId)
       {
         // we cannot create the parent folder id
@@ -63,13 +63,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // get the old folder.
-      var oldFolderId = await GetDirectoryIdAsync(oldFile.Directory, transaction, token, true);
+      var oldFolderId = await GetDirectoryIdAsync(oldFile.Directory, transaction, token, true).ConfigureAwait(false);
       if (-1 == oldFolderId)
       {
         // this cannot be a renaming, as the parent dirctory does not exist.
         // so we will just try and add it.
         // by calling the 'GetFile' function and creating it if needed we will insert the file.
-        return await GetFileIdAsync( file, transaction, token, true );
+        return await GetFileIdAsync( file, transaction, token, true ).ConfigureAwait(false);
       }
 
       // so we have an old folder id and a new folder id

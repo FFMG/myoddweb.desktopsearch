@@ -59,7 +59,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // first mark that folder id as procesed.
-      if (!await MarkDirectoryProcessedAsync(folderId, transaction, token))
+      if (!await MarkDirectoryProcessedAsync(folderId, transaction, token).ConfigureAwait(false))
       {
         return false;
       }
