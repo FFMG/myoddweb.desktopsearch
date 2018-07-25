@@ -40,7 +40,7 @@ namespace myoddweb.desktopsearch.parser.IO
 #if DEBUG
     private const int InternalBufferSize =  8 * 1024;
 #else
-    private const int InternalBufferSize = 64 * 1024;
+    private const int InternalBufferSize = 32 * 1024;
 #endif
 
 #region Attributes
