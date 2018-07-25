@@ -12,8 +12,7 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
-using System.Data.Common;
+using System.Data;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
@@ -27,7 +26,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="defaultValue"></param>
     /// <param name="transaction"></param>
     /// <returns></returns>
-    Task<string> GetConfigValueAsync(string name, string defaultValue, DbTransaction transaction );
+    Task<string> GetConfigValueAsync(string name, string defaultValue, IDbTransaction transaction );
 
     /// <summary>
     /// Set a configuration value.
@@ -36,7 +35,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="value"></param>
     /// <param name="transaction"></param>
     /// <returns></returns>
-    Task<bool> SetConfigValueAsync(string name, string value, DbTransaction transaction);
+    Task<bool> SetConfigValueAsync(string name, string value, IDbTransaction transaction);
 
   }
 }

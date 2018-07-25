@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
+using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
 
@@ -21,7 +22,7 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class Persister
   {
     /// <inheritdoc />
-    public async Task<string> GetConfigValueAsync(string name, string defaultValue, DbTransaction transaction )
+    public async Task<string> GetConfigValueAsync(string name, string defaultValue, IDbTransaction transaction )
     {
       var sql = $"SELECT value FROM {TableConfig} WHERE name='{name}';";
       using (var command = CreateDbCommand(sql, transaction ))
@@ -43,7 +44,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> SetConfigValueAsync(string name, string value, DbTransaction transaction)
+    public async Task<bool> SetConfigValueAsync(string name, string value, IDbTransaction transaction)
     {
       var current = await GetConfigValueAsync(name, null, transaction).ConfigureAwait(false);
       if (null == current)

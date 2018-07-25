@@ -27,13 +27,13 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class Persister 
   {
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateFileAsync(FileInfo file, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateFileAsync(FileInfo file, IDbTransaction transaction, CancellationToken token)
     {
       return await AddOrUpdateFilesAsync(new [] { file }, transaction, token ).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateFilesAsync(IReadOnlyList<FileInfo> files, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -47,7 +47,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<long> RenameOrAddFileAsync(FileInfo file, FileInfo oldFile, DbTransaction transaction, CancellationToken token)
+    public async Task<long> RenameOrAddFileAsync(FileInfo file, FileInfo oldFile, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -139,13 +139,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteFileAsync(FileInfo file, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> DeleteFileAsync(FileInfo file, IDbTransaction transaction, CancellationToken token)
     {
       return await DeleteFilesAsync(new[] { file }, transaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> DeleteFilesAsync(IReadOnlyList<FileInfo> files, IDbTransaction transaction, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!files.Any())
@@ -219,7 +219,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteFilesAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> DeleteFilesAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -270,13 +270,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> FileExistsAsync(FileInfo file, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> FileExistsAsync(FileInfo file, IDbTransaction transaction, CancellationToken token)
     {
       return (await GetFileIdAsync(file, transaction, token, false ).ConfigureAwait(false) != -1);
     }
 
     /// <inheritdoc />
-    public async Task<List<FileInfo>> GetFilesAsync(long directoryId, DbTransaction transaction, CancellationToken token)
+    public async Task<List<FileInfo>> GetFilesAsync(long directoryId, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -332,7 +332,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<FileInfo> GetFileAsync(long fileId, DbTransaction transaction, CancellationToken token)
+    public async Task<FileInfo> GetFileAsync(long fileId, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -395,7 +395,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> InsertFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token)
+    private async Task<bool> InsertFilesAsync(IReadOnlyList<FileInfo> files, IDbTransaction transaction, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!files.Any())
@@ -472,7 +472,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<FileInfo>> RebuildFilesListAsync(IEnumerable<FileInfo> files, DbTransaction transaction, CancellationToken token)
+    private async Task<List<FileInfo>> RebuildFilesListAsync(IEnumerable<FileInfo> files, IDbTransaction transaction, CancellationToken token)
     {
       // The list of directories we will be adding to the list.
       var actualFiles = new List<FileInfo>();
@@ -533,7 +533,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> GetNextFileIdAsync(DbTransaction transaction, CancellationToken token )
+    private async Task<long> GetNextFileIdAsync(IDbTransaction transaction, CancellationToken token )
     {
       // we first look for it, and, if we find it then there is nothing to do.
       var sqlNextRowId = $"SELECT max(id) from {TableFiles};";
@@ -564,7 +564,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    private async Task<long> GetFileIdAsync(FileInfo file, DbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    private async Task<long> GetFileIdAsync(FileInfo file, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
     {
       // get the folder id
       var folderid = await GetDirectoryIdAsync(file.Directory, transaction, token, false ).ConfigureAwait(false);
@@ -644,7 +644,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<long>> GetFileIdsAsync(long folderId, DbTransaction transaction, CancellationToken token)
+    private async Task<List<long>> GetFileIdsAsync(long folderId, IDbTransaction transaction, CancellationToken token)
     {
       try
       {

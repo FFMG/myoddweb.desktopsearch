@@ -27,13 +27,13 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class Persister 
   {
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token)
     {
       return await AddOrUpdateDirectoriesAsync(new [] {directory}, transaction, token ).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, DbTransaction transaction, CancellationToken token )
+    public async Task<bool> AddOrUpdateDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, IDbTransaction transaction, CancellationToken token )
     {
       if (null == transaction)
       {
@@ -47,7 +47,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<long> RenameOrAddDirectoryAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, DbTransaction transaction, CancellationToken token)
+    public async Task<long> RenameOrAddDirectoryAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -111,13 +111,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
  
     /// <inheritdoc />
-    public async Task<bool> DeleteDirectoryAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> DeleteDirectoryAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token)
     {
       return await DeleteDirectoriesAsync(new[] { directory }, transaction, token).ConfigureAwait( false );
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> DeleteDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, IDbTransaction transaction, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!directories.Any())
@@ -172,13 +172,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> DirectoryExistsAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> DirectoryExistsAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token)
     {
       return await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false) != -1;
     }
 
     /// <inheritdoc />
-    public async Task<DirectoryInfo> GetDirectoryAsync(long directoryId, DbTransaction transaction, CancellationToken token)
+    public async Task<DirectoryInfo> GetDirectoryAsync(long directoryId, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -223,7 +223,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> GetNextDirectoryIdAsync(DbTransaction transaction, CancellationToken token)
+    private async Task<long> GetNextDirectoryIdAsync(IDbTransaction transaction, CancellationToken token)
     {
       // we first look for it, and, if we find it then there is nothing to do.
       var sqlNextRowId = $"SELECT max(id) from {TableFolders};";
@@ -254,7 +254,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    private async Task<long> GetDirectoryIdAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    private async Task<long> GetDirectoryIdAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
     {
       if (null == directory)
       {
@@ -308,7 +308,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> InsertDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, DbTransaction transaction, CancellationToken token)
+    private async Task<bool> InsertDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, IDbTransaction transaction, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!directories.Any())
@@ -371,7 +371,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<DirectoryInfo>> RebuildDirectoriesListAsync(IEnumerable<DirectoryInfo> directories, DbTransaction transaction, CancellationToken token )
+    private async Task<List<DirectoryInfo>> RebuildDirectoriesListAsync(IEnumerable<DirectoryInfo> directories, IDbTransaction transaction, CancellationToken token )
     {
       // The list of directories we will be adding to the list.
       var actualDirectories = new List<DirectoryInfo>();

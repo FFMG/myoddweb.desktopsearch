@@ -14,7 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System.Collections.Generic;
-using System.Data.Common;
+using System.Data;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,7 +30,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateFileAsync( FileInfo file, DbTransaction transaction, CancellationToken token);
+    Task<bool> AddOrUpdateFileAsync( FileInfo file, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Add or update multiple files.
@@ -39,7 +39,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token);
+    Task<bool> AddOrUpdateFilesAsync(IReadOnlyList<FileInfo> files, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Rename a file
@@ -49,7 +49,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<long> RenameOrAddFileAsync(FileInfo file, FileInfo oldFile, DbTransaction transaction, CancellationToken token);
+    Task<long> RenameOrAddFileAsync(FileInfo file, FileInfo oldFile, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Delete a single file.
@@ -58,7 +58,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFileAsync(FileInfo file, DbTransaction transaction, CancellationToken token);
+    Task<bool> DeleteFileAsync(FileInfo file, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Delete multiple files.
@@ -67,7 +67,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFilesAsync(IReadOnlyList<FileInfo> files, DbTransaction transaction, CancellationToken token);
+    Task<bool> DeleteFilesAsync(IReadOnlyList<FileInfo> files, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Delete multiple files from a directory.
@@ -76,7 +76,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFilesAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token);
+    Task<bool> DeleteFilesAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Check that we have the file on record.
@@ -85,7 +85,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> FileExistsAsync(FileInfo file, DbTransaction transaction, CancellationToken token );
+    Task<bool> FileExistsAsync(FileInfo file, IDbTransaction transaction, CancellationToken token );
 
     /// <summary>
     /// Get all the files in the directory
@@ -94,7 +94,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<List<FileInfo>> GetFilesAsync(long directoryId, DbTransaction transaction, CancellationToken token);
+    Task<List<FileInfo>> GetFilesAsync(long directoryId, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Get a file information
@@ -103,6 +103,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<FileInfo> GetFileAsync(long fileId, DbTransaction transaction, CancellationToken token);
+    Task<FileInfo> GetFileAsync(long fileId, IDbTransaction transaction, CancellationToken token);
   }
 }

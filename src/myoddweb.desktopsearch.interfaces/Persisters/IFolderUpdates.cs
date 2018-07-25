@@ -13,7 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Collections.Generic;
-using System.Data.Common;
+using System.Data;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,7 +30,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchDirectoryAsync(DirectoryInfo directory, UpdateType type, DbTransaction transaction, CancellationToken token);
+    Task<bool> TouchDirectoryAsync(DirectoryInfo directory, UpdateType type, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Flag a folder as having changed.
@@ -40,7 +40,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchDirectoryAsync(long folderId, UpdateType type, DbTransaction transaction, CancellationToken token);
+    Task<bool> TouchDirectoryAsync(long folderId, UpdateType type, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given directory
@@ -49,7 +49,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkDirectoryProcessedAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token);
+    Task<bool> MarkDirectoryProcessedAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given directory
@@ -58,7 +58,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkDirectoryProcessedAsync(long folderId, DbTransaction transaction, CancellationToken token);
+    Task<bool> MarkDirectoryProcessedAsync(long folderId, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given directory
@@ -67,7 +67,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkDirectoriesProcessedAsync(IEnumerable<long> folderIds, DbTransaction transaction, CancellationToken token);
+    Task<bool> MarkDirectoriesProcessedAsync(IEnumerable<long> folderIds, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Get a number of pending updates.
@@ -76,6 +76,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync( long limit, DbTransaction transaction, CancellationToken token);
+    Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync( long limit, IDbTransaction transaction, CancellationToken token);
   }
 }

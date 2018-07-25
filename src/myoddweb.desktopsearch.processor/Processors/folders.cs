@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using System.IO;
 using System.Linq;
@@ -158,7 +159,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<bool> WorkCreatedAsync(long folderId, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> WorkCreatedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
     {
       var directory = await _perister.GetDirectoryAsync(folderId, transaction, token).ConfigureAwait(false);
       if (null == directory)
@@ -193,7 +194,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task WorkDeletedAsync(long folderId, DbTransaction transaction, CancellationToken token)
+    public Task WorkDeletedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
     {
       return Task.CompletedTask;
     }
@@ -205,7 +206,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<bool> WorkChangedAsync(long folderId, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> WorkChangedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
     {
       // Get the files currently on record
       // this can be null if we have nothing.
@@ -261,7 +262,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> MarkDirectoriesProcessedAsync(IEnumerable<PendingFolderUpdate> pendingUpdates, DbTransaction transaction, CancellationToken token)
+    private async Task<bool> MarkDirectoriesProcessedAsync(IEnumerable<PendingFolderUpdate> pendingUpdates, IDbTransaction transaction, CancellationToken token)
     {
       if (!await _perister.MarkDirectoriesProcessedAsync(pendingUpdates.Select(p => p.FolderId).ToList(), transaction, token).ConfigureAwait(false))
       {
@@ -278,7 +279,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync(DbTransaction transaction, CancellationToken token)
+    private async Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync(IDbTransaction transaction, CancellationToken token)
     {
       var pendingUpdates = await _perister.GetPendingFolderUpdatesAsync(_numberOfFoldersToProcess, transaction, token).ConfigureAwait(false);
       if (null == pendingUpdates)

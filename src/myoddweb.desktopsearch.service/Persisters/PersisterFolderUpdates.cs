@@ -27,7 +27,7 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class Persister
   {
     /// <inheritdoc />
-    public async Task<bool> TouchDirectoryAsync(DirectoryInfo directory, UpdateType type, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> TouchDirectoryAsync(DirectoryInfo directory, UpdateType type, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -45,7 +45,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchDirectoryAsync(long folderId, UpdateType type, DbTransaction transaction,CancellationToken token)
+    public async Task<bool> TouchDirectoryAsync(long folderId, UpdateType type, IDbTransaction transaction,CancellationToken token)
     {
       // if it is not a valid id then there is nothing for us to do.
       if (folderId < 0)
@@ -104,7 +104,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkDirectoryProcessedAsync(DirectoryInfo directory, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> MarkDirectoryProcessedAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token)
     {
       var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
       if (-1 == folderId)
@@ -117,7 +117,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkDirectoryProcessedAsync(long folderId, DbTransaction transaction,CancellationToken token)
+    public async Task<bool> MarkDirectoryProcessedAsync(long folderId, IDbTransaction transaction,CancellationToken token)
     {
       // if it is not a valid id then there is nothing for us to do.
       if (folderId < 0)
@@ -128,7 +128,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkDirectoriesProcessedAsync(IEnumerable<long> folderIds, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> MarkDirectoriesProcessedAsync(IEnumerable<long> folderIds, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -171,7 +171,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync(long limit, DbTransaction transaction, CancellationToken token)
+    public async Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync(long limit, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {

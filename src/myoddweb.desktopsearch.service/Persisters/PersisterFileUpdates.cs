@@ -27,7 +27,7 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class Persister
   {
     /// <inheritdoc />
-    public async Task<bool> TouchFileAsync(FileInfo file, UpdateType type, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> TouchFileAsync(FileInfo file, UpdateType type, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -46,14 +46,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchFileAsync(long fileId, UpdateType type, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> TouchFileAsync(long fileId, UpdateType type, IDbTransaction transaction, CancellationToken token)
     {
       // just make the files do all the work.
       return await TouchFilesAsync(new List<long> { fileId }, type, transaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchFilesAsync(IEnumerable<long> fileIds, UpdateType type, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> TouchFilesAsync(IEnumerable<long> fileIds, UpdateType type, IDbTransaction transaction, CancellationToken token)
     {
       if (null == fileIds)
       {
@@ -127,7 +127,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkFileProcessedAsync(FileInfo file, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> MarkFileProcessedAsync(FileInfo file, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -148,14 +148,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkFileProcessedAsync(long fileId, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> MarkFileProcessedAsync(long fileId, IDbTransaction transaction, CancellationToken token)
     {
       // just make the files do all the work.
       return await MarkFilesProcessedAsync(new [] { fileId }, transaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkFilesProcessedAsync(IEnumerable<long> fileIds, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> MarkFilesProcessedAsync(IEnumerable<long> fileIds, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -198,7 +198,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync(long limit, DbTransaction transaction, CancellationToken token)
+    public async Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync(long limit, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {

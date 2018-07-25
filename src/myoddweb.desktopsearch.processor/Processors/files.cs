@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using System.IO;
 using System.Linq;
@@ -142,7 +143,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
     }
 
-    private async Task<bool> MarkDirectoriesProcessedAsync(IEnumerable<PendingFileUpdate> pendingUpdates, DbTransaction transaction, CancellationToken token)
+    private async Task<bool> MarkDirectoriesProcessedAsync(IEnumerable<PendingFileUpdate> pendingUpdates, IDbTransaction transaction, CancellationToken token)
     {
       return await _perister.MarkFilesProcessedAsync(pendingUpdates.Select(p => p.FileId).ToList(), transaction, token).ConfigureAwait(false);
     }
@@ -153,7 +154,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync(DbTransaction transaction, CancellationToken token)
+    private async Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync(IDbTransaction transaction, CancellationToken token)
     {
       var pendingUpdates = await _perister.GetPendingFileUpdatesAsync(_numberOfFilesToProcess, transaction, token).ConfigureAwait(false);
       if (null == pendingUpdates)
@@ -173,7 +174,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task WorkDeletedAsync(long folderId, DbTransaction transaction, CancellationToken token)
+    public Task WorkDeletedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
     {
       return Task.CompletedTask;
     }
@@ -185,7 +186,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<bool> WorkCreatedAsync(long fileId, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> WorkCreatedAsync(long fileId, IDbTransaction transaction, CancellationToken token)
     {
       // get the file we just created.
       var file = await _perister.GetFileAsync(fileId, transaction, token).ConfigureAwait(false);
@@ -205,7 +206,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private Task ProcessFile( long fileId, FileInfo file, DbTransaction transaction, CancellationToken token)
+    private Task ProcessFile( long fileId, FileInfo file, IDbTransaction transaction, CancellationToken token)
     {
       return Task.CompletedTask;
     }
@@ -217,7 +218,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<bool> WorkChangedAsync(long fileId, DbTransaction transaction, CancellationToken token)
+    public async Task<bool> WorkChangedAsync(long fileId, IDbTransaction transaction, CancellationToken token)
     {
       // get the file that changed.
       var file = await _perister.GetFileAsync(fileId, transaction, token).ConfigureAwait(false);

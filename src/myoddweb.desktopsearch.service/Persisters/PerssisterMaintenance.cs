@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
 
@@ -23,7 +24,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Create the database to the latest version
     /// </summary>
-    protected async Task<bool> CreateDatabase(DbTransaction transaction)
+    protected async Task<bool> CreateDatabase(IDbTransaction transaction)
     {
       // create the config table.
       if (!await CreateConfigAsync(transaction).ConfigureAwait(false))
@@ -56,7 +57,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       return true;
     }
 
-    private async Task<bool> CreateFilesAsync(DbTransaction transaction)
+    private async Task<bool> CreateFilesAsync(IDbTransaction transaction)
     {
       if (!await
         ExecuteNonQueryAsync($"CREATE TABLE {TableFiles} (id integer PRIMARY KEY, folderid integer, name varchar(260))", transaction)
@@ -86,7 +87,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     /// <param name="transaction"></param>
     /// <returns></returns>
-    private async Task<bool> CreateFoldersUpdateAsync(DbTransaction transaction)
+    private async Task<bool> CreateFoldersUpdateAsync(IDbTransaction transaction)
     {
       if (!await
         ExecuteNonQueryAsync($"CREATE TABLE {TableFolderUpdates} (folderid integer, type integer, ticks integer)", transaction)
@@ -118,7 +119,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     /// <param name="transaction"></param>
     /// <returns></returns>
-    private async Task<bool> CreateFilesUpdateAsync(DbTransaction transaction)
+    private async Task<bool> CreateFilesUpdateAsync(IDbTransaction transaction)
     {
       if (!await
         ExecuteNonQueryAsync($"CREATE TABLE {TableFileUpdates} (fileid integer, type integer, ticks integer)", transaction)
@@ -149,7 +150,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Create the folders table
     /// </summary>
     /// <returns></returns>
-    private async Task<bool> CreateFoldersAsync(DbTransaction transaction)
+    private async Task<bool> CreateFoldersAsync(IDbTransaction transaction)
     {
       if (!await
         ExecuteNonQueryAsync($"CREATE TABLE {TableFolders} (id integer PRIMARY KEY, path varchar(260))", transaction)
@@ -172,7 +173,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Create the configuration table
     /// </summary>
     /// <returns></returns>
-    private async Task<bool> CreateConfigAsync(DbTransaction transaction)
+    private async Task<bool> CreateConfigAsync(IDbTransaction transaction)
     {
       if (!await
         ExecuteNonQueryAsync($"CREATE TABLE {TableConfig} (name varchar(20), value varchar(255))", transaction)
@@ -196,7 +197,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="name"></param>
     /// <param name="transaction"></param>
     /// <returns></returns>
-    protected bool TableExists(string name, DbTransaction transaction)
+    protected bool TableExists(string name, IDbTransaction transaction)
     {
       var sql = $"SELECT name FROM sqlite_master WHERE type='table' AND name='{name}';";
       using (var command = CreateDbCommand(sql, transaction))

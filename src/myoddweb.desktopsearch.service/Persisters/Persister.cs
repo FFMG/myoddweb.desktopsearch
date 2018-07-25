@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
 using System.IO;
@@ -37,7 +38,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// The current transaction
     /// </summary>
-    private DbTransaction _transaction;
+    private IDbTransaction _transaction;
 
     /// <summary>
     /// Our lock
@@ -86,7 +87,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     #region Transactions
     /// <inheritdoc/>
-    public async Task<DbTransaction> BeginTransactionAsync()
+    public async Task<IDbTransaction> BeginTransactionAsync()
     {
       var lockWasTaken = false;
       var temp = _lock;
@@ -190,12 +191,12 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     #region Commands
     /// <inheritdoc/>
-    public DbCommand CreateDbCommand(string sql, DbTransaction transaction )
+    public DbCommand CreateDbCommand(string sql, IDbTransaction transaction)
     {
       return CreateDbCommand(_dbConnection, sql, transaction );
     }
 
-    private static SQLiteCommand CreateDbCommand(SQLiteConnection connection, string sql, DbTransaction transaction)
+    private static SQLiteCommand CreateDbCommand(SQLiteConnection connection, string sql, IDbTransaction transaction)
     {
       if (null == connection)
       {
@@ -204,12 +205,12 @@ namespace myoddweb.desktopsearch.service.Persisters
       return new SQLiteCommand(sql, connection, transaction as SQLiteTransaction );
     }
 
-    private async Task<bool> ExecuteNonQueryAsync(string sql, DbTransaction transaction )
+    private async Task<bool> ExecuteNonQueryAsync(string sql, IDbTransaction transaction )
     {
       return await ExecuteNonQueryAsync(_dbConnection, sql, transaction ).ConfigureAwait(false);
     }
 
-    private async Task<bool> ExecuteNonQueryAsync(SQLiteConnection destination, string sql, DbTransaction transaction )
+    private async Task<bool> ExecuteNonQueryAsync(SQLiteConnection destination, string sql, IDbTransaction transaction )
     {
       try
       {
