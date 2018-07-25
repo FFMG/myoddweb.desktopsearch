@@ -30,11 +30,20 @@ namespace myoddweb.desktopsearch.parser.IO
   internal abstract class Watcher
   {
     /// <summary>
-    /// How often we will be remobing compledted tasks.
+    /// How often we will be removing compledted tasks.
     /// </summary>
-    private const int TaskTimerTimeOutInMs = 30000;
+    private const int TaskTimerTimeOutInMs = 10000;
 
-    #region Attributes
+    /// <summary>
+    /// The internal buffer size
+    /// </summary>
+#if DEBUG
+    private const int InternalBufferSize =  8 * 1024;
+#else
+    private const int InternalBufferSize = 64 * 1024;
+#endif
+
+#region Attributes
     /// <summary>
     /// The logger that we will be using to log messages.
     /// </summary>
@@ -49,9 +58,9 @@ namespace myoddweb.desktopsearch.parser.IO
     /// The system event parser
     /// </summary>
     protected SystemEventsParser EventsParser { get; }
-    #endregion
+#endregion
 
-    #region Member variables
+#region Member variables
     /// <summary>
     /// The type of folders we are watching
     /// </summary>
@@ -75,7 +84,12 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The lock so we can add/remove data
     /// </summary>
-    private readonly object _lock = new object();
+    private readonly object _lockTasks = new object();
+
+    /// <summary>
+    /// The timer lock
+    /// </summary>
+    private readonly object _lockTimer = new object();
 
     /// <summary>
     /// The timer so we can clear some completed taks.
@@ -91,9 +105,9 @@ namespace myoddweb.desktopsearch.parser.IO
     /// When we register a token
     /// </summary>
     private CancellationTokenRegistration _cancellationTokenRegistration;
-    #endregion
+#endregion
 
-    #region Events handler
+#region Events handler
     /// <summary>
     /// Occurs when a file is deleted.
     /// </summary>
@@ -119,7 +133,7 @@ namespace myoddweb.desktopsearch.parser.IO
     ///     monitoring changes or when the internal buffer overflows.
     /// </summary>
     public event ErrorEventHandler ErrorAsync = delegate { return null; };
-    #endregion
+#endregion
 
     /// <summary>
     /// Constructor to prepare the file watcher.
@@ -143,7 +157,7 @@ namespace myoddweb.desktopsearch.parser.IO
       EventsParser = parser ?? throw new ArgumentNullException(nameof(parser));
     }
 
-    #region Task Cleanup Timer
+#region Task Cleanup Timer
     /// <summary>
     /// Start the cleanup timer
     /// </summary>
@@ -154,7 +168,7 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      lock (_lock)
+      lock (_lockTimer)
       {
         if (_tasksTimer != null)
         {
@@ -181,7 +195,7 @@ namespace myoddweb.desktopsearch.parser.IO
       StopTasksCleanupTimer();
 
       // clean up the tasks.
-      lock (_lock)
+      lock (_lockTasks)
       {
         _tasks.RemoveAll(t => t.IsCompleted);
       }
@@ -207,7 +221,7 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      lock (_lock)
+      lock (_lockTimer)
       {
         if (_tasksTimer == null)
         {
@@ -220,12 +234,12 @@ namespace myoddweb.desktopsearch.parser.IO
         _tasksTimer = null;
       }
     }
-    #endregion
+#endregion
 
-    #region Folder Event
+#region Folder Event
     private void OnFolderDeleted(object sender, FileSystemEventArgs e)
     {
-      lock (_lock)
+      lock (_lockTasks)
       {
         if (sender == _fileWatcher)
         {
@@ -240,7 +254,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
     private void OnFolderCreated(object sender, FileSystemEventArgs e)
     {
-      lock (_lock)
+      lock (_lockTasks)
       {
         if (sender == _fileWatcher )
         {
@@ -255,7 +269,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
     private void OnFolderRenamed(object sender, RenamedEventArgs e)
     {
-      lock (_lock)
+      lock (_lockTasks)
       {
         if (sender == _fileWatcher)
         {
@@ -270,7 +284,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
     private void OnFolderChanged(object sender, FileSystemEventArgs e)
     {
-      lock (_lock)
+      lock (_lockTasks)
       {
         if (sender == _fileWatcher)
         {
@@ -300,7 +314,7 @@ namespace myoddweb.desktopsearch.parser.IO
         Start(_token);
       }
     }
-    #endregion 
+#endregion
 
     /// <summary>
     /// Stop the folder monitoring.
@@ -313,21 +327,22 @@ namespace myoddweb.desktopsearch.parser.IO
       // we don't need it anymore.
       StopTasksCleanupTimer();
 
-      if (_fileWatcher != null)
+      lock (_lockTasks)
       {
-        _fileWatcher.EnableRaisingEvents = false;
-        _fileWatcher.Dispose();
-        _fileWatcher = null;
-      }
+        if (_fileWatcher != null)
+        {
+          _fileWatcher.EnableRaisingEvents = false;
+          _fileWatcher.Dispose();
+          _fileWatcher = null;
+        }
 
-      if (_directoryWatcher != null)
-      {
-        _directoryWatcher.EnableRaisingEvents = false;
-        _directoryWatcher.Dispose();
-        _directoryWatcher = null;
-      }
-      lock (_lock)
-      {
+        if (_directoryWatcher != null)
+        {
+          _directoryWatcher.EnableRaisingEvents = false;
+          _directoryWatcher.Dispose();
+          _directoryWatcher = null;
+        }
+
         //  cancel all the tasks.
         _tasks.RemoveAll(t => t.IsCompleted);
 
@@ -409,7 +424,7 @@ namespace myoddweb.desktopsearch.parser.IO
         Filter = "*.*",
         IncludeSubdirectories = true,
         EnableRaisingEvents = true,
-        InternalBufferSize = 64 * 1024
+        InternalBufferSize = InternalBufferSize
       };
 
       _directoryWatcher.Error += OnFolderError;
@@ -433,7 +448,7 @@ namespace myoddweb.desktopsearch.parser.IO
         Filter = "*.*",
         IncludeSubdirectories = true,
         EnableRaisingEvents = true,
-        InternalBufferSize = 64 * 1024
+        InternalBufferSize = InternalBufferSize
       };
 
       _fileWatcher.Error += OnFolderError;

@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
@@ -147,12 +148,14 @@ namespace myoddweb.desktopsearch.processor
         // do the actual work.
         lock (_lock)
         {
-          //  get all the processors to do their work.
-          foreach (var processor in _processors)
+          if (!_tasks.Any())
           {
-            _tasks.Add( processor.WorkAsync( _token ));
+            //  get all the processors to do their work.
+            foreach (var processor in _processors)
+            {
+              _tasks.Add(processor.WorkAsync(_token));
+            }
           }
-
           // remove the completed events.
           _tasks.RemoveAll(t => t.IsCompleted);
         }

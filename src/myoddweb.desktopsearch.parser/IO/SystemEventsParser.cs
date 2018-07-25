@@ -143,15 +143,15 @@ namespace myoddweb.desktopsearch.parser.IO
           // ReSharper disable once InconsistentlySynchronizedField
           foreach (var currentEvent in _currentEvents)
           {
+            // we will add this event below
+            // so we can remove all the previous 'changed' events.
+            // that way, the last one in the list will be the most 'up-to-date' ones.
+            rebuiltEvents.RemoveAll(e =>
+              e.ChangeType == currentEvent.ChangeType && e.FullName == currentEvent.FullName);
+
             // remove the duplicate
             if (currentEvent.Is(WatcherChangeTypes.Changed))
             {
-              // we will add this event below
-              // so we can remove all the previous 'changed' events.
-              // that way, the last one in the list will be the most 'up-to-date' ones.
-              rebuiltEvents.RemoveAll(e =>
-                e.ChangeType == currentEvent.ChangeType && e.FullName == currentEvent.FullName);
-
               // we know that this event is changed
               // but if we have some 'created' events for the same file
               // then there is no need to add the changed events.

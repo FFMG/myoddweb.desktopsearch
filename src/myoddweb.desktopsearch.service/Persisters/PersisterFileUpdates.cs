@@ -99,6 +99,12 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           foreach (var fileId in ids)
           {
+            // are we cancelling?
+            if (token.IsCancellationRequested)
+            {
+              return false;
+            }
+
             cmd.Parameters["@id"].Value = fileId;
             cmd.Parameters["@type"].Value = (long)type;
             cmd.Parameters["@ticks"].Value = DateTime.UtcNow.Ticks;
@@ -167,6 +173,12 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           foreach (var fileId in fileIds)
           {
+            // are we cancelling?
+            if (token.IsCancellationRequested)
+            {
+              return false;
+            }
+
             // set the folder id.
             cmd.Parameters["@id"].Value = fileId;
 

@@ -146,6 +146,12 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           foreach (var folderId in folderIds )
           {
+            // are we cancelling?
+            if (token.IsCancellationRequested)
+            {
+              return false;
+            }
+
             // set the folder id.
             cmd.Parameters["@id"].Value = folderId;
 
