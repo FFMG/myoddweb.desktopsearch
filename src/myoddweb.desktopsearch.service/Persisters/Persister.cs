@@ -24,6 +24,106 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
+  internal class TransactionSpiner
+  {
+    private readonly object _lock = new object();
+    private readonly IDbConnection _connection;
+    private IDbTransaction _transaction;
+    private readonly CancellationToken _token;
+
+    public TransactionSpiner(IDbConnection connection, CancellationToken token )
+    {
+      _token = token;
+      _connection = connection ?? throw new ArgumentNullException( nameof(connection));
+    }
+
+    public IDbTransaction Begin()
+    {
+      for(;;)
+      {
+        // wait for the transaction to no longer be null
+        // outside of the lock, (so it can be freed.
+        if (null != _transaction)
+        {
+          SpinWait.SpinUntil(() => _transaction == null || _token.IsCancellationRequested );
+        }
+
+        if (_token.IsCancellationRequested)
+        {
+          return null;
+        }
+
+        // now trans and create the transaction
+        lock (_lock)
+        {
+          // oops... we didn't get it.
+          if (_transaction != null)
+          {
+            continue;
+          }
+
+          // we were able to get a null transaction
+          // ... and we are inside the lock
+          _transaction = _connection.BeginTransaction();
+          return _transaction;
+        }
+      }
+    }
+
+    public void Rollback( IDbTransaction transaction )
+    {
+      lock (_lock)
+      {
+        if (transaction != _transaction)
+        {
+          throw new ArgumentException("The given transaction was not created by this class");
+        }
+      }
+
+      if (null == _transaction)
+      {
+        return;
+      }
+
+      lock (_lock)
+      {
+        if (null == _transaction)
+        {
+          return;
+        }
+        _transaction.Rollback();
+        _transaction = null;
+      }
+    }
+
+    public void Commit( IDbTransaction transaction )
+    {
+      lock (_lock)
+      {
+        if (transaction != _transaction)
+        {
+          throw new ArgumentException( "The given transaction was not created by this class");
+        }
+      }
+
+      if (null == _transaction)
+      {
+        return;
+      }
+
+      lock (_lock)
+      {
+        if (null == _transaction)
+        {
+          return;
+        }
+
+        _transaction.Commit();
+        _transaction = null;
+      }
+    }
+  }
+
   internal partial class Persister : IPersister
   {
     #region Table names
@@ -35,16 +135,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     #endregion
 
     #region Member variables
-    /// <summary>
-    /// The current transaction
-    /// </summary>
-    private IDbTransaction _transaction;
 
-    /// <summary>
-    /// Our lock
-    /// </summary>
-    private readonly object _lock = new object();
-    
+    private readonly TransactionSpiner _transaction;
+
     /// <summary>
     /// The sqlite connection.
     /// </summary>
@@ -56,7 +149,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly ILogger _logger;
     #endregion
 
-    public Persister(ILogger logger)
+    public Persister(ILogger logger, CancellationToken token )
     {
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -81,77 +174,38 @@ namespace myoddweb.desktopsearch.service.Persisters
       _dbConnection = new SQLiteConnection($"Data Source={source};Version=3;");
       _dbConnection.Open();
 
+      _transaction = new TransactionSpiner(_dbConnection, token );
+
       // update the db if need be.
       Update().Wait();
     }
 
     #region Transactions
     /// <inheritdoc/>
-    public async Task<IDbTransaction> BeginTransactionAsync()
+    public Task<IDbTransaction> BeginTransactionAsync()
     {
-      var lockWasTaken = false;
-      var temp = _lock;
+      // set the value
       try
       {
-        while (true)
-        {
-          Monitor.TryEnter(temp, 5, ref lockWasTaken);
-          {
-            // did we get the lock?
-            if (!lockWasTaken)
-            {
-              await Task.Yield();
-              continue;
-            }
-
-            // we have the lock, can we get the transaction?
-            if (_transaction != null)
-            {
-              // we do not have the transaction
-              // release the lock
-              // and continue waiting.
-              lockWasTaken = false;
-              Monitor.Exit(temp);
-              await Task.Yield();
-              continue;
-            }
-
-            // set the value
-            _transaction = _dbConnection.BeginTransaction();
-
-            // release the lock
-            lockWasTaken = false;
-            Monitor.Exit(temp);
-
-            // all good
-            return _transaction;
-          }
-        }
+        return Task.FromResult( _transaction.Begin() );
       }
       catch (Exception e)
       {
         _logger.Exception(e);
-        return null;
-      }
-      finally
-      {
-        if (lockWasTaken)
-        {
-          Monitor.Exit(temp);
-        }
+        throw;
       }
     }
 
     /// <inheritdoc/>
-    public bool Rollback()
+    public bool Rollback(IDbTransaction transaction)
     {
       try
       {
-        if (null == _transaction)
+        if (null == transaction)
         {
-          throw new ArgumentNullException(nameof(_transaction));
+          throw new ArgumentNullException(nameof(transaction));
         }
-        _transaction.Rollback();
+        _transaction.Rollback(transaction);
         return true;
       }
       catch (Exception rollbackException)
@@ -159,32 +213,24 @@ namespace myoddweb.desktopsearch.service.Persisters
         _logger.Exception(rollbackException);
         return false;
       }
-      finally
-      {
-        _transaction = null;
-      }
     }
 
     /// <inheritdoc/>
-    public bool Commit()
+    public bool Commit(IDbTransaction transaction)
     {
       try
       {
-        if (null == _transaction)
+        if (null == transaction)
         {
-          throw new ArgumentNullException( nameof(_transaction));
+          throw new ArgumentNullException( nameof(transaction));
         }
-        _transaction.Commit();
+        _transaction.Commit(transaction);
         return true;
       }
       catch (Exception commitException)
       {
         _logger.Exception(commitException);
         return false;
-      }
-      finally
-      {
-        _transaction = null;
       }
     }
     #endregion

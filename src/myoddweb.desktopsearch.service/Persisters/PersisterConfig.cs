@@ -14,7 +14,6 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System.Data;
-using System.Data.Common;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.service.Persisters

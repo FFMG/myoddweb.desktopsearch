@@ -166,19 +166,19 @@ namespace myoddweb.desktopsearch.parser
         // add the folder to the list.
         if (!await _perister.AddOrUpdateDirectoriesAsync(directories, transaction, token).ConfigureAwait(false))
         {
-          _perister.Rollback();
+          _perister.Rollback(transaction);
           return false;
         }
 
         // we can commit our code.
-        _perister.Commit();
+        _perister.Commit(transaction);
 
         // all done
         return true;
       }
       catch (Exception e)
       {
-        _perister.Rollback();
+        _perister.Rollback(transaction);
         _logger.Exception(e);
       }
 

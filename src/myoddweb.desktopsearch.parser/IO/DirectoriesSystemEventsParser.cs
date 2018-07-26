@@ -87,11 +87,11 @@ namespace myoddweb.desktopsearch.parser.IO
       {
         if (hadErrors)
         {
-          _persister.Rollback();
+          _persister.Rollback(_currentTransaction);
         }
         else
         {
-          _persister.Commit();
+          _persister.Commit(_currentTransaction);
         }
       }
       catch (Exception e)

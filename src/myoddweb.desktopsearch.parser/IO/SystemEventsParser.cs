@@ -258,7 +258,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// It should be non-blocking.
     /// </summary>
     /// <param name="events"></param>
-    private async Task ProcessEventsAsync(IEnumerable<IFileSystemEvent> events)
+    private async Task ProcessEventsAsync(IReadOnlyList<IFileSystemEvent> events)
     {
       // assume errors...
       var hadErrors = true;
@@ -268,7 +268,10 @@ namespace myoddweb.desktopsearch.parser.IO
         ProcessEventsStart();
 
         // try and do everything at once.
-        await Task.WhenAll(events.Select(ProcessEventAsync).ToArray()).ConfigureAwait(false);
+        foreach (var e in events)
+        {
+          await ProcessEventAsync(e).ConfigureAwait(false);
+        }
 
         // if we are here, then we had no errors
         hadErrors = false;

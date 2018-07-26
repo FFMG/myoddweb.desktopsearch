@@ -91,15 +91,14 @@ namespace myoddweb.desktopsearch.processor.Processors
         return;
       }
 
+      // get the transaction
+      var transaction = await _perister.BeginTransactionAsync().ConfigureAwait(false);
       try
       {
-        // get the transaction
-        var transaction = await _perister.BeginTransactionAsync().ConfigureAwait(false);
-
         var pendingUpdates = await GetPendingFolderUpdatesAsync(transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates || !pendingUpdates.Any())
         {
-          _perister.Rollback();
+          _perister.Rollback(transaction);
           return;
         }
 
@@ -108,7 +107,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         {
           if (token.IsCancellationRequested)
           {
-            _perister.Rollback();
+            _perister.Rollback(transaction);
             return;
           }
 
@@ -138,16 +137,16 @@ namespace myoddweb.desktopsearch.processor.Processors
         // all done
         if (!token.IsCancellationRequested)
         {
-          _perister.Commit();
+          _perister.Commit(transaction);
         }
         else
         {
-          _perister.Rollback();
+          _perister.Rollback(transaction);
         }
       }
       catch (Exception e)
       {
-        _perister.Rollback();
+        _perister.Rollback(transaction);
         _logger.Exception(e);
       }
     }

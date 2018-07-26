@@ -172,14 +172,14 @@ namespace myoddweb.desktopsearch.service
         // and the logger
         var logger = CreateLogger(config.Loggers );
 
+        // create the cancellation source
+        _cancellationTokenSource = new CancellationTokenSource();
+
         // the persister
-        var persister = new Persister(logger);
+        var persister = new Persister(logger, _cancellationTokenSource.Token );
 
         // the directory parser
         var directory = new Directory(logger, config.Paths );
-
-        // create the cancellation source
-        _cancellationTokenSource = new CancellationTokenSource();
 
         // and we can now create and start the parser.
         _parser = new Parser( config, persister, logger, directory );

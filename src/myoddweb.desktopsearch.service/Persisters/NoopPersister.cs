@@ -41,8 +41,6 @@ namespace myoddweb.desktopsearch.service.Persisters
 
   internal class NoopPersister : IPersister
   {
-    private NoopDbTransaction _transaction;
-
     public Task<string> GetConfigValueAsync(string name, string defaultValue, IDbTransaction transaction)
     {
       return Task.FromResult(defaultValue);
@@ -206,19 +204,17 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     public Task<IDbTransaction> BeginTransactionAsync()
     {
-      _transaction = new NoopDbTransaction();
-      return Task.FromResult<IDbTransaction>(_transaction);
+      return Task.FromResult<IDbTransaction>(new NoopDbTransaction());
     }
 
-    public bool Rollback()
+    public bool Rollback(IDbTransaction transaction)
     {
       // when are we rolling back this noop event?
       throw new System.NotImplementedException();
     }
 
-    public bool Commit()
+    public bool Commit(IDbTransaction transaction)
     {
-      _transaction = null;
       return true;
     }
   }

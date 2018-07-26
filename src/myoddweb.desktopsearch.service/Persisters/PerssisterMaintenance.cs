@@ -228,21 +228,21 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           if (!await CreateDatabase(transaction).ConfigureAwait(false))
           {
-            Rollback();
+            Rollback(transaction);
           }
           else
           {
-            Commit();
+            Commit(transaction);
           }
         }
         else
         {
-          Commit();
+          Commit(transaction);
         }
       }
       catch (Exception e)
       {
-        Rollback();
+        Rollback(transaction);
         _logger.Exception(e);
       }
     }
