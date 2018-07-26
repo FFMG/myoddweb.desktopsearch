@@ -24,7 +24,7 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class Persister 
+  internal partial class SqlitePersister 
   {
     /// <inheritdoc />
     public async Task<bool> AddOrUpdateFileAsync(FileInfo file, IDbTransaction transaction, CancellationToken token)

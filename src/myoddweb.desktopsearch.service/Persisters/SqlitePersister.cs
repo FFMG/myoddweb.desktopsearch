@@ -124,7 +124,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
   }
 
-  internal partial class Persister : IPersister
+  internal partial class SqlitePersister : IPersister
   {
     #region Table names
     private const string TableConfig = "Config";
@@ -149,7 +149,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly ILogger _logger;
     #endregion
 
-    public Persister(ILogger logger, CancellationToken token )
+    public SqlitePersister(ILogger logger, CancellationToken token )
     {
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 

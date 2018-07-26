@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class Persister
+  internal partial class SqlitePersister
   {
     /// <inheritdoc />
     public async Task<string> GetConfigValueAsync(string name, string defaultValue, IDbTransaction transaction )

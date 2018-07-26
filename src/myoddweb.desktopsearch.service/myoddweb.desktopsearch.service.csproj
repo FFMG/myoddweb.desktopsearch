@@ -82,13 +82,13 @@
     <Compile Include="Logger\Loggers.cs" />
     <Compile Include="Logger\ConsoleLogger.cs" />
     <Compile Include="Persisters\NoopPersister.cs" />
-    <Compile Include="Persisters\Persister.cs" />
-    <Compile Include="Persisters\PersisterConfig.cs" />
-    <Compile Include="Persisters\PersisterFiles.cs" />
-    <Compile Include="Persisters\PersisterFileUpdates.cs" />
-    <Compile Include="Persisters\PersisterFolder.cs" />
-    <Compile Include="Persisters\PersisterFolderUpdates.cs" />
-    <Compile Include="Persisters\PerssisterMaintenance.cs" />
+    <Compile Include="Persisters\SqlitePersister.cs" />
+    <Compile Include="Persisters\SqlitePersisterConfig.cs" />
+    <Compile Include="Persisters\SqlitePersisterFiles.cs" />
+    <Compile Include="Persisters\SqlitePersisterFileUpdates.cs" />
+    <Compile Include="Persisters\SqlitePersisterFolder.cs" />
+    <Compile Include="Persisters\SqlitePersisterFolderUpdates.cs" />
+    <Compile Include="Persisters\SqlitePerssisterMaintenance.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

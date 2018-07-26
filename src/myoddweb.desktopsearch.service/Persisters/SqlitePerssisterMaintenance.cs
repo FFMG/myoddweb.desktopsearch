@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class Persister
+  internal partial class SqlitePersister
   {
     /// <summary>
     /// Create the database to the latest version
