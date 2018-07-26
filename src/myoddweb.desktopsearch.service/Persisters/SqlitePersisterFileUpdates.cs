@@ -15,7 +15,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -81,22 +80,23 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sqlInsert = $"INSERT INTO {TableFileUpdates} (fileid, type, ticks) VALUES (@id, @type, @ticks)";
       using (var cmd = CreateDbCommand(sqlInsert, transaction))
       {
-        var pId = cmd.CreateParameter();
-        pId.DbType = DbType.Int64;
-        pId.ParameterName = "@id";
-        cmd.Parameters.Add(pId);
-
-        var pType = cmd.CreateParameter();
-        pType.DbType = DbType.Int64;
-        pType.ParameterName = "@type";
-        cmd.Parameters.Add(pType);
-
-        var pTicks = cmd.CreateParameter();
-        pTicks.DbType = DbType.Int64;
-        pTicks.ParameterName = "@ticks";
-        cmd.Parameters.Add(pTicks);
         try
         {
+          var pId = cmd.CreateParameter();
+          pId.DbType = DbType.Int64;
+          pId.ParameterName = "@id";
+          cmd.Parameters.Add(pId);
+
+          var pType = cmd.CreateParameter();
+          pType.DbType = DbType.Int64;
+          pType.ParameterName = "@type";
+          cmd.Parameters.Add(pType);
+
+          var pTicks = cmd.CreateParameter();
+          pTicks.DbType = DbType.Int64;
+          pTicks.ParameterName = "@ticks";
+          cmd.Parameters.Add(pTicks);
+
           foreach (var fileId in ids)
           {
             // are we cancelling?
@@ -165,12 +165,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sqlDelete = $"DELETE FROM {TableFileUpdates} WHERE fileid = @id";
       using (var cmd = CreateDbCommand(sqlDelete, transaction))
       {
-        var pId = cmd.CreateParameter();
-        pId.DbType = DbType.Int64;
-        pId.ParameterName = "@id";
-        cmd.Parameters.Add(pId);
         try
         {
+          var pId = cmd.CreateParameter();
+          pId.DbType = DbType.Int64;
+          pId.ParameterName = "@id";
+          cmd.Parameters.Add(pId);
+
           foreach (var fileId in fileIds)
           {
             // are we cancelling?
@@ -185,6 +186,8 @@ namespace myoddweb.desktopsearch.service.Persisters
             // this could return 0 if the row has already been processed
             await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false);
           }
+
+          cmd.Parameters.Clear();
         }
         catch (Exception ex)
         {

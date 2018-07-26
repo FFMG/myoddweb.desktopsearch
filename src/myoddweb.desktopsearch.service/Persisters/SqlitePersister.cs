@@ -24,106 +24,6 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal class TransactionSpiner
-  {
-    private readonly object _lock = new object();
-    private readonly IDbConnection _connection;
-    private IDbTransaction _transaction;
-    private readonly CancellationToken _token;
-
-    public TransactionSpiner(IDbConnection connection, CancellationToken token )
-    {
-      _token = token;
-      _connection = connection ?? throw new ArgumentNullException( nameof(connection));
-    }
-
-    public IDbTransaction Begin()
-    {
-      for(;;)
-      {
-        // wait for the transaction to no longer be null
-        // outside of the lock, (so it can be freed.
-        if (null != _transaction)
-        {
-          SpinWait.SpinUntil(() => _transaction == null || _token.IsCancellationRequested );
-        }
-
-        if (_token.IsCancellationRequested)
-        {
-          return null;
-        }
-
-        // now trans and create the transaction
-        lock (_lock)
-        {
-          // oops... we didn't get it.
-          if (_transaction != null)
-          {
-            continue;
-          }
-
-          // we were able to get a null transaction
-          // ... and we are inside the lock
-          _transaction = _connection.BeginTransaction();
-          return _transaction;
-        }
-      }
-    }
-
-    public void Rollback( IDbTransaction transaction )
-    {
-      lock (_lock)
-      {
-        if (transaction != _transaction)
-        {
-          throw new ArgumentException("The given transaction was not created by this class");
-        }
-      }
-
-      if (null == _transaction)
-      {
-        return;
-      }
-
-      lock (_lock)
-      {
-        if (null == _transaction)
-        {
-          return;
-        }
-        _transaction.Rollback();
-        _transaction = null;
-      }
-    }
-
-    public void Commit( IDbTransaction transaction )
-    {
-      lock (_lock)
-      {
-        if (transaction != _transaction)
-        {
-          throw new ArgumentException( "The given transaction was not created by this class");
-        }
-      }
-
-      if (null == _transaction)
-      {
-        return;
-      }
-
-      lock (_lock)
-      {
-        if (null == _transaction)
-        {
-          return;
-        }
-
-        _transaction.Commit();
-        _transaction = null;
-      }
-    }
-  }
-
   internal partial class SqlitePersister : IPersister
   {
     #region Table names
@@ -139,14 +39,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly TransactionSpiner _transaction;
 
     /// <summary>
-    /// The sqlite connection.
-    /// </summary>
-    private readonly SQLiteConnection _dbConnection;
-
-    /// <summary>
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
+
+    /// <summary>
+    /// The connection string to use
+    /// </summary>
+    private readonly string _connectionString;
     #endregion
 
     public SqlitePersister(ILogger logger, CancellationToken token )
@@ -170,14 +70,20 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
       }
 
-      // try and open the database.
-      _dbConnection = new SQLiteConnection($"Data Source={source};Version=3;");
-      _dbConnection.Open();
+      _connectionString = $"Data Source={source};Version=3;Pooling=True;Max Pool Size=5;";
 
-      _transaction = new TransactionSpiner(_dbConnection, token );
+      _transaction = new TransactionSpiner(CreateTransaction, token );
 
       // update the db if need be.
       Update().Wait();
+    }
+
+    private IDbConnection CreateTransaction()
+    {
+      // try and open the database.
+      var dbConnection = new SQLiteConnection(_connectionString );
+      dbConnection.Open();
+      return dbConnection;
     }
 
     #region Transactions
@@ -239,7 +145,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc/>
     public DbCommand CreateDbCommand(string sql, IDbTransaction transaction)
     {
-      return CreateDbCommand(_dbConnection, sql, transaction );
+      return CreateDbCommand( _transaction.Connection as SQLiteConnection, sql, transaction );
     }
 
     private static SQLiteCommand CreateDbCommand(SQLiteConnection connection, string sql, IDbTransaction transaction)
@@ -253,7 +159,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     private async Task<bool> ExecuteNonQueryAsync(string sql, IDbTransaction transaction )
     {
-      return await ExecuteNonQueryAsync(_dbConnection, sql, transaction ).ConfigureAwait(false);
+      return await ExecuteNonQueryAsync(_transaction.Connection as SQLiteConnection, sql, transaction ).ConfigureAwait(false);
     }
 
     private async Task<bool> ExecuteNonQueryAsync(SQLiteConnection destination, string sql, IDbTransaction transaction )

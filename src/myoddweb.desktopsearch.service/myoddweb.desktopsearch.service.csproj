@@ -89,6 +89,7 @@
     <Compile Include="Persisters\SqlitePersisterFolder.cs" />
     <Compile Include="Persisters\SqlitePersisterFolderUpdates.cs" />
     <Compile Include="Persisters\SqlitePerssisterMaintenance.cs" />
+    <Compile Include="Persisters\TransactionSpiner.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

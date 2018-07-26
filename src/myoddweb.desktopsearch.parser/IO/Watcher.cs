@@ -241,6 +241,12 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       lock (_lockTasks)
       {
+        // if we got a cancellation... don't go and add more taks.
+        if (_token.IsCancellationRequested)
+        {
+          return;
+        }
+
         if (sender == _fileWatcher)
         {
           _tasks.Add(DeletedAsync(new FileSystemEvent(e, Logger), _token));
@@ -256,6 +262,12 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       lock (_lockTasks)
       {
+        // if we got a cancellation... don't go and add more taks.
+        if (_token.IsCancellationRequested)
+        {
+          return;
+        }
+
         if (sender == _fileWatcher )
         {
           _tasks.Add(CreatedAsync(new FileSystemEvent(e, Logger), _token));
@@ -271,6 +283,12 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       lock (_lockTasks)
       {
+        // if we got a cancellation... don't go and add more taks.
+        if (_token.IsCancellationRequested)
+        {
+          return;
+        }
+
         if (sender == _fileWatcher)
         {
           _tasks.Add(RenamedAsync(new FileSystemEvent(e, Logger), _token));
@@ -286,6 +304,12 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       lock (_lockTasks)
       {
+        // if we got a cancellation... don't go and add more taks.
+        if (_token.IsCancellationRequested)
+        {
+          return;
+        }
+
         if (sender == _fileWatcher)
         {
           _tasks.Add(ChangedAsync(new FileSystemEvent(e, Logger), _token));
@@ -304,14 +328,21 @@ namespace myoddweb.desktopsearch.parser.IO
         // stop everything 
         Stop();
 
-        // we cannot use the tasks here
-        // so just show there was an error
-        ErrorAsync(e.GetException(), _token).Wait(_token);
+        // if we got a cancellation... don't go and add more taks.
+        if (!_token.IsCancellationRequested)
+        {
+          // we cannot use the tasks here
+          // so just show there was an error
+          ErrorAsync(e.GetException(), _token).Wait(_token);
+        }
       }
       finally
       {
-        // restart everything
-        Start(_token);
+        if (!_token.IsCancellationRequested)
+        {
+          // restart everything
+          Start(_token);
+        }
       }
     }
 #endregion
@@ -325,24 +356,29 @@ namespace myoddweb.desktopsearch.parser.IO
 
       // stop the cleanup timer
       // we don't need it anymore.
+      // we will be cleaning them up below.
       StopTasksCleanupTimer();
+
+      // we can then cancel the watchers
+      // we have to do it outside th locks because "Dispose" will flush out
+      // the remaining events... and they will need a lock to do that
+      // so we might as well get out as soon as posible.
+      if (_fileWatcher != null)
+      {
+        _fileWatcher.EnableRaisingEvents = false;
+        _fileWatcher.Dispose();
+        _fileWatcher = null;
+      }
+
+      if (_directoryWatcher != null)
+      {
+        _directoryWatcher.EnableRaisingEvents = false;
+        _directoryWatcher.Dispose();
+        _directoryWatcher = null;
+      }
 
       lock (_lockTasks)
       {
-        if (_fileWatcher != null)
-        {
-          _fileWatcher.EnableRaisingEvents = false;
-          _fileWatcher.Dispose();
-          _fileWatcher = null;
-        }
-
-        if (_directoryWatcher != null)
-        {
-          _directoryWatcher.EnableRaisingEvents = false;
-          _directoryWatcher.Dispose();
-          _directoryWatcher = null;
-        }
-
         //  cancel all the tasks.
         _tasks.RemoveAll(t => t.IsCompleted);
 
@@ -410,6 +446,10 @@ namespace myoddweb.desktopsearch.parser.IO
       StartTasksCleanupTimer();
     }
 
+    /// <summary>
+    /// Start watching for directory changes
+    /// This is slightly different from the files watching.
+    /// </summary>
     private void StartDirectoriesWatcher()
     {
       if ((_watcherTypes & WatcherTypes.Directories) != WatcherTypes.Directories)
@@ -434,6 +474,9 @@ namespace myoddweb.desktopsearch.parser.IO
       _directoryWatcher.Deleted += OnFolderDeleted;
     }
 
+    /// <summary>
+    /// Start the files watcher.
+    /// </summary>
     private void StartFilesWatcher()
     {
       if ((_watcherTypes & WatcherTypes.Files) != WatcherTypes.Files)

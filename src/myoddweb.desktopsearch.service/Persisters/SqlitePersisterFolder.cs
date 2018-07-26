@@ -15,7 +15,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -57,17 +56,18 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sql = $"UPDATE {TableFolders} SET path=@path1 WHERE path=@path2";
       using (var cmd = CreateDbCommand(sql, transaction))
       {
-        var pPath1 = cmd.CreateParameter();
-        pPath1.DbType = DbType.String;
-        pPath1.ParameterName = "@path1";
-        cmd.Parameters.Add(pPath1);
-
-        var pPath2 = cmd.CreateParameter();
-        pPath2.DbType = DbType.String;
-        pPath2.ParameterName = "@path2";
-        cmd.Parameters.Add(pPath2);
         try
         {
+          var pPath1 = cmd.CreateParameter();
+          pPath1.DbType = DbType.String;
+          pPath1.ParameterName = "@path1";
+          cmd.Parameters.Add(pPath1);
+
+          var pPath2 = cmd.CreateParameter();
+          pPath2.DbType = DbType.String;
+          pPath2.ParameterName = "@path2";
+          cmd.Parameters.Add(pPath2);
+
           // are we cancelling?
           if (token.IsCancellationRequested)
           {
@@ -137,6 +137,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         pPath.DbType = DbType.String;
         pPath.ParameterName = "@path";
         cmd.Parameters.Add(pPath);
+
         foreach (var directory in directories)
         {
           try

@@ -219,10 +219,7 @@ namespace myoddweb.desktopsearch.service
     private void StopParser()
     {
       // don't do the stop while the startup thread is still busy starting up
-      while (_startupThreadBusy)
-      {
-        Task.Yield();
-      }
+      SpinWait.SpinUntil( () => !_startupThreadBusy);
 
       _cancellationTokenSource?.Cancel();
       _parser?.Stop();

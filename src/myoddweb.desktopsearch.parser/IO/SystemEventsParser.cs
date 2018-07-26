@@ -143,6 +143,12 @@ namespace myoddweb.desktopsearch.parser.IO
           // ReSharper disable once InconsistentlySynchronizedField
           foreach (var currentEvent in _currentEvents)
           {
+            if (_token.IsCancellationRequested)
+            {
+              _currentEvents.Clear();
+              return null;
+            }
+
             // we will add this event below
             // so we can remove all the previous 'changed' events.
             // that way, the last one in the list will be the most 'up-to-date' ones.
@@ -258,7 +264,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// It should be non-blocking.
     /// </summary>
     /// <param name="events"></param>
-    private async Task ProcessEventsAsync(IReadOnlyList<IFileSystemEvent> events)
+    private async Task ProcessEventsAsync(IEnumerable<IFileSystemEvent> events)
     {
       // assume errors...
       var hadErrors = true;
@@ -270,6 +276,10 @@ namespace myoddweb.desktopsearch.parser.IO
         // try and do everything at once.
         foreach (var e in events)
         {
+          if (_token.IsCancellationRequested)
+          {
+            break;
+          }
           await ProcessEventAsync(e).ConfigureAwait(false);
         }
 
@@ -494,6 +504,10 @@ namespace myoddweb.desktopsearch.parser.IO
       {
         try
         {
+          if (_token.IsCancellationRequested)
+          {
+            return;
+          }
           _currentEvents.Add(fileSystemEventArgs);
         }
         catch (Exception e)

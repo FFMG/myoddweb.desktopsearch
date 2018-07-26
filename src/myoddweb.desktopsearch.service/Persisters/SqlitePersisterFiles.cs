@@ -15,7 +15,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -76,27 +75,28 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sql = $"UPDATE {TableFiles} SET name=@name1, folderid=@folderid1 WHERE name=@name2 and folderid=@folderid2";
       using (var cmd = CreateDbCommand(sql, transaction))
       {
-        var pName1 = cmd.CreateParameter();
-        pName1.DbType = DbType.String;
-        pName1.ParameterName = "@name1";
-        cmd.Parameters.Add( pName1);
-
-        var pName2 = cmd.CreateParameter();
-        pName2.DbType = DbType.String;
-        pName2.ParameterName = "@name2";
-        cmd.Parameters.Add(pName2);
-
-        var pFolderId1 = cmd.CreateParameter();
-        pFolderId1.DbType = DbType.Int64;
-        pFolderId1.ParameterName = "@folderid1";
-        cmd.Parameters.Add(pFolderId1);
-
-        var pFolderId2 = cmd.CreateParameter();
-        pFolderId2.DbType = DbType.Int64;
-        pFolderId2.ParameterName = "@folderid2";
-        cmd.Parameters.Add(pFolderId2);
         try
         {
+          var pName1 = cmd.CreateParameter();
+          pName1.DbType = DbType.String;
+          pName1.ParameterName = "@name1";
+          cmd.Parameters.Add(pName1);
+
+          var pName2 = cmd.CreateParameter();
+          pName2.DbType = DbType.String;
+          pName2.ParameterName = "@name2";
+          cmd.Parameters.Add(pName2);
+
+          var pFolderId1 = cmd.CreateParameter();
+          pFolderId1.DbType = DbType.Int64;
+          pFolderId1.ParameterName = "@folderid1";
+          cmd.Parameters.Add(pFolderId1);
+
+          var pFolderId2 = cmd.CreateParameter();
+          pFolderId2.DbType = DbType.Int64;
+          pFolderId2.ParameterName = "@folderid2";
+          cmd.Parameters.Add(pFolderId2);
+
           // are we cancelling?
           if (token.IsCancellationRequested)
           {
@@ -119,23 +119,30 @@ namespace myoddweb.desktopsearch.service.Persisters
               return -1;
             }
           }
-
-          // if we are here, we either renamed the file
-          // or we managed to add add it
-          // in either cases, we can now return the id of this newly added file.
-          // we won't ask the function to insert a new file as we _just_ renamed it.
-          // so it has to exist...
-          var fileId = await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
-
-          // touch that file as changed
-          await TouchFileAsync(fileId, UpdateType.Changed, transaction, token).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
           _logger.Exception(ex);
+          return -1;
         }
       }
-      return -1;
+
+      // if we are here, we either renamed the file
+      // or we managed to add add it
+      // in either cases, we can now return the id of this newly added file.
+      // we won't ask the function to insert a new file as we _just_ renamed it.
+      // so it has to exist...
+      var fileId = await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
+      if (-1 == fileId)
+      {
+        return -1;
+      }
+
+      // touch that file as changed
+      await TouchFileAsync(fileId, UpdateType.Changed, transaction, token).ConfigureAwait(false);
+
+      // return the new file id
+      return fileId;
     }
 
     /// <inheritdoc />
@@ -237,12 +244,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sql = $"DELETE FROM {TableFiles} WHERE folderid=@folderid";
       using (var cmd = CreateDbCommand(sql, transaction))
       {
-        var pFolderId = cmd.CreateParameter();
-        pFolderId.DbType = DbType.Int64;
-        pFolderId.ParameterName = "@folderid";
-        cmd.Parameters.Add(pFolderId);
         try
         {
+          var pFolderId = cmd.CreateParameter();
+          pFolderId.DbType = DbType.Int64;
+          pFolderId.ParameterName = "@folderid";
+          cmd.Parameters.Add(pFolderId);
+
           // are we cancelling?
           if (token.IsCancellationRequested)
           {

@@ -12,11 +12,9 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -138,12 +136,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sqlDelete = $"DELETE FROM {TableFolderUpdates} WHERE folderid = @id";
       using (var cmd = CreateDbCommand(sqlDelete, transaction))
       {
-        var pId = cmd.CreateParameter();
-        pId.DbType = DbType.Int64;
-        pId.ParameterName = "@id";
-        cmd.Parameters.Add(pId);
         try
         {
+          var pId = cmd.CreateParameter();
+          pId.DbType = DbType.Int64;
+          pId.ParameterName = "@id";
+          cmd.Parameters.Add(pId);
+
           foreach (var folderId in folderIds )
           {
             // are we cancelling?
