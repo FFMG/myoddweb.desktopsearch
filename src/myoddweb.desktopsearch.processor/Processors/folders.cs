@@ -35,6 +35,16 @@ namespace myoddweb.desktopsearch.processor.Processors
     private readonly long _numberOfFoldersToProcess;
 
     /// <summary>
+    /// The number of files we want to process.
+    /// </summary>
+    private long _currentNumberOfFoldersToProcess;
+
+    /// <summary>
+    /// The maximum amount of time a cycle should take.
+    /// </summary>
+    private readonly long _maxNumberOfMs;
+
+    /// <summary>
     /// The logger that we will be using to log messages.
     /// </summary>
     private readonly ILogger _logger;
@@ -55,10 +65,14 @@ namespace myoddweb.desktopsearch.processor.Processors
     private bool _canWork;
     #endregion
 
-    public Folders(long numberOfFoldersToProcessPerEvent, IPersister persister, ILogger logger, IDirectory directory)
+    public Folders(long numberOfFoldersToProcessPerEvent, long maxNumberOfMs, IPersister persister, ILogger logger, IDirectory directory)
     {
       // the number of folders to process.
       _numberOfFoldersToProcess = numberOfFoldersToProcessPerEvent;
+      _currentNumberOfFoldersToProcess = numberOfFoldersToProcessPerEvent;
+
+      // save the max amount of time we want to take.
+      _maxNumberOfMs = maxNumberOfMs;
 
       // set the persister.
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
@@ -94,56 +108,46 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
+        // start timing how long the entire operation will take
         var stopwatch = new Stopwatch();
         stopwatch.Start();
+
+        // then get _all_ the file updates that we want to do.
         var pendingUpdates = await GetPendingFolderUpdatesAsync(token).ConfigureAwait(false);
+
+        // the number of updates we actually did.
+        long processedFolders = 0;
         try
         {
-          if (null == pendingUpdates || !pendingUpdates.Any())
+          // then we go around and do chunks of data one at a time.
+          // this is to prevent massive chunks of data from being processed.
+          for (var start = 0; start < pendingUpdates.Count; start += (int)_numberOfFoldersToProcess)
           {
-            // this is not an error
-            return true;
-          }
-
-          // get the transaction
-          var transaction = await _persister.BeginTransactionAsync().ConfigureAwait(false);
-          if (null == transaction)
-          {
-            //  we probably cancelled.
-            return false;
-          }
-
-          try
-          {
-            // process all the data one at a time.
-            foreach (var pendingFolderUpdate in pendingUpdates)
-            {
-              await ProcessFolderUpdate(transaction, pendingFolderUpdate, token ).ConfigureAwait( false );
-              if (token.IsCancellationRequested)
-              {
-                return false;
-              }
-            }
-            // we made it!
+            // get out if we cancelled.
             if (token.IsCancellationRequested)
             {
-              _persister.Rollback(transaction);
+              break;
             }
-            else
+
+            if (!await ProcessFolderUpdates(pendingUpdates, start, token).ConfigureAwait(false))
             {
-              _persister.Commit(transaction);
+              return false;
             }
+
+            // if we are here we processed those files.
+            processedFolders += _numberOfFoldersToProcess;
           }
-          catch
-          {
-            _persister.Rollback(transaction);
-            throw;
-          }
+
+          // return if we made it.
+          return !token.IsCancellationRequested;
         }
         finally
         {
           stopwatch.Stop();
-          _logger.Verbose($"Processed {pendingUpdates?.Count ?? 0} pending folder updates (Time Elapsed: {stopwatch.Elapsed:g})");
+          _logger.Verbose($"Processed {(processedFolders > (pendingUpdates?.Count ?? 0) ? (pendingUpdates?.Count ?? 0) : processedFolders)} pending folder updates (Time Elapsed: {stopwatch.Elapsed:g})");
+
+          // Adjust the number of items we will be doing the next time.
+          AdjustNumberOfFoldersToProcess(processedFolders, stopwatch.ElapsedMilliseconds);
         }
       }
       catch (Exception e)
@@ -151,42 +155,146 @@ namespace myoddweb.desktopsearch.processor.Processors
         _logger.Exception(e);
         return false;
       }
+    }
+
+    /// <summary>
+    /// Adjust the current number of items to process.
+    /// If we are fast enough, then we might as well do as much as posible.
+    /// </summary>
+    /// <param name="processedFolders"></param>
+    /// <param name="elapsedMilliseconds"></param>
+    private void AdjustNumberOfFoldersToProcess(long processedFolders, long elapsedMilliseconds)
+    {
+      // did we do as many as we could do? If not it means that there are simply not enough
+      // folders to process anymore, in the case, the amount of time does not really matter.
+      // We could also have broken out of the list...
+      // 'processedFolders' could be bigger than the number to process because of the loop above.
+      if (processedFolders < _currentNumberOfFoldersToProcess)
+      {
+        return;
+      }
+
+      // did we go faster than expected?
+      if (elapsedMilliseconds < _maxNumberOfMs * 0.9) //  remove a little bit so we don't always re-adjust.
+      {
+        //  just add 10%
+        _currentNumberOfFoldersToProcess = (long)(_currentNumberOfFoldersToProcess * 1.1);
+        return;
+      }
+
+      // or did we go slower?
+      // we never want to go over the time limit.
+      if (elapsedMilliseconds <= _maxNumberOfMs)
+      {
+        return;
+      }
+
+      // remove 5%
+      _currentNumberOfFoldersToProcess = (long)(_currentNumberOfFoldersToProcess * 0.95);
+
+      // and make suse that we do not have silly values.
+      if (_currentNumberOfFoldersToProcess <= 0)
+      {
+        _currentNumberOfFoldersToProcess = 1;
+      }
+    }
+
+    private async Task<bool> ProcessFolderUpdates(List<PendingFolderUpdate> pendingUpdates, int start,CancellationToken token)
+    {
+      // make sure that we never do more than the total number of items
+      // from our current start position.
+      var max = pendingUpdates.Count;
+      var count = _numberOfFoldersToProcess + start > max ? max - start : (int) _numberOfFoldersToProcess;
+
+      // and process those files.
+      return await ProcessFolderUpdates(pendingUpdates.GetRange(start, count), token).ConfigureAwait(false);
+    }
+
+    private async Task<bool> ProcessFolderUpdates(IReadOnlyCollection<PendingFolderUpdate> pendingUpdates, CancellationToken token)
+    { 
+      if (null == pendingUpdates || !pendingUpdates.Any())
+      {
+        // this is not an error
+        return true;
+      }
+
+      // get the transaction
+      var transaction = await _persister.BeginTransactionAsync().ConfigureAwait(false);
+      if (null == transaction)
+      {
+        //  we probably cancelled.
+        return false;
+      }
+
+      try
+      {
+        // process all the data one at a time.
+        foreach (var pendingFolderUpdate in pendingUpdates)
+        {
+          if (token.IsCancellationRequested)
+          {
+            return false;
+          }
+
+          if (!await ProcessFolderUpdate(transaction, pendingFolderUpdate, token).ConfigureAwait(false))
+          {
+            return false;
+          }
+        }
+
+        // we made it!
+        if (token.IsCancellationRequested)
+        {
+          _persister.Rollback(transaction);
+        }
+        else
+        {
+          _persister.Commit(transaction);
+        }
+      }
+      catch
+      {
+        _persister.Rollback(transaction);
+        throw;
+      }
       return !token.IsCancellationRequested;
     }
 
-    private async Task ProcessFolderUpdate(IDbTransaction transaction, PendingFolderUpdate pendingFolderUpdate, CancellationToken token )
+    /// <summary>
+    /// Process a single folder update
+    /// </summary>
+    /// <param name="transaction"></param>
+    /// <param name="pendingFolderUpdate"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> ProcessFolderUpdate(IDbTransaction transaction, PendingFolderUpdate pendingFolderUpdate, CancellationToken token )
     {
       try
       {
         if (token.IsCancellationRequested)
         {
-          return;
+          return false;
         }
         switch (pendingFolderUpdate.PendingUpdateType)
         {
           case UpdateType.Created:
-            await WorkCreatedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
-            break;
+            return await WorkCreatedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
 
           case UpdateType.Deleted:
-            await WorkDeletedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
-            break;
+            return await WorkDeletedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
 
           case UpdateType.Changed:
             // renamed or content/settingss changed
-            await WorkChangedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
-            break;
+            return await WorkChangedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
 
           default:
             throw new ArgumentOutOfRangeException();
         }
-
-        // mark it as done.
-        await _persister.MarkDirectoryProcessedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
       }
       catch (Exception e)
       {
         _logger.Exception(e);
+        return false;
       }
     }
 
@@ -232,9 +340,9 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task WorkDeletedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
+    public Task<bool> WorkDeletedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
     {
-      return Task.CompletedTask;
+      return Task.FromResult(true);
     }
 
     /// <summary>
@@ -308,7 +416,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       try
       {
-        var pendingUpdates = await _persister.GetPendingFolderUpdatesAsync(_numberOfFoldersToProcess, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _persister.GetPendingFolderUpdatesAsync(_currentNumberOfFoldersToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending folder updates.");

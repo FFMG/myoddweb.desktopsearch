@@ -229,6 +229,11 @@ namespace myoddweb.desktopsearch.processor.Processors
         // process all the data one at a time.
         foreach (var pendingFileUpdate in pendingUpdates)
         {
+          if (token.IsCancellationRequested)
+          {
+            return false;
+          }
+
           if( !await ProcessFileUpdate(transaction, pendingFileUpdate, token).ConfigureAwait(false))
           {
             // something went wrong or the task was cancelled.

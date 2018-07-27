@@ -13,10 +13,12 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Logging;
@@ -47,6 +49,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// The connection string to use
     /// </summary>
     private readonly string _connectionString;
+
+    private readonly HashSet<SQLiteCommand> _commands = new HashSet<SQLiteCommand>();
     #endregion
 
     public SqlitePersister(ILogger logger, CancellationToken token )
@@ -72,10 +76,26 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       _connectionString = $"Data Source={source};Version=3;Pooling=True;Max Pool Size=5;";
 
-      _transaction = new TransactionSpiner(CreateTransaction, token );
+      _transaction = new TransactionSpiner(CreateTransaction, FreeResources, token );
 
       // update the db if need be.
       Update().Wait();
+    }
+
+    private void FreeResources(IDbConnection connection)
+    {
+      if (connection is SQLiteConnection con)
+      {
+        foreach (var sqLiteCommand in _commands)
+        {
+          sqLiteCommand.Dispose();
+        }
+        _commands.Clear();
+
+        con.ReleaseMemory();
+        con.Close();
+        con.Dispose();
+      }
     }
 
     private IDbConnection CreateTransaction()
@@ -149,7 +169,9 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         throw new Exception("The database is not open!");
       }
-      return new SQLiteCommand(sql, connection, transaction as SQLiteTransaction);
+      var command = new SQLiteCommand(sql, connection, transaction as SQLiteTransaction);
+      _commands.Add(command);
+      return command;
     }
 
     private async Task<bool> ExecuteNonQueryAsync(string sql, IDbTransaction transaction )

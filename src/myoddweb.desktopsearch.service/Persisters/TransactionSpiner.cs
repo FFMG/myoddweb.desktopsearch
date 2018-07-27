@@ -22,11 +22,13 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class TransactionSpiner
   {
     public delegate IDbConnection CreateConnection();
+    public delegate void FreeResources(IDbConnection connection);
 
     private readonly object _lock = new object();
     private IDbConnection _connection;
     private IDbTransaction _transaction;
     private readonly CreateConnection _createConnection;
+    private readonly FreeResources _freeResources;
     private readonly CancellationToken _token;
 
     public IDbConnection Connection
@@ -40,10 +42,11 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
-    public TransactionSpiner(CreateConnection createConnection, CancellationToken token)
+    public TransactionSpiner(CreateConnection createConnection, FreeResources freeResources, CancellationToken token)
     {
       _token = token;
       _createConnection = createConnection ?? throw new ArgumentNullException(nameof(createConnection));
+      _freeResources = freeResources ?? throw new ArgumentNullException(nameof(freeResources));
     }
 
     public async Task<IDbTransaction> Begin()
@@ -103,10 +106,11 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           return;
         }
+        // roll back
         _transaction.Rollback();
 
-        _connection.Close();
-        _connection.Dispose();
+        // free resources
+        _freeResources( _connection );
 
         _transaction = null;
         _connection = null;
@@ -135,10 +139,13 @@ namespace myoddweb.desktopsearch.service.Persisters
           return;
         }
 
+        // commit 
         _transaction.Commit();
-        _connection.Close();
-        _connection.Dispose();
 
+        // free resources
+        _freeResources(_connection);
+
+        // done 
         _transaction = null;
         _connection = null;
       }
