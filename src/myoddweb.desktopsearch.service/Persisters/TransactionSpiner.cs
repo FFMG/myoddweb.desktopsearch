@@ -103,6 +103,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           return;
         }
         _transaction.Rollback();
+
         _connection.Close();
         _connection.Dispose();
 
@@ -134,7 +135,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
 
         _transaction.Commit();
-
         _connection.Close();
         _connection.Dispose();
 

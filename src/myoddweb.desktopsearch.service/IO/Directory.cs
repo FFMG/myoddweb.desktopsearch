@@ -43,11 +43,6 @@ namespace myoddweb.desktopsearch.service.IO
     private IReadOnlyCollection<DirectoryInfo> _ignorePaths;
 
     /// <summary>
-    /// The list of directories we found.
-    /// </summary>
-    public List<DirectoryInfo> Directories { get; } = new List<DirectoryInfo>();
-
-    /// <summary>
     /// Getter function to get the ignore paths.
     /// </summary>
     private IEnumerable<DirectoryInfo> IgnorePaths
@@ -93,9 +88,6 @@ namespace myoddweb.desktopsearch.service.IO
 
       if (!helper.File.IsSubDirectory(IgnorePaths, directory))
       {
-        // add this directory to our list.
-        Directories.Add(directory);
-
         // we will be parsing it and the sub-directories.
         return true;
       }
@@ -111,14 +103,11 @@ namespace myoddweb.desktopsearch.service.IO
     public async Task<List<DirectoryInfo>> ParseDirectoriesAsync(DirectoryInfo directory, CancellationToken token)
     {
       // reset what we might have found already
-      Directories.Clear();
-
-      // and rebuild the directory,
-      await BuildDirectoryListAsync(directory, token).ConfigureAwait(false);
+      var directories = await BuildDirectoryListAsync( directory, token).ConfigureAwait(false);
       
       // if we cancelled then we return null
       // this will help to force the callers to bail out as well.
-      return token.IsCancellationRequested ? null : Directories;
+      return token.IsCancellationRequested ? null : directories;
     }
 
     /// <inheritdoc />
@@ -205,15 +194,21 @@ namespace myoddweb.desktopsearch.service.IO
     /// <param name="directory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task BuildDirectoryListAsync(DirectoryInfo directory, CancellationToken token)
+    private async Task<List<DirectoryInfo>> BuildDirectoryListAsync( DirectoryInfo directory, CancellationToken token)
     {
       try
       {
+        // create an empty list.
+        var directories = new List<DirectoryInfo>();
+
         // does the caller want us to get in this directory?
-        if (!ParseDirectory(directory))
+        if (!ParseDirectory( directory))
         {
-          return;
+          return directories;
         }
+   
+        // we can then add, at least, this directory
+        directories.Add(directory);
 
         var dirs = directory.EnumerateDirectories();
         foreach (var info in dirs)
@@ -221,12 +216,15 @@ namespace myoddweb.desktopsearch.service.IO
           // did we get a stop request?
           if (token.IsCancellationRequested)
           {
-            return;
+            return directories;
           }
 
-          // we can parse this directory now.
-          await BuildDirectoryListAsync(info, token).ConfigureAwait(false);
+          // we can parse this directory now and add whatever we found to the list.
+          directories.AddRange( await BuildDirectoryListAsync(info, token).ConfigureAwait(false));
         }
+
+        // return what we found
+        return directories;
       }
       catch (SecurityException)
       {
@@ -244,6 +242,8 @@ namespace myoddweb.desktopsearch.service.IO
       {
         _logger.Error($"Exception while parsing directory: {directory.FullName}. {e.Message}");
       }
+
+      return new List<DirectoryInfo>();
     }
   }
 }

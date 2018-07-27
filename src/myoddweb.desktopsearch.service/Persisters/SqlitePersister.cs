@@ -145,28 +145,18 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc/>
     public DbCommand CreateDbCommand(string sql, IDbTransaction transaction)
     {
-      return CreateDbCommand( _transaction.Connection as SQLiteConnection, sql, transaction );
-    }
-
-    private static SQLiteCommand CreateDbCommand(SQLiteConnection connection, string sql, IDbTransaction transaction)
-    {
-      if (null == connection)
+      if (!(_transaction.Connection is SQLiteConnection connection))
       {
         throw new Exception("The database is not open!");
       }
-      return new SQLiteCommand(sql, connection, transaction as SQLiteTransaction );
+      return new SQLiteCommand(sql, connection, transaction as SQLiteTransaction);
     }
 
     private async Task<bool> ExecuteNonQueryAsync(string sql, IDbTransaction transaction )
     {
-      return await ExecuteNonQueryAsync(_transaction.Connection as SQLiteConnection, sql, transaction ).ConfigureAwait(false);
-    }
-
-    private async Task<bool> ExecuteNonQueryAsync(SQLiteConnection destination, string sql, IDbTransaction transaction )
-    {
       try
       {
-        using (var command = CreateDbCommand(destination, sql, transaction ))
+        using (var command = CreateDbCommand(sql, transaction ))
         {
           await command.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
