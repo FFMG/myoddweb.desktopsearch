@@ -82,7 +82,7 @@ namespace myoddweb.desktopsearch.processor
       _processors = new List<IProcessor>
       {
         new Folders( config.Processors.NumberOfFoldersToProcessPerEvent, persister, logger, directory ),
-        new Files( config.Processors.NumberOfFilesToProcessPerEvent, persister, logger )
+        new Files( config.Processors.NumberOfFilesToProcessPerEvent, _config.Timers.EventsProcessorMs, persister, logger )
       };
     }
 

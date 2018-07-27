@@ -92,7 +92,6 @@ namespace myoddweb.desktopsearch.processor.Processors
         return true;
       }
 
-      // get the transaction
       try
       {
         var stopwatch = new Stopwatch();
@@ -106,14 +105,39 @@ namespace myoddweb.desktopsearch.processor.Processors
             return true;
           }
 
-          // process all the data one at a time.
-          foreach (var pendingFolderUpdate in pendingUpdates)
+          // get the transaction
+          var transaction = await _persister.BeginTransactionAsync().ConfigureAwait(false);
+          if (null == transaction)
           {
-            await ProcessFolderUpdate(pendingFolderUpdate, token ).ConfigureAwait( false );
+            //  we probably cancelled.
+            return false;
+          }
+
+          try
+          {
+            // process all the data one at a time.
+            foreach (var pendingFolderUpdate in pendingUpdates)
+            {
+              await ProcessFolderUpdate(transaction, pendingFolderUpdate, token ).ConfigureAwait( false );
+              if (token.IsCancellationRequested)
+              {
+                return false;
+              }
+            }
+            // we made it!
             if (token.IsCancellationRequested)
             {
-              return false;
+              _persister.Rollback(transaction);
             }
+            else
+            {
+              _persister.Commit(transaction);
+            }
+          }
+          catch
+          {
+            _persister.Rollback(transaction);
+            throw;
           }
         }
         finally
@@ -130,19 +154,12 @@ namespace myoddweb.desktopsearch.processor.Processors
       return !token.IsCancellationRequested;
     }
 
-    private async Task ProcessFolderUpdate(PendingFolderUpdate pendingFolderUpdate, CancellationToken token )
+    private async Task ProcessFolderUpdate(IDbTransaction transaction, PendingFolderUpdate pendingFolderUpdate, CancellationToken token )
     {
-      var transaction = await _persister.BeginTransactionAsync().ConfigureAwait(false);
-      if (null == transaction)
-      {
-        //  we probably cancelled.
-        return;
-      }
       try
       {
         if (token.IsCancellationRequested)
         {
-          _persister.Rollback(transaction);
           return;
         }
         switch (pendingFolderUpdate.PendingUpdateType)
@@ -166,21 +183,10 @@ namespace myoddweb.desktopsearch.processor.Processors
 
         // mark it as done.
         await _persister.MarkDirectoryProcessedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
-
-        // all done
-        if (!token.IsCancellationRequested)
-        {
-          _persister.Commit(transaction);
-        }
-        else
-        {
-          _persister.Rollback(transaction);
-        }
       }
       catch (Exception e)
       {
         _logger.Exception(e);
-        _persister.Rollback(transaction);
       }
     }
 

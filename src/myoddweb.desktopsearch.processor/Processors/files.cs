@@ -28,11 +28,20 @@ namespace myoddweb.desktopsearch.processor.Processors
   internal class Files : IProcessor
   {
     #region Member Variables
-
     /// <summary>
     /// The number of files we want to process.
     /// </summary>
     private readonly long _numberOfFilesToProcess;
+
+    /// <summary>
+    /// The number of files we want to process.
+    /// </summary>
+    private long _currentNumberOfFilesToProcess;
+
+    /// <summary>
+    /// The maximum amount of time a cycle should take.
+    /// </summary>
+    private readonly long _maxNumberOfMs;
 
     /// <summary>
     /// The logger that we will be using to log messages.
@@ -50,10 +59,14 @@ namespace myoddweb.desktopsearch.processor.Processors
     private bool _canWork;
     #endregion
 
-    public Files(long numberOfFilesToProcessPerEvent, IPersister persister, ILogger logger)
+    public Files(long numberOfFilesToProcessPerEvent, long maxNumberOfMs, IPersister persister, ILogger logger)
     {
       // The number of files to process
       _numberOfFilesToProcess = numberOfFilesToProcessPerEvent;
+      _currentNumberOfFilesToProcess = numberOfFilesToProcessPerEvent;
+
+      // save the max amount of time we want to take.
+      _maxNumberOfMs = maxNumberOfMs;
 
       // set the persister.
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
@@ -86,31 +99,65 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
+        // start timing how long the entire operation will take
         var stopwatch = new Stopwatch();
         stopwatch.Start();
+
+        // then get _all_ the file updates that we want to do.
         var pendingUpdates = await GetPendingFileUpdatesAsync(token).ConfigureAwait(false);
+
+        // the number of updates we actually did.
+        long processedFiles = 0;
         try
         {
-          if (null == pendingUpdates || !pendingUpdates.Any())
+          // then we go around and do chunks of data one at a time.
+          // this is to prevent massive chunks of data from being processed.
+          for (long start = 0; start < pendingUpdates.Count; start += _numberOfFilesToProcess)
           {
-            // this is not an error
-            return true;
-          }
+            // make sure that we never do more than the total number of items
+            // from our current start position.
+            var count = _numberOfFilesToProcess+start > pendingUpdates.Count ? pendingUpdates.Count - (int)start : (int) _numberOfFilesToProcess;
 
-          // process all the data one at a time.
-          foreach (var pendingFileUpdate in pendingUpdates)
-          {
-            await ProcessFileUpdate(pendingFileUpdate, token).ConfigureAwait(false);
-            if (token.IsCancellationRequested)
+            // and process those files.
+            if (!await ProcessFileUpdates(pendingUpdates.GetRange( (int)start, count), token).ConfigureAwait(false))
             {
               return false;
             }
+
+            // if we are here we processed those files.
+            processedFiles += _numberOfFilesToProcess;
           }
+
+          // return if we made it.
+          return !token.IsCancellationRequested;
         }
         finally
         {
+          // now display how many files were actually handled.
           stopwatch.Stop();
-          _logger.Verbose($"Processed {pendingUpdates?.Count ?? 0} pending file updates (Time Elapsed: {stopwatch.Elapsed:g})");
+          _logger.Verbose($"Processed {(processedFiles > (pendingUpdates?.Count ?? 0) ? (pendingUpdates?.Count ?? 0) : processedFiles)} pending file updates (Time Elapsed: {stopwatch.Elapsed:g})");
+
+          // did we do as many as we could do?
+          // 'processedFiles' could be bigger than the number to process because of the loop above.
+          if (processedFiles >= _currentNumberOfFilesToProcess)
+          {
+            // did we go faster than expected?
+            if (stopwatch.ElapsedMilliseconds < _maxNumberOfMs*0.9) //  remove a little bit so we don't always re-adjust.
+            {
+              //  just add 10%
+              _currentNumberOfFilesToProcess = (long)(_currentNumberOfFilesToProcess * 1.1);
+            }
+            // or did we go slower?
+            else if (stopwatch.ElapsedMilliseconds > _maxNumberOfMs*1.1)  //  add a little bit of time so we don't overshoot.
+            {
+              // remove 10%
+              _currentNumberOfFilesToProcess = (long)(_currentNumberOfFilesToProcess * 0.9);
+              if (_currentNumberOfFilesToProcess <= 0)
+              {
+                _currentNumberOfFilesToProcess = 1;
+              }
+            }
+          }
         }
       }
       catch (Exception e)
@@ -118,62 +165,103 @@ namespace myoddweb.desktopsearch.processor.Processors
         _logger.Exception(e);
         return false;
       }
-      return !token.IsCancellationRequested;
     }
 
-    private async Task ProcessFileUpdate(PendingFileUpdate pendingFileUpdate, CancellationToken token)
+    /// <summary>
+    /// Process a group of pending updates
+    /// </summary>
+    /// <param name="pendingUpdates"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> ProcessFileUpdates(IReadOnlyCollection<PendingFileUpdate> pendingUpdates, CancellationToken token)
     {
+      if (null == pendingUpdates || !pendingUpdates.Any())
+      {
+        // this is not an error
+        return true;
+      }
+
+      // get the transaction
       var transaction = await _persister.BeginTransactionAsync().ConfigureAwait(false);
       if (null == transaction)
       {
         //  we probably cancelled.
-        return;
+        return false;
       }
 
       try
       {
+        // process all the data one at a time.
+        foreach (var pendingFileUpdate in pendingUpdates)
+        {
+          if( !await ProcessFileUpdate(transaction, pendingFileUpdate, token).ConfigureAwait(false))
+          {
+            // something went wrong or the task was cancelled.
+            return false;
+          }
+        }
+
+        // mark all the files as done.
+        if (!await _persister.MarkFilesProcessedAsync(pendingUpdates.Select(u => u.FileId), transaction, token).ConfigureAwait(false))
+        {
+          _persister.Rollback(transaction);
+          return false;
+        }
+        
+        // we made it!
         if (token.IsCancellationRequested)
         {
           _persister.Rollback(transaction);
-          return;
+        }
+        else
+        {
+          _persister.Commit(transaction);
+        }
+      }
+      catch
+      {
+        _persister.Rollback(transaction);
+        throw;
+      }
+      return !token.IsCancellationRequested;
+    }
+
+    /// <summary>
+    /// Process a single list update
+    /// </summary>
+    /// <param name="transaction"></param>
+    /// <param name="pendingFileUpdate"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> ProcessFileUpdate( IDbTransaction transaction, PendingFileUpdate pendingFileUpdate, CancellationToken token)
+    {
+      try
+      {
+        if (token.IsCancellationRequested)
+        {
+          return false;
         }
 
         switch (pendingFileUpdate.PendingUpdateType)
         {
           case UpdateType.Created:
-            await WorkCreatedAsync(pendingFileUpdate.FileId, transaction, token).ConfigureAwait(false);
-            break;
+            return await WorkCreatedAsync(pendingFileUpdate.FileId, transaction, token).ConfigureAwait(false);
 
           case UpdateType.Deleted:
-            await WorkDeletedAsync(pendingFileUpdate.FileId, transaction, token).ConfigureAwait(false);
-            break;
+            return await WorkDeletedAsync(pendingFileUpdate.FileId, transaction, token).ConfigureAwait(false);
 
           case UpdateType.Changed:
             // renamed or content/settingss changed
-            await WorkChangedAsync(pendingFileUpdate.FileId, transaction, token).ConfigureAwait(false);
-            break;
+            return await WorkChangedAsync(pendingFileUpdate.FileId, transaction, token).ConfigureAwait(false);
 
           default:
             throw new ArgumentOutOfRangeException();
-        }
-
-        // mark it as done.
-        await _persister.MarkFileProcessedAsync(pendingFileUpdate.FileId, transaction, token).ConfigureAwait(false);
-
-        // all done
-        if (!token.IsCancellationRequested)
-        {
-          _persister.Commit(transaction);
-        }
-        else
-        {
-          _persister.Rollback(transaction);
         }
       }
       catch (Exception e)
       {
         _logger.Exception(e);
-        _persister.Rollback(transaction);
+        return false;
       }
     }
 
@@ -193,7 +281,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        var pendingUpdates = await _persister.GetPendingFileUpdatesAsync(_numberOfFilesToProcess, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _persister.GetPendingFileUpdatesAsync(_currentNumberOfFilesToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending files updates.");
@@ -227,9 +315,9 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task WorkDeletedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
+    public Task<bool> WorkDeletedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
     {
-      return Task.CompletedTask;
+      return Task.FromResult(true);
     }
 
     /// <summary>
