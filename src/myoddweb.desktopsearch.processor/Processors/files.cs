@@ -112,14 +112,15 @@ namespace myoddweb.desktopsearch.processor.Processors
         {
           // then we go around and do chunks of data one at a time.
           // this is to prevent massive chunks of data from being processed.
-          for (long start = 0; start < pendingUpdates.Count; start += _numberOfFilesToProcess)
+          for (var start = 0; start < pendingUpdates.Count; start += (int)_numberOfFilesToProcess)
           {
-            // make sure that we never do more than the total number of items
-            // from our current start position.
-            var count = _numberOfFilesToProcess+start > pendingUpdates.Count ? pendingUpdates.Count - (int)start : (int) _numberOfFilesToProcess;
+            // get out if we cancelled.
+            if (token.IsCancellationRequested)
+            {
+              break;
+            }
 
-            // and process those files.
-            if (!await ProcessFileUpdates(pendingUpdates.GetRange( (int)start, count), token).ConfigureAwait(false))
+            if (!await ProcessFileUpdates(pendingUpdates, start, token).ConfigureAwait(false))
             {
               return false;
             }
@@ -137,27 +138,8 @@ namespace myoddweb.desktopsearch.processor.Processors
           stopwatch.Stop();
           _logger.Verbose($"Processed {(processedFiles > (pendingUpdates?.Count ?? 0) ? (pendingUpdates?.Count ?? 0) : processedFiles)} pending file updates (Time Elapsed: {stopwatch.Elapsed:g})");
 
-          // did we do as many as we could do?
-          // 'processedFiles' could be bigger than the number to process because of the loop above.
-          if (processedFiles >= _currentNumberOfFilesToProcess)
-          {
-            // did we go faster than expected?
-            if (stopwatch.ElapsedMilliseconds < _maxNumberOfMs*0.9) //  remove a little bit so we don't always re-adjust.
-            {
-              //  just add 10%
-              _currentNumberOfFilesToProcess = (long)(_currentNumberOfFilesToProcess * 1.1);
-            }
-            // or did we go slower?
-            else if (stopwatch.ElapsedMilliseconds > _maxNumberOfMs*1.1)  //  add a little bit of time so we don't overshoot.
-            {
-              // remove 10%
-              _currentNumberOfFilesToProcess = (long)(_currentNumberOfFilesToProcess * 0.9);
-              if (_currentNumberOfFilesToProcess <= 0)
-              {
-                _currentNumberOfFilesToProcess = 1;
-              }
-            }
-          }
+          // Adjust the number of items we will be doing the next time.
+          AdjustNumberOfFilesToProcess(processedFiles, stopwatch.ElapsedMilliseconds);
         }
       }
       catch (Exception e)
@@ -165,6 +147,59 @@ namespace myoddweb.desktopsearch.processor.Processors
         _logger.Exception(e);
         return false;
       }
+    }
+
+    /// <summary>
+    /// Adjust the current number of items to process.
+    /// If we are fast enough, then we might as well do as much as posible.
+    /// </summary>
+    /// <param name="processedFiles"></param>
+    /// <param name="elapsedMilliseconds"></param>
+    private void AdjustNumberOfFilesToProcess(long processedFiles, long elapsedMilliseconds)
+    {
+      // did we do as many as we could do? If not it means that there are simply not enough
+      // files to process anymore, in the case, the amount of time does not really matter.
+      // We could also have broken out of the list...
+      // 'processedFiles' could be bigger than the number to process because of the loop above.
+      if (processedFiles < _currentNumberOfFilesToProcess)
+      {
+        return;
+      }
+
+      // did we go faster than expected?
+      if (elapsedMilliseconds < _maxNumberOfMs * 0.9) //  remove a little bit so we don't always re-adjust.
+      {
+        //  just add 10%
+        _currentNumberOfFilesToProcess = (long)(_currentNumberOfFilesToProcess * 1.1);
+        return;
+      }
+
+      // or did we go slower?
+      // we never want to go over the time limit.
+      if (elapsedMilliseconds <= _maxNumberOfMs)
+      {
+        return;
+      }
+
+      // remove 5%
+      _currentNumberOfFilesToProcess = (long)(_currentNumberOfFilesToProcess * 0.95);
+
+      // and make suse that we do not have silly values.
+      if (_currentNumberOfFilesToProcess <= 0)
+      {
+        _currentNumberOfFilesToProcess = 1;
+      }
+    }
+
+    private async Task<bool> ProcessFileUpdates(List<PendingFileUpdate> pendingUpdates, int start, CancellationToken token)
+    {
+      // make sure that we never do more than the total number of items
+      // from our current start position.
+      var max = pendingUpdates.Count;
+      var count = _numberOfFilesToProcess + start > max ? max - start : (int)_numberOfFilesToProcess;
+
+      // and process those files.
+      return await ProcessFileUpdates(pendingUpdates.GetRange( start, count), token).ConfigureAwait(false);
     }
 
     /// <summary>
