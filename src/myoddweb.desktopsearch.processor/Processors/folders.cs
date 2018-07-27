@@ -242,6 +242,13 @@ namespace myoddweb.desktopsearch.processor.Processors
           }
         }
 
+        // mark all the folders as done.
+        if (!await _persister.MarkDirectoriesProcessedAsync( pendingUpdates.Select(u => u.FolderId), transaction, token).ConfigureAwait(false))
+        {
+          _persister.Rollback(transaction);
+          return false;
+        }
+
         // we made it!
         if (token.IsCancellationRequested)
         {
