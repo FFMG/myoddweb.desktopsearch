@@ -144,7 +144,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // then we can do it by id.
-      return await MarkFilesProcessedAsync(new List<long>{fileId}, transaction, token).ConfigureAwait(false);
+      return await MarkFilesProcessedAsync(new []{fileId}, transaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -186,8 +186,6 @@ namespace myoddweb.desktopsearch.service.Persisters
             // this could return 0 if the row has already been processed
             await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false);
           }
-
-          cmd.Parameters.Clear();
         }
         catch (Exception ex)
         {
