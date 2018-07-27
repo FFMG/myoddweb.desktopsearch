@@ -31,7 +31,7 @@ namespace myoddweb.desktopsearch.processor
     /// <summary>
     /// All the tasks currently running
     /// </summary>
-    private readonly List<Task> _tasks = new List<Task>();
+    private readonly List<Task<bool>> _tasks = new List<Task<bool>>();
 
     /// <summary>
     /// The cancellation source
@@ -148,7 +148,7 @@ namespace myoddweb.desktopsearch.processor
         // do the actual work.
         lock (_lock)
         {
-          if (!_tasks.Any())
+          if (_tasks.All(t => t.IsCompleted))
           {
             //  get all the processors to do their work.
             foreach (var processor in _processors)
@@ -156,8 +156,10 @@ namespace myoddweb.desktopsearch.processor
               _tasks.Add(processor.WorkAsync(_token));
             }
           }
+
           // remove the completed events.
           _tasks.RemoveAll(t => t.IsCompleted);
+
         }
 
       }

@@ -448,6 +448,9 @@ namespace myoddweb.desktopsearch.parser.IO
       // we don't need it anymore.
       StopSystemEventsTimer();
 
+      // stop the token cancellation
+      _cancellationTokenRegistration.Dispose();
+
       lock (_lockTasks)
       {
         //  cancel all the tasks.
@@ -478,7 +481,6 @@ namespace myoddweb.desktopsearch.parser.IO
         }
         finally
         {
-          _cancellationTokenRegistration.Dispose();
           _tasks.Clear();
         }
       }

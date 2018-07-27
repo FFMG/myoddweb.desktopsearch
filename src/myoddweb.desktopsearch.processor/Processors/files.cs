@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -74,36 +75,50 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task WorkAsync(CancellationToken token)
+    public async Task<bool> WorkAsync(CancellationToken token)
     {
       // if we cannot work ... then don't
       if (false == _canWork)
       {
-        return;
+        // this is not an error
+        return true;
       }
 
       try
       {
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
         var pendingUpdates = await GetPendingFileUpdatesAsync(token).ConfigureAwait(false);
-        if (null == pendingUpdates || !pendingUpdates.Any())
+        try
         {
-          return;
-        }
-
-        // process all the data one at a time.
-        foreach (var pendingFileUpdate in pendingUpdates)
-        {
-          await ProcessFileUpdate(pendingFileUpdate, token).ConfigureAwait(false);
-          if (token.IsCancellationRequested)
+          if (null == pendingUpdates || !pendingUpdates.Any())
           {
-            return;
+            // this is not an error
+            return true;
           }
+
+          // process all the data one at a time.
+          foreach (var pendingFileUpdate in pendingUpdates)
+          {
+            await ProcessFileUpdate(pendingFileUpdate, token).ConfigureAwait(false);
+            if (token.IsCancellationRequested)
+            {
+              return false;
+            }
+          }
+        }
+        finally
+        {
+          stopwatch.Stop();
+          _logger.Verbose($"Processed {pendingUpdates?.Count ?? 0} pending file updates (Time Elapsed: {stopwatch.Elapsed:g})");
         }
       }
       catch (Exception e)
       {
         _logger.Exception(e);
+        return false;
       }
+      return !token.IsCancellationRequested;
     }
 
     private async Task ProcessFileUpdate(PendingFileUpdate pendingFileUpdate, CancellationToken token)
@@ -184,6 +199,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           _logger.Error("Unable to get any pending files updates.");
           return null;
         }
+
         if (!token.IsCancellationRequested)
         {
           _persister.Commit(transaction);

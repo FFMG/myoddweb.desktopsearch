@@ -88,12 +88,12 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     #region Transactions
     /// <inheritdoc/>
-    public Task<IDbTransaction> BeginTransactionAsync()
+    public async Task<IDbTransaction> BeginTransactionAsync()
     {
       // set the value
       try
       {
-        return Task.FromResult( _transaction.Begin() );
+        return await _transaction.Begin().ConfigureAwait(false);
       }
       catch (Exception e)
       {

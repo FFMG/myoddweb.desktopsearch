@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -82,33 +83,51 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task WorkAsync(CancellationToken token)
+    public async Task<bool> WorkAsync(CancellationToken token)
     {
       // if we cannot work ... then don't
       if (false == _canWork)
       {
-        return;
+        // this is not an error
+        return true;
       }
 
       // get the transaction
       try
       {
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
         var pendingUpdates = await GetPendingFolderUpdatesAsync(token).ConfigureAwait(false);
-
-        // process all the data one at a time.
-        foreach (var pendingFolderUpdate in pendingUpdates)
+        try
         {
-          await ProcessFolderUpdate(pendingFolderUpdate, token ).ConfigureAwait( false );
-          if (token.IsCancellationRequested)
+          if (null == pendingUpdates || !pendingUpdates.Any())
           {
-            return;
+            // this is not an error
+            return true;
           }
+
+          // process all the data one at a time.
+          foreach (var pendingFolderUpdate in pendingUpdates)
+          {
+            await ProcessFolderUpdate(pendingFolderUpdate, token ).ConfigureAwait( false );
+            if (token.IsCancellationRequested)
+            {
+              return false;
+            }
+          }
+        }
+        finally
+        {
+          stopwatch.Stop();
+          _logger.Verbose($"Processed {pendingUpdates?.Count ?? 0} pending folder updates (Time Elapsed: {stopwatch.Elapsed:g})");
         }
       }
       catch (Exception e)
       {
         _logger.Exception(e);
+        return false;
       }
+      return !token.IsCancellationRequested;
     }
 
     private async Task ProcessFolderUpdate(PendingFolderUpdate pendingFolderUpdate, CancellationToken token )

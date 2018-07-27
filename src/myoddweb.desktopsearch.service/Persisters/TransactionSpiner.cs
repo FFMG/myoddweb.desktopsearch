@@ -15,6 +15,7 @@
 using System;
 using System.Data;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
@@ -45,7 +46,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       _createConnection = createConnection ?? throw new ArgumentNullException(nameof(createConnection));
     }
 
-    public IDbTransaction Begin()
+    public async Task<IDbTransaction> Begin()
     {
       for (; ; )
       {
@@ -53,7 +54,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         // outside of the lock, (so it can be freed.
         if (null != _transaction)
         {
-          SpinWait.SpinUntil(() => _transaction == null || _token.IsCancellationRequested);
+          await Task.Run(() => SpinWait.SpinUntil(() => _transaction == null || _token.IsCancellationRequested), _token).ConfigureAwait( false );
         }
 
         if (_token.IsCancellationRequested)
