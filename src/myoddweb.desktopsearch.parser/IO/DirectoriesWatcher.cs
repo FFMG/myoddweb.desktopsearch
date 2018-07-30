@@ -52,10 +52,10 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="e"></param>
     /// <param name="token"></param>
-    private async Task OnDirectoryTouchedAsync(IFileSystemEvent e, CancellationToken token)
+    private async Task OnDirectoryTouchedAsync(IFileSystemEvent e)
     {
       // It is posible that the event parser has not started yet.
-      await Task.Run(() => EventsParser.Add(e), token).ConfigureAwait(false);
+      await Task.Run(() => EventsParser.Add(e)).ConfigureAwait(false);
     }
     #endregion
 

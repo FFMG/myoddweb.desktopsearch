@@ -105,6 +105,11 @@ namespace myoddweb.desktopsearch.processor.Processors
 
         // then get _all_ the file updates that we want to do.
         var pendingUpdates = await GetPendingFileUpdatesAsync(token).ConfigureAwait(false);
+        if (null == pendingUpdates)
+        {
+          //  probably was canceled.
+          return !token.IsCancellationRequested;
+        }
 
         // the number of updates we actually did.
         long processedFiles = 0;
@@ -136,7 +141,10 @@ namespace myoddweb.desktopsearch.processor.Processors
         {
           // now display how many files were actually handled.
           stopwatch.Stop();
-          _logger.Verbose($"Processed {(processedFiles > (pendingUpdates?.Count ?? 0) ? (pendingUpdates?.Count ?? 0) : processedFiles)} pending file updates (Time Elapsed: {stopwatch.Elapsed:g})");
+          if (processedFiles > 0)
+          {
+            _logger.Verbose( $"Processed {(processedFiles > pendingUpdates.Count ? pendingUpdates.Count : processedFiles)} pending file updates (Time Elapsed: {stopwatch.Elapsed:g})");
+          }
 
           // Adjust the number of items we will be doing the next time.
           AdjustNumberOfFilesToProcess(processedFiles, stopwatch.ElapsedMilliseconds);
@@ -231,17 +239,21 @@ namespace myoddweb.desktopsearch.processor.Processors
         {
           if (token.IsCancellationRequested)
           {
+            _persister.Rollback(transaction);
             return false;
           }
 
-          if( !await ProcessFileUpdate(transaction, pendingFileUpdate, token).ConfigureAwait(false))
+          if (await ProcessFileUpdate(transaction, pendingFileUpdate, token).ConfigureAwait(false))
           {
-            // something went wrong or the task was cancelled.
-            return false;
+            continue;
           }
+
+          // something did not work, so roll back and get out.
+          _persister.Rollback(transaction);
+          return false;
         }
 
-        // mark all the files as done.
+          // mark all the files as done.
         if (!await _persister.MarkFilesProcessedAsync(pendingUpdates.Select(u => u.FileId), transaction, token).ConfigureAwait(false))
         {
           _persister.Rollback(transaction);
@@ -325,7 +337,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending files updates.");
-          return null;
+          // we will now return null
+          // but at least we will commit.
         }
 
         if (!token.IsCancellationRequested)

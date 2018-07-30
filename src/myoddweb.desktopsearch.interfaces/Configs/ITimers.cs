@@ -18,11 +18,13 @@ namespace myoddweb.desktopsearch.interfaces.Configs
   {
     /// <summary>
     /// How often we want to parse file events.
+    /// Small processing gaps is better than large gaps.
     /// </summary>
     int EventsParserMs { get; }
 
     /// <summary>
-    /// How often we want to process changed/created/deleted 
+    /// How often we want to process changed/created/deleted
+    /// Small processing gaps is better than large gaps.
     /// </summary>
     int EventsProcessorMs { get; }
   }

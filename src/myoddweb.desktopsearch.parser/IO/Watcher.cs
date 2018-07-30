@@ -23,7 +23,7 @@ using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.parser.IO
 {
-  public delegate Task FileEventHandler(IFileSystemEvent e, CancellationToken token );
+  public delegate Task FileEventHandler(IFileSystemEvent e );
 
   public delegate Task ErrorEventHandler(Exception e, CancellationToken token);
 
@@ -249,11 +249,11 @@ namespace myoddweb.desktopsearch.parser.IO
 
         if (sender == _fileWatcher)
         {
-          _tasks.Add(DeletedAsync(new FileSystemEvent(e, Logger), _token));
+          _tasks.Add(DeletedAsync(new FileSystemEvent(e, Logger)));
         }
         else if (sender == _directoryWatcher)
         {
-          _tasks.Add(DeletedAsync(new DirectorySystemEvent(e, Logger), _token));
+          _tasks.Add(DeletedAsync(new DirectorySystemEvent(e, Logger)));
         }
       }
     }
@@ -270,11 +270,11 @@ namespace myoddweb.desktopsearch.parser.IO
 
         if (sender == _fileWatcher )
         {
-          _tasks.Add(CreatedAsync(new FileSystemEvent(e, Logger), _token));
+          _tasks.Add(CreatedAsync(new FileSystemEvent(e, Logger)));
         }
         else if(sender == _directoryWatcher)
         {
-          _tasks.Add(CreatedAsync(new DirectorySystemEvent(e, Logger), _token));
+          _tasks.Add(CreatedAsync(new DirectorySystemEvent(e, Logger)));
         }
       }
     }
@@ -291,11 +291,11 @@ namespace myoddweb.desktopsearch.parser.IO
 
         if (sender == _fileWatcher)
         {
-          _tasks.Add(RenamedAsync(new FileSystemEvent(e, Logger), _token));
+          _tasks.Add(RenamedAsync(new FileSystemEvent(e, Logger)));
         }
         else if (sender == _directoryWatcher)
         {
-          _tasks.Add(RenamedAsync(new DirectorySystemEvent(e, Logger), _token));
+          _tasks.Add(RenamedAsync(new DirectorySystemEvent(e, Logger)));
         }
       }
     }
@@ -312,11 +312,11 @@ namespace myoddweb.desktopsearch.parser.IO
 
         if (sender == _fileWatcher)
         {
-          _tasks.Add(ChangedAsync(new FileSystemEvent(e, Logger), _token));
+          _tasks.Add(ChangedAsync(new FileSystemEvent(e, Logger)));
         }
         else if (sender == _directoryWatcher)
         {
-          _tasks.Add(ChangedAsync(new DirectorySystemEvent(e, Logger), _token));
+          _tasks.Add(ChangedAsync(new DirectorySystemEvent(e, Logger)));
         }
       }
     }
@@ -377,6 +377,18 @@ namespace myoddweb.desktopsearch.parser.IO
         _directoryWatcher = null;
       }
 
+      _cancellationTokenRegistration.Dispose();
+
+Logger.Verbose( "Waiting for lock ...");
+      StopAndClearAllTasks();
+Logger.Verbose("Releasing lock ...");
+    }
+
+    /// <summary>
+    /// Stop all the tasks and clear them all.
+    /// </summary>
+    private void StopAndClearAllTasks()
+    {
       lock (_lockTasks)
       {
         //  cancel all the tasks.
@@ -406,7 +418,6 @@ namespace myoddweb.desktopsearch.parser.IO
         }
         finally
         {
-          _cancellationTokenRegistration.Dispose();
           _tasks.Clear();
         }
       }

@@ -21,10 +21,12 @@ namespace myoddweb.desktopsearch.service.Configs
 {
   internal class ConfigProcessor : IProcessors
   {
-    [DefaultValue(100)]
+    /// <inheritdoc />
+    [DefaultValue(50)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public long NumberOfFoldersToProcessPerEvent { get; protected set; }
 
+    /// <inheritdoc />
     [DefaultValue(100)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public long NumberOfFilesToProcessPerEvent { get; protected set; }

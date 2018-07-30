@@ -20,7 +20,7 @@
   ],
   "Timers": {
     "EventsParserMs": 30000,
-    "EventsProcessorMs": 5000
+    "EventsProcessorMs": 2000
   },
   "Processors": {
     "NumberOfFoldersToProcessPerEvent": 100,

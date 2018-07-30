@@ -20,11 +20,13 @@ namespace myoddweb.desktopsearch.service.Configs
 {
   internal class ConfigTimers : ITimers
   {
+    /// <inheritdoc />
     [DefaultValue(30000)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int EventsParserMs { get; protected set; }
 
-    [DefaultValue(5000)]
+    /// <inheritdoc />
+    [DefaultValue(2000)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int EventsProcessorMs { get; protected set; }
   }

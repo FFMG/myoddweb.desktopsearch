@@ -114,6 +114,11 @@ namespace myoddweb.desktopsearch.processor.Processors
 
         // then get _all_ the file updates that we want to do.
         var pendingUpdates = await GetPendingFolderUpdatesAsync(token).ConfigureAwait(false);
+        if (null == pendingUpdates)
+        {
+          //  probably was canceled.
+          return !token.IsCancellationRequested;
+        }
 
         // the number of updates we actually did.
         long processedFolders = 0;
@@ -144,7 +149,10 @@ namespace myoddweb.desktopsearch.processor.Processors
         finally
         {
           stopwatch.Stop();
-          _logger.Verbose($"Processed {(processedFolders > (pendingUpdates?.Count ?? 0) ? (pendingUpdates?.Count ?? 0) : processedFolders)} pending folder updates (Time Elapsed: {stopwatch.Elapsed:g})");
+          if (processedFolders > 0)
+          {
+            _logger.Verbose($"Processed {(processedFolders > pendingUpdates.Count ? pendingUpdates.Count : processedFolders)} pending folder updates (Time Elapsed: {stopwatch.Elapsed:g})");
+          }
 
           // Adjust the number of items we will be doing the next time.
           AdjustNumberOfFoldersToProcess(processedFolders, stopwatch.ElapsedMilliseconds);
@@ -233,13 +241,18 @@ namespace myoddweb.desktopsearch.processor.Processors
         {
           if (token.IsCancellationRequested)
           {
+            _persister.Rollback(transaction);
             return false;
           }
 
-          if (!await ProcessFolderUpdate(transaction, pendingFolderUpdate, token).ConfigureAwait(false))
+          if (await ProcessFolderUpdate(transaction, pendingFolderUpdate, token).ConfigureAwait(false))
           {
-            return false;
+            continue;
           }
+
+          // something did not work, so roll back and get out.
+          _persister.Rollback(transaction);
+          return false;
         }
 
         // mark all the folders as done.
@@ -427,7 +440,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending folder updates.");
-          return null;
+          // we will now return null
+          // but at least we will commit.
         }
 
         if (!token.IsCancellationRequested)
