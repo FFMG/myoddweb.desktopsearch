@@ -29,27 +29,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     private IDbTransaction _transaction;
     private readonly CreateConnection _createConnection;
     private readonly FreeResources _freeResources;
-    private readonly CancellationToken _token;
-
-    public IDbConnection Connection
+    
+    public TransactionSpiner(CreateConnection createConnection, FreeResources freeResources )
     {
-      get
-      {
-        lock (_lock)
-        {
-          return _connection;
-        }
-      }
-    }
-
-    public TransactionSpiner(CreateConnection createConnection, FreeResources freeResources, CancellationToken token)
-    {
-      _token = token;
       _createConnection = createConnection ?? throw new ArgumentNullException(nameof(createConnection));
       _freeResources = freeResources ?? throw new ArgumentNullException(nameof(freeResources));
     }
 
-    public async Task<IDbTransaction> Begin()
+    public async Task<IDbTransaction> Begin( CancellationToken token )
     {
       for (; ; )
       {
@@ -57,10 +44,10 @@ namespace myoddweb.desktopsearch.service.Persisters
         // outside of the lock, (so it can be freed.
         if (null != _transaction)
         {
-          await Task.Run(() => SpinWait.SpinUntil(() => _transaction == null || _token.IsCancellationRequested), _token).ConfigureAwait( false );
+          await Task.Run(() => SpinWait.SpinUntil(() => _transaction == null || token.IsCancellationRequested), token).ConfigureAwait( false );
         }
 
-        if (_token.IsCancellationRequested)
+        if (token.IsCancellationRequested)
         {
           return null;
         }

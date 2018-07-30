@@ -160,7 +160,7 @@ namespace myoddweb.desktopsearch.parser
     private async Task<bool> PersistDirectories(IReadOnlyList<DirectoryInfo> directories, CancellationToken token)
     {
       // get a transaction
-      var transaction = await _perister.BeginTransactionAsync().ConfigureAwait(false);
+      var transaction = await _perister.BeginTransactionAsync(token).ConfigureAwait(false);
       try
       {
         // add the folder to the list.

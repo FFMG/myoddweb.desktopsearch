@@ -64,14 +64,14 @@ namespace myoddweb.desktopsearch.parser.IO
 
     #region Abstract Process events
     /// <inheritdoc />
-    protected override void ProcessEventsStart()
+    protected override void ProcessEventsStart(CancellationToken token)
     {
       if (_currentTransaction != null)
       {
         Logger.Warning("Trying to start an event processing when the previous one does not seem to have ended.");
         return;
       }
-      _currentTransaction = _persister.BeginTransactionAsync().Result;
+      _currentTransaction = _persister.BeginTransactionAsync(token).Result;
     }
 
     /// <inheritdoc />

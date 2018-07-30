@@ -202,7 +202,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       throw new System.NotImplementedException();
     }
 
-    public Task<IDbTransaction> BeginTransactionAsync()
+    public Task<IDbTransaction> BeginTransactionAsync(CancellationToken token)
     {
       return Task.FromResult<IDbTransaction>(new NoopDbTransaction());
     }

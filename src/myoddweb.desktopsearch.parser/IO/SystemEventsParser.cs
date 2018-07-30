@@ -212,7 +212,7 @@ namespace myoddweb.desktopsearch.parser.IO
         {
           lock (_lockTasks)
           {
-            _tasks.Add(ProcessEventsAsync(events));
+            _tasks.Add(ProcessEventsAsync(events, _token));
 
           // remove the completed events.
             _tasks.RemoveAll(t => t.IsCompleted);
@@ -264,19 +264,19 @@ namespace myoddweb.desktopsearch.parser.IO
     /// It should be non-blocking.
     /// </summary>
     /// <param name="events"></param>
-    private async Task ProcessEventsAsync(IEnumerable<IFileSystemEvent> events)
+    private async Task ProcessEventsAsync(IEnumerable<IFileSystemEvent> events, CancellationToken token)
     {
       // assume errors...
       var hadErrors = true;
       try
       {
         // we are starting to process events.
-        ProcessEventsStart();
+        ProcessEventsStart( token );
 
         // try and do everything at once.
         foreach (var e in events)
         {
-          if (_token.IsCancellationRequested)
+          if ( token.IsCancellationRequested)
           {
             break;
           }
@@ -523,7 +523,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// We are starting to process events
     /// </summary>
-    protected abstract void ProcessEventsStart();
+    protected abstract void ProcessEventsStart(CancellationToken token);
 
     /// <summary>
     /// We finished processing events.

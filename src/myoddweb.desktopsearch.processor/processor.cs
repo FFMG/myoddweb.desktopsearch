@@ -34,11 +34,6 @@ namespace myoddweb.desktopsearch.processor
     private readonly List<Task<bool>> _tasks = new List<Task<bool>>();
 
     /// <summary>
-    /// The cancellation source
-    /// </summary>
-    private CancellationToken _token;
-
-    /// <summary>
     /// When we register a token
     /// </summary>
     private CancellationTokenRegistration _cancellationTokenRegistration;
@@ -67,6 +62,11 @@ namespace myoddweb.desktopsearch.processor
     /// All the processors.
     /// </summary>
     private readonly List<IProcessor> _processors;
+
+    /// <summary>
+    /// The cancellation source
+    /// </summary>
+    private CancellationToken _token;
     #endregion
 
     public Processor(interfaces.Configs.IConfig config, IPersister persister, ILogger logger, IDirectory directory)
@@ -153,7 +153,7 @@ namespace myoddweb.desktopsearch.processor
             //  get all the processors to do their work.
             foreach (var processor in _processors)
             {
-              _tasks.Add(processor.WorkAsync(_token));
+              _tasks.Add( processor.WorkAsync( CancellationToken.None));
             }
           }
 
@@ -190,7 +190,7 @@ namespace myoddweb.desktopsearch.processor
       _token = token;
 
       // register the token cancellation
-      _cancellationTokenRegistration = _token.Register(TokenCancellation);
+      _cancellationTokenRegistration = token.Register(TokenCancellation);
 
       // start the processors
       foreach (var processor in _processors)
@@ -205,8 +205,8 @@ namespace myoddweb.desktopsearch.processor
     /// <summary>
     /// Stop processor
     /// </summary>
-    public void Stop()
-    {
+    public void Stop( )
+    { 
       // stop the timer
       StopEventsProcessorTimer();
 
@@ -224,7 +224,7 @@ namespace myoddweb.desktopsearch.processor
           _logger.Verbose($"Waiting for {_tasks.Count} tasks to complete in the File System Events Timer.");
 
           // then wait...
-          Task.WaitAll(_tasks.ToArray(), _token);
+          Task.WaitAll(_tasks.ToArray());
 
           // done 
           _logger.Verbose("Done.");
@@ -233,7 +233,7 @@ namespace myoddweb.desktopsearch.processor
       catch (OperationCanceledException e)
       {
         // ignore the cancelled exceptions.
-        if (e.CancellationToken != _token)
+        if (e.CancellationToken != _token )
         {
           throw;
         }

@@ -126,22 +126,18 @@ namespace myoddweb.desktopsearch.processor.Processors
         {
           // then we go around and do chunks of data one at a time.
           // this is to prevent massive chunks of data from being processed.
+          var tasks = new List<Task>();
           for (var start = 0; start < pendingUpdates.Count; start += (int)_numberOfFoldersToProcess)
           {
-            // get out if we cancelled.
-            if (token.IsCancellationRequested)
-            {
-              break;
-            }
-
-            if (!await ProcessFolderUpdates(pendingUpdates, start, token).ConfigureAwait(false))
-            {
-              return false;
-            }
+            // run this group of folders.
+            tasks.Add(ProcessFolderUpdates(pendingUpdates, start, token));
 
             // if we are here we processed those files.
             processedFolders += _numberOfFoldersToProcess;
           }
+
+          // then wait for the tasks to finish
+          await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
 
           // return if we made it.
           return !token.IsCancellationRequested;
@@ -227,7 +223,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
 
       // get the transaction
-      var transaction = await _persister.BeginTransactionAsync().ConfigureAwait(false);
+      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
       if (null == transaction)
       {
         //  we probably cancelled.
@@ -428,7 +424,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync(CancellationToken token)
     {
-      var transaction = await _persister.BeginTransactionAsync().ConfigureAwait(false);
+      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
       if (null == transaction)
       {
         //  we probably cancelled.

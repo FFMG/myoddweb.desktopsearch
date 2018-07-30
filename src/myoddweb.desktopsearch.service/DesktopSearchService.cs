@@ -174,9 +174,11 @@ namespace myoddweb.desktopsearch.service
 
         // create the cancellation source
         _cancellationTokenSource = new CancellationTokenSource();
+        //var token = new CancellationToken();
+        var token = _cancellationTokenSource.Token;
 
         // the persister
-        var persister = new SqlitePersister(logger, _cancellationTokenSource.Token );
+        var persister = new SqlitePersister(logger, token );
 
         // the directory parser
         var directory = new Directory(logger, config.Paths );
@@ -188,8 +190,8 @@ namespace myoddweb.desktopsearch.service
         _processor = new Processor(config, persister, logger, directory);
 
         // we can now start the parser as well as the processor
-        _parser.Start(_cancellationTokenSource.Token );
-        _processor.Start(_cancellationTokenSource.Token);
+        _parser.Start(token);
+        _processor.Start(token);
       }
       catch (AggregateException)
       {

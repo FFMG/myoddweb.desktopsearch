@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Data;
 using System.Data.Common;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
@@ -27,12 +28,13 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <returns></returns>
     DbCommand CreateDbCommand(string sql, IDbTransaction transaction);
-      
+
     /// <summary>
     /// Get a database transaction.
     /// </summary>
+    /// <param name="token"></param>
     /// <returns></returns>
-    Task<IDbTransaction> BeginTransactionAsync();
+    Task<IDbTransaction> BeginTransactionAsync( CancellationToken token );
 
     /// <summary>
     /// Rollback the current transaction.

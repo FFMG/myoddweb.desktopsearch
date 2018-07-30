@@ -18,7 +18,6 @@ using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Logging;
@@ -37,8 +36,15 @@ namespace myoddweb.desktopsearch.service.Persisters
     #endregion
 
     #region Member variables
-
+    /// <summary>
+    /// The transactions manager.
+    /// </summary>
     private readonly TransactionSpiner _transaction;
+
+    /// <summary>
+    /// The current connection
+    /// </summary>
+    private SQLiteConnection _connection;
 
     /// <summary>
     /// The logger
@@ -49,11 +55,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// The connection string to use
     /// </summary>
     private readonly string _connectionString;
-
-    private readonly HashSet<SQLiteCommand> _commands = new HashSet<SQLiteCommand>();
     #endregion
 
-    public SqlitePersister(ILogger logger, CancellationToken token )
+    public SqlitePersister(ILogger logger, CancellationToken token)
     {
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -76,44 +80,48 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       _connectionString = $"Data Source={source};Version=3;Pooling=True;Max Pool Size=5;";
 
-      _transaction = new TransactionSpiner(CreateTransaction, FreeResources, token );
+      _transaction = new TransactionSpiner(CreateTransaction, FreeResources );
 
       // update the db if need be.
-      Update().Wait();
+      Update(token).Wait();
     }
 
     private void FreeResources(IDbConnection connection)
     {
-      if (connection is SQLiteConnection con)
+      if (_connection == null )
       {
-        foreach (var sqLiteCommand in _commands)
-        {
-          sqLiteCommand.Dispose();
-        }
-        _commands.Clear();
-
-        con.ReleaseMemory();
-        con.Close();
-        con.Dispose();
+        return;
       }
+
+      IDictionary<string, long> statistics = null;
+      SQLiteConnection.GetMemoryStatistics( ref statistics );
+
+      //_connection.Close();
+      //_connection.Dispose();
+      //_connection = null;
     }
 
     private IDbConnection CreateTransaction()
     {
       // try and open the database.
-      var dbConnection = new SQLiteConnection(_connectionString );
-      dbConnection.Open();
-      return dbConnection;
+      if (_connection != null)
+      {
+        return _connection;
+      }
+
+      _connection = new SQLiteConnection(_connectionString);
+      _connection.Open();
+      return _connection;
     }
 
     #region Transactions
     /// <inheritdoc/>
-    public async Task<IDbTransaction> BeginTransactionAsync()
+    public async Task<IDbTransaction> BeginTransactionAsync(CancellationToken token)
     {
       // set the value
       try
       {
-        return await _transaction.Begin().ConfigureAwait(false);
+        return await _transaction.Begin(token).ConfigureAwait(false);
       }
       catch (Exception e)
       {
@@ -165,13 +173,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc/>
     public DbCommand CreateDbCommand(string sql, IDbTransaction transaction)
     {
-      if (!(_transaction.Connection is SQLiteConnection connection))
+      if (_connection == null)
       {
         throw new Exception("The database is not open!");
       }
-      var command = new SQLiteCommand(sql, connection, transaction as SQLiteTransaction);
-      _commands.Add(command);
-      return command;
+      return new SQLiteCommand(sql, _connection, transaction as SQLiteTransaction);
     }
 
     private async Task<bool> ExecuteNonQueryAsync(string sql, IDbTransaction transaction )

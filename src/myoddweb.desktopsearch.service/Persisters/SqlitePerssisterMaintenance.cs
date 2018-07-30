@@ -15,6 +15,7 @@
 using System;
 using System.Data;
 using System.Data.Common;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.service.Persisters
@@ -218,10 +219,10 @@ namespace myoddweb.desktopsearch.service.Persisters
       return false;
     }
 
-    protected async Task Update()
+    protected async Task Update(CancellationToken token)
     {
       // if the config table does not exis, then we have to asume it is brand new.
-      var transaction = await BeginTransactionAsync().ConfigureAwait(false);
+      var transaction = await BeginTransactionAsync(token).ConfigureAwait(false);
       try
       {
         if (!TableExists(TableConfig, transaction ))
