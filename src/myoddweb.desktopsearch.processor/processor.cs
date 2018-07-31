@@ -153,7 +153,7 @@ namespace myoddweb.desktopsearch.processor
             //  get all the processors to do their work.
             foreach (var processor in _processors)
             {
-              _tasks.Add( processor.WorkAsync( CancellationToken.None));
+              _tasks.Add( processor.WorkAsync());
             }
           }
 

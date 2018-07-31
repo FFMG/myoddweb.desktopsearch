@@ -34,6 +34,11 @@ namespace myoddweb.desktopsearch.processor.Processors
     private readonly long _numberOfFilesToProcess;
 
     /// <summary>
+    /// The cancelacation token source.
+    /// </summary>
+    private CancellationTokenSource _cancellationTokenSource;
+
+    /// <summary>
     /// The number of files we want to process.
     /// </summary>
     private long _currentNumberOfFilesToProcess;
@@ -52,11 +57,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// The persister.
     /// </summary>
     private readonly IPersister _persister;
-
-    /// <summary>
-    /// True if start has been called.
-    /// </summary>
-    private bool _canWork;
     #endregion
 
     public Files(long numberOfFilesToProcessPerEvent, long maxNumberOfMs, IPersister persister, ILogger logger)
@@ -78,20 +78,21 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <inheritdoc />
     public void Start()
     {
-      _canWork = true;
+      _cancellationTokenSource = new CancellationTokenSource();
     }
 
     /// <inheritdoc />
     public void Stop()
     {
-      _canWork = false;
+      _cancellationTokenSource?.Cancel();
+      _cancellationTokenSource = null;
     }
 
     /// <inheritdoc />
-    public async Task<bool> WorkAsync(CancellationToken token)
+    public async Task<bool> WorkAsync()
     {
       // if we cannot work ... then don't
-      if (false == _canWork)
+      if (null == _cancellationTokenSource )
       {
         // this is not an error
         return true;
@@ -99,6 +100,9 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
+        // the token we will be using.
+        var token = _cancellationTokenSource.Token;
+
         // start timing how long the entire operation will take
         var stopwatch = new Stopwatch();
         stopwatch.Start();

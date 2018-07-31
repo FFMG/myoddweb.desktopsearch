@@ -27,9 +27,8 @@ namespace myoddweb.desktopsearch.processor
     /// <summary>
     /// We are telling the processor to do some work.
     /// </summary>
-    /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> WorkAsync( CancellationToken token );
+    Task<bool> WorkAsync( );
 
     /// <summary>
     /// We are telling the processor to stop whatever they are doing.
