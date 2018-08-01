@@ -31,7 +31,7 @@ namespace myoddweb.desktopsearch.processor
     /// <summary>
     /// All the tasks currently running
     /// </summary>
-    private readonly List<Task<bool>> _tasks = new List<Task<bool>>();
+    private readonly List<Task> _tasks = new List<Task>();
 
     /// <summary>
     /// When we register a token
@@ -155,7 +155,7 @@ namespace myoddweb.desktopsearch.processor
               //  get all the processors to do their work.
               foreach (var processor in _processors)
               {
-                _tasks.Add(processor.WorkAsync(_token));
+                _tasks.Add( processor.WorkAsync(_token));
               }
 
               // remove the completed events.
@@ -216,8 +216,19 @@ namespace myoddweb.desktopsearch.processor
               // Log that we are stopping the tasks.
               _logger.Verbose($"Waiting for {_tasks.Count} tasks to complete in the File System Events Timer.");
 
-              // then wait...
-              Task.WaitAll(_tasks.ToArray());
+              try
+              {
+                // then wait...
+                Task.WaitAll(_tasks.ToArray(), _token);
+              }
+              catch (OperationCanceledException e)
+              {
+                if (e.CancellationToken != _token)
+                {
+                  // not my task
+                  throw;
+                }
+              }
 
               // done 
               _logger.Verbose("Done.");

@@ -80,7 +80,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<bool> WorkAsync(CancellationToken token)
+    public async Task WorkAsync(CancellationToken token)
     {
       try
       {
@@ -92,7 +92,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         var pendingUpdates = await GetPendingFolderUpdatesAsync(token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
-          return true;
+          return;
         }
 
         // the number of updates we actually did.
@@ -116,9 +116,6 @@ namespace myoddweb.desktopsearch.processor.Processors
 
           // then wait for the tasks to finish
           await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
-
-          // return if we made it.
-          return true;
         }
         finally
         {
@@ -141,7 +138,6 @@ namespace myoddweb.desktopsearch.processor.Processors
       catch (Exception e)
       {
         _logger.Exception(e);
-        return false;
       }
     }
 

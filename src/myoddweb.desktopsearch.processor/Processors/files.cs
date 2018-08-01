@@ -71,7 +71,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
     
     /// <inheritdoc />
-    public async Task<bool> WorkAsync(CancellationToken token)
+    public async Task WorkAsync(CancellationToken token)
     {
       try
       {
@@ -85,7 +85,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         if (null == pendingUpdates)
         {
           //  probably was canceled.
-          return true;
+          return;
         }
 
         // the number of updates we actually did.
@@ -109,9 +109,6 @@ namespace myoddweb.desktopsearch.processor.Processors
 
           // then wait for the tasks to complete.
           await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
-
-          // return if we made it.
-          return true;
         }
         finally
         {
@@ -135,7 +132,6 @@ namespace myoddweb.desktopsearch.processor.Processors
       catch (Exception e)
       {
         _logger.Exception(e);
-        return false;
       }
     }
 
@@ -384,7 +380,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       var file = await _persister.GetFileAsync(fileId, transaction, token).ConfigureAwait(false);
 
       //  process it...
-//      await ProcessFile( fileId, file, transaction, token ).ConfigureAwait(false);
+      await ProcessFile( fileId, file, transaction, token ).ConfigureAwait(false);
 
       // return if we cancelled.
       return true;
@@ -416,7 +412,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       var file = await _persister.GetFileAsync(fileId, transaction, token).ConfigureAwait(false);
 
       //  process it...
- //   await ProcessFile(fileId, file, transaction, token).ConfigureAwait(false);
+      await ProcessFile(fileId, file, transaction, token).ConfigureAwait(false);
 
       // return if we cancelled.
       return true;
