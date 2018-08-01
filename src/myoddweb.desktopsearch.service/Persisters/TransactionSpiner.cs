@@ -38,42 +38,35 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     public async Task<IDbTransaction> Begin( CancellationToken token )
     {
-      try
+      for (;;)
       {
-        for (;;)
+        // get out if needed.
+        token.ThrowIfCancellationRequested();
+
+        // wait for the transaction to no longer be null
+        // outside of the lock, (so it can be freed.
+        if (null != _transaction)
         {
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-
-          // wait for the transaction to no longer be null
-          // outside of the lock, (so it can be freed.
-          if (null != _transaction)
-          {
-            await Task.Run(() => SpinWait.SpinUntil(() => _transaction == null ), token).ConfigureAwait(false);
-          }
-
-          // now trans and create the transaction
-          lock (_lock)
-          {
-            // oops... we didn't get it.
-            if (_transaction != null)
-            {
-              continue;
-            }
-
-            // create the connection
-            _connection = _createConnection();
-
-            // we were able to get a null transaction
-            // ... and we are inside the lock
-            _transaction = _connection.BeginTransaction();
-            return _transaction;
-          }
+          await Task.Run(() => SpinWait.SpinUntil(() => _transaction == null ), token).ConfigureAwait(false);
         }
-      }
-      catch (OperationCanceledException)
-      {
-        return null;
+
+        // now trans and create the transaction
+        lock (_lock)
+        {
+          // oops... we didn't get it.
+          if (_transaction != null)
+          {
+            continue;
+          }
+
+          // create the connection
+          _connection = _createConnection();
+
+          // we were able to get a null transaction
+          // ... and we are inside the lock
+          _transaction = _connection.BeginTransaction();
+          return _transaction;
+        }
       }
     }
 

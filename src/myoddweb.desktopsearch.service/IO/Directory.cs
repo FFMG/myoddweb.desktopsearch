@@ -114,9 +114,8 @@ namespace myoddweb.desktopsearch.service.IO
       }
       catch (OperationCanceledException)
       {
-        // if we cancelled then we return null
-        // this will help to force the callers to bail out as well.
-        return null;
+        _logger.Warning( "Received cancellation request - directories parsing");
+        throw;
       }
     }
 
@@ -175,7 +174,8 @@ namespace myoddweb.desktopsearch.service.IO
       }
       catch (OperationCanceledException)
       {
-        return Task.FromResult<List<FileInfo>>(null);
+        _logger.Warning("Received cancellation request - directory parsing");
+        throw;
       }
     }
 
@@ -238,7 +238,8 @@ namespace myoddweb.desktopsearch.service.IO
       }
       catch (OperationCanceledException)
       {
-        return new List<DirectoryInfo>();
+        _logger.Warning("Received cancellation request - Building directory list");
+        throw;
       }
       catch (SecurityException)
       {

@@ -114,7 +114,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
         catch (OperationCanceledException)
         {
-          return false;
+          _logger.Warning("Received cancellation request - Insert multiple files.");
+          throw;
         }
         catch (Exception ex)
         {
@@ -185,7 +186,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
         catch (OperationCanceledException)
         {
-          return false;
+          _logger.Warning("Received cancellation request - Removing file id from update");
+          throw;
         }
         catch (Exception ex)
         {
@@ -230,7 +232,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       catch (OperationCanceledException)
       {
-        return null;
+        _logger.Warning("Received cancellation request - Getting pending updates.");
+        throw;
       }
       catch (Exception e)
       {

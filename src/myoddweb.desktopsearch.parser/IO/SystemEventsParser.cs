@@ -271,20 +271,26 @@ namespace myoddweb.desktopsearch.parser.IO
       try
       {
         // we are starting to process events.
-        ProcessEventsStart( token );
+        ProcessEventsStart(token);
 
         // try and do everything at once.
         foreach (var e in events)
         {
-          if ( token.IsCancellationRequested)
+          if (token.IsCancellationRequested)
           {
             break;
           }
+
           await ProcessEventAsync(e).ConfigureAwait(false);
         }
 
         // if we are here, then we had no errors
         hadErrors = false;
+      }
+      catch ( OperationCanceledException )
+      {
+        // we cancelled so we need to rollback
+        hadErrors = true;
       }
       catch (Exception e)
       {

@@ -51,7 +51,7 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// The persister.
     /// </summary>
-    private readonly IPersister _perister;
+    private readonly IPersister _persister;
 
     /// <summary>
     /// The system configuration
@@ -65,7 +65,7 @@ namespace myoddweb.desktopsearch.parser
       _config = config ?? throw new ArgumentNullException(nameof(config));
 
       // set the persister.
-      _perister = persister ?? throw new ArgumentNullException(nameof(persister));
+      _persister = persister ?? throw new ArgumentNullException(nameof(persister));
 
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -143,7 +143,8 @@ namespace myoddweb.desktopsearch.parser
       }
       catch (OperationCanceledException)
       {
-        return false;
+        _logger.Warning("Received cancellation request - Parser all path");
+        throw;
       }
       catch (Exception e)
       {
@@ -161,25 +162,30 @@ namespace myoddweb.desktopsearch.parser
     private async Task<bool> PersistDirectories(IReadOnlyList<DirectoryInfo> directories, CancellationToken token)
     {
       // get a transaction
-      var transaction = await _perister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
       try
       {
         // add the folder to the list.
-        if (!await _perister.AddOrUpdateDirectoriesAsync(directories, transaction, token).ConfigureAwait(false))
+        if (!await _persister.AddOrUpdateDirectoriesAsync(directories, transaction, token).ConfigureAwait(false))
         {
-          _perister.Rollback(transaction);
+          _persister.Rollback(transaction);
           return false;
         }
 
         // we can commit our code.
-        _perister.Commit(transaction);
+        _persister.Commit(transaction);
 
         // all done
         return true;
       }
+      catch (OperationCanceledException)
+      {
+        _persister.Rollback(transaction);
+        throw;
+      }
       catch (Exception e)
       {
-        _perister.Rollback(transaction);
+        _persister.Rollback(transaction);
         _logger.Exception(e);
       }
 
@@ -214,10 +220,10 @@ namespace myoddweb.desktopsearch.parser
       foreach (var path in paths)
       {
         // the file watcher.
-        var fileWatcher = new FilesWatcher(path, _logger, new FilesSystemEventsParser(_perister, _directory, _config.Timers.EventsParserMs, _logger) );
+        var fileWatcher = new FilesWatcher(path, _logger, new FilesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger) );
 
         // and directory watcher.
-        var directoryWatcher = new DirectoriesWatcher(path, _logger, new DirectoriesSystemEventsParser(_perister, _directory, _config.Timers.EventsParserMs, _logger) );
+        var directoryWatcher = new DirectoriesWatcher(path, _logger, new DirectoriesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger) );
 
         fileWatcher.Start(token);
         directoryWatcher.Start(token);

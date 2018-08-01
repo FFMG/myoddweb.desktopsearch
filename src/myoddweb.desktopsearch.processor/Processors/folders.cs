@@ -135,7 +135,8 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       catch (OperationCanceledException)
       {
-        return false;
+        _logger.Warning("Received cancellation request - Directories Processor - Work");
+        throw;
       }
       catch (Exception e)
       {
@@ -254,7 +255,8 @@ namespace myoddweb.desktopsearch.processor.Processors
       catch (OperationCanceledException)
       {
         _persister.Rollback(transaction);
-        return false;
+        _logger.Warning("Received cancellation request - Process pending folder updates");
+        throw;
       }
       catch
       {

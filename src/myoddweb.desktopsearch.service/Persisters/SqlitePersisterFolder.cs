@@ -101,7 +101,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
         catch (OperationCanceledException)
         {
-          return -1;
+          _logger.Warning("Received cancellation request - Update directory");
+          throw;
         }
         catch (Exception ex)
         {
@@ -161,7 +162,8 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
           catch (OperationCanceledException)
           {
-            return false;
+            _logger.Warning("Received cancellation request - Delete directories");
+            throw;
           }
           catch (Exception ex)
           {
@@ -345,7 +347,8 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
           catch (OperationCanceledException)
           {
-            return false;
+            _logger.Warning("Received cancellation request - Insert directories");
+            throw;
           }
           catch (Exception ex)
           {
@@ -403,7 +406,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       catch (OperationCanceledException)
       {
-        return new List<DirectoryInfo>();
+        _logger.Warning("Received cancellation request - Rebuild directories list");
+        throw;
       }
     }
   }

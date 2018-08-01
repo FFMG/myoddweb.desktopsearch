@@ -81,8 +81,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         cmd.Parameters.Add(pTicks);
         try
         {
-          token.ThrowIfCancellationRequested();
-
           cmd.Parameters["@id"].Value = folderId;
           cmd.Parameters["@type"].Value = (long) type;
           cmd.Parameters["@ticks"].Value = DateTime.UtcNow.Ticks;
@@ -91,10 +89,13 @@ namespace myoddweb.desktopsearch.service.Persisters
             _logger.Error($"There was an issue adding folder the folder update: {folderId} to persister");
             return false;
           }
+
+          token.ThrowIfCancellationRequested();
         }
         catch (OperationCanceledException)
         {
-          return false;
+          _logger.Warning("Received cancellation request - Rebuild directories list");
+          throw;
         }
         catch (Exception ex)
         {
@@ -163,7 +164,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
         catch (OperationCanceledException)
         {
-          return false;
+          _logger.Warning("Received cancellation request - Delete multiple directories from update list");
+          throw;
         }
         catch (Exception ex)
         {
@@ -208,7 +210,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       catch (OperationCanceledException)
       {
-        return null;
+        _logger.Warning("Received cancellation request - Get pending folder updates");
+        throw;
       }
       catch (Exception e)
       {

@@ -129,7 +129,8 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       catch (OperationCanceledException)
       {
-        return false;
+        _logger.Warning("Received cancellation request - Files Processor - Work");
+        throw;
       }
       catch (Exception e)
       {
@@ -241,8 +242,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         }
 
         // mark all the files as done.
-        if (!await _persister.MarkFilesProcessedAsync(pendingUpdates.Select(u => u.FileId), transaction, token)
-          .ConfigureAwait(false))
+        if (!await _persister.MarkFilesProcessedAsync(pendingUpdates.Select(u => u.FileId), transaction, token).ConfigureAwait(false))
         {
           _persister.Rollback(transaction);
           return false;
@@ -255,7 +255,8 @@ namespace myoddweb.desktopsearch.processor.Processors
       catch (OperationCanceledException)
       {
         _persister.Rollback(transaction);
-        return false;
+        _logger.Warning("Received cancellation request - Process files update");
+        throw;
       }
       catch
       {
@@ -314,7 +315,8 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        var pendingUpdates = await _persister.GetPendingFileUpdatesAsync(_currentNumberOfFilesToProcess, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _persister
+          .GetPendingFileUpdatesAsync(_currentNumberOfFilesToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending files updates.");
@@ -327,6 +329,12 @@ namespace myoddweb.desktopsearch.processor.Processors
 
         _persister.Commit(transaction);
         return pendingUpdates;
+      }
+      catch (OperationCanceledException)
+      {
+        _persister.Rollback(transaction);
+        _logger.Warning("Received cancellation request - Get pending updates");
+        throw;
       }
       catch (Exception e)
       {

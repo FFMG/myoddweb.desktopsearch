@@ -119,7 +119,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
         catch (OperationCanceledException)
         {
-          return -1;
+          _logger.Warning("Received cancellation request - Rename file");
+          throw;
         }
         catch (Exception ex)
         {
@@ -214,11 +215,14 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
           catch (OperationCanceledException)
           {
-            return false;
+            _logger.Warning("Received cancellation request - Deleting files");
+            throw;
           }
           catch (Exception ex)
           {
             _logger.Exception(ex);
+            // swallow this execption
+            // and try and delete the other files.
           }
         }
       }
@@ -267,7 +271,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
         catch (OperationCanceledException)
         {
-          return false;
+          _logger.Warning("Received cancellation request - Delete files by folder");
+          throw;
         }
         catch (Exception ex)
         {
@@ -331,7 +336,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       catch (OperationCanceledException)
       {
-        return null;
+        _logger.Warning("Received cancellation request - Get files by folder id");
+        throw;
       }
       catch (Exception e)
       {
@@ -391,7 +397,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       catch (OperationCanceledException)
       {
-        return null;
+        _logger.Warning("Received cancellation request - Get a file");
+        throw;
       }
       catch (Exception e)
       {
@@ -470,7 +477,8 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
           catch (OperationCanceledException)
           {
-            return false;
+            _logger.Warning("Received cancellation request - Insert multiple files");
+            throw;
           }
           catch (Exception ex)
           {
@@ -543,7 +551,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       catch (OperationCanceledException)
       {
-        return new List<FileInfo>();
+        _logger.Warning("Received cancellation request - Building file list");
+        throw;
       }
     }
 
@@ -577,7 +586,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       catch (OperationCanceledException)
       {
-        return 0;
+        _logger.Warning("Received cancellation request - Get Next valid File id");
+        throw;
       }
     }
 
@@ -662,7 +672,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       catch (OperationCanceledException)
       {
-        return -1;
+        _logger.Warning("Received cancellation request - Get single file id.");
+        throw;
       }
     }
 
@@ -704,7 +715,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       catch (OperationCanceledException)
       {
-        return null;
+        _logger.Warning("Received cancellation request - Get file ids in folder");
+        throw;
       }
       catch (Exception e)
       {
