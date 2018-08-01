@@ -214,16 +214,17 @@ namespace myoddweb.desktopsearch.processor.Processors
         return true;
       }
 
-      // get the transaction
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        //  we probably cancelled.
-        return false;
-      }
-
+      IDbTransaction transaction = null;
       try
       {
+        // get the transaction
+        transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+        if (null == transaction)
+        {
+          //  we probably cancelled.
+          return false;
+        }
+
         // process all the data one at a time.
         foreach (var pendingFolderUpdate in pendingUpdates)
         {
@@ -254,13 +255,19 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       catch (OperationCanceledException)
       {
-        _persister.Rollback(transaction);
+        if (null != transaction)
+        {
+          _persister.Rollback(transaction);
+        }
         _logger.Warning("Received cancellation request - Process pending folder updates");
         throw;
       }
       catch
       {
-        _persister.Rollback(transaction);
+        if (null != transaction)
+        {
+          _persister.Rollback(transaction);
+        }
         throw;
       }
     }
@@ -409,16 +416,19 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync(CancellationToken token)
     {
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        //  we probably cancelled.
-        return null;
-      }
-
+      IDbTransaction transaction = null;
       try
       {
-        var pendingUpdates = await _persister.GetPendingFolderUpdatesAsync(_currentNumberOfFoldersToProcess, transaction, token).ConfigureAwait(false);
+        // get the transaction
+        transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+        if (null == transaction)
+        {
+          //  we probably cancelled.
+          return null;
+        }
+
+        var pendingUpdates = await _persister
+          .GetPendingFolderUpdatesAsync(_currentNumberOfFoldersToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending folder updates.");
@@ -431,10 +441,21 @@ namespace myoddweb.desktopsearch.processor.Processors
         // return null if we cancelled.
         return pendingUpdates;
       }
+      catch (OperationCanceledException)
+      {
+        if (null != transaction)
+        {
+          _persister.Rollback(transaction);
+        }
+        throw;
+      }
       catch (Exception e)
       {
+        if (null != transaction)
+        {
+          _persister.Rollback(transaction);
+        }
         _logger.Exception(e);
-        _persister.Rollback(transaction);
         return null;
       }
     }

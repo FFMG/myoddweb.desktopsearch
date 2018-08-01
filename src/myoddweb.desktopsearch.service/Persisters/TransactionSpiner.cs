@@ -45,10 +45,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
         // wait for the transaction to no longer be null
         // outside of the lock, (so it can be freed.
-        if (null != _transaction)
-        {
-          await Task.Run(() => SpinWait.SpinUntil(() => _transaction == null ), token).ConfigureAwait(false);
-        }
+        await helper.Wait.UntilAsync(() => _transaction == null, token).ConfigureAwait(false);
 
         // now trans and create the transaction
         lock (_lock)

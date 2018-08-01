@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -161,10 +162,16 @@ namespace myoddweb.desktopsearch.parser
     /// <returns></returns>
     private async Task<bool> PersistDirectories(IReadOnlyList<DirectoryInfo> directories, CancellationToken token)
     {
-      // get a transaction
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      IDbTransaction transaction = null;
       try
       {
+        transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+        if (null == transaction)
+        {
+          //  we probably cancelled.
+          return false;
+        }
+
         // add the folder to the list.
         if (!await _persister.AddOrUpdateDirectoriesAsync(directories, transaction, token).ConfigureAwait(false))
         {
@@ -180,12 +187,18 @@ namespace myoddweb.desktopsearch.parser
       }
       catch (OperationCanceledException)
       {
-        _persister.Rollback(transaction);
+        if (null != transaction)
+        {
+          _persister.Rollback(transaction);
+        }
         throw;
       }
       catch (Exception e)
       {
-        _persister.Rollback(transaction);
+        if (null != transaction)
+        {
+          _persister.Rollback(transaction);
+        }
         _logger.Exception(e);
       }
 

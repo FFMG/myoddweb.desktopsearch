@@ -215,16 +215,17 @@ namespace myoddweb.desktopsearch.processor.Processors
         return true;
       }
 
-      // get the transaction
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        //  we probably cancelled.
-        return false;
-      }
-
+      IDbTransaction transaction = null;
       try
       {
+        // get the transaction
+        transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+        if (null == transaction)
+        {
+          //  we probably cancelled.
+          return false;
+        }
+
         // process all the data one at a time.
         foreach (var pendingFileUpdate in pendingUpdates)
         {
@@ -254,13 +255,19 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       catch (OperationCanceledException)
       {
-        _persister.Rollback(transaction);
+        if (null != transaction)
+        {
+          _persister.Rollback(transaction);
+        }
         _logger.Warning("Received cancellation request - Process files update");
         throw;
       }
       catch
       {
-        _persister.Rollback(transaction);
+        if (null != transaction)
+        {
+          _persister.Rollback(transaction);
+        }
         throw;
       }
     }
@@ -306,15 +313,17 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync( CancellationToken token)
     {
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        //  we probably cancelled.
-        return null;
-      }
-
+      IDbTransaction transaction = null;
       try
       {
+        // get the transaction
+        transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+        if (null == transaction)
+        {
+          //  we probably cancelled.
+          return null;
+        }
+
         var pendingUpdates = await _persister
           .GetPendingFileUpdatesAsync(_currentNumberOfFilesToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
@@ -332,14 +341,20 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       catch (OperationCanceledException)
       {
-        _persister.Rollback(transaction);
+        if (null != transaction)
+        {
+          _persister.Rollback(transaction);
+        }
         _logger.Warning("Received cancellation request - Get pending updates");
         throw;
       }
       catch (Exception e)
       {
+        if (null != transaction)
+        {
+          _persister.Rollback(transaction);
+        }
         _logger.Exception(e);
-        _persister.Rollback(transaction);
         return null;
       }
     }
