@@ -104,6 +104,7 @@ namespace myoddweb.desktopsearch.service.IO
     {
       try
       {
+        // get out if needed.
         token.ThrowIfCancellationRequested();
 
         // reset what we might have found already
@@ -124,8 +125,6 @@ namespace myoddweb.desktopsearch.service.IO
     {
       try
       {
-        token.ThrowIfCancellationRequested();
-
         // sanity check
         if (!helper.File.CanReadDirectory(directory))
         {
@@ -161,6 +160,9 @@ namespace myoddweb.desktopsearch.service.IO
         var posibleFiles = new List<FileInfo>();
         foreach (var file in files)
         {
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
           if (!helper.File.CanReadFile(file))
           {
             continue;
@@ -209,8 +211,6 @@ namespace myoddweb.desktopsearch.service.IO
     {
       try
       {
-        token.ThrowIfCancellationRequested();
-
         // create an empty list.
         var directories = new List<DirectoryInfo>();
 
@@ -226,6 +226,9 @@ namespace myoddweb.desktopsearch.service.IO
         var dirs = directory.EnumerateDirectories();
         foreach (var info in dirs)
         {
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
           // we can parse this directory now and add whatever we found to the list.
           directories.AddRange(await BuildDirectoryListAsync(info, token).ConfigureAwait(false));
         }

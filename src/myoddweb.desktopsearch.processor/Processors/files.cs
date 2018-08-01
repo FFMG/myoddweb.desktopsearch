@@ -75,9 +75,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     {
       try
       {
-        // throw in case we cancel
-        token.ThrowIfCancellationRequested();
-
         // start timing how long the entire operation will take
         var stopwatch = new Stopwatch();
         stopwatch.Start();
@@ -100,6 +97,9 @@ namespace myoddweb.desktopsearch.processor.Processors
           var tasks = new List<Task>();
           for (var start = 0; start < pendingUpdates.Count; start += (int) _numberOfFilesToProcess)
           {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
             // run this group of files.
             tasks.Add(ProcessFileUpdates(pendingUpdates, start, token));
 
@@ -224,12 +224,12 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        // get out if need be.
-        token.ThrowIfCancellationRequested();
-
         // process all the data one at a time.
         foreach (var pendingFileUpdate in pendingUpdates)
-        {          
+        {
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
           if (await ProcessFileUpdate(transaction, pendingFileUpdate, token).ConfigureAwait(false))
           {
             continue;
@@ -240,16 +240,22 @@ namespace myoddweb.desktopsearch.processor.Processors
           return false;
         }
 
-          // mark all the files as done.
-        if (!await _persister.MarkFilesProcessedAsync(pendingUpdates.Select(u => u.FileId), transaction, token).ConfigureAwait(false))
+        // mark all the files as done.
+        if (!await _persister.MarkFilesProcessedAsync(pendingUpdates.Select(u => u.FileId), transaction, token)
+          .ConfigureAwait(false))
         {
           _persister.Rollback(transaction);
           return false;
         }
-        
+
         // we made it!
         _persister.Commit(transaction);
         return true;
+      }
+      catch (OperationCanceledException)
+      {
+        _persister.Rollback(transaction);
+        return false;
       }
       catch
       {
@@ -269,9 +275,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     {
       try
       {
-        // get out if need be.
-        token.ThrowIfCancellationRequested();
-
         switch (pendingFileUpdate.PendingUpdateType)
         {
           case UpdateType.Created:

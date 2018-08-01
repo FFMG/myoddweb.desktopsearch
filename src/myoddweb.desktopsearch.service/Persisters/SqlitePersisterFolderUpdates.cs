@@ -110,23 +110,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<bool> MarkDirectoryProcessedAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token)
     {
-      try
+      var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
+      if (-1 == folderId)
       {
-        token.ThrowIfCancellationRequested();
-
-        var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
-        if (-1 == folderId)
-        {
-          return true;
-        }
-
-        // we can now use the folder id to flag this as done.
-        return await MarkDirectoryProcessedAsync(folderId, transaction, token).ConfigureAwait(false);
+        return true;
       }
-      catch (OperationCanceledException)
-      {
-        return false;
-      }
+
+      // we can now use the folder id to flag this as done.
+      return await MarkDirectoryProcessedAsync(folderId, transaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -153,8 +144,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         try
         {
-          token.ThrowIfCancellationRequested();
-
           var pId = cmd.CreateParameter();
           pId.DbType = DbType.Int64;
           pId.ParameterName = "@id";
@@ -162,6 +151,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           foreach (var folderId in folderIds)
           {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
             // set the folder id.
             cmd.Parameters["@id"].Value = folderId;
 
@@ -196,8 +188,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       var pendingUpdates = new List<PendingFolderUpdate>();
       try
       {
-        token.ThrowIfCancellationRequested();
-
         // we want to get the latest updated folders.
         var sql = $"SELECT folderid, type FROM {TableFolderUpdates} ORDER BY ticks DESC LIMIT {limit}";
         using (var cmd = CreateDbCommand(sql, transaction))
@@ -205,6 +195,9 @@ namespace myoddweb.desktopsearch.service.Persisters
           var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
           while (reader.Read())
           {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
             // add this update
             pendingUpdates.Add(new PendingFolderUpdate(
               (long) reader["folderid"],

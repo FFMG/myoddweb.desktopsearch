@@ -108,14 +108,15 @@ namespace myoddweb.desktopsearch.parser
     {
       try
       {
-        token.ThrowIfCancellationRequested();
-
         var stopwatch = new Stopwatch();
         stopwatch.Start();
 
         var totalDirectories = 0;
         foreach (var path in paths)
         {
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
           // get all the directories.
           var directories = await _directory.ParseDirectoriesAsync(path, token).ConfigureAwait(false);
           if (directories == null)

@@ -84,8 +84,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     {
       try
       {
-        token.ThrowIfCancellationRequested();
-
         // start timing how long the entire operation will take
         var stopwatch = new Stopwatch();
         stopwatch.Start();
@@ -106,6 +104,9 @@ namespace myoddweb.desktopsearch.processor.Processors
           var tasks = new List<Task>();
           for (var start = 0; start < pendingUpdates.Count; start += (int) _numberOfFoldersToProcess)
           {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
             // run this group of folders.
             tasks.Add(ProcessFolderUpdates(pendingUpdates, start, token));
 
@@ -222,11 +223,12 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        token.ThrowIfCancellationRequested();
-
         // process all the data one at a time.
         foreach (var pendingFolderUpdate in pendingUpdates)
         {
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
           if (await ProcessFolderUpdate(transaction, pendingFolderUpdate, token).ConfigureAwait(false))
           {
             continue;
@@ -272,8 +274,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     {
       try
       {
-        token.ThrowIfCancellationRequested();
-
         switch (pendingFolderUpdate.PendingUpdateType)
         {
           case UpdateType.Created:
@@ -289,10 +289,6 @@ namespace myoddweb.desktopsearch.processor.Processors
           default:
             throw new ArgumentOutOfRangeException();
         }
-      }
-      catch (OperationCanceledException)
-      {
-        return false;
       }
       catch (Exception e)
       {
@@ -420,10 +416,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        token.ThrowIfCancellationRequested();
-
-        var pendingUpdates = await _persister
-          .GetPendingFolderUpdatesAsync(_currentNumberOfFoldersToProcess, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _persister.GetPendingFolderUpdatesAsync(_currentNumberOfFoldersToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending folder updates.");
@@ -435,11 +428,6 @@ namespace myoddweb.desktopsearch.processor.Processors
 
         // return null if we cancelled.
         return pendingUpdates;
-      }
-      catch (OperationCanceledException)
-      {
-        _persister.Rollback(transaction);
-        return null;
       }
       catch (Exception e)
       {

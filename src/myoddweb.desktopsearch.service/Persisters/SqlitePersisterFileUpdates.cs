@@ -82,8 +82,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         try
         {
-          token.ThrowIfCancellationRequested();
-
           var pId = cmd.CreateParameter();
           pId.DbType = DbType.Int64;
           pId.ParameterName = "@id";
@@ -101,6 +99,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           foreach (var fileId in ids)
           {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
             cmd.Parameters["@id"].Value = fileId;
             cmd.Parameters["@type"].Value = (long) type;
             cmd.Parameters["@ticks"].Value = DateTime.UtcNow.Ticks;
@@ -165,8 +166,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         try
         {
-          token.ThrowIfCancellationRequested();
-
           var pId = cmd.CreateParameter();
           pId.DbType = DbType.Int64;
           pId.ParameterName = "@id";
@@ -174,6 +173,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           foreach (var fileId in fileIds)
           {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
             // set the folder id.
             cmd.Parameters["@id"].Value = fileId;
 
@@ -208,8 +210,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       var pendingUpdates = new List<PendingFileUpdate>();
       try
       {
-        token.ThrowIfCancellationRequested();
-
         // we want to get the latest updated folders.
         var sql = $"SELECT fileid, type FROM {TableFileUpdates} ORDER BY ticks DESC LIMIT {limit}";
         using (var cmd = CreateDbCommand(sql, transaction))
@@ -217,6 +217,9 @@ namespace myoddweb.desktopsearch.service.Persisters
           var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
           while (reader.Read())
           {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
             // add this update
             pendingUpdates.Add(new PendingFileUpdate(
               (long) reader["fileid"],

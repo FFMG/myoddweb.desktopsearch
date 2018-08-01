@@ -40,11 +40,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
-        // get out if need be.
-        token.ThrowIfCancellationRequested();
-
         for (;;)
         {
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
           // wait for the transaction to no longer be null
           // outside of the lock, (so it can be freed.
           if (null != _transaction)

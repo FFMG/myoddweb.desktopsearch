@@ -77,8 +77,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         try
         {
-          token.ThrowIfCancellationRequested();
-
           var pName1 = cmd.CreateParameter();
           pName1.DbType = DbType.String;
           pName1.ParameterName = "@name1";
@@ -115,6 +113,9 @@ namespace myoddweb.desktopsearch.service.Persisters
               return -1;
             }
           }
+
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
         }
         catch (OperationCanceledException)
         {
@@ -181,6 +182,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           try
           {
+            // get out if needed.
             token.ThrowIfCancellationRequested();
 
             // get the folder id, no need to create it.
@@ -246,8 +248,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         try
         {
-          token.ThrowIfCancellationRequested();
-
           var pFolderId = cmd.CreateParameter();
           pFolderId.DbType = DbType.Int64;
           pFolderId.ParameterName = "@folderid";
@@ -261,6 +261,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           // and give a message...
           _logger.Verbose($"Deleted {deletedFiles} file(s) from folder {directory.FullName} ({folderid}).");
+
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
         }
         catch (OperationCanceledException)
         {
@@ -303,8 +306,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       var fileInfos = new List<FileInfo>();
       try
       {
-        token.ThrowIfCancellationRequested();
-
         // we want to get the latest updated folders.
         var sql = $"SELECT name FROM {TableFiles} WHERE folderid=@id";
         using (var cmd = CreateDbCommand(sql, transaction))
@@ -319,6 +320,9 @@ namespace myoddweb.desktopsearch.service.Persisters
           var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
           while (reader.Read())
           {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
             // add this update
             fileInfos.Add(new FileInfo(
               Path.Combine(directory.FullName, (string) reader["name"])));
@@ -351,8 +355,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       FileInfo file = null;
       try
       {
-        token.ThrowIfCancellationRequested();
-
         // we want to get the latest updated folders.
         var sql = $"SELECT folderid, name FROM {TableFiles} WHERE id=@id";
         using (var cmd = CreateDbCommand(sql, transaction))
@@ -381,6 +383,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             // we can now rebuild the file info.
             file = new FileInfo(Path.Combine(directory.FullName, (string) reader["name"]));
+
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
           }
         }
       }
@@ -437,6 +442,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           try
           {
+            // get out if needed.
             token.ThrowIfCancellationRequested();
 
             // Get the folder for this file and insert it, if need be.
@@ -486,8 +492,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
-        token.ThrowIfCancellationRequested();
-
         // The list of directories we will be adding to the list.
         var actualFiles = new List<FileInfo>();
 
@@ -506,6 +510,9 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pName);
           foreach (var file in files)
           {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
             // only valid paths are added.
             if (!file.Exists)
             {
@@ -550,13 +557,15 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
-        token.ThrowIfCancellationRequested();
-
         // we first look for it, and, if we find it then there is nothing to do.
         var sqlNextRowId = $"SELECT max(id) from {TableFiles};";
         using (var cmd = CreateDbCommand(sqlNextRowId, transaction))
         {
           var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
+
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
           if (null == value || value == DBNull.Value)
           {
             return 0;
@@ -584,8 +593,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
-        token.ThrowIfCancellationRequested();
-
         // get the folder id
         var folderid = await GetDirectoryIdAsync(file.Directory, transaction, token, false).ConfigureAwait(false);
         if (-1 == folderid)
@@ -646,6 +653,9 @@ namespace myoddweb.desktopsearch.service.Persisters
             return await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
           }
 
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
           // get the path id.
           return (long) value;
         }
@@ -667,8 +677,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
-        token.ThrowIfCancellationRequested();
-
         // we first look for it, and, if we find it then there is nothing to do.
         var sql = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid";
         using (var cmd = CreateDbCommand(sql, transaction))
@@ -683,6 +691,9 @@ namespace myoddweb.desktopsearch.service.Persisters
           var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
           while (reader.Read())
           {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
             // add this id to the list.
             fileIds.Add((long) reader["id"]);
           }
