@@ -12,6 +12,7 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,19 +21,9 @@ namespace myoddweb.desktopsearch.processor
   internal interface IProcessor
   {
     /// <summary>
-    /// The processor can start their work.
-    /// </summary>
-    void Start();
-
-    /// <summary>
     /// We are telling the processor to do some work.
     /// </summary>
     /// <returns></returns>
-    Task<bool> WorkAsync( );
-
-    /// <summary>
-    /// We are telling the processor to stop whatever they are doing.
-    /// </summary>
-    void Stop();
+    Task<bool> WorkAsync( CancellationToken token );
   }
 }

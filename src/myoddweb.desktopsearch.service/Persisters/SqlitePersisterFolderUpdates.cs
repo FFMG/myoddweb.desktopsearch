@@ -35,7 +35,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
       if (-1 == folderId)
       {
-        return !token.IsCancellationRequested;
+        return true;
       }
 
       // we can then use the transaction id to touch the folder.
@@ -48,7 +48,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // if it is not a valid id then there is nothing for us to do.
       if (folderId < 0)
       {
-        return !token.IsCancellationRequested;
+        return true;
       }
 
       if (null == transaction)
@@ -81,6 +81,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         cmd.Parameters.Add(pTicks);
         try
         {
+          token.ThrowIfCancellationRequested();
+
           cmd.Parameters["@id"].Value = folderId;
           cmd.Parameters["@type"].Value = (long) type;
           cmd.Parameters["@ticks"].Value = DateTime.UtcNow.Ticks;
@@ -90,6 +92,10 @@ namespace myoddweb.desktopsearch.service.Persisters
             return false;
           }
         }
+        catch (OperationCanceledException)
+        {
+          return false;
+        }
         catch (Exception ex)
         {
           _logger.Exception(ex);
@@ -98,20 +104,29 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // return if this cancelled or not
-      return !token.IsCancellationRequested;
+      return true;
     }
 
     /// <inheritdoc />
     public async Task<bool> MarkDirectoryProcessedAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token)
     {
-      var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
-      if (-1 == folderId)
+      try
       {
-        return !token.IsCancellationRequested;
-      }
+        token.ThrowIfCancellationRequested();
 
-      // we can now use the folder id to flag this as done.
-      return await MarkDirectoryProcessedAsync(folderId, transaction, token).ConfigureAwait(false);
+        var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
+        if (-1 == folderId)
+        {
+          return true;
+        }
+
+        // we can now use the folder id to flag this as done.
+        return await MarkDirectoryProcessedAsync(folderId, transaction, token).ConfigureAwait(false);
+      }
+      catch (OperationCanceledException)
+      {
+        return false;
+      }
     }
 
     /// <inheritdoc />
@@ -138,25 +153,25 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         try
         {
+          token.ThrowIfCancellationRequested();
+
           var pId = cmd.CreateParameter();
           pId.DbType = DbType.Int64;
           pId.ParameterName = "@id";
           cmd.Parameters.Add(pId);
 
-          foreach (var folderId in folderIds )
+          foreach (var folderId in folderIds)
           {
-            // are we cancelling?
-            if (token.IsCancellationRequested)
-            {
-              return false;
-            }
-
             // set the folder id.
             cmd.Parameters["@id"].Value = folderId;
 
             // this could return 0 if the row has already been processed
             await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false);
           }
+        }
+        catch (OperationCanceledException)
+        {
+          return false;
         }
         catch (Exception ex)
         {
@@ -166,7 +181,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // return if this cancelled or not
-      return !token.IsCancellationRequested;
+      return true;
     }
 
     /// <inheritdoc />
@@ -181,6 +196,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       var pendingUpdates = new List<PendingFolderUpdate>();
       try
       {
+        token.ThrowIfCancellationRequested();
+
         // we want to get the latest updated folders.
         var sql = $"SELECT folderid, type FROM {TableFolderUpdates} ORDER BY ticks DESC LIMIT {limit}";
         using (var cmd = CreateDbCommand(sql, transaction))
@@ -188,19 +205,17 @@ namespace myoddweb.desktopsearch.service.Persisters
           var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
           while (reader.Read())
           {
-            // are we cancelling?
-            if (token.IsCancellationRequested)
-            {
-              return null;
-            }
-
             // add this update
             pendingUpdates.Add(new PendingFolderUpdate(
-                (long)reader["folderid"],
-                (UpdateType)(long)reader["type"]
-              ));
+              (long) reader["folderid"],
+              (UpdateType) (long) reader["type"]
+            ));
           }
         }
+      }
+      catch (OperationCanceledException)
+      {
+        return null;
       }
       catch (Exception e)
       {
@@ -209,7 +224,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // return whatever we found
-      return token.IsCancellationRequested ? null : pendingUpdates;
+      return pendingUpdates;
     }
   }
 }

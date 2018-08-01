@@ -35,11 +35,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     private readonly long _numberOfFoldersToProcess;
 
     /// <summary>
-    /// The cancelacation token source.
-    /// </summary>
-    private CancellationTokenSource _cancellationTokenSource;
-
-    /// <summary>
     /// The number of files we want to process.
     /// </summary>
     private long _currentNumberOfFoldersToProcess;
@@ -85,32 +80,11 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public void Start()
+    public async Task<bool> WorkAsync(CancellationToken token)
     {
-      _cancellationTokenSource = new CancellationTokenSource();
-    }
-
-    /// <inheritdoc />
-    public void Stop()
-    {
-      _cancellationTokenSource?.Cancel();
-      _cancellationTokenSource = null;
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> WorkAsync()
-    {
-      // if we cannot work ... then don't
-      if (null == _cancellationTokenSource)
-      {
-        // this is not an error
-        return true;
-      }
-
       try
       {
-        // the token we will be using.
-        var token = _cancellationTokenSource.Token;
+        token.ThrowIfCancellationRequested();
 
         // start timing how long the entire operation will take
         var stopwatch = new Stopwatch();
@@ -120,8 +94,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         var pendingUpdates = await GetPendingFolderUpdatesAsync(token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
-          //  probably was canceled.
-          return !token.IsCancellationRequested;
+          return true;
         }
 
         // the number of updates we actually did.
@@ -131,7 +104,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           // then we go around and do chunks of data one at a time.
           // this is to prevent massive chunks of data from being processed.
           var tasks = new List<Task>();
-          for (var start = 0; start < pendingUpdates.Count; start += (int)_numberOfFoldersToProcess)
+          for (var start = 0; start < pendingUpdates.Count; start += (int) _numberOfFoldersToProcess)
           {
             // run this group of folders.
             tasks.Add(ProcessFolderUpdates(pendingUpdates, start, token));
@@ -144,19 +117,24 @@ namespace myoddweb.desktopsearch.processor.Processors
           await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
 
           // return if we made it.
-          return !token.IsCancellationRequested;
+          return true;
         }
         finally
         {
           stopwatch.Stop();
           if (processedFolders > 0)
           {
-            _logger.Verbose($"Processed {(processedFolders > pendingUpdates.Count ? pendingUpdates.Count : processedFolders)} pending folder updates (Time Elapsed: {stopwatch.Elapsed:g})");
+            _logger.Verbose(
+              $"Processed {(processedFolders > pendingUpdates.Count ? pendingUpdates.Count : processedFolders)} pending folder updates (Time Elapsed: {stopwatch.Elapsed:g})");
           }
 
           // Adjust the number of items we will be doing the next time.
           AdjustNumberOfFoldersToProcess(processedFolders, stopwatch.ElapsedMilliseconds);
         }
+      }
+      catch (OperationCanceledException)
+      {
+        return false;
       }
       catch (Exception e)
       {
@@ -186,7 +164,15 @@ namespace myoddweb.desktopsearch.processor.Processors
       if (elapsedMilliseconds < _maxNumberOfMs * 0.9) //  remove a little bit so we don't always re-adjust.
       {
         //  just add 10%
-        _currentNumberOfFoldersToProcess = (long)(_currentNumberOfFoldersToProcess * 1.1);
+        var calc = (long)Math.Ceiling(_currentNumberOfFoldersToProcess * 1.1);
+        if (_currentNumberOfFoldersToProcess == calc )
+        {
+          _currentNumberOfFoldersToProcess = calc + 1;
+        }
+        else
+        {
+          _currentNumberOfFoldersToProcess = calc;
+        }
         return;
       }
 
@@ -236,15 +222,11 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
+        token.ThrowIfCancellationRequested();
+
         // process all the data one at a time.
         foreach (var pendingFolderUpdate in pendingUpdates)
         {
-          if (token.IsCancellationRequested)
-          {
-            _persister.Rollback(transaction);
-            return false;
-          }
-
           if (await ProcessFolderUpdate(transaction, pendingFolderUpdate, token).ConfigureAwait(false))
           {
             continue;
@@ -256,28 +238,27 @@ namespace myoddweb.desktopsearch.processor.Processors
         }
 
         // mark all the folders as done.
-        if (!await _persister.MarkDirectoriesProcessedAsync( pendingUpdates.Select(u => u.FolderId), transaction, token).ConfigureAwait(false))
+        if (!await _persister.MarkDirectoriesProcessedAsync(pendingUpdates.Select(u => u.FolderId), transaction, token)
+          .ConfigureAwait(false))
         {
           _persister.Rollback(transaction);
           return false;
         }
 
         // we made it!
-        if (token.IsCancellationRequested)
-        {
-          _persister.Rollback(transaction);
-        }
-        else
-        {
-          _persister.Commit(transaction);
-        }
+        _persister.Commit(transaction);
+        return true;
+      }
+      catch (OperationCanceledException)
+      {
+        _persister.Rollback(transaction);
+        return false;
       }
       catch
       {
         _persister.Rollback(transaction);
         throw;
       }
-      return !token.IsCancellationRequested;
     }
 
     /// <summary>
@@ -291,10 +272,8 @@ namespace myoddweb.desktopsearch.processor.Processors
     {
       try
       {
-        if (token.IsCancellationRequested)
-        {
-          return false;
-        }
+        token.ThrowIfCancellationRequested();
+
         switch (pendingFolderUpdate.PendingUpdateType)
         {
           case UpdateType.Created:
@@ -310,6 +289,10 @@ namespace myoddweb.desktopsearch.processor.Processors
           default:
             throw new ArgumentOutOfRangeException();
         }
+      }
+      catch (OperationCanceledException)
+      {
+        return false;
       }
       catch (Exception e)
       {
@@ -349,8 +332,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         }
       }
 
-      // return if we cancelled.
-      return !token.IsCancellationRequested;
+      // we made it.
+      return true;
     }
 
     /// <summary>
@@ -417,8 +400,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         await _persister.AddOrUpdateFilesAsync(filesToAdd, transaction, token).ConfigureAwait(false);
       }
 
-      // return if we cancelled.
-      return !token.IsCancellationRequested;
+      // we made it
+      return true;
     }
     
     /// <summary>
@@ -434,9 +417,13 @@ namespace myoddweb.desktopsearch.processor.Processors
         //  we probably cancelled.
         return null;
       }
+
       try
       {
-        var pendingUpdates = await _persister.GetPendingFolderUpdatesAsync(_currentNumberOfFoldersToProcess, transaction, token).ConfigureAwait(false);
+        token.ThrowIfCancellationRequested();
+
+        var pendingUpdates = await _persister
+          .GetPendingFolderUpdatesAsync(_currentNumberOfFoldersToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending folder updates.");
@@ -444,17 +431,15 @@ namespace myoddweb.desktopsearch.processor.Processors
           // but at least we will commit.
         }
 
-        if (!token.IsCancellationRequested)
-        {
-          _persister.Commit(transaction);
-        }
-        else
-        {
-          _persister.Rollback(transaction);
-        }
+        _persister.Commit(transaction);
 
         // return null if we cancelled.
-        return !token.IsCancellationRequested ? pendingUpdates : null;
+        return pendingUpdates;
+      }
+      catch (OperationCanceledException)
+      {
+        _persister.Rollback(transaction);
+        return null;
       }
       catch (Exception e)
       {

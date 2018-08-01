@@ -108,18 +108,14 @@ namespace myoddweb.desktopsearch.parser
     {
       try
       {
+        token.ThrowIfCancellationRequested();
+
         var stopwatch = new Stopwatch();
         stopwatch.Start();
 
         var totalDirectories = 0;
         foreach (var path in paths)
         {
-          // check if we need to break out
-          if (token.IsCancellationRequested)
-          {
-            break;
-          }
-
           // get all the directories.
           var directories = await _directory.ParseDirectoriesAsync(path, token).ConfigureAwait(false);
           if (directories == null)
@@ -143,6 +139,10 @@ namespace myoddweb.desktopsearch.parser
         stopwatch.Stop();
         _logger.Information($"Parsed {totalDirectories} directories (Time Elapsed: {stopwatch.Elapsed:g})");
         return true;
+      }
+      catch (OperationCanceledException)
+      {
+        return false;
       }
       catch (Exception e)
       {

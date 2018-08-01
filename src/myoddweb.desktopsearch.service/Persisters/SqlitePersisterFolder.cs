@@ -58,6 +58,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         try
         {
+          token.ThrowIfCancellationRequested();
+
           var pPath1 = cmd.CreateParameter();
           pPath1.DbType = DbType.String;
           pPath1.ParameterName = "@path1";
@@ -67,12 +69,6 @@ namespace myoddweb.desktopsearch.service.Persisters
           pPath2.DbType = DbType.String;
           pPath2.ParameterName = "@path2";
           cmd.Parameters.Add(pPath2);
-
-          // are we cancelling?
-          if (token.IsCancellationRequested)
-          {
-            return -1;
-          }
 
           // try and replace path1 with path2
           cmd.Parameters["@path1"].Value = directory.FullName;
@@ -94,13 +90,17 @@ namespace myoddweb.desktopsearch.service.Persisters
           // in either cases, we can now return the id of this newly added path.
           // we won't ask the function to insert a new file as we _just_ renamed it.
           // so it has to exist...
-          var folderId = await GetDirectoryIdAsync(directory, transaction, token, false ).ConfigureAwait(false);
+          var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
 
           // touch that folder as changed
           await TouchDirectoryAsync(folderId, UpdateType.Changed, transaction, token).ConfigureAwait(false);
 
           // we are done
           return folderId;
+        }
+        catch (OperationCanceledException)
+        {
+          return -1;
         }
         catch (Exception ex)
         {
@@ -142,14 +142,10 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           try
           {
-            // are we cancelling?
-            if (token.IsCancellationRequested)
-            {
-              return false;
-            }
+            token.ThrowIfCancellationRequested();
 
             // try and delete files given directory info.
-            await DeleteFilesAsync(directory, transaction, token ).ConfigureAwait(false);
+            await DeleteFilesAsync(directory, transaction, token).ConfigureAwait(false);
 
             // touch that folder as deleted
             await TouchDirectoryAsync(directory, UpdateType.Deleted, transaction, token).ConfigureAwait(false);
@@ -160,6 +156,10 @@ namespace myoddweb.desktopsearch.service.Persisters
             {
               _logger.Warning($"Could not delete folder: {directory.FullName}, does it still exist?");
             }
+          }
+          catch (OperationCanceledException)
+          {
+            return false;
           }
           catch (Exception ex)
           {
@@ -226,24 +226,27 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     private async Task<long> GetNextDirectoryIdAsync(IDbTransaction transaction, CancellationToken token)
     {
-      // we first look for it, and, if we find it then there is nothing to do.
-      var sqlNextRowId = $"SELECT max(id) from {TableFolders};";
-      using (var cmd = CreateDbCommand(sqlNextRowId, transaction))
+      try
       {
-        // are we cancelling?
-        if (token.IsCancellationRequested)
-        {
-          return 0;
-        }
+        token.ThrowIfCancellationRequested();
 
-        var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
-        if (null == value || value == DBNull.Value)
+        // we first look for it, and, if we find it then there is nothing to do.
+        var sqlNextRowId = $"SELECT max(id) from {TableFolders};";
+        using (var cmd = CreateDbCommand(sqlNextRowId, transaction))
         {
-          return 0;
-        }
+          var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
+          if (null == value || value == DBNull.Value)
+          {
+            return 0;
+          }
 
-        // we could not find this path ... so just add it.
-        return ((long)value) + 1;
+          // we could not find this path ... so just add it.
+          return ((long) value) + 1;
+        }
+      }
+      catch (OperationCanceledException)
+      {
+        return 0;
       }
     }
 
@@ -262,43 +265,46 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(directory), "The given directory is null");
       }
 
-      // we first look for it, and, if we find it then there is nothing to do.
-      var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
-      using (var cmd = CreateDbCommand(sql, transaction))
+      try
       {
-        var pPath = cmd.CreateParameter();
-        pPath.DbType = DbType.String;
-        pPath.ParameterName = "@path";
-        cmd.Parameters.Add(pPath);
+        token.ThrowIfCancellationRequested();
 
-        // are we cancelling?
-        if (token.IsCancellationRequested)
+        // we first look for it, and, if we find it then there is nothing to do.
+        var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
+        using (var cmd = CreateDbCommand(sql, transaction))
         {
-          return -1;
-        }
+          var pPath = cmd.CreateParameter();
+          pPath.DbType = DbType.String;
+          pPath.ParameterName = "@path";
+          cmd.Parameters.Add(pPath);
 
-        cmd.Parameters["@path"].Value = directory.FullName;
-        var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
-        if (null == value || value == DBNull.Value)
-        {
-          if (!createIfNotFound)
+          cmd.Parameters["@path"].Value = directory.FullName;
+          var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
+          if (null == value || value == DBNull.Value)
           {
-            // we could not find it and we do not wish to go further.
-            return -1;
+            if (!createIfNotFound)
+            {
+              // we could not find it and we do not wish to go further.
+              return -1;
+            }
+
+            // try and add the folder, if that does not work, then we cannot go further.
+            if (!await AddOrUpdateDirectoryAsync(directory, transaction, token).ConfigureAwait(false))
+            {
+              return -1;
+            }
+
+            // try one more time to look for it .. and if we do not find it, then just return
+            return await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
           }
 
-          // try and add the folder, if that does not work, then we cannot go further.
-          if (!await AddOrUpdateDirectoryAsync(directory, transaction, token).ConfigureAwait(false))
-          {
-            return -1;
-          }
-
-          // try one more time to look for it .. and if we do not find it, then just return
-          return await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
+          // get the path id.
+          return (long) value;
         }
-
-        // get the path id.
-        return (long)value;
+      }
+      catch (OperationCanceledException)
+      {
+        return -1;
       }
     }
 
@@ -336,11 +342,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           try
           {
-            // are we cancelling?
-            if (token.IsCancellationRequested)
-            {
-              return false;
-            }
+            token.ThrowIfCancellationRequested();
 
             cmd.Parameters["@id"].Value = nextId;
             cmd.Parameters["@path"].Value = directory.FullName;
@@ -355,6 +357,10 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             // we can now move on to the next folder id.
             ++nextId;
+          }
+          catch (OperationCanceledException)
+          {
+            return false;
           }
           catch (Exception ex)
           {
@@ -374,41 +380,45 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     private async Task<List<DirectoryInfo>> RebuildDirectoriesListAsync(IEnumerable<DirectoryInfo> directories, IDbTransaction transaction, CancellationToken token )
     {
-      // The list of directories we will be adding to the list.
-      var actualDirectories = new List<DirectoryInfo>();
-
-      // we first look for it, and, if we find it then there is nothing to do.
-      var sqlGetRowId = $"SELECT id FROM {TableFolders} WHERE path=@path";
-      using (var cmd = CreateDbCommand(sqlGetRowId, transaction))
+      try
       {
-        var pPath = cmd.CreateParameter();
-        pPath.DbType = DbType.String;
-        pPath.ParameterName = "@path";
-        cmd.Parameters.Add(pPath);
-        foreach (var directory in directories)
+        token.ThrowIfCancellationRequested();
+
+        // The list of directories we will be adding to the list.
+        var actualDirectories = new List<DirectoryInfo>();
+
+        // we first look for it, and, if we find it then there is nothing to do.
+        var sqlGetRowId = $"SELECT id FROM {TableFolders} WHERE path=@path";
+        using (var cmd = CreateDbCommand(sqlGetRowId, transaction))
         {
-          // are we cancelling?
-          if (token.IsCancellationRequested)
+          var pPath = cmd.CreateParameter();
+          pPath.DbType = DbType.String;
+          pPath.ParameterName = "@path";
+          cmd.Parameters.Add(pPath);
+          foreach (var directory in directories)
           {
-            return new List<DirectoryInfo>();
-          }
+            // only valid paths are added.
+            if (!directory.Exists)
+            {
+              continue;
+            }
 
-          // only valid paths are added.
-          if (!directory.Exists)
-          {
-            continue;
-          }
-          cmd.Parameters["@path"].Value = directory.FullName;
-          if (null != await cmd.ExecuteScalarAsync(token).ConfigureAwait(false))
-          {
-            continue;
-          }
+            cmd.Parameters["@path"].Value = directory.FullName;
+            if (null != await cmd.ExecuteScalarAsync(token).ConfigureAwait(false))
+            {
+              continue;
+            }
 
-          // we could not find this path ... so just add it.
-          actualDirectories.Add(directory);
+            // we could not find this path ... so just add it.
+            actualDirectories.Add(directory);
+          }
         }
+        return actualDirectories;
       }
-      return actualDirectories;
+      catch (OperationCanceledException)
+      {
+        return new List<DirectoryInfo>();
+      }
     }
   }
 }

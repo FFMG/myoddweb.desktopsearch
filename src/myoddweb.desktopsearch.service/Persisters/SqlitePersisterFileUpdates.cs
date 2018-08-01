@@ -37,7 +37,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var fileId = await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
       if (-1 == fileId)
       {
-        return !token.IsCancellationRequested;
+        return true;
       }
 
       // then we can do the update
@@ -63,7 +63,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var ids = fileIds as long[] ?? fileIds.ToArray();
       if (!ids.Any())
       {
-        return !token.IsCancellationRequested;
+        return true;
       }
 
       if (null == transaction)
@@ -82,6 +82,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         try
         {
+          token.ThrowIfCancellationRequested();
+
           var pId = cmd.CreateParameter();
           pId.DbType = DbType.Int64;
           pId.ParameterName = "@id";
@@ -99,14 +101,8 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           foreach (var fileId in ids)
           {
-            // are we cancelling?
-            if (token.IsCancellationRequested)
-            {
-              return false;
-            }
-
             cmd.Parameters["@id"].Value = fileId;
-            cmd.Parameters["@type"].Value = (long)type;
+            cmd.Parameters["@type"].Value = (long) type;
             cmd.Parameters["@ticks"].Value = DateTime.UtcNow.Ticks;
             if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
             {
@@ -115,15 +111,17 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
           }
         }
+        catch (OperationCanceledException)
+        {
+          return false;
+        }
         catch (Exception ex)
         {
           _logger.Exception(ex);
           return false;
         }
       }
-
-      // return if this cancelled or not
-      return !token.IsCancellationRequested;
+      return true;
     }
 
     /// <inheritdoc />
@@ -140,7 +138,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // did we find it?
       if (fileId == -1)
       {
-        return !token.IsCancellationRequested;
+        return true;
       }
 
       // then we can do it by id.
@@ -167,6 +165,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         try
         {
+          token.ThrowIfCancellationRequested();
+
           var pId = cmd.CreateParameter();
           pId.DbType = DbType.Int64;
           pId.ParameterName = "@id";
@@ -174,18 +174,16 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           foreach (var fileId in fileIds)
           {
-            // are we cancelling?
-            if (token.IsCancellationRequested)
-            {
-              return false;
-            }
-
             // set the folder id.
             cmd.Parameters["@id"].Value = fileId;
 
             // this could return 0 if the row has already been processed
             await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false);
           }
+        }
+        catch (OperationCanceledException)
+        {
+          return false;
         }
         catch (Exception ex)
         {
@@ -195,7 +193,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // return if this cancelled or not
-      return !token.IsCancellationRequested;
+      return true;
     }
 
     /// <inheritdoc />
@@ -210,6 +208,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       var pendingUpdates = new List<PendingFileUpdate>();
       try
       {
+        token.ThrowIfCancellationRequested();
+
         // we want to get the latest updated folders.
         var sql = $"SELECT fileid, type FROM {TableFileUpdates} ORDER BY ticks DESC LIMIT {limit}";
         using (var cmd = CreateDbCommand(sql, transaction))
@@ -217,19 +217,17 @@ namespace myoddweb.desktopsearch.service.Persisters
           var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
           while (reader.Read())
           {
-            // are we cancelling?
-            if (token.IsCancellationRequested)
-            {
-              return null;
-            }
-
             // add this update
             pendingUpdates.Add(new PendingFileUpdate(
-              (long)reader["fileid"],
-              (UpdateType)(long)reader["type"]
+              (long) reader["fileid"],
+              (UpdateType) (long) reader["type"]
             ));
           }
         }
+      }
+      catch (OperationCanceledException)
+      {
+        return null;
       }
       catch (Exception e)
       {
@@ -238,7 +236,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // return whatever we found
-      return token.IsCancellationRequested ? null : pendingUpdates;
+      return pendingUpdates;
     }
   }
 }

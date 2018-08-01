@@ -102,68 +102,79 @@ namespace myoddweb.desktopsearch.service.IO
     /// <inheritdoc />
     public async Task<List<DirectoryInfo>> ParseDirectoriesAsync(DirectoryInfo directory, CancellationToken token)
     {
-      // reset what we might have found already
-      var directories = await BuildDirectoryListAsync( directory, token).ConfigureAwait(false);
-      
-      // if we cancelled then we return null
-      // this will help to force the callers to bail out as well.
-      return token.IsCancellationRequested ? null : directories;
+      try
+      {
+        token.ThrowIfCancellationRequested();
+
+        // reset what we might have found already
+        var directories = await BuildDirectoryListAsync(directory, token).ConfigureAwait(false);
+
+        return directories;
+      }
+      catch (OperationCanceledException)
+      {
+        // if we cancelled then we return null
+        // this will help to force the callers to bail out as well.
+        return null;
+      }
     }
 
     /// <inheritdoc />
     public Task<List<FileInfo>> ParseDirectoryAsync(DirectoryInfo directory, CancellationToken token)
     {
-      // sanity check
-      if (!helper.File.CanReadDirectory(directory))
-      {
-        _logger.Warning($"Cannot Parse Directory: {directory.FullName}");
-        return Task.FromResult<List<FileInfo>>(null);
-      }
-
-      IEnumerable<FileInfo> files;
       try
       {
-        files = directory.EnumerateFiles();
-      }
-      catch (SecurityException)
-      {
-        // we cannot access/enumerate this file
-        // but we might as well continue
-        _logger.Verbose($"Security error while parsing directory: {directory.FullName}.");
-        return Task.FromResult<List<FileInfo>>(null);
-      }
-      catch (UnauthorizedAccessException)
-      {
-        // we cannot access/enumerate this file
-        // but we might as well continue
-        _logger.Verbose($"Unauthorized Access while parsing directory: {directory.FullName}.");
-        return Task.FromResult<List<FileInfo>>(null);
-      }
-      catch (Exception e)
-      {
-        _logger.Error($"Exception while parsing directory: {directory.FullName}. {e.Message}");
-        return Task.FromResult<List<FileInfo>>(null);
-      }
+        token.ThrowIfCancellationRequested();
 
-      var posibleFiles = new List<FileInfo>();
-      foreach (var file in files)
-      {
-        // did we get a stop request?
-        if (token.IsCancellationRequested)
+        // sanity check
+        if (!helper.File.CanReadDirectory(directory))
         {
-          // we were asked to stop, so just break out.
+          _logger.Warning($"Cannot Parse Directory: {directory.FullName}");
           return Task.FromResult<List<FileInfo>>(null);
         }
 
-        if (!helper.File.CanReadFile(file))
+        IEnumerable<FileInfo> files;
+        try
         {
-          continue;
+          files = directory.EnumerateFiles();
         }
-        posibleFiles.Add(file);
-      }
+        catch (SecurityException)
+        {
+          // we cannot access/enumerate this file
+          // but we might as well continue
+          _logger.Verbose($"Security error while parsing directory: {directory.FullName}.");
+          return Task.FromResult<List<FileInfo>>(null);
+        }
+        catch (UnauthorizedAccessException)
+        {
+          // we cannot access/enumerate this file
+          // but we might as well continue
+          _logger.Verbose($"Unauthorized Access while parsing directory: {directory.FullName}.");
+          return Task.FromResult<List<FileInfo>>(null);
+        }
+        catch (Exception e)
+        {
+          _logger.Error($"Exception while parsing directory: {directory.FullName}. {e.Message}");
+          return Task.FromResult<List<FileInfo>>(null);
+        }
 
-      // if we found nothing we return null.
-      return Task.FromResult(posibleFiles.Any() ? posibleFiles : null);
+        var posibleFiles = new List<FileInfo>();
+        foreach (var file in files)
+        {
+          if (!helper.File.CanReadFile(file))
+          {
+            continue;
+          }
+          posibleFiles.Add(file);
+        }
+
+        // if we found nothing we return null.
+        return Task.FromResult(posibleFiles.Any() ? posibleFiles : null);
+      }
+      catch (OperationCanceledException)
+      {
+        return Task.FromResult<List<FileInfo>>(null);
+      }
     }
 
     /// <inheritdoc />
@@ -198,33 +209,33 @@ namespace myoddweb.desktopsearch.service.IO
     {
       try
       {
+        token.ThrowIfCancellationRequested();
+
         // create an empty list.
         var directories = new List<DirectoryInfo>();
 
         // does the caller want us to get in this directory?
-        if (!ParseDirectory( directory))
+        if (!ParseDirectory(directory))
         {
           return directories;
         }
-   
+
         // we can then add, at least, this directory
         directories.Add(directory);
 
         var dirs = directory.EnumerateDirectories();
         foreach (var info in dirs)
         {
-          // did we get a stop request?
-          if (token.IsCancellationRequested)
-          {
-            return directories;
-          }
-
           // we can parse this directory now and add whatever we found to the list.
-          directories.AddRange( await BuildDirectoryListAsync(info, token).ConfigureAwait(false));
+          directories.AddRange(await BuildDirectoryListAsync(info, token).ConfigureAwait(false));
         }
 
         // return what we found
         return directories;
+      }
+      catch (OperationCanceledException)
+      {
+        return new List<DirectoryInfo>();
       }
       catch (SecurityException)
       {

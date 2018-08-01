@@ -145,23 +145,24 @@ namespace myoddweb.desktopsearch.processor
         // stop the timer
         StopEventsProcessorTimer();
 
-        // do the actual work.
-        lock (_lock)
+        if (_tasks.All(t => t.IsCompleted))
         {
-          if (_tasks.All(t => t.IsCompleted))
+          // do the actual work.
+          lock (_lock)
           {
-            //  get all the processors to do their work.
-            foreach (var processor in _processors)
+            if (_tasks.All(t => t.IsCompleted))
             {
-              _tasks.Add( processor.WorkAsync());
+              //  get all the processors to do their work.
+              foreach (var processor in _processors)
+              {
+                _tasks.Add(processor.WorkAsync(_token));
+              }
+
+              // remove the completed events.
+              _tasks.RemoveAll(t => t.IsCompleted);
             }
           }
-
-          // remove the completed events.
-          _tasks.RemoveAll(t => t.IsCompleted);
-
         }
-
       }
       catch (Exception exception)
       {
@@ -192,12 +193,6 @@ namespace myoddweb.desktopsearch.processor
       // register the token cancellation
       _cancellationTokenRegistration = token.Register(TokenCancellation);
 
-      // start the processors
-      foreach (var processor in _processors)
-      {
-        processor.Start();
-      }
-
       // we can start the timers.
       StartEventsProcessorTimer();
     }
@@ -212,22 +207,22 @@ namespace myoddweb.desktopsearch.processor
 
       try
       {
-        //  stop the processors
-        foreach (var processor in _processors)
+        if (_tasks.Any( t => !t.IsCompleted))
         {
-          processor.Stop();
-        }
+          lock (_lock)
+          {
+            if (_tasks.Any(t => !t.IsCompleted))
+            {
+              // Log that we are stopping the tasks.
+              _logger.Verbose($"Waiting for {_tasks.Count} tasks to complete in the File System Events Timer.");
 
-        if (_tasks.Count > 0)
-        {
-          // Log that we are stopping the tasks.
-          _logger.Verbose($"Waiting for {_tasks.Count} tasks to complete in the File System Events Timer.");
+              // then wait...
+              Task.WaitAll(_tasks.ToArray());
 
-          // then wait...
-          Task.WaitAll(_tasks.ToArray());
-
-          // done 
-          _logger.Verbose("Done.");
+              // done 
+              _logger.Verbose("Done.");
+            }
+          }
         }
       }
       catch (OperationCanceledException e)

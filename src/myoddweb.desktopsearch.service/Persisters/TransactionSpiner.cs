@@ -38,37 +38,42 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     public async Task<IDbTransaction> Begin( CancellationToken token )
     {
-      for (; ; )
+      try
       {
-        // wait for the transaction to no longer be null
-        // outside of the lock, (so it can be freed.
-        if (null != _transaction)
-        {
-          await Task.Run(() => SpinWait.SpinUntil(() => _transaction == null || token.IsCancellationRequested), token).ConfigureAwait( false );
-        }
+        // get out if need be.
+        token.ThrowIfCancellationRequested();
 
-        if (token.IsCancellationRequested)
+        for (;;)
         {
-          return null;
-        }
-
-        // now trans and create the transaction
-        lock (_lock)
-        {
-          // oops... we didn't get it.
-          if (_transaction != null)
+          // wait for the transaction to no longer be null
+          // outside of the lock, (so it can be freed.
+          if (null != _transaction)
           {
-            continue;
+            await Task.Run(() => SpinWait.SpinUntil(() => _transaction == null ), token).ConfigureAwait(false);
           }
 
-          // create the connection
-          _connection = _createConnection();
+          // now trans and create the transaction
+          lock (_lock)
+          {
+            // oops... we didn't get it.
+            if (_transaction != null)
+            {
+              continue;
+            }
 
-          // we were able to get a null transaction
-          // ... and we are inside the lock
-          _transaction = _connection.BeginTransaction();
-          return _transaction;
+            // create the connection
+            _connection = _createConnection();
+
+            // we were able to get a null transaction
+            // ... and we are inside the lock
+            _transaction = _connection.BeginTransaction();
+            return _transaction;
+          }
         }
+      }
+      catch (OperationCanceledException)
+      {
+        return null;
       }
     }
 

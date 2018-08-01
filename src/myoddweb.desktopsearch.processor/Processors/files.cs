@@ -34,11 +34,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     private readonly long _numberOfFilesToProcess;
 
     /// <summary>
-    /// The cancelacation token source.
-    /// </summary>
-    private CancellationTokenSource _cancellationTokenSource;
-
-    /// <summary>
     /// The number of files we want to process.
     /// </summary>
     private long _currentNumberOfFilesToProcess;
@@ -74,34 +69,14 @@ namespace myoddweb.desktopsearch.processor.Processors
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-
+    
     /// <inheritdoc />
-    public void Start()
+    public async Task<bool> WorkAsync(CancellationToken token)
     {
-      _cancellationTokenSource = new CancellationTokenSource();
-    }
-
-    /// <inheritdoc />
-    public void Stop()
-    {
-      _cancellationTokenSource?.Cancel();
-      _cancellationTokenSource = null;
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> WorkAsync()
-    {
-      // if we cannot work ... then don't
-      if (null == _cancellationTokenSource )
-      {
-        // this is not an error
-        return true;
-      }
-
       try
       {
-        // the token we will be using.
-        var token = _cancellationTokenSource.Token;
+        // throw in case we cancel
+        token.ThrowIfCancellationRequested();
 
         // start timing how long the entire operation will take
         var stopwatch = new Stopwatch();
@@ -109,10 +84,11 @@ namespace myoddweb.desktopsearch.processor.Processors
 
         // then get _all_ the file updates that we want to do.
         var pendingUpdates = await GetPendingFileUpdatesAsync(token).ConfigureAwait(false);
+
         if (null == pendingUpdates)
         {
           //  probably was canceled.
-          return !token.IsCancellationRequested;
+          return true;
         }
 
         // the number of updates we actually did.
@@ -122,7 +98,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           // then we go around and do chunks of data one at a time.
           // this is to prevent massive chunks of data from being processed.
           var tasks = new List<Task>();
-          for (var start = 0; start < pendingUpdates.Count; start += (int)_numberOfFilesToProcess)
+          for (var start = 0; start < pendingUpdates.Count; start += (int) _numberOfFilesToProcess)
           {
             // run this group of files.
             tasks.Add(ProcessFileUpdates(pendingUpdates, start, token));
@@ -135,7 +111,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
 
           // return if we made it.
-          return !token.IsCancellationRequested;
+          return true;
         }
         finally
         {
@@ -143,12 +119,17 @@ namespace myoddweb.desktopsearch.processor.Processors
           stopwatch.Stop();
           if (processedFiles > 0)
           {
-            _logger.Verbose( $"Processed {(processedFiles > pendingUpdates.Count ? pendingUpdates.Count : processedFiles)} pending file updates (Time Elapsed: {stopwatch.Elapsed:g})");
+            _logger.Verbose(
+              $"Processed {(processedFiles > pendingUpdates.Count ? pendingUpdates.Count : processedFiles)} pending file updates (Time Elapsed: {stopwatch.Elapsed:g})");
           }
 
           // Adjust the number of items we will be doing the next time.
           AdjustNumberOfFilesToProcess(processedFiles, stopwatch.ElapsedMilliseconds);
         }
+      }
+      catch (OperationCanceledException)
+      {
+        return false;
       }
       catch (Exception e)
       {
@@ -178,7 +159,16 @@ namespace myoddweb.desktopsearch.processor.Processors
       if (elapsedMilliseconds < _maxNumberOfMs * 0.9) //  remove a little bit so we don't always re-adjust.
       {
         //  just add 10%
-        _currentNumberOfFilesToProcess = (long)(_currentNumberOfFilesToProcess * 1.1);
+        //  just add 10%
+        var calc = (long)Math.Ceiling(_currentNumberOfFilesToProcess * 1.1);
+        if (_currentNumberOfFilesToProcess == calc)
+        {
+          _currentNumberOfFilesToProcess = calc + 1;
+        }
+        else
+        {
+          _currentNumberOfFilesToProcess = calc;
+        }
         return;
       }
 
@@ -234,15 +224,12 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
+        // get out if need be.
+        token.ThrowIfCancellationRequested();
+
         // process all the data one at a time.
         foreach (var pendingFileUpdate in pendingUpdates)
-        {
-          if (token.IsCancellationRequested)
-          {
-            _persister.Rollback(transaction);
-            return false;
-          }
-
+        {          
           if (await ProcessFileUpdate(transaction, pendingFileUpdate, token).ConfigureAwait(false))
           {
             continue;
@@ -261,21 +248,14 @@ namespace myoddweb.desktopsearch.processor.Processors
         }
         
         // we made it!
-        if (token.IsCancellationRequested)
-        {
-          _persister.Rollback(transaction);
-        }
-        else
-        {
-          _persister.Commit(transaction);
-        }
+        _persister.Commit(transaction);
+        return true;
       }
       catch
       {
         _persister.Rollback(transaction);
         throw;
       }
-      return !token.IsCancellationRequested;
     }
 
     /// <summary>
@@ -289,10 +269,8 @@ namespace myoddweb.desktopsearch.processor.Processors
     {
       try
       {
-        if (token.IsCancellationRequested)
-        {
-          return false;
-        }
+        // get out if need be.
+        token.ThrowIfCancellationRequested();
 
         switch (pendingFileUpdate.PendingUpdateType)
         {
@@ -339,19 +317,13 @@ namespace myoddweb.desktopsearch.processor.Processors
           _logger.Error("Unable to get any pending files updates.");
           // we will now return null
           // but at least we will commit.
-        }
 
-        if (!token.IsCancellationRequested)
-        {
-          _persister.Commit(transaction);
-        }
-        else
-        {
           _persister.Rollback(transaction);
+          return null;
         }
 
-        // return null if we cancelled.
-        return !token.IsCancellationRequested ? pendingUpdates : null;
+        _persister.Commit(transaction);
+        return pendingUpdates;
       }
       catch (Exception e)
       {
@@ -386,10 +358,10 @@ namespace myoddweb.desktopsearch.processor.Processors
       var file = await _persister.GetFileAsync(fileId, transaction, token).ConfigureAwait(false);
 
       //  process it...
-      await ProcessFile( fileId, file, transaction, token ).ConfigureAwait(false);
+//      await ProcessFile( fileId, file, transaction, token ).ConfigureAwait(false);
 
       // return if we cancelled.
-      return !token.IsCancellationRequested;
+      return true;
     }
 
     /// <summary>
@@ -418,10 +390,10 @@ namespace myoddweb.desktopsearch.processor.Processors
       var file = await _persister.GetFileAsync(fileId, transaction, token).ConfigureAwait(false);
 
       //  process it...
-      await ProcessFile(fileId, file, transaction, token).ConfigureAwait(false);
+ //   await ProcessFile(fileId, file, transaction, token).ConfigureAwait(false);
 
       // return if we cancelled.
-      return !token.IsCancellationRequested;
+      return true;
     }
   }
 }

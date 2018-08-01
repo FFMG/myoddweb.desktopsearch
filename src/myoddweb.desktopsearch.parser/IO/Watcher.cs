@@ -241,12 +241,6 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       lock (_lockTasks)
       {
-        // if we got a cancellation... don't go and add more taks.
-        if (_token.IsCancellationRequested)
-        {
-          return;
-        }
-
         if (sender == _fileWatcher)
         {
           _tasks.Add(DeletedAsync(new FileSystemEvent(e, Logger)));
@@ -262,12 +256,6 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       lock (_lockTasks)
       {
-        // if we got a cancellation... don't go and add more taks.
-        if (_token.IsCancellationRequested)
-        {
-          return;
-        }
-
         if (sender == _fileWatcher )
         {
           _tasks.Add(CreatedAsync(new FileSystemEvent(e, Logger)));
@@ -283,12 +271,6 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       lock (_lockTasks)
       {
-        // if we got a cancellation... don't go and add more taks.
-        if (_token.IsCancellationRequested)
-        {
-          return;
-        }
-
         if (sender == _fileWatcher)
         {
           _tasks.Add(RenamedAsync(new FileSystemEvent(e, Logger)));
@@ -304,12 +286,6 @@ namespace myoddweb.desktopsearch.parser.IO
     {
       lock (_lockTasks)
       {
-        // if we got a cancellation... don't go and add more taks.
-        if (_token.IsCancellationRequested)
-        {
-          return;
-        }
-
         if (sender == _fileWatcher)
         {
           _tasks.Add(ChangedAsync(new FileSystemEvent(e, Logger)));
@@ -328,13 +304,9 @@ namespace myoddweb.desktopsearch.parser.IO
         // stop everything 
         Stop();
 
-        // if we got a cancellation... don't go and add more taks.
-        if (!_token.IsCancellationRequested)
-        {
-          // we cannot use the tasks here
-          // so just show there was an error
-          ErrorAsync(e.GetException(), _token).Wait(_token);
-        }
+        // we cannot use the tasks here
+        // so just show there was an error
+        ErrorAsync(e.GetException(), _token).Wait(_token);
       }
       finally
       {
