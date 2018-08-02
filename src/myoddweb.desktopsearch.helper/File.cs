@@ -491,5 +491,62 @@ namespace myoddweb.desktopsearch.helper
       // return the relatibe complements.
       return Distinct(fisRelativeComplement);
     }
+
+    /// <summary>
+    /// Check if a given file has the one extension
+    /// </summary>
+    /// <param name="file"></param>
+    /// <param name="ext"></param>
+    /// <returns></returns>
+    public static bool IsExtension(FileInfo file, string ext)
+    {
+      return IsExtension(file, new[] {ext});
+    }
+
+    /// <summary>
+    /// Check if a file has an extension.
+    /// </summary>
+    /// <param name="file"></param>
+    /// <param name="exts"></param>
+    /// <returns></returns>
+    public static bool IsExtension(FileInfo file, string[] exts)
+    {
+      // get the file name
+      var name = file?.Name.ToLowerInvariant() ?? throw new ArgumentNullException( nameof(file));
+
+      // then compare all the extensions.
+      foreach (var ext in exts)
+      {
+        if (ext.Length == 0 )
+        {
+          continue;
+        }
+
+        var e = ext.ToLowerInvariant();
+        if (e[0] != '.')
+        {
+          // in the case when name is 'c:\\bin' and the ext is 'bin'
+          if (e == name)
+          {
+            continue;
+          }
+          e = $".{e}";
+        }
+
+        // in the case when name is 'c:\\.bin' and the ext is '.bin'
+        if (e == name)
+        {
+          continue;
+        }
+
+        if (name.EndsWith(e))
+        {
+          return true;
+        }
+      }
+
+      // if we made it here, it is not one of those extensions
+      return false;
+    }
   }
 }

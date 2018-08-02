@@ -408,7 +408,17 @@ namespace myoddweb.desktopsearch.processor.Processors
       var tasks = new List<Task>();
       foreach (var parser in _parsers)
       {
+        if (!helper.File.IsExtension(file, parser.Extenstions))
+        {
+          continue;
+        }
         tasks.Add( parser.ParseAsync(file, token ) );
+      }
+
+      // do we have any work to do?
+      if (!tasks.Any())
+      {
+        return;
       }
 
       // then wait for them all.

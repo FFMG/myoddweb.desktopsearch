@@ -27,6 +27,11 @@ namespace myoddweb.desktopsearch.interfaces.IO
     string Name { get; }
 
     /// <summary>
+    /// The list of extensions we aim to support
+    /// </summary>
+    string[] Extenstions { get; }
+
+    /// <summary>
     /// Parse a single file and return a list of words.
     /// Return null if the file is not supported.
     /// </summary>

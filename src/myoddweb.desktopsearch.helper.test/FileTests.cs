@@ -648,5 +648,50 @@ namespace myoddweb.desktopsearch.parser.test
       Assert.IsTrue( 
         File.Equals(new DirectoryInfo(lhs), new DirectoryInfo(rhs)));
     }
+
+    [TestCase("c:\\hello.TxT", "txt")]
+    [TestCase("c:\\hello.TxT", ".txt")]
+    [TestCase("c:\\hello.txt", "txt")]
+    [TestCase("c:\\hello.txt", "TXT")]
+    [TestCase("c:\\hello.txt", ".txt")]
+    [TestCase("c:\\hello.txt", ".TXT")]
+    [TestCase("c:\\hello.txt", "Txt")]
+    [TestCase("c:\\hello.txt", ".TxT")]
+    [TestCase("c:\\hello.ext1.ext2", ".ext2")]
+    [TestCase("c:\\hello.ext1.ext2", "ext2")]
+    [TestCase("c:\\hello.ext1.ext2", ".ext1.ext2")]
+    [TestCase("c:\\hello.ext1.ext2", "ext1.ext2")]
+    public void SingleValidExt(string file, string ext )
+    {
+      Assert.IsTrue(
+        File.IsExtension(new FileInfo(file), ext )
+        );
+    }
+
+    [TestCase("c:\\hello.txt", new []{"bad", "txt"})]
+    [TestCase("c:\\hello.txt", new[] {"bad1", "txt", "bad2" })]
+    [TestCase("c:\\hello.txt", new[] {"txt" })]
+    [TestCase("c:\\hello.txt", new[] { ".bad", ".txt" })]
+    [TestCase("c:\\hello.txt", new[] { ".bad1", ".txt", ".bad2" })]
+    [TestCase("c:\\hello.txt", new[] { ".txt" })]
+    public void MultipleValidExt(string file, string[] ext)
+    {
+      Assert.IsTrue(
+        File.IsExtension(new FileInfo(file), ext)
+      );
+    }
+
+    [TestCase("c:\\hello.txt", "t")]
+    [TestCase("c:\\hello.txt", ".t")]
+    [TestCase("c:\\.bin", ".bin")]
+    [TestCase("c:\\.bin", "bin")]
+    [TestCase("c:\\bin", "bin")]
+    [TestCase("c:\\bin", ".bin")]
+    public void SingleInvalidExt(string file, string ext)
+    {
+      Assert.IsFalse(
+        File.IsExtension(new FileInfo(file), ext)
+      );
+    }
   }
 }

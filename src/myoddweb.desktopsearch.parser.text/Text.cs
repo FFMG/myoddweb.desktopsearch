@@ -14,6 +14,8 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -22,15 +24,28 @@ namespace myoddweb.desktopsearch.parser.text
 {
   public class Text : IFileParser
   {
+    /// <inheritdoc />
     public string Name => "TextParser";
 
+    /// <inheritdoc />
+    public string[] Extenstions => new[] {"txt"};
+
+    /// <inheritdoc />
     public Task<List<string>> ParseAsync(FileInfo file, CancellationToken token)
     {
-      if (file.Extension != "txt")
+      var reg = new Regex(@"[^\p{L}]*\p{Z}[^\p{L}]*");
+      var current = new List<string>();
+      using (var sr = new StreamReader(file.FullName))
       {
-        return Task.FromResult<List<string>>(null);
+        string line;
+        while ((line = sr.ReadLine()) != null)
+        {
+          var x = reg.Split(line.ToLowerInvariant());
+          current.AddRange(x);
+          current = current.Distinct().ToList();
+        }
       }
-      return Task.FromResult<List<string>>(null);
+      return Task.FromResult(current);
     }
   }
 }
