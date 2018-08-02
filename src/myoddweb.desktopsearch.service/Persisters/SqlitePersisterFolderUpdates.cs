@@ -194,7 +194,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var sql = $"SELECT folderid, type FROM {TableFolderUpdates} ORDER BY ticks DESC LIMIT {limit}";
         using (var cmd = CreateDbCommand(sql, transaction))
         {
-          var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
+          var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
           while (reader.Read())
           {
             // get out if needed.

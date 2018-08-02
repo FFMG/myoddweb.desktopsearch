@@ -180,8 +180,14 @@ namespace myoddweb.desktopsearch.service.Persisters
       return new SQLiteCommand(sql, _connection, transaction as SQLiteTransaction);
     }
 
+    internal static Task<T> CreatedTaskWithCancellation<T>()
+    {
+      TaskCompletionSource<T> completion = new TaskCompletionSource<T>();
+      completion.SetCanceled();
+      return completion.Task;
+    }
+
     /// <summary>
-    /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
     /// </summary>
     /// <param name="sql"></param>
     /// <param name="transaction"></param>
@@ -206,11 +212,50 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
+    /// <summary>
+    /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
+    /// @see https://github.com/dotnet/corefx/commit/297fcc33db4e65287455f6575684f24975688b53
+    /// </summary>
+    /// <param name="command"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    protected static Task<object> ExecuteScalarAsync(DbCommand command, CancellationToken cancellationToken)
+    {
+      if (cancellationToken.IsCancellationRequested)
+      {
+        return CreatedTaskWithCancellation<object>();
+      }
+      return Task.FromResult(command.ExecuteScalar());
+    }
+
+    /// <summary>
+    /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
+    /// @see https://github.com/dotnet/corefx/commit/297fcc33db4e65287455f6575684f24975688b53
+    /// </summary>
+    /// <param name="command"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    protected static Task<DbDataReader> ExecuteReaderAsync(DbCommand command, CancellationToken cancellationToken)
+    {
+      if (cancellationToken.IsCancellationRequested)
+      {
+        return CreatedTaskWithCancellation<DbDataReader>();
+      }
+      return Task.FromResult(command.ExecuteReader());
+    }
+
+    /// <summary>
+    /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
+    /// @see https://github.com/dotnet/corefx/commit/297fcc33db4e65287455f6575684f24975688b53
+    /// </summary>
+    /// <param name="command"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     protected static Task<int> ExecuteNonQueryAsync(DbCommand command, CancellationToken cancellationToken)
     {
       if (cancellationToken.IsCancellationRequested)
       {
-        return Task.FromResult(0);
+        return CreatedTaskWithCancellation<int>();
       }
       return Task.FromResult(command.ExecuteNonQuery());
     }

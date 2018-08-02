@@ -322,7 +322,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           // set the folder id.
           cmd.Parameters["@id"].Value = directoryId;
-          var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
+          var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
           while (reader.Read())
           {
             // get out if needed.
@@ -372,7 +372,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           // set the folder id.
           cmd.Parameters["@id"].Value = fileId;
-          var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
+          var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
           if (reader.Read())
           {
             // get the directory
@@ -537,7 +537,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             cmd.Parameters["@folderid"].Value = folderId;
             cmd.Parameters["@name"].Value = file.Name;
-            if (null != await cmd.ExecuteScalarAsync(token).ConfigureAwait(false))
+            if (null != await ExecuteScalarAsync(cmd, token).ConfigureAwait(false))
             {
               continue;
             }
@@ -570,7 +570,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var sqlNextRowId = $"SELECT max(id) from {TableFiles};";
         using (var cmd = CreateDbCommand(sqlNextRowId, transaction))
         {
-          var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
+          var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
 
           // get out if needed.
           token.ThrowIfCancellationRequested();
@@ -644,7 +644,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           cmd.Parameters["@folderid"].Value = folderid;
           cmd.Parameters["@name"].Value = file.Name;
-          var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
+          var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
           if (null == value || value == DBNull.Value)
           {
             if (!createIfNotFound)
@@ -699,7 +699,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pFolderId);
 
           cmd.Parameters["@folderid"].Value = folderId;
-          var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
+          var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
           while (reader.Read())
           {
             // get out if needed.

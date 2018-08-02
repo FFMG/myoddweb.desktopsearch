@@ -205,7 +205,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters["@id"].Value = directoryId;
 
           // get the path
-          var path = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
+          var path = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
           if (null == path || path == DBNull.Value)
           {
             return null;
@@ -234,7 +234,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sqlNextRowId = $"SELECT max(id) from {TableFolders};";
       using (var cmd = CreateDbCommand(sqlNextRowId, transaction))
       {
-        var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
+        var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
         if (null == value || value == DBNull.Value)
         {
           return 0;
@@ -270,7 +270,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         cmd.Parameters.Add(pPath);
 
         cmd.Parameters["@path"].Value = directory.FullName;
-        var value = await cmd.ExecuteScalarAsync(token).ConfigureAwait(false);
+        var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
         if (null == value || value == DBNull.Value)
         {
           if (!createIfNotFound)
@@ -393,7 +393,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             cmd.Parameters["@path"].Value = directory.FullName;
-            if (null != await cmd.ExecuteScalarAsync(token).ConfigureAwait(false))
+            if (null != await ExecuteScalarAsync(cmd, token).ConfigureAwait(false))
             {
               continue;
             }

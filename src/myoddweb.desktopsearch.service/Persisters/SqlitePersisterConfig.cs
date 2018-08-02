@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System.Data;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.service.Persisters
@@ -26,7 +27,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sql = $"SELECT value FROM {TableConfig} WHERE name='{name}';";
       using (var command = CreateDbCommand(sql, transaction ))
       {
-        var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
+        var reader = await ExecuteReaderAsync(command, CancellationToken.None).ConfigureAwait(false);
         try
         {
           while (reader.Read())
