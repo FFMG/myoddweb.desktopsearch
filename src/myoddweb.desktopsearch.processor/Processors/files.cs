@@ -20,6 +20,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -52,10 +53,18 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// The persister.
     /// </summary>
     private readonly IPersister _persister;
+
+    /// <summary>
+    /// All the file parsers.
+    /// </summary>
+    private readonly List<IFileParser> _parsers;
     #endregion
 
-    public Files(long numberOfFilesToProcessPerEvent, long maxNumberOfMs, IPersister persister, ILogger logger)
+    public Files( List<IFileParser> parsers, long numberOfFilesToProcessPerEvent, long maxNumberOfMs, IPersister persister, ILogger logger)
     {
+      // make sure that the parsers are valid.
+      _parsers = parsers ?? throw new ArgumentNullException(nameof(parsers));
+
       // The number of files to process
       _numberOfFilesToProcess = numberOfFilesToProcessPerEvent;
       _currentNumberOfFilesToProcess = numberOfFilesToProcessPerEvent;
@@ -380,7 +389,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       var file = await _persister.GetFileAsync(fileId, transaction, token).ConfigureAwait(false);
 
       //  process it...
-      await ProcessFile( fileId, file, transaction, token ).ConfigureAwait(false);
+      await ProcessFile( file, fileId, transaction, token ).ConfigureAwait(false);
 
       // return if we cancelled.
       return true;
@@ -389,14 +398,21 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// Process a file.
     /// </summary>
-    /// <param name="fileId"></param>
     /// <param name="file"></param>
+    /// <param name="fileId"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private Task ProcessFile( long fileId, FileInfo file, IDbTransaction transaction, CancellationToken token)
+    private async Task ProcessFile(FileInfo file, long fileId, IDbTransaction transaction, CancellationToken token)
     {
-      return Task.CompletedTask;
+      var tasks = new List<Task>();
+      foreach (var parser in _parsers)
+      {
+        tasks.Add( parser.ParseAsync(file, token ) );
+      }
+
+      // then wait for them all.
+      await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -412,7 +428,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       var file = await _persister.GetFileAsync(fileId, transaction, token).ConfigureAwait(false);
 
       //  process it...
-      await ProcessFile(fileId, file, transaction, token).ConfigureAwait(false);
+      await ProcessFile(file, fileId, transaction, token).ConfigureAwait(false);
 
       // return if we cancelled.
       return true;

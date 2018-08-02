@@ -19,36 +19,20 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.IO
 {
-  public interface IDirectory
+  public interface IFileParser
   {
     /// <summary>
-    /// Parse a directory and look for sub folders.
+    /// The name of the parser.
     /// </summary>
-    /// <param name="path">The start path</param>
-    /// <param name="token">The cancelation token to cancel the runningtask.</param>
-    /// <returns>success or false if the operation was cancelled.</returns>
-    Task<List<DirectoryInfo>> ParseDirectoriesAsync( DirectoryInfo path, CancellationToken token );
+    string Name { get; }
 
     /// <summary>
-    /// Parse all the files in a directory
-    /// </summary>
-    /// <param name="path"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    Task<List<FileInfo>> ParseDirectoryAsync(DirectoryInfo path, CancellationToken token);
-
-    /// <summary>
-    /// Check if the given directory is ignored or not.
-    /// </summary>
-    /// <param name="directory"></param>
-    /// <returns></returns>
-    bool IsIgnored(DirectoryInfo directory);
-
-    /// <summary>
-    /// Check if the given file is ignored or not.
+    /// Parse a single file and return a list of words.
+    /// Return null if the file is not supported.
     /// </summary>
     /// <param name="file"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    bool IsIgnored(FileInfo file);
+    Task<List<string>> ParseAsync(FileInfo file, CancellationToken token);
   }
 }

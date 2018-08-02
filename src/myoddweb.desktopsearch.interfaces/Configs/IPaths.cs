@@ -23,5 +23,10 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     /// Path that we want to ignore by default.
     /// </summary>
     List<string> IgnoredPaths { get; }
+
+    /// <summary>
+    /// Paths where all the components are located.
+    /// </summary>
+    List<string> ComponentsPaths { get; }
   }
 }

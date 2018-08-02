@@ -12,8 +12,11 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.Serialization;
 using myoddweb.desktopsearch.interfaces.Configs;
 using Newtonsoft.Json;
@@ -38,6 +41,9 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public List<string> IgnoredPaths { get; protected set; }
 
+    [JsonProperty(Required = Required.Always)]
+    public List<string> ComponentsPaths { get; protected set; }
+
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context)
     {
@@ -52,6 +58,11 @@ namespace myoddweb.desktopsearch.service.Configs
           "%ProgramW6432%",
           "%windir%"
         };
+      }
+
+      if (!ComponentsPaths.Any())
+      {
+        throw new ArgumentException("You must have at least one valid component path!");
       }
     }
   }

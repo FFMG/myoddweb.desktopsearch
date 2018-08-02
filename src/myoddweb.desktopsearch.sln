@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 15.0.27703.2035
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.service", "myoddweb.desktopsearch.service\myoddweb.desktopsearch.service.csproj", "{4EC949E0-F005-458F-91E4-2AC42270F9EA}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EC7E2AC8-2BEE-4A2C-9EB8-A2E4465A9C37} = {EC7E2AC8-2BEE-4A2C-9EB8-A2E4465A9C37}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.interfaces", "myoddweb.desktopsearch.interfaces\myoddweb.desktopsearch.interfaces.csproj", "{B1B3597E-D169-47A0-8CA8-FD543EF817D9}"
 EndProject
@@ -14,6 +17,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.helper", "myoddweb.desktopsearch.helper\myoddweb.desktopsearch.helper.csproj", "{3D64478E-CB04-40BF-8A18-51989856746F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.helper.test", "myoddweb.desktopsearch.helper.test\myoddweb.desktopsearch.helper.test.csproj", "{01DDB99F-4FF9-4911-AEEE-F360531A203D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.parser.text", "myoddweb.desktopsearch.parser.text\myoddweb.desktopsearch.parser.text.csproj", "{EC7E2AC8-2BEE-4A2C-9EB8-A2E4465A9C37}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Components", "Components", "{29D4B304-D4DA-4CB5-AB5C-A8AB5A4480F6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -45,9 +52,16 @@ Global
 		{01DDB99F-4FF9-4911-AEEE-F360531A203D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{01DDB99F-4FF9-4911-AEEE-F360531A203D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{01DDB99F-4FF9-4911-AEEE-F360531A203D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EC7E2AC8-2BEE-4A2C-9EB8-A2E4465A9C37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC7E2AC8-2BEE-4A2C-9EB8-A2E4465A9C37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC7E2AC8-2BEE-4A2C-9EB8-A2E4465A9C37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC7E2AC8-2BEE-4A2C-9EB8-A2E4465A9C37}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{EC7E2AC8-2BEE-4A2C-9EB8-A2E4465A9C37} = {29D4B304-D4DA-4CB5-AB5C-A8AB5A4480F6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F2388AF5-85F2-4074-80BF-8433C7251909}

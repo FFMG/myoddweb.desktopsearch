@@ -69,7 +69,12 @@ namespace myoddweb.desktopsearch.processor
     private CancellationToken _token;
     #endregion
 
-    public Processor(interfaces.Configs.IConfig config, IPersister persister, ILogger logger, IDirectory directory)
+    public Processor(
+      List<IFileParser> fileParsers,
+      interfaces.Configs.IConfig config, 
+      IPersister persister, 
+      ILogger logger, 
+      IDirectory directory)
     {
       // set the config values.
       _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -82,7 +87,7 @@ namespace myoddweb.desktopsearch.processor
       _processors = new List<IProcessor>
       {
         new Folders( config.Processors.NumberOfFoldersToProcessPerEvent, _config.Timers.EventsProcessorMs, persister, logger, directory ),
-        new Files( config.Processors.NumberOfFilesToProcessPerEvent, _config.Timers.EventsProcessorMs, persister, logger )
+        new Files( fileParsers, config.Processors.NumberOfFilesToProcessPerEvent, _config.Timers.EventsProcessorMs, persister, logger )
       };
     }
 

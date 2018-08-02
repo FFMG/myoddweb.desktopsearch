@@ -17,11 +17,12 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Configuration.Install;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.ServiceProcess;
 using System.Threading;
-using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Configs;
+using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.parser;
 using myoddweb.desktopsearch.processor;
 using myoddweb.desktopsearch.service.Configs;
@@ -122,6 +123,52 @@ namespace myoddweb.desktopsearch.service
     }
 
     /// <summary>
+    /// load all the file parsers.
+    /// </summary>
+    /// <param name="paths"></param>
+    /// <returns></returns>
+    private static List<T> CreateFileParsers<T>(IEnumerable<string> paths)
+    {
+      var parsers = new List<T>();
+      foreach (var path in paths)
+      {
+        var directory = new DirectoryInfo(path);
+        if (!helper.File.CanReadDirectory(directory))
+        {
+          continue;
+        }
+
+        // get all the dlls
+        var dlls = directory.EnumerateFiles("*.dll");
+        foreach (var dll in dlls)
+        {
+          try
+          {
+            var assembly = Assembly.LoadFile(dll.FullName);
+            var types = assembly.GetTypes();
+            foreach (var type in types.Where( t => t.IsClass && t.IsPublic))
+            {
+              var interfaces = type.GetInterfaces();
+              if (!interfaces.Contains(typeof(T)))
+              {
+                continue;
+              }
+
+              var obj = Activator.CreateInstance(type);
+              var t = (T)obj;
+              parsers.Add(t);
+            }
+          }
+          catch (Exception)
+          {
+            //  ignore
+          }
+        }
+      }
+      return parsers;
+    }
+
+    /// <summary>
     /// Create the logger interface
     /// </summary>
     /// <returns></returns>
@@ -174,7 +221,7 @@ namespace myoddweb.desktopsearch.service
 
         // create the cancellation source
         _cancellationTokenSource = new CancellationTokenSource();
-        //var token = new CancellationToken();
+
         var token = _cancellationTokenSource.Token;
 
         // the persister
@@ -186,8 +233,11 @@ namespace myoddweb.desktopsearch.service
         // and we can now create and start the parser.
         _parser = new Parser( config, persister, logger, directory );
 
+        // we now need to create the files parsers
+        var fileParsers = CreateFileParsers<IFileParser>( config.Paths.ComponentsPaths );
+
         // create the processor
-        _processor = new Processor(config, persister, logger, directory);
+        _processor = new Processor( fileParsers, config, persister, logger, directory);
 
         // we can now start the parser as well as the processor
         _parser.Start(token);
