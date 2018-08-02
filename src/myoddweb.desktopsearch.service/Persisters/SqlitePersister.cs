@@ -180,13 +180,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       return new SQLiteCommand(sql, _connection, transaction as SQLiteTransaction);
     }
 
-    internal static Task<T> CreatedTaskWithCancellation<T>()
-    {
-      TaskCompletionSource<T> completion = new TaskCompletionSource<T>();
-      completion.SetCanceled();
-      return completion.Task;
-    }
-
     /// <summary>
     /// </summary>
     /// <param name="sql"></param>
@@ -211,6 +204,36 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
     }
+    #endregion
+
+    #region Fix DBCommand Cancellation issues
+    /// <summary>
+    /// Create a cancelled task
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    private static Task<T> CreatedTaskWithCancellation<T>()
+    {
+      var completion = new TaskCompletionSource<T>();
+      completion.SetCanceled();
+      return completion.Task;
+    }
+
+    /// <summary>
+    /// Try and cancel the current command.
+    /// </summary>
+    /// <param name="command"></param>
+    private static void CancelIgnoreFailure(IDbCommand command)
+    {
+      try
+      {
+        command.Cancel();
+      }
+      catch (Exception)
+      {
+        // ignored
+      }
+    }
 
     /// <summary>
     /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
@@ -225,7 +248,25 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return CreatedTaskWithCancellation<object>();
       }
-      return Task.FromResult(command.ExecuteScalar());
+
+      var register = new CancellationTokenRegistration();
+      if (cancellationToken.CanBeCanceled)
+      {
+        register = cancellationToken.Register(() => CancelIgnoreFailure(command));
+      }
+
+      try
+      {
+        return Task.FromResult(command.ExecuteScalar());
+      }
+      catch (Exception)
+      {
+        return CreatedTaskWithCancellation<object>();
+      }
+      finally
+      {
+        register.Dispose();
+      }
     }
 
     /// <summary>
@@ -241,7 +282,25 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return CreatedTaskWithCancellation<DbDataReader>();
       }
-      return Task.FromResult(command.ExecuteReader());
+
+      var register = new CancellationTokenRegistration();
+      if (cancellationToken.CanBeCanceled)
+      {
+        register = cancellationToken.Register(() => CancelIgnoreFailure(command));
+      }
+
+      try
+      {
+        return Task.FromResult(command.ExecuteReader());
+      }
+      catch (Exception)
+      {
+        return CreatedTaskWithCancellation<DbDataReader>();
+      }
+      finally
+      {
+        register.Dispose();
+      }
     }
 
     /// <summary>
@@ -257,7 +316,25 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return CreatedTaskWithCancellation<int>();
       }
-      return Task.FromResult(command.ExecuteNonQuery());
+
+      var register = new CancellationTokenRegistration();
+      if (cancellationToken.CanBeCanceled)
+      {
+        register = cancellationToken.Register( () => CancelIgnoreFailure(command) );
+      }
+
+      try
+      {
+        return Task.FromResult(command.ExecuteNonQuery());
+      }
+      catch (Exception)
+      {
+        return CreatedTaskWithCancellation<int>();
+      }
+      finally
+      {
+        register.Dispose();
+      }
     }
     #endregion
   }
