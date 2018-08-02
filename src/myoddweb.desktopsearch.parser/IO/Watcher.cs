@@ -351,9 +351,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
       _cancellationTokenRegistration.Dispose();
 
-Logger.Verbose( "Waiting for lock ...");
       StopAndClearAllTasks();
-Logger.Verbose("Releasing lock ...");
     }
 
     /// <summary>
