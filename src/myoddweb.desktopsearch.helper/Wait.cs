@@ -21,15 +21,32 @@ namespace myoddweb.desktopsearch.helper
 {
   public class Wait
   {
+    #region Const variables
+    /// <summary>
+    /// The number of iterations we want our spinwait to do.
+    /// SpinWait essentially puts the processor into a very tight loop, with the loop count specified by the iterations parameter.
+    /// The duration of the wait therefore depends on the speed of the processor.
+    /// </summary>
     private const int NumberOfIterations = 1024;
 
+    /// <summary>
+    /// How many ms we want to sleep in case we only have a single cpu
+    /// </summary>
     private const int SingleProcessorSleep = 10;
+    #endregion
 
     private Wait()
     {
 
     }
 
+    /// <summary>
+    /// What until a function complete.
+    /// </summary>
+    /// <param name="what"></param>
+    /// <param name="numProcessors"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
     private static async Task UntilAsync(Func<bool> what, int numProcessors, CancellationToken token)
     {
       var count = 0;
@@ -42,7 +59,8 @@ namespace myoddweb.desktopsearch.helper
           // reset
           count = 0;
 
-          // cause a small number of Noop operations to all the CPUs
+          // do some noop operations on our current CPU
+          // @see https://msdn.microsoft.com/en-us/library/system.threading.thread.spinwait%28v=vs.110%29.aspx?f=255&MSPPError=-2147217396
           Thread.SpinWait(NumberOfIterations);
           continue;
         }
@@ -50,13 +68,15 @@ namespace myoddweb.desktopsearch.helper
         if (count == 0)
         {
           // just do a small single yield the first time.
+          // if we only have one processor, and no one else is waiting, this will return straight back.
           await Task.Yield();
         }
         else if( numProcessors == 1 )
         {
-          // we only have one processor so we don't want to yield
+          // we only have one processor so we don't want to always yield
           // because if we are the only thread then we will yeald straight back to ourselves
           // so we don't want the CPU to run hot on our behalf.
+          // so we just sleep a little...
           Thread.Sleep(SingleProcessorSleep);
         }
         else
@@ -70,17 +90,27 @@ namespace myoddweb.desktopsearch.helper
       }
     }
 
+    /// <summary>
+    /// Wait until a function completes.
+    /// </summary>
+    /// <param name="what"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
     public static async Task UntilAsync(Func<bool> what, CancellationToken token = default(CancellationToken) )
     {
+      // already cancelled?
       if (token.IsCancellationRequested)
       {
         return;
       }
 
-      if (what())
+      // no need to fire a new thread if this is already true 
+      if ( what() )
       {
         return;
       }
+
+      // do the actual waiting for the event.
       await UntilAsync(what, Environment.ProcessorCount, token ).ConfigureAwait( false );
     }
   }
