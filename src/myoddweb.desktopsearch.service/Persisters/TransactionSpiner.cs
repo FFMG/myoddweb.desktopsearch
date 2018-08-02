@@ -21,21 +21,39 @@ namespace myoddweb.desktopsearch.service.Persisters
 {
   internal class TransactionSpiner
   {
+    #region Member variables
+    /// <summary>
+    /// The function that will create the connection every time we need one.
+    /// </summary>
+    /// <returns></returns>
     public delegate IDbConnection CreateConnection();
-    public delegate void FreeResources(IDbConnection connection);
 
+    /// <summary>
+    /// The function that will dispose of the reources.
+    /// </summary>
+    public delegate void FreeResources();
+
+    /// <summary>
+    /// Our lock
+    /// </summary>
     private readonly object _lock = new object();
-    private IDbConnection _connection;
+
     private IDbTransaction _transaction;
     private readonly CreateConnection _createConnection;
     private readonly FreeResources _freeResources;
-    
+    #endregion
+
     public TransactionSpiner(CreateConnection createConnection, FreeResources freeResources )
     {
       _createConnection = createConnection ?? throw new ArgumentNullException(nameof(createConnection));
       _freeResources = freeResources ?? throw new ArgumentNullException(nameof(freeResources));
     }
-
+    
+    /// <summary>
+    /// Begin a transaction.
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
     public async Task<IDbTransaction> Begin( CancellationToken token )
     {
       for (;;)
@@ -57,16 +75,20 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // create the connection
-          _connection = _createConnection();
+          var connection = _createConnection();
 
           // we were able to get a null transaction
           // ... and we are inside the lock
-          _transaction = _connection.BeginTransaction();
+          _transaction = connection.BeginTransaction();
           return _transaction;
         }
       }
     }
 
+    /// <summary>
+    /// Rollback a transaction
+    /// </summary>
+    /// <param name="transaction"></param>
     public void Rollback(IDbTransaction transaction)
     {
       lock (_lock)
@@ -92,13 +114,17 @@ namespace myoddweb.desktopsearch.service.Persisters
         _transaction.Rollback();
 
         // free resources
-        _freeResources( _connection );
+        _freeResources( );
 
+        // done  with the transaction
         _transaction = null;
-        _connection = null;
       }
     }
 
+    /// <summary>
+    /// Commit a transaction.
+    /// </summary>
+    /// <param name="transaction"></param>
     public void Commit(IDbTransaction transaction)
     {
       lock (_lock)
@@ -125,11 +151,10 @@ namespace myoddweb.desktopsearch.service.Persisters
         _transaction.Commit();
 
         // free resources
-        _freeResources(_connection);
+        _freeResources();
 
-        // done 
+        // done  with the transaction
         _transaction = null;
-        _connection = null;
       }
     }
   }

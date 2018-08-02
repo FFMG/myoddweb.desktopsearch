@@ -13,7 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
@@ -86,19 +85,16 @@ namespace myoddweb.desktopsearch.service.Persisters
       Update(token).Wait();
     }
 
-    private void FreeResources(IDbConnection connection)
+    #region TransactionSpiner functions
+    private void FreeResources()
     {
       if (_connection == null )
       {
         return;
       }
-
-      IDictionary<string, long> statistics = null;
-      SQLiteConnection.GetMemoryStatistics( ref statistics );
-
-      //_connection.Close();
-      //_connection.Dispose();
-      //_connection = null;
+      _connection.Close();
+      _connection.Dispose();
+      _connection = null;
     }
 
     private IDbConnection CreateTransaction()
@@ -113,6 +109,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       _connection.Open();
       return _connection;
     }
+    #endregion
 
     #region Transactions
     /// <inheritdoc/>
