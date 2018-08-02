@@ -71,7 +71,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           // try and replace path1 with path2
           cmd.Parameters["@path1"].Value = directory.FullName;
           cmd.Parameters["@path2"].Value = oldDirectory.FullName;
-          if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
+          if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
           {
             // we could not rename it, this could be because of an error
             // or because the old path simply does not exist.
@@ -152,7 +152,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             // then do the actual delete.
             cmd.Parameters["@path"].Value = directory.FullName;
-            if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
+            if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Warning($"Could not delete folder: {directory.FullName}, does it still exist?");
             }
@@ -333,7 +333,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             cmd.Parameters["@id"].Value = nextId;
             cmd.Parameters["@path"].Value = directory.FullName;
-            if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
+            if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding folder: {directory.FullName} to persister");
               continue;

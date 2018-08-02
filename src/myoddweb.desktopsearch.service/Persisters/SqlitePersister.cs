@@ -180,13 +180,19 @@ namespace myoddweb.desktopsearch.service.Persisters
       return new SQLiteCommand(sql, _connection, transaction as SQLiteTransaction);
     }
 
+    /// <summary>
+    /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
+    /// </summary>
+    /// <param name="sql"></param>
+    /// <param name="transaction"></param>
+    /// <returns></returns>
     private async Task<bool> ExecuteNonQueryAsync(string sql, IDbTransaction transaction )
     {
       try
       {
         using (var command = CreateDbCommand(sql, transaction ))
         {
-          await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+          await ExecuteNonQueryAsync(command, CancellationToken.None).ConfigureAwait(false);
         }
         return true;
       }
@@ -198,6 +204,15 @@ namespace myoddweb.desktopsearch.service.Persisters
         // did not work.
         return false;
       }
+    }
+
+    protected static Task<int> ExecuteNonQueryAsync(DbCommand command, CancellationToken cancellationToken)
+    {
+      if (cancellationToken.IsCancellationRequested)
+      {
+        return Task.FromResult(0);
+      }
+      return Task.FromResult(command.ExecuteNonQuery());
     }
     #endregion
   }

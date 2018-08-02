@@ -84,7 +84,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters["@id"].Value = folderId;
           cmd.Parameters["@type"].Value = (long) type;
           cmd.Parameters["@ticks"].Value = DateTime.UtcNow.Ticks;
-          if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
+          if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
           {
             _logger.Error($"There was an issue adding folder the folder update: {folderId} to persister");
             return false;
@@ -159,7 +159,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             cmd.Parameters["@id"].Value = folderId;
 
             // this could return 0 if the row has already been processed
-            await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+            await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false);
           }
         }
         catch (OperationCanceledException)

@@ -105,7 +105,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             cmd.Parameters["@id"].Value = fileId;
             cmd.Parameters["@type"].Value = (long) type;
             cmd.Parameters["@ticks"].Value = DateTime.UtcNow.Ticks;
-            if (0 == await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false))
+            if (0 == await ExecuteNonQueryAsync( cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding file the file update: {fileId} to persister");
               return false;
@@ -181,7 +181,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             cmd.Parameters["@id"].Value = fileId;
 
             // this could return 0 if the row has already been processed
-            await cmd.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+            await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false);
           }
         }
         catch (OperationCanceledException)
