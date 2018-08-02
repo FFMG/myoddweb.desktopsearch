@@ -319,18 +319,20 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       // get the files in that directory.
       var files = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait(false);
-      if (files != null)
+      if (files == null)
       {
-        // and add them to the persiser
-        if (await _persister.AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false))
-        {
-          // log what we just did
-          _logger.Verbose($"Found {files.Count} file(s) in the new directory: {directory.FullName}.");
-        }
-        else
-        {
-          _logger.Error($"Unable to add {files.Count} file(s) from the new directory: {directory.FullName}.");
-        }
+        return true;
+      }
+
+      // and add them to the persiser
+      if (await _persister.AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false))
+      {
+        // log what we just did
+        _logger.Verbose($"Found {files.Count} file(s) in the new directory: {directory.FullName}.");
+      }
+      else
+      {
+        _logger.Error($"Unable to add {files.Count} file(s) from the new directory: {directory.FullName}.");
       }
 
       // we made it.

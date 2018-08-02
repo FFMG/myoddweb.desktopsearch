@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -120,7 +121,7 @@ namespace myoddweb.desktopsearch.service.IO
     }
 
     /// <inheritdoc />
-    public Task<List<FileInfo>> ParseDirectoryAsync(DirectoryInfo directory, CancellationToken token)
+    public async Task<List<FileInfo>> ParseDirectoryAsync(DirectoryInfo directory, CancellationToken token)
     {
       try
       {
@@ -128,7 +129,7 @@ namespace myoddweb.desktopsearch.service.IO
         if (!helper.File.CanReadDirectory(directory))
         {
           _logger.Warning($"Cannot Parse Directory: {directory.FullName}");
-          return Task.FromResult<List<FileInfo>>(null);
+          return null;
         }
 
         IEnumerable<FileInfo> files;
@@ -141,36 +142,32 @@ namespace myoddweb.desktopsearch.service.IO
           // we cannot access/enumerate this file
           // but we might as well continue
           _logger.Verbose($"Security error while parsing directory: {directory.FullName}.");
-          return Task.FromResult<List<FileInfo>>(null);
+          return null;
         }
         catch (UnauthorizedAccessException)
         {
           // we cannot access/enumerate this file
           // but we might as well continue
           _logger.Verbose($"Unauthorized Access while parsing directory: {directory.FullName}.");
-          return Task.FromResult<List<FileInfo>>(null);
+          return null;
         }
         catch (Exception e)
         {
           _logger.Error($"Exception while parsing directory: {directory.FullName}. {e.Message}");
-          return Task.FromResult<List<FileInfo>>(null);
+          return null;
         }
 
-        var posibleFiles = new List<FileInfo>();
-        foreach (var file in files)
+        var posibleFiles = new ConcurrentBag<FileInfo>();
+        await Task.Run( () => Parallel.ForEach(files, file =>
         {
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-
-          if (!helper.File.CanReadFile(file))
+          if (helper.File.CanReadFile(file))
           {
-            continue;
+            posibleFiles.Add(file);
           }
-          posibleFiles.Add(file);
-        }
+        }), token).ConfigureAwait(false);
 
         // if we found nothing we return null.
-        return Task.FromResult(posibleFiles.Any() ? posibleFiles : null);
+        return posibleFiles.Any() ? posibleFiles.ToList() : null;
       }
       catch (OperationCanceledException)
       {
