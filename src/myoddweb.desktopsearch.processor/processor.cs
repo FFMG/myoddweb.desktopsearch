@@ -64,7 +64,7 @@ namespace myoddweb.desktopsearch.processor
     private readonly List<IProcessor> _processors;
 
     /// <summary>
-    /// The cancellation source
+    /// The cancellation
     /// </summary>
     private CancellationToken _token;
     #endregion
@@ -155,7 +155,8 @@ namespace myoddweb.desktopsearch.processor
               //  get all the processors to do their work.
               foreach (var processor in _processors)
               {
-                _tasks.Add( processor.WorkAsync(_token));
+                // then wait...
+                _tasks.Add(processor.WorkAsync(_token));
               }
 
               // remove the completed events.
@@ -191,7 +192,7 @@ namespace myoddweb.desktopsearch.processor
       _token = token;
 
       // register the token cancellation
-      _cancellationTokenRegistration = token.Register(TokenCancellation);
+      _cancellationTokenRegistration = _token.Register(TokenCancellation);
 
       // we can start the timers.
       StartEventsProcessorTimer();
@@ -239,7 +240,7 @@ namespace myoddweb.desktopsearch.processor
       catch (OperationCanceledException e)
       {
         // ignore the cancelled exceptions.
-        if (e.CancellationToken != _token )
+        if (e.CancellationToken != _token)
         {
           throw;
         }
