@@ -14,44 +14,34 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using myoddweb.desktopsearch.interfaces.IO;
+using System.IO;
 
-namespace myoddweb.desktopsearch.parser.text
+namespace myoddweb.desktopsearch.helper.IO
 {
-  internal class TextWordComparer : IEqualityComparer<IWord>
+  public class FileSystemInfoComparer<T> : IEqualityComparer<T> where T : FileSystemInfo
   {
-    public bool Equals(IWord x, IWord y)
+    public bool Equals(T x, T y)
     {
+      // if they are both null, they are the same.
       if (x == null && y == null)
       {
         return true;
       }
+
+      // we know that they are not both null
+      // so if one of them is null... they are not the samme
       if (x == null || y == null)
       {
         return false;
       }
-      return x.Word == y.Word;
+
+      // then we compare the full name ignoring the case.
+      return string.Equals(x.FullName, y.FullName, StringComparison.InvariantCultureIgnoreCase);
     }
 
-    public int GetHashCode(IWord obj)
+    public int GetHashCode(T obj)
     {
-      return obj.Word.GetHashCode();
-    }
-  }
-
-  internal class TextWord : IWord
-  {
-    /// <inheritdoc />
-    public string Word { get; }
-
-    /// <summary>
-    /// The word we are adding.
-    /// </summary>
-    /// <param name="word"></param>
-    public TextWord(string word)
-    {
-      // the name cannot be null
-      Word = word ?? throw new ArgumentNullException( nameof(word));
+      return obj.FullName.GetHashCode();
     }
   }
 }

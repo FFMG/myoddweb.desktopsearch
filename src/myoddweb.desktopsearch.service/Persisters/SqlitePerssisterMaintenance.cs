@@ -67,7 +67,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateWordsAsync(IDbTransaction transaction)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableWords} (id integer PRIMARY KEY, word TEXT )", transaction)
+        ExecuteNonQueryAsync($"CREATE TABLE {TableWords} (id integer PRIMARY KEY, word TEXT UNIQUE)", transaction)
           .ConfigureAwait(false))
       {
         return false;

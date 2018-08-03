@@ -19,6 +19,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
@@ -69,8 +70,8 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pPath2);
 
           // try and replace path1 with path2
-          cmd.Parameters["@path1"].Value = directory.FullName;
-          cmd.Parameters["@path2"].Value = oldDirectory.FullName;
+          cmd.Parameters["@path1"].Value = directory.FullName.ToLowerInvariant();
+          cmd.Parameters["@path2"].Value = oldDirectory.FullName.ToLowerInvariant();
           if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
           {
             // we could not rename it, this could be because of an error
@@ -151,7 +152,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             await TouchDirectoryAsync(directory, UpdateType.Deleted, transaction, token).ConfigureAwait(false);
 
             // then do the actual delete.
-            cmd.Parameters["@path"].Value = directory.FullName;
+            cmd.Parameters["@path"].Value = directory.FullName.ToLowerInvariant();
             if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Warning($"Could not delete folder: {directory.FullName}, does it still exist?");
@@ -269,7 +270,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         pPath.ParameterName = "@path";
         cmd.Parameters.Add(pPath);
 
-        cmd.Parameters["@path"].Value = directory.FullName;
+        cmd.Parameters["@path"].Value = directory.FullName.ToLowerInvariant();
         var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
         if (null == value || value == DBNull.Value)
         {
@@ -332,7 +333,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             cmd.Parameters["@id"].Value = nextId;
-            cmd.Parameters["@path"].Value = directory.FullName;
+            cmd.Parameters["@path"].Value = directory.FullName.ToLowerInvariant();
             if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding folder: {directory.FullName} to persister");
@@ -370,6 +371,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
+        // make that list unique
+        var uniqueList = directories.Distinct(new DirectoryInfoComparer());
+
         // The list of directories we will be adding to the list.
         var actualDirectories = new List<DirectoryInfo>();
 
@@ -381,7 +385,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           pPath.DbType = DbType.String;
           pPath.ParameterName = "@path";
           cmd.Parameters.Add(pPath);
-          foreach (var directory in directories)
+          foreach (var directory in uniqueList)
           {
             // get out if needed.
             token.ThrowIfCancellationRequested();
@@ -392,7 +396,7 @@ namespace myoddweb.desktopsearch.service.Persisters
               continue;
             }
 
-            cmd.Parameters["@path"].Value = directory.FullName;
+            cmd.Parameters["@path"].Value = directory.FullName.ToLowerInvariant();
             if (null != await ExecuteScalarAsync(cmd, token).ConfigureAwait(false))
             {
               continue;

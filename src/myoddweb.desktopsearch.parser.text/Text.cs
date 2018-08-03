@@ -53,7 +53,7 @@ namespace myoddweb.desktopsearch.parser.text
     /// <inheritdoc />
     public async Task<HashSet<IWord>> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
     {
-      var textWord = new HashSet<IWord>();
+      var textWord = new HashSet<IWord>( new TextWordComparer() );
       try
       {
         using (var sr = new StreamReader(file.FullName))

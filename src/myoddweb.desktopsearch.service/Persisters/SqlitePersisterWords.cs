@@ -163,6 +163,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
+        // make that list unique
+        var uniqueList = words.Distinct();
+
         // The list of words we will be adding to the list.
         var actualWords = new List<string>();
 
@@ -174,11 +177,12 @@ namespace myoddweb.desktopsearch.service.Persisters
           pWord.DbType = DbType.String;
           pWord.ParameterName = "@word";
           cmd.Parameters.Add(pWord);
-          foreach (var word in words)
+          foreach (var word in uniqueList)
           {
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
+            // the words are case sensitive
             cmd.Parameters["@word"].Value = word;
             if (null != await ExecuteScalarAsync(cmd, token).ConfigureAwait(false))
             {
@@ -190,6 +194,8 @@ namespace myoddweb.desktopsearch.service.Persisters
             actualWords.Add(word);
           }
         }
+
+        //  we know that the list is unique thanks to the uniqueness above.
         return actualWords;
       }
       catch (OperationCanceledException)

@@ -19,6 +19,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
@@ -98,8 +99,8 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pFolderId2);
 
           // try and replace path1 with path2
-          cmd.Parameters["@name1"].Value = file.Name;
-          cmd.Parameters["@name2"].Value = oldFile.Name;
+          cmd.Parameters["@name1"].Value = file.Name.ToLowerInvariant();
+          cmd.Parameters["@name2"].Value = oldFile.Name.ToLowerInvariant();
           cmd.Parameters["@folderid1"].Value = folderId;
           cmd.Parameters["@folderid2"].Value = oldFolderId;
           if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
@@ -207,7 +208,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             await TouchFilesAsync(fileIds, UpdateType.Deleted, transaction, token).ConfigureAwait(false);
 
             cmd.Parameters["@folderid"].Value = folderId;
-            cmd.Parameters["@name"].Value = file.Name;
+            cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
             if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Warning($"Could not delete file: {file.FullName}, does it still exist?");
@@ -462,7 +463,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             cmd.Parameters["@id"].Value = nextId;
             cmd.Parameters["@folderid"].Value = folderId;
-            cmd.Parameters["@name"].Value = file.Name;
+            cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
             if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding file: {file.FullName} to persister");
@@ -500,6 +501,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
+        // make that list unique
+        var uniqueList = files.Distinct( new FileInfoComparer() );
+
         // The list of directories we will be adding to the list.
         var actualFiles = new List<FileInfo>();
 
@@ -516,7 +520,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           pName.DbType = DbType.String;
           pName.ParameterName = "@name";
           cmd.Parameters.Add(pName);
-          foreach (var file in files)
+          foreach (var file in uniqueList)
           {
             // get out if needed.
             token.ThrowIfCancellationRequested();
@@ -536,7 +540,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             cmd.Parameters["@folderid"].Value = folderId;
-            cmd.Parameters["@name"].Value = file.Name;
+            cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
             if (null != await ExecuteScalarAsync(cmd, token).ConfigureAwait(false))
             {
               continue;
@@ -643,7 +647,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pName);
 
           cmd.Parameters["@folderid"].Value = folderid;
-          cmd.Parameters["@name"].Value = file.Name;
+          cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
           var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
           if (null == value || value == DBNull.Value)
           {

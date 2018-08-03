@@ -52,6 +52,7 @@
     <Compile Include="IO\IWord.cs" />
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Logging\LogLevel.cs" />
+    <Compile Include="Persisters\IWords.cs" />
     <Compile Include="Persisters\PendingFileUpdate.cs" />
     <Compile Include="Persisters\UpdateType.cs" />
     <Compile Include="Persisters\IConfig.cs" />
