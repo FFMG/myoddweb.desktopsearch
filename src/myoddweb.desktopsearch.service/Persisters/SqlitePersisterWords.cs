@@ -44,6 +44,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     #region Private word functions
+
     /// <summary>
     /// Get the ID for a given work, add it if we are don't find it and are asked to do.
     /// </summary>
@@ -54,38 +55,76 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     private async Task<long> GetWordIdAsync(string word, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
     {
-      // we do not check for the token as the underlying functions will throw if needed. 
-      // look for the word, add it if needed.
-      var sql = $"SELECT id FROM {TableWords} WHERE word=@word";
-      using (var cmd = CreateDbCommand(sql, transaction))
+      var ids = await GetWordIdsAsync(new[] {word}, transaction, token, createIfNotFound).ConfigureAwait(false);
+      return ids.Any() ? ids[0] : -1;
+    }
+
+    /// <summary>
+    /// Get the id of a list of words we match the words to ids
+    ///   [word1] => [id1]
+    ///   [word2] => [id2]
+    /// </summary>
+    /// <param name="words"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <param name="createIfNotFound"></param>
+    /// <returns></returns>
+    private async Task<List<long>> GetWordIdsAsync(IReadOnlyCollection<string> words, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    {
+      try
       {
-        var pWord = cmd.CreateParameter();
-        pWord.DbType = DbType.String;
-        pWord.ParameterName = "@word";
-        cmd.Parameters.Add(pWord);
-
-        cmd.Parameters["@word"].Value = word;
-        var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
-        if (null == value || value == DBNull.Value)
+        // we do not check for the token as the underlying functions will throw if needed. 
+        // look for the word, add it if needed.
+        var sql = $"SELECT id FROM {TableWords} WHERE word=@word";
+        using (var cmd = CreateDbCommand(sql, transaction))
         {
-          if (!createIfNotFound)
+          var pWord = cmd.CreateParameter();
+          pWord.DbType = DbType.String;
+          pWord.ParameterName = "@word";
+          cmd.Parameters.Add(pWord);
+
+          var ids = new List<long>(words.Count);
+          foreach (var word in words)
           {
-            // we could not find it and we do not wish to go further.
-            return -1;
+            cmd.Parameters["@word"].Value = word;
+            var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+            if (null == value || value == DBNull.Value)
+            {
+              if (!createIfNotFound)
+              {
+                // we could not find it and we do not wish to go further.
+                ids.Add(-1);
+                continue;
+              }
+
+              // try and add the word, if that does not work, then we cannot go further.
+              if (!await InsertWordsAsync( new []{word}, transaction, token).ConfigureAwait(false))
+              {
+                ids.Add(-1);
+                continue;
+              }
+
+              // try one more time to look for it .. and if we do not find it, then just return -1
+              ids.Add(await GetWordIdAsync(word, transaction, token, false).ConfigureAwait(false));
+              continue;
+            }
+
+            // get the path id.
+            ids.Add((long) value);
           }
 
-          // try and add the word, if that does not work, then we cannot go further.
-          if (!await AddOrUpdateWordAsync(word, transaction, token).ConfigureAwait(false))
-          {
-            return -1;
-          }
-
-          // try one more time to look for it .. and if we do not find it, then just return
-          return await GetWordIdAsync(word, transaction, token, false).ConfigureAwait(false);
+          return ids;
         }
-
-        // get the path id.
-        return (long) value;
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Get multiple word ids.");
+        throw;
+      }
+      catch (Exception ex)
+      {
+        _logger.Exception(ex);
+        return Enumerable.Repeat( (long)-1, words.Count ).ToList();
       }
     }
 

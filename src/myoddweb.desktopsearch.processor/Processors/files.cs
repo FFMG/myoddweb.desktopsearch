@@ -437,7 +437,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
 
       // then we add the words to the database.
-      await _persister.AddOrUpdateWordsAsync(words.Select( w => w.Word).ToList(), transaction, token ).ConfigureAwait(false);
+      await _persister.AddOrUpdateWordsToFileAsync(words.Select( w => w.Word).ToList(), fileId, transaction, token ).ConfigureAwait(false);
 
       // log it.
       _logger.Verbose( $"Parser : {parser.Name} processed {words.Count} words." );

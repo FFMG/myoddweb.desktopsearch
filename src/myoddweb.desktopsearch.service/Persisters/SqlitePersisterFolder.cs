@@ -54,10 +54,10 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
       }
 
-      var sql = $"UPDATE {TableFolders} SET path=@path1 WHERE path=@path2";
-      using (var cmd = CreateDbCommand(sql, transaction))
+      try
       {
-        try
+        var sql = $"UPDATE {TableFolders} SET path=@path1 WHERE path=@path2";
+        using (var cmd = CreateDbCommand(sql, transaction))
         {
           var pPath1 = cmd.CreateParameter();
           pPath1.DbType = DbType.String;
@@ -100,15 +100,15 @@ namespace myoddweb.desktopsearch.service.Persisters
           // we are done
           return folderId;
         }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Update directory");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-        }
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Update directory");
+        throw;
+      }
+      catch (Exception ex)
+      {
+        _logger.Exception(ex);
       }
       return -1;
     }

@@ -84,6 +84,7 @@
     <Compile Include="Persisters\NoopPersister.cs" />
     <Compile Include="Persisters\SqlitePersister.cs" />
     <Compile Include="Persisters\SqlitePersisterConfig.cs" />
+    <Compile Include="Persisters\SqlitePersisterFilesWords.cs" />
     <Compile Include="Persisters\SqlitePersisterWords.cs" />
     <Compile Include="Persisters\SqlitePersisterFiles.cs" />
     <Compile Include="Persisters\SqlitePersisterFileUpdates.cs" />

@@ -44,6 +44,12 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
 
+      // the files words tables
+      if (!await CreateFilesWordsAsync(transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
+
       // the folders table.
       if (!await CreateFoldersAsync(transaction).ConfigureAwait(false))
       {
@@ -78,7 +84,32 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       return true;
     }
-    
+
+    private async Task<bool> CreateFilesWordsAsync(IDbTransaction transaction)
+    {
+      if (!await
+        ExecuteNonQueryAsync($"CREATE TABLE {TableFilesWords} (wordid integer, fileid integer)", transaction)
+          .ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{TableFilesWords}_wordid_fileid ON {TableFilesWords}(wordid, fileid);", transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFilesWords}_fileid ON {TableFilesWords}(fileid);", transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
+      return true;
+    }
+
     private async Task<bool> CreateFilesAsync(IDbTransaction transaction)
     {
       if (!await

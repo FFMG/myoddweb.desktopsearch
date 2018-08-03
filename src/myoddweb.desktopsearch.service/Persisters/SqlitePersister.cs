@@ -33,6 +33,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private const string TableFiles = "Files";
     private const string TableFileUpdates = "FileUpdates";
     private const string TableWords = "Words";
+    private const string TableFilesWords = "FilesWords";
     #endregion
 
     #region Member variables
@@ -217,6 +218,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       return completion.Task;
     }
 
+    private static Task<T> CreatedTaskWithException<T>(Exception ex)
+    {
+      var completion = new TaskCompletionSource<T>();
+      completion.SetException(ex);
+      return completion.Task;
+    }
+
     /// <summary>
     /// Try and cancel the current command.
     /// </summary>
@@ -257,9 +265,9 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return Task.FromResult(command.ExecuteScalar());
       }
-      catch (Exception)
+      catch (Exception e )
       {
-        return CreatedTaskWithCancellation<object>();
+        return CreatedTaskWithException<object>(e);
       }
       finally
       {
@@ -291,9 +299,9 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return Task.FromResult(command.ExecuteReader());
       }
-      catch (Exception)
+      catch (Exception e)
       {
-        return CreatedTaskWithCancellation<DbDataReader>();
+        return CreatedTaskWithException<DbDataReader>(e);
       }
       finally
       {
@@ -307,7 +315,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     /// <param name="command"></param>
     /// <param name="cancellationToken"></param>
-    /// <returns></returns>
+    /// <returns>The return value is the number of rows affected by the command</returns>
     protected static Task<int> ExecuteNonQueryAsync(DbCommand command, CancellationToken cancellationToken)
     {
       if (cancellationToken.IsCancellationRequested)
@@ -325,9 +333,9 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return Task.FromResult(command.ExecuteNonQuery());
       }
-      catch (Exception)
+      catch (Exception e)
       {
-        return CreatedTaskWithCancellation<int>();
+        return CreatedTaskWithException<int>(e);
       }
       finally
       {

@@ -227,5 +227,15 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       return Task.FromResult(true);
     }
+
+    public Task<bool> AddOrUpdateWordToFileAsync(string word, long fileId, IDbTransaction transaction, CancellationToken token)
+    {
+      return Task.FromResult(true);
+    }
+
+    public Task<bool> AddOrUpdateWordsToFileAsync(IReadOnlyList<string> words, long fileId, IDbTransaction transaction, CancellationToken token)
+    {
+      return Task.FromResult(true);
+    }
   }
 }
