@@ -12,40 +12,32 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IPersister : IConfig, IFolders, IFolderUpdates, IFiles, IFileUpdates, IWords
+  public interface IWords
   {
     /// <summary>
-    /// Create a command with a transaction.
+    /// Add or update a single word.
     /// </summary>
-    /// <param name="sql"></param>
+    /// <param name="word"></param>
     /// <param name="transaction"></param>
-    /// <returns></returns>
-    DbCommand CreateDbCommand(string sql, IDbTransaction transaction);
-
-    /// <summary>
-    /// Get a database transaction.
-    /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IDbTransaction> BeginTransactionAsync( CancellationToken token );
+    Task<bool> AddOrUpdateWordAsync(string word, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
-    /// Rollback the current transaction.
+    /// Add or update multiple word.
     /// </summary>
+    /// <param name="words"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    bool Rollback(IDbTransaction transaction);
-
-    /// <summary>
-    /// Commit the current transaction.
-    /// </summary>
-    /// <returns></returns>
-    bool Commit(IDbTransaction transaction);
+    Task<bool> AddOrUpdateWordsAsync(IReadOnlyList<string> words, IDbTransaction transaction, CancellationToken token);
   }
 }

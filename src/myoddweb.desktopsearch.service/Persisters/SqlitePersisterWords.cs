@@ -1,0 +1,239 @@
+﻿//This file is part of Myoddweb.DesktopSearch.
+//
+//    Myoddweb.DesktopSearch is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    Myoddweb.DesktopSearch is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+//    GNU General Public License for more details.
+//
+//    You should have received a copy of the GNU General Public License
+//    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace myoddweb.desktopsearch.service.Persisters
+{
+  internal partial class SqlitePersister 
+  {
+    /// <inheritdoc />
+    public async Task<bool> AddOrUpdateWordAsync(string word, IDbTransaction transaction, CancellationToken token)
+    {
+      return await AddOrUpdateWordsAsync(new [] { word }, transaction, token ).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> AddOrUpdateWordsAsync(IReadOnlyList<string> words, IDbTransaction transaction, CancellationToken token)
+    {
+      if (null == transaction)
+      {
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+      }
+
+      // rebuild the list of directory with only those that need to be inserted.
+      return await InsertWordsAsync(
+        await RebuildWordsListAsync(words, transaction, token).ConfigureAwait(false),
+        transaction, token).ConfigureAwait(false);
+    }
+
+    #region Private word functions
+    /// <summary>
+    /// Get the ID for a given work, add it if we are don't find it and are asked to do.
+    /// </summary>
+    /// <param name="word"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <param name="createIfNotFound"></param>
+    /// <returns></returns>
+    private async Task<long> GetWordIdAsync(string word, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    {
+      // we do not check for the token as the underlying functions will throw if needed. 
+      // look for the word, add it if needed.
+      var sql = $"SELECT id FROM {TableWords} WHERE word=@word";
+      using (var cmd = CreateDbCommand(sql, transaction))
+      {
+        var pWord = cmd.CreateParameter();
+        pWord.DbType = DbType.String;
+        pWord.ParameterName = "@word";
+        cmd.Parameters.Add(pWord);
+
+        cmd.Parameters["@word"].Value = word;
+        var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+        if (null == value || value == DBNull.Value)
+        {
+          if (!createIfNotFound)
+          {
+            // we could not find it and we do not wish to go further.
+            return -1;
+          }
+
+          // try and add the word, if that does not work, then we cannot go further.
+          if (!await AddOrUpdateWordAsync(word, transaction, token).ConfigureAwait(false))
+          {
+            return -1;
+          }
+
+          // try one more time to look for it .. and if we do not find it, then just return
+          return await GetWordIdAsync(word, transaction, token, false).ConfigureAwait(false);
+        }
+
+        // get the path id.
+        return (long) value;
+      }
+    }
+
+    /// <summary>
+    /// Given a list of words, re-create the ones that we need to insert.
+    /// </summary>
+    /// <param name="words"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> InsertWordsAsync(IReadOnlyList<string> words, IDbTransaction transaction, CancellationToken token)
+    {
+      // if we have nothing to do... we are done.
+      if (!words.Any())
+      {
+        return true;
+      }
+
+      // get the next id.
+      var nextId = await GetNextWordIdAsync(transaction, token).ConfigureAwait(false);
+
+      var sqlInsert = $"INSERT INTO {TableWords} (id, word) VALUES (@id, @word)";
+      using (var cmd = CreateDbCommand(sqlInsert, transaction))
+      {
+        var pId = cmd.CreateParameter();
+        pId.DbType = DbType.Int64;
+        pId.ParameterName = "@id";
+        cmd.Parameters.Add(pId);
+
+        var pWord = cmd.CreateParameter();
+        pWord.DbType = DbType.String;
+        pWord.ParameterName = "@word";
+        cmd.Parameters.Add(pWord);
+
+        foreach (var word in words)
+        {
+          try
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            cmd.Parameters["@id"].Value = nextId;
+            cmd.Parameters["@word"].Value = word;
+            if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+            {
+              _logger.Error($"There was an issue adding word: {word} to persister");
+              continue;
+            }
+
+            // we can now move on to the next folder id.
+            ++nextId;
+          }
+          catch (OperationCanceledException)
+          {
+            _logger.Warning("Received cancellation request - Insert multiple words");
+            throw;
+          }
+          catch (Exception ex)
+          {
+            _logger.Exception(ex);
+          }
+        }
+      }
+      return true;
+    }
+
+    /// <summary>
+    /// Given a list of directories, re-create the ones that we need to insert.
+    /// </summary>
+    /// <param name="words"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<List<string>> RebuildWordsListAsync(IEnumerable<string> words, IDbTransaction transaction, CancellationToken token)
+    {
+      try
+      {
+        // The list of words we will be adding to the list.
+        var actualWords = new List<string>();
+
+        // we first look for it, and, if we find it then there is nothing to do.
+        var sqlGetRowId = $"SELECT id FROM {TableWords} WHERE word=@word";
+        using (var cmd = CreateDbCommand(sqlGetRowId, transaction))
+        {
+          var pWord = cmd.CreateParameter();
+          pWord.DbType = DbType.String;
+          pWord.ParameterName = "@word";
+          cmd.Parameters.Add(pWord);
+          foreach (var word in words)
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            cmd.Parameters["@word"].Value = word;
+            if (null != await ExecuteScalarAsync(cmd, token).ConfigureAwait(false))
+            {
+              continue;
+            }
+
+            // we could not find this word
+            // so we will just add it to our list.
+            actualWords.Add(word);
+          }
+        }
+        return actualWords;
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Building word list");
+        throw;
+      }
+    }
+
+    /// <summary>
+    /// Get the next row ID we can use.
+    /// </summary>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<long> GetNextWordIdAsync(IDbTransaction transaction, CancellationToken token )
+    {
+      try
+      {
+        // we first look for it, and, if we find it then there is nothing to do.
+        var sqlNextRowId = $"SELECT max(id) from {TableWords};";
+        using (var cmd = CreateDbCommand(sqlNextRowId, transaction))
+        {
+          var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
+          // does not exist ...
+          if (null == value || value == DBNull.Value)
+          {
+            return 0;
+          }
+
+          // this is the next counter.
+          return ((long) value) + 1;
+        }
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Get Next valid Word id");
+        throw;
+      }
+    }
+    #endregion
+  }
+}
