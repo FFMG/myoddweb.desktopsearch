@@ -78,7 +78,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             // or because the old path simply does not exist.
             // in that case we can try and simply add the new path.
             _logger.Error($"There was an issue renaming folder: {directory.FullName} to persister");
-            if (!await AddOrUpdateDirectoryAsync(oldDirectory, transaction, token).ConfigureAwait(false))
+            if (!await InsertDirectoriesAsync( new []{oldDirectory}, transaction, token).ConfigureAwait(false))
             {
               return -1;
             }
@@ -281,7 +281,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // try and add the folder, if that does not work, then we cannot go further.
-          if (!await AddOrUpdateDirectoryAsync(directory, transaction, token).ConfigureAwait(false))
+          if (!await InsertDirectoriesAsync( new[]{directory}, transaction, token).ConfigureAwait(false))
           {
             return -1;
           }

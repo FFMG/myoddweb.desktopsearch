@@ -108,7 +108,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             // we could not rename it, this could be because of an error
             // or because the old path simply does not exist.
             // in that case we can try and simply add the new path.
-            if (!await AddOrUpdateFileAsync(file, transaction, token).ConfigureAwait(false))
+            if (!await InsertFilesAsync( new []{file}, transaction, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue renaming the file: {file.FullName} to persister");
               return -1;
@@ -617,7 +617,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // add the file, if we get an error now, there is nothing we can do about it.
-          if (!await AddOrUpdateFileAsync(file, transaction, token).ConfigureAwait(false))
+          if (!await InsertFilesAsync( new []{file}, transaction, token).ConfigureAwait(false))
           {
             return -1;
           }
@@ -658,7 +658,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // try and add the folder, if that does not work, then we cannot go further.
-            if (!await AddOrUpdateFileAsync(file, transaction, token).ConfigureAwait(false))
+            if (!await InsertFilesAsync(new []{file}, transaction, token).ConfigureAwait(false))
             {
               return -1;
             }
