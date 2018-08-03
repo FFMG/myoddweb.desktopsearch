@@ -14,7 +14,6 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Data;
-using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -39,6 +38,12 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
 
+      // the words tables
+      if (!await CreateWordsAsync(transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
+
       // the folders table.
       if (!await CreateFoldersAsync(transaction).ConfigureAwait(false))
       {
@@ -51,6 +56,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
 
+      // the files update table
       if (!await CreateFilesUpdateAsync(transaction).ConfigureAwait(false))
       {
         return false;
@@ -58,6 +64,21 @@ namespace myoddweb.desktopsearch.service.Persisters
       return true;
     }
 
+    private async Task<bool> CreateWordsAsync(IDbTransaction transaction)
+    {
+      if (!await
+        ExecuteNonQueryAsync($"CREATE TABLE {TableWords} (id integer PRIMARY KEY, word TEXT )", transaction)
+          .ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // Note that we do not need to add an index won the WORD
+      // this is because the UNIQUE CONSTRAINT is an index.
+
+      return true;
+    }
+    
     private async Task<bool> CreateFilesAsync(IDbTransaction transaction)
     {
       if (!await

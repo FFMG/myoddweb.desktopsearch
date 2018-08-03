@@ -32,6 +32,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private const string TableFolderUpdates = "FolderUpdates";
     private const string TableFiles = "Files";
     private const string TableFileUpdates = "FileUpdates";
+    private const string TableWords = "Words";
     #endregion
 
     #region Member variables
