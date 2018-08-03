@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -39,6 +40,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       // get all the word ids, insert the words as needed ...
       var ids = await GetWordIdsAsync(words, transaction, token, true).ConfigureAwait(false);
 
+      // before we go anywhere, we want to remove whatever is not in the list
+      // of word ids we will be adding.
+      if (!await RemoveIdsInvalidWordsInfFile(ids, fileId, transaction, token).ConfigureAwait(false))
+      {
+        return false;
+      }
+
       try
       {
         // we then go around and look for the word/id, if it already exists then we do not add it again
@@ -46,6 +54,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var sqlInsert = $"INSERT INTO {TableFilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
         using (var cmdInsert = CreateDbCommand(sqlInsert, transaction))
         {
+          // create the parameters for inserting.
           var pWId1 = cmdInsert.CreateParameter();
           pWId1.DbType = DbType.Int64;
           pWId1.ParameterName = "@wordid";
@@ -59,12 +68,13 @@ namespace myoddweb.desktopsearch.service.Persisters
           var sqlSelect = $"SELECT wordid FROM {TableFilesWords} WHERE wordid=@wordid AND fileid=@fileid";
           using (var cmdSelect = CreateDbCommand(sqlSelect, transaction))
           {
+            // and the prameters for selecting.
             var pWId2 = cmdSelect.CreateParameter();
             pWId2.DbType = DbType.Int64;
             pWId2.ParameterName = "@wordid";
             cmdSelect.Parameters.Add(pWId2);
 
-            var pFId2 = cmdInsert.CreateParameter();
+            var pFId2 = cmdSelect.CreateParameter();
             pFId2.DbType = DbType.Int64;
             pFId2.ParameterName = "@fileid";
             cmdSelect.Parameters.Add(pFId2);
@@ -93,8 +103,11 @@ namespace myoddweb.desktopsearch.service.Persisters
                 _logger.Error( $"There was an issue inserting word : {id} for file : {fileId}");
               }
             }
-          }
-        }
+          }// Command Select
+        }// Command Insert
+
+        // we are done
+        return true;
       }
       catch (OperationCanceledException)
       {
@@ -106,10 +119,125 @@ namespace myoddweb.desktopsearch.service.Persisters
         _logger.Exception(ex);
         return false;
       }
-      return true;
     }
 
     #region Private word functions
+
+    private async Task<bool> RemoveIdsInvalidWordsInfFile(List<long> ids, long fileId, IDbTransaction transaction, CancellationToken token)
+    {
+      // get all the word ids on record.
+      var currentIds = await GetWordIdsForFile(fileId, transaction, token).ConfigureAwait(false);
+
+      // then remove all the ids that are in our _current_ list
+      // but that are not in our given list.
+      var diffIds = currentIds.Except(ids).ToList();
+
+      // those are the id that we want to delete.
+      if (!diffIds.Any())
+      {
+        // we have nothing to do
+        // but it is no an error in itslef.
+        return true;
+      }
+
+      try
+      {
+        var sqlDelete = $"DELETE FROM {TableFilesWords} WHERE wordid=@wordid and fileid=@fileid";
+        using (var cmd = CreateDbCommand(sqlDelete, transaction))
+        {
+          var pWId = cmd.CreateParameter();
+          pWId.DbType = DbType.Int64;
+          pWId.ParameterName = "@worldid";
+          cmd.Parameters.Add(pWId);
+
+          var pFId = cmd.CreateParameter();
+          pFId.DbType = DbType.Int64;
+          pFId.ParameterName = "@fileid";
+          cmd.Parameters.Add(pFId);
+
+          pFId.Value = fileId;
+          foreach (var diffId in diffIds)
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            // set the word id we are getting rid off.
+            pWId.Value = diffId;
+            if (1 != await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+            {
+              _logger.Warning($"Could not delete word : {diffId} for file : {fileId}, does it still exist?");
+            }
+          }
+        }
+
+        // all good.
+        return true;
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Deleting extra word ids.");
+        throw;
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        return false;
+      }
+    }
+
+    /// <summary>
+    /// Get all the woord ids for a given file.
+    /// </summary>
+    /// <param name="fileId"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<List<long>> GetWordIdsForFile( long fileId, IDbTransaction transaction, CancellationToken token)
+    {
+      // first we get the ids that are in the 
+      try
+      {
+        var sqlSelect = $"SELECT wordid FROM {TableFilesWords} WHERE fileid=@fileid";
+        using (var cmd = CreateDbCommand(sqlSelect, transaction))
+        {
+          // and the prameters for selecting.
+          var pFId = cmd.CreateParameter();
+          pFId.DbType = DbType.Int64;
+          pFId.ParameterName = "@fileid";
+          cmd.Parameters.Add(pFId);
+
+          // set the file id.
+          pFId.Value = fileId;
+
+          // the list of wordIds 
+          var wordIds = new List<long>();
+
+          //  execute the query itself.
+          var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
+          while (reader.Read())
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            // add this id to the list.
+            wordIds.Add((long) reader["wordid"]);
+          }
+
+          // return all the word ids that we found for this files.
+          return wordIds;
+        }
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Getting all the word ids for a file id.");
+        throw;
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        return new List<long>();
+      }
+    }
     #endregion
   }
 }

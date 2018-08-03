@@ -141,10 +141,13 @@ namespace myoddweb.desktopsearch.service.Persisters
         pPath.ParameterName = "@path";
         cmd.Parameters.Add(pPath);
 
-        foreach (var directory in directories)
+        try
         {
-          try
+          foreach (var directory in directories)
           {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
             // try and delete files given directory info.
             await DeleteFilesAsync(directory, transaction, token).ConfigureAwait(false);
 
@@ -157,24 +160,22 @@ namespace myoddweb.desktopsearch.service.Persisters
             {
               _logger.Warning($"Could not delete folder: {directory.FullName}, does it still exist?");
             }
+          }
 
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-          }
-          catch (OperationCanceledException)
-          {
-            _logger.Warning("Received cancellation request - Delete directories");
-            throw;
-          }
-          catch (Exception ex)
-          {
-            _logger.Exception(ex);
-          }
+          // we are done.
+          return true;
+        }
+        catch (OperationCanceledException)
+        {
+          _logger.Warning("Received cancellation request - Delete directories");
+          throw;
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
+          return false;
         }
       }
-
-      // we are done.
-      return true;
     }
 
     /// <inheritdoc />
