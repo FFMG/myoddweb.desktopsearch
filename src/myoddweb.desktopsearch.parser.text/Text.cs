@@ -12,6 +12,7 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -19,6 +20,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
+using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.parser.text
 {
@@ -30,22 +32,55 @@ namespace myoddweb.desktopsearch.parser.text
     /// <inheritdoc />
     public string[] Extenstions => new[] {"txt"};
 
-    /// <inheritdoc />
-    public Task<List<string>> ParseAsync(FileInfo file, CancellationToken token)
+    /// <summary>
+    /// The regex we will be using over and over.
+    /// </summary>
+    private readonly Regex _reg;
+
+    public Text()
     {
-      var reg = new Regex(@"[^\p{L}]*\p{Z}[^\p{L}]*");
-      var current = new List<string>();
-      using (var sr = new StreamReader(file.FullName))
+      // @see https://www.regular-expressions.info/unicode.html
+      // But we basically split any words by ...
+      //   \p{Z}\t\r\n\v\f  - All the blank spaces
+      //   \p{P}            - Punctuation
+      //   \p{C}            - Invisible characters.
+      //   \p{S}            - All the symbols, (currency/maths)
+      //
+      // So we allow Numbers and Words together.
+      _reg = new Regex(@"[^\p{Z}\t\r\n\v\f\p{P}\p{C}\p{S}]+");
+    }
+
+    /// <inheritdoc />
+    public async Task<HashSet<IWord>> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
+    {
+      var textWord = new HashSet<IWord>();
+      try
       {
-        string line;
-        while ((line = sr.ReadLine()) != null)
+        using (var sr = new StreamReader(file.FullName))
         {
-          var x = reg.Split(line.ToLowerInvariant());
-          current.AddRange(x);
-          current = current.Distinct().ToList();
+          string line;
+          while ((line = await sr.ReadLineAsync().ConfigureAwait(false)) != null)
+          {
+            // get out if we cancelled.
+            token.ThrowIfCancellationRequested();
+
+            // split the line into words.
+            var words = _reg.Matches(line).OfType<Match>().Select(m => new TextWord( m.Groups[0].Value ));
+            textWord.UnionWith(words);
+          }
         }
       }
-      return Task.FromResult(current);
+      catch (OutOfMemoryException)
+      {
+        logger.Error($"Out of Memory: reading file, {file.FullName}");
+        return null;
+      }
+      catch (Exception ex )
+      {
+        logger.Exception(ex);
+        return null;
+      }
+      return textWord;
     }
   }
 }

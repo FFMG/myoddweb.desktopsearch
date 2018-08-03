@@ -408,11 +408,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       var tasks = new List<Task>();
       foreach (var parser in _parsers)
       {
-        if (!helper.File.IsExtension(file, parser.Extenstions))
-        {
-          continue;
-        }
-        tasks.Add( parser.ParseAsync(file, token ) );
+        tasks.Add(ProcessFile(parser, file, fileId, transaction, token));
       }
 
       // do we have any work to do?
@@ -423,6 +419,25 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       // then wait for them all.
       await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
+    }
+
+    private async Task ProcessFile( IFileParser parser, FileInfo file, long fileId, IDbTransaction transaction, CancellationToken token)
+    {
+      if (!helper.File.IsExtension(file, parser.Extenstions))
+      {
+        // nothing to do.
+        return;
+      }
+      var words = await parser.ParseAsync(file, _logger, token).ConfigureAwait( false );
+
+      // do we have any work to do?
+      if (!words.Any())
+      {
+        return;
+      }
+
+      // then we add the words to the database.
+      // await _persister.AddOrUpdateWordsAsync(words, fileId, transaction, token ).ConfigureAwait(false);
     }
 
     /// <summary>
