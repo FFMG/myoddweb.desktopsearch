@@ -14,7 +14,6 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Data;
-using System.Data.Common;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -156,7 +155,34 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      // the given file is going to be processed.
+      // we know the directory changed ... but does it even exist on our record?
+      if (!await _persister.DirectoryExistsAsync(directory, _currentTransaction, token).ConfigureAwait(false))
+      {
+        for (;;)
+        {
+          // add the directory
+          Logger.Verbose($"Directory: {e.FullName} (Changed - But not on file)");
+
+          // just add the directory.
+          await _persister.AddOrUpdateDirectoryAsync(directory, _currentTransaction, token).ConfigureAwait(false);
+
+          // get the parent directory ... if there is one.
+          directory = directory.Parent;
+          if (null == directory)
+          {
+            break;
+          }
+
+          // if the new directory exists then we do not need to worry any further.
+          if (await _persister.DirectoryExistsAsync(directory, _currentTransaction, token).ConfigureAwait(false))
+          {
+            break;
+          }
+        }
+        return;
+      }
+
+      // the given directory is going to be processed.
       Logger.Verbose($"Directory: {e.FullName} (Changed)");
 
       // then make sure to touch the folder accordingly

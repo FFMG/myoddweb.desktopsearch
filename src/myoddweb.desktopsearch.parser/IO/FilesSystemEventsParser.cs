@@ -161,6 +161,17 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
+      // we know the file changed ... but does it even exist on our record?
+      if (!await _persister.FileExistsAsync(file, _currentTransaction, token).ConfigureAwait(false))
+      {
+        // add the file
+        Logger.Verbose($"File: {e.FullName} (Changed - But not on file)");
+
+        // just add the file.
+        await _persister.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false);
+        return;
+      }
+
       // the given file is going to be processed.
       Logger.Verbose($"File: {e.FullName} (Changed)");
 
