@@ -445,7 +445,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       if( !parser.Supported(file))
       {
         // nothing to do.
-        return Words.None;
+        return new Words();
       }
 
       // look for the words

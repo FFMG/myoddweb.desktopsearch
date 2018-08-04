@@ -140,11 +140,11 @@ namespace myoddweb.desktopsearch.service.Persisters
           // get out if needed.
           token.ThrowIfCancellationRequested();
 
-          // if we delete nothing, (or get a zero), then something else could have gone wrong.
-          if (await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false) <= 0 )
-          {
-            _logger.Verbose($"Could not delete file > word {fileId}, does it still exist? Did it have any words?");
-          }
+          // it is very posible that this file had no words at all
+          // in fact most files are never parsed.
+          // so we don't want to log a message for this.
+          // if there is an errot it will throw and this will be logged that way
+          await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false);
         }
 
         // all good.

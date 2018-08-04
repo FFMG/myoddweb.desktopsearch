@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.IO;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
@@ -29,7 +30,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateWordAsync(string word, IDbTransaction transaction, CancellationToken token);
+    Task<bool> AddOrUpdateWordAsync(IWord word, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Add or update multiple word.
@@ -38,6 +39,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateWordsAsync(IReadOnlyList<string> words, IDbTransaction transaction, CancellationToken token);
+    Task<bool> AddOrUpdateWordsAsync(Words words, IDbTransaction transaction, CancellationToken token);
   }
 }

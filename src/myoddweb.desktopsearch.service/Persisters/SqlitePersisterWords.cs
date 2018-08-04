@@ -25,13 +25,13 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class SqlitePersister 
   {
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordAsync(string word, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateWordAsync(IWord word, IDbTransaction transaction, CancellationToken token)
     {
-      return await AddOrUpdateWordsAsync(new [] { word }, transaction, token ).ConfigureAwait(false);
+      return await AddOrUpdateWordsAsync( new Words(word), transaction, token ).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordsAsync(IReadOnlyList<string> words, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateWordsAsync(Words words, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -87,7 +87,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           var ids = new List<long>(words.Count);
           foreach (var word in words)
           {
-            cmd.Parameters["@word"].Value = word;
+            cmd.Parameters["@word"].Value = word.Word;
             var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
             if (null == value || value == DBNull.Value)
             {
@@ -168,7 +168,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             cmd.Parameters["@id"].Value = nextId;
-            cmd.Parameters["@word"].Value = word;
+            cmd.Parameters["@word"].Value = word.Word;
             if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding word: {word} to persister");
@@ -199,7 +199,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<Words> RebuildWordsListAsync(IEnumerable<string> words, IDbTransaction transaction, CancellationToken token)
+    private async Task<Words> RebuildWordsListAsync(Words words, IDbTransaction transaction, CancellationToken token)
     {
       try
       {
@@ -223,7 +223,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             // the words are case sensitive
-            cmd.Parameters["@word"].Value = word;
+            cmd.Parameters["@word"].Value = word.Word;
             if (null != await ExecuteScalarAsync(cmd, token).ConfigureAwait(false))
             {
               continue;

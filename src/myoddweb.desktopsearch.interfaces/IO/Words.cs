@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 
 namespace myoddweb.desktopsearch.interfaces.IO
@@ -27,11 +28,6 @@ namespace myoddweb.desktopsearch.interfaces.IO
     {
       public string Word { get; set; }
     }
-
-    /// <summary>
-    /// Create a empty words list.
-    /// </summary>
-    public static Words None => default(Words);
 
     /// <inheritdoc />
     /// <summary>
@@ -67,9 +63,18 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// Add a single string word to our list.
     /// </summary>
     /// <param name="word"></param>
+    public void UnionWith(IWord word)
+    {
+      Add( word );
+    }
+
+    /// <summary>
+    /// Add a single string word to our list.
+    /// </summary>
+    /// <param name="word"></param>
     public void UnionWith(string word )
     {
-      Add(new InternalWord {Word = word});
+      UnionWith(new InternalWord {Word = word});
     }
 
     /// <summary>
@@ -83,6 +88,12 @@ namespace myoddweb.desktopsearch.interfaces.IO
       {
         // check if we need to get out.
         token.ThrowIfCancellationRequested();
+
+        // ignore null or empty sets.
+        if (w == null || !w.Any())
+        {
+          continue;
+        }
 
         // check the union
         UnionWith(w);
