@@ -46,6 +46,10 @@
     <Compile Include="TextWord.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\myoddweb.desktopsearch.helper\myoddweb.desktopsearch.helper.csproj">
+      <Project>{3d64478e-cb04-40bf-8a18-51989856746f}</Project>
+      <Name>myoddweb.desktopsearch.helper</Name>
+    </ProjectReference>
     <ProjectReference Include="..\myoddweb.desktopsearch.interfaces\myoddweb.desktopsearch.interfaces.csproj">
       <Project>{b1b3597e-d169-47a0-8ca8-fd543ef817d9}</Project>
       <Name>myoddweb.desktopsearch.interfaces</Name>

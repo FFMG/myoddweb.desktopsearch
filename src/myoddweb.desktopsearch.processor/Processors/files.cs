@@ -408,42 +408,54 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task ProcessFile(FileInfo file, long fileId, IDbTransaction transaction, CancellationToken token)
     {
-      var tasks = new List<Task>();
+      var tasks = new List<Task<Words>>();
       foreach (var parser in _parsers)
       {
-        tasks.Add(ProcessFile(parser, file, fileId, transaction, token));
+        tasks.Add(ProcessFile(parser, file, token));
       }
 
       // do we have any work to do?
       if (!tasks.Any())
       {
+        // we have no tasks ... to get rid of any data we might have.
+        await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
         return;
       }
 
-      // then wait for them all.
-      await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
-    }
+      // wait for all the parsers to do their work
+      var totalWords = await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
 
-    private async Task ProcessFile( IFileParser parser, FileInfo file, long fileId, IDbTransaction transaction, CancellationToken token)
-    {
-      if (!helper.File.IsExtension(file, parser.Extenstions))
-      {
-        // nothing to do.
-        return;
-      }
-      var words = await parser.ParseAsync(file, _logger, token).ConfigureAwait( false );
-
+      // merge them all into one.
+      var words = new Words( totalWords );
+  
       // do we have any work to do?
       if (!words.Any())
       {
+        // we found no words ... so remove whatever we might have.
+        await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
         return;
       }
 
       // then we add the words to the database.
-      await _persister.AddOrUpdateWordsToFileAsync(words.Select( w => w.Word).ToList(), fileId, transaction, token ).ConfigureAwait(false);
+      await _persister.AddOrUpdateWordsToFileAsync( words, fileId, transaction, token).ConfigureAwait(false);
+    }
 
-      // log it.
-      _logger.Verbose( $"Parser : {parser.Name} processed {words.Count} words." );
+    private async Task<Words> ProcessFile( IFileParser parser, FileInfo file, CancellationToken token)
+    {
+      if( !parser.Supported(file))
+      {
+        // nothing to do.
+        return Words.None;
+      }
+
+      // look for the words
+      var words = await parser.ParseAsync(file, _logger, token).ConfigureAwait( false );
+      if (words.Any())
+      {
+        // if we found any, log it.
+        _logger.Verbose($"Parser : {parser.Name} processed {words.Count} words.");
+      }
+      return words;
     }
 
     /// <summary>

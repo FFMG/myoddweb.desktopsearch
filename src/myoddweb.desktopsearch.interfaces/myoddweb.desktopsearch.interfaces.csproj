@@ -50,6 +50,8 @@
     <Compile Include="IO\IFileParser.cs" />
     <Compile Include="IO\IFileSystemEvent.cs" />
     <Compile Include="IO\IWord.cs" />
+    <Compile Include="IO\WordEqualityComparer.cs" />
+    <Compile Include="IO\Words.cs" />
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Logging\LogLevel.cs" />
     <Compile Include="Persisters\IFilesWords.cs" />

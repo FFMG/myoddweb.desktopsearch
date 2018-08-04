@@ -13,7 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -51,9 +50,16 @@ namespace myoddweb.desktopsearch.parser.text
     }
 
     /// <inheritdoc />
-    public async Task<HashSet<IWord>> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
+    public bool Supported(FileInfo file)
     {
-      var textWord = new HashSet<IWord>( new TextWordComparer() );
+      //  if this is a valid extension ... say yes.
+      return helper.File.IsExtension(file, Extenstions);
+    }
+
+    /// <inheritdoc />
+    public async Task<Words> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
+    {
+      var textWord = new Words();
       try
       {
         using (var sr = new StreamReader(file.FullName))

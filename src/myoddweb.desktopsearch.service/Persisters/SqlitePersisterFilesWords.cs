@@ -18,19 +18,20 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.IO;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
   internal partial class SqlitePersister 
   {
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordToFileAsync(string word, long fileId, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateWordToFileAsync(IWord word, long fileId, IDbTransaction transaction, CancellationToken token)
     {
-      return await AddOrUpdateWordsToFileAsync(new [] { word }, fileId, transaction, token ).ConfigureAwait(false);
+      return await AddOrUpdateWordsToFileAsync(new Words( word ), fileId, transaction, token ).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordsToFileAsync(IReadOnlyList<string> words, long fileId, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateWordsToFileAsync(Words words, long fileId, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -142,7 +143,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           // if we delete nothing, (or get a zero), then something else could have gone wrong.
           if (await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false) <= 0 )
           {
-            _logger.Warning($"Could not delete {fileId}, does it still exist?");
+            _logger.Verbose($"Could not delete file > word {fileId}, does it still exist? Did it have any words?");
           }
         }
 

@@ -18,6 +18,7 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.IO;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
@@ -53,9 +54,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    private async Task<long> GetWordIdAsync(string word, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    private async Task<long> GetWordIdAsync(IWord word, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
     {
-      var ids = await GetWordIdsAsync(new[] {word}, transaction, token, createIfNotFound).ConfigureAwait(false);
+      var ids = await GetWordIdsAsync( new Words(word), transaction, token, createIfNotFound).ConfigureAwait(false);
       return ids.Any() ? ids[0] : -1;
     }
 
@@ -69,7 +70,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    private async Task<List<long>> GetWordIdsAsync(IReadOnlyCollection<string> words, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    private async Task<List<long>> GetWordIdsAsync(Words words, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
     {
       try
       {
@@ -98,7 +99,7 @@ namespace myoddweb.desktopsearch.service.Persisters
               }
 
               // try and add the word, if that does not work, then we cannot go further.
-              if (!await InsertWordsAsync( new []{word}, transaction, token).ConfigureAwait(false))
+              if (!await InsertWordsAsync( new Words(word), transaction, token).ConfigureAwait(false))
               {
                 ids.Add(-1);
                 continue;
@@ -135,7 +136,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> InsertWordsAsync(IReadOnlyList<string> words, IDbTransaction transaction, CancellationToken token)
+    private async Task<bool> InsertWordsAsync(Words words, IDbTransaction transaction, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!words.Any())
@@ -198,7 +199,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<string>> RebuildWordsListAsync(IEnumerable<string> words, IDbTransaction transaction, CancellationToken token)
+    private async Task<Words> RebuildWordsListAsync(IEnumerable<string> words, IDbTransaction transaction, CancellationToken token)
     {
       try
       {
@@ -206,7 +207,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var uniqueList = words.Distinct();
 
         // The list of words we will be adding to the list.
-        var actualWords = new List<string>();
+        var actualWords = new Words();
 
         // we first look for it, and, if we find it then there is nothing to do.
         var sqlGetRowId = $"SELECT id FROM {TableWords} WHERE word=@word";
@@ -230,7 +231,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             // we could not find this word
             // so we will just add it to our list.
-            actualWords.Add(word);
+            actualWords.UnionWith(word);
           }
         }
 

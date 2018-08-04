@@ -25,10 +25,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<T> GetConfigValueAsync<T>(string name, T defaultValue, IDbTransaction transaction, CancellationToken token)
     {
-      var sql = $"SELECT value FROM {TableConfig} WHERE name='{name}';";
-      using (var command = CreateDbCommand(sql, transaction ))
+      var sql = $"SELECT value FROM {TableConfig} WHERE name=@name";
+      using (var cmd = CreateDbCommand(sql, transaction ))
       {
-        var value = await ExecuteScalarAsync(command, token).ConfigureAwait(false);
+        var pName = cmd.CreateParameter();
+        pName.DbType = DbType.String;
+        pName.ParameterName = "@name";
+        cmd.Parameters.Add(pName);
+
+        pName.Value = name;
+
+        var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
         if (null == value || value == DBNull.Value)
         {
           return defaultValue;
