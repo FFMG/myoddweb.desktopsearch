@@ -143,7 +143,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           // it is very posible that this file had no words at all
           // in fact most files are never parsed.
           // so we don't want to log a message for this.
-          // if there is an errot it will throw and this will be logged that way
+          // if there is an error it will throw and this will be logged that way
           await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false);
         }
 
