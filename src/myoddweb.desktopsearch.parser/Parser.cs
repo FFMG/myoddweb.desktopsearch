@@ -179,6 +179,22 @@ namespace myoddweb.desktopsearch.parser
           return false;
         }
 
+        // get the last time we did this
+        var lastAccessTimeUtc = await _persister.GetConfigValueAsync<DateTime>("LastAccessTimeUtc", DateTime.MinValue, transaction, token ).ConfigureAwait(false);
+        foreach (var directory in directories)
+        {
+          if (directory.LastAccessTimeUtc < lastAccessTimeUtc)
+          {
+            continue;
+          }
+
+          // touch the directory to indicate that we need some work done to it.
+          await _persister.TouchDirectoryAsync(directory, UpdateType.Changed, transaction, token ).ConfigureAwait(false);
+        }
+
+        // finally we can set the last time we checked the entire data tree.
+        await _persister.SetConfigValueAsync("LastAccessTimeUtc", DateTime.UtcNow, transaction, token ).ConfigureAwait(false);
+
         // we can commit our code.
         _persister.Commit(transaction);
 
