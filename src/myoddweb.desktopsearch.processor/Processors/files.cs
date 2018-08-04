@@ -367,13 +367,16 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// A folder was deleted
     /// </summary>
-    /// <param name="folderId"></param>
+    /// <param name="fileId"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task<bool> WorkDeletedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> WorkDeletedAsync(long fileId, IDbTransaction transaction, CancellationToken token)
     {
-      return Task.FromResult(true);
+      // because the file was deleted from the db  we must remove the words for it.
+      // we could technically end up with orphan words, (words with no id)
+      // but that's not really that important.
+      return await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -391,7 +394,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       //  process it...
       await ProcessFile( file, fileId, transaction, token ).ConfigureAwait(false);
 
-      // return if we cancelled.
+      // return that the work was complete.
       return true;
     }
 

@@ -40,5 +40,14 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<bool> AddOrUpdateWordsToFileAsync(IReadOnlyList<string> words, long fileId, IDbTransaction transaction, CancellationToken token);
+
+    /// <summary>
+    /// Remove a file id from the FilesWords list.
+    /// </summary>
+    /// <param name="fileId"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> DeleteFileFromFilesAndWordsAsync( long fileId, IDbTransaction transaction, CancellationToken token);
   }
 }

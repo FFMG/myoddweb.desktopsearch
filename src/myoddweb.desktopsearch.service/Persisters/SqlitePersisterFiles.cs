@@ -196,17 +196,19 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // get the file ids
-            var fileIds = await GetFileIdsAsync(folderId, transaction, token).ConfigureAwait(false);
+            var fileId = await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
 
             // if we have no ids... then no point in going further
-            if (!fileIds.Any())
+            if (fileId == -1 )
             {
+              _logger.Warning($"Could not delete file: {file.FullName}, could not locate the file?");
               continue;
             }
 
-            // touch that folder as changed
-            await TouchFilesAsync(fileIds, UpdateType.Deleted, transaction, token).ConfigureAwait(false);
+            // touch that file as changed.
+            await TouchFilesAsync(new []{fileId}, UpdateType.Deleted, transaction, token).ConfigureAwait(false);
 
+            // then we can delete this file.
             cmd.Parameters["@folderid"].Value = folderId;
             cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
             if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
@@ -241,13 +243,21 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // get the folder id, we do not want to create the folder.
-      var folderid = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
-      if (folderid == -1)
+      var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
+      if (folderId == -1)
       {
         // there was no error.
         return true;
       }
 
+      // get the files for that folder so we can fag them as touched.
+      var fileIds = await GetFileIdsAsync(folderId, transaction, token).ConfigureAwait(false);
+      if (fileIds.Any())
+      {
+        // touch that folder as changed
+        await TouchFilesAsync(fileIds, UpdateType.Deleted, transaction, token).ConfigureAwait(false);
+      }
+      
       var sql = $"DELETE FROM {TableFiles} WHERE folderid=@folderid";
       using (var cmd = CreateDbCommand(sql, transaction))
       {
@@ -259,13 +269,13 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pFolderId);
 
           // set the folder id.
-          cmd.Parameters["@folderid"].Value = folderid;
+          cmd.Parameters["@folderid"].Value = folderId;
 
           // delete the files.
           var deletedFiles = await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false);
 
           // and give a message...
-          _logger.Verbose($"Deleted {deletedFiles} file(s) from folder {directory.FullName} ({folderid}).");
+          _logger.Verbose($"Deleted {deletedFiles} file(s) from folder {directory.FullName} ({folderId}).");
 
           // get out if needed.
           token.ThrowIfCancellationRequested();

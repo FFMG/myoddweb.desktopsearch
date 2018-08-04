@@ -121,10 +121,63 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
-    #region Private word functions
-
-    private async Task<bool> RemoveIdsInvalidWordsInfFile(List<long> ids, long fileId, IDbTransaction transaction, CancellationToken token)
+    /// <inheritdoc />
+    public async Task<bool> DeleteFileFromFilesAndWordsAsync(long fileId, IDbTransaction transaction, CancellationToken token)
     {
+      try
+      {
+        var sqlDelete = $"DELETE FROM {TableFilesWords} WHERE fileid=@fileid";
+        using (var cmd = CreateDbCommand(sqlDelete, transaction))
+        {
+          var pFId = cmd.CreateParameter();
+          pFId.DbType = DbType.Int64;
+          pFId.ParameterName = "@fileid";
+          cmd.Parameters.Add(pFId);
+
+          pFId.Value = fileId;
+
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
+          // if we delete nothing, (or get a zero), then something else could have gone wrong.
+          if (await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false) <= 0 )
+          {
+            _logger.Warning($"Could not delete {fileId}, does it still exist?");
+          }
+        }
+
+        // all good.
+        return true;
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Deleting File Id from Files/Word.");
+        throw;
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        return false;
+      }
+    }
+
+    #region Private word functions
+    /// <summary>
+    /// Remove the ids that were in the words list but are not anymore.
+    /// </summary>
+    /// <param name="ids"></param>
+    /// <param name="fileId"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> RemoveIdsInvalidWordsInfFile(IReadOnlyList<long> ids, long fileId, IDbTransaction transaction, CancellationToken token)
+    {
+      // if we have nothing in the list then we are removeing everything?
+      if (!ids.Any())
+      {
+        return await DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
+      }
+
       // get all the word ids on record.
       var currentIds = await GetWordIdsForFile(fileId, transaction, token).ConfigureAwait(false);
 
@@ -147,7 +200,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           var pWId = cmd.CreateParameter();
           pWId.DbType = DbType.Int64;
-          pWId.ParameterName = "@worldid";
+          pWId.ParameterName = "@wordid";
           cmd.Parameters.Add(pWId);
 
           var pFId = cmd.CreateParameter();
