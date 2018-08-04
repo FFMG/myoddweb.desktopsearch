@@ -99,6 +99,10 @@
       <Project>{3d64478e-cb04-40bf-8a18-51989856746f}</Project>
       <Name>myoddweb.desktopsearch.helper</Name>
     </ProjectReference>
+    <ProjectReference Include="..\myoddweb.desktopsearch.http\myoddweb.desktopsearch.http.csproj">
+      <Project>{f963e3f4-fccc-42f8-8ab4-2f57a12fd372}</Project>
+      <Name>myoddweb.desktopsearch.http</Name>
+    </ProjectReference>
     <ProjectReference Include="..\myoddweb.desktopsearch.interfaces\myoddweb.desktopsearch.interfaces.csproj">
       <Project>{b1b3597e-d169-47a0-8ca8-fd543ef817d9}</Project>
       <Name>myoddweb.desktopsearch.interfaces</Name>
@@ -114,7 +118,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="packages.config" />
+    <None Include="packages.config">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="sample.json" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

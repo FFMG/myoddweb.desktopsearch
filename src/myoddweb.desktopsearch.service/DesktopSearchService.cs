@@ -21,6 +21,7 @@ using System.Linq;
 using System.Reflection;
 using System.ServiceProcess;
 using System.Threading;
+using myoddweb.desktopsearch.http;
 using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.parser;
@@ -71,6 +72,11 @@ namespace myoddweb.desktopsearch.service
     /// We use this to prevent a shutdown while we are still starting.
     /// </summary>
     private bool _startupThreadBusy;
+
+    /// <summary>
+    /// The http server.
+    /// </summary>
+    private HttpServer _http;
 
     public DesktopSearchService()
     {
@@ -239,15 +245,19 @@ namespace myoddweb.desktopsearch.service
         // create the processor
         _processor = new Processor( fileParsers, config, persister, logger, directory);
 
+        // create the http server
+        _http = new HttpServer();
+
         // we can now start the parser as well as the processor
         _parser.Start(token);
         _processor.Start(token);
+        _http.Start(token);
       }
       catch (AggregateException)
       {
         errorDuringStartup = true;
       }
-      catch (Exception)
+      catch (Exception )
       {
         errorDuringStartup = true;
       }
@@ -276,6 +286,7 @@ namespace myoddweb.desktopsearch.service
       _cancellationTokenSource?.Cancel();
       _parser?.Stop();
       _processor?.Stop();
+      _http?.Stop();
 
       _cancellationTokenSource = null;
       _parser = null;
