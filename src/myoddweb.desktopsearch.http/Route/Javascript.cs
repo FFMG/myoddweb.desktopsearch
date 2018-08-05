@@ -12,12 +12,15 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using myoddweb.desktopsearch.interfaces.Persisters;
+
 namespace myoddweb.desktopsearch.http.Route
 {
   internal class Javascript : RouteFile
   {
 
-    public Javascript( string script) : base( script, "application/javascript" )
+    public Javascript( string script, IPersister persister, interfaces.Logging.ILogger logger) : base( script, "application/javascript", persister, logger )
     {
     }
   }

@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Reflection;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.http.Route
 {
@@ -54,7 +55,7 @@ namespace myoddweb.desktopsearch.http.Route
     /// This is the search route
     /// The method is 'search' while the value is the query. 
     /// </summary>
-    public Home() : base(new string [0], Method.Get)
+    public Home(IPersister persister, interfaces.Logging.ILogger logger) : base(new string [0], Method.Get, persister, logger )
     {
     }
 

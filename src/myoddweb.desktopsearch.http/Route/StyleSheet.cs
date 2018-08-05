@@ -12,11 +12,14 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using myoddweb.desktopsearch.interfaces.Persisters;
+
 namespace myoddweb.desktopsearch.http.Route
 {
   internal class StyleSheet : RouteFile
   {
-    public StyleSheet(string script) : base(script, "text/css")
+    public StyleSheet(string script, IPersister persister, interfaces.Logging.ILogger logger) : base(script, "text/css", persister, logger )
     {
     }
   }

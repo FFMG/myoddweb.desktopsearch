@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Reflection;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.http.Route
 {
@@ -63,7 +64,7 @@ namespace myoddweb.desktopsearch.http.Route
     private string ContentType { get; }
     #endregion
 
-    protected RouteFile(string script, string contentType ) : base(new[] { script }, Method.Get)
+    protected RouteFile(string script, string contentType, IPersister persister, interfaces.Logging.ILogger logger) : base(new[] { script }, Method.Get, persister, logger )
     {
       _resourceName = $"myoddweb.desktopsearch.http.Resources.{script}";
       ContentType = contentType;

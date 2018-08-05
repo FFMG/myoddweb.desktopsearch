@@ -18,6 +18,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.http.Route
 {
@@ -30,6 +31,7 @@ namespace myoddweb.desktopsearch.http.Route
       Post
     }
 
+    #region Member Variables
     /// <summary>
     /// All the parts in the route.
     /// </summary>
@@ -44,8 +46,21 @@ namespace myoddweb.desktopsearch.http.Route
     /// The method we will be accepting.
     /// </summary>
     private readonly Method _method;
+    #endregion
 
-    protected Route(IReadOnlyCollection<string> parts, Method method )
+    #region Properties
+    /// <summary>
+    /// The persister
+    /// </summary>
+    protected IPersister Persister { get; }
+
+    /// <summary>
+    /// Our logger.
+    /// </summary>
+    protected interfaces.Logging.ILogger Logger { get; }
+    #endregion
+
+    protected Route(IReadOnlyCollection<string> parts, Method method, IPersister persister, interfaces.Logging.ILogger logger)
     {
       // make sure that the parts are 'clean'
       _parts = CleanParts(parts);
@@ -55,6 +70,12 @@ namespace myoddweb.desktopsearch.http.Route
 
       // save the method as well.
       _method = method;
+
+      // set the persister.
+      Persister = persister ?? throw new ArgumentNullException(nameof(persister));
+
+      // set the logger
+      Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>

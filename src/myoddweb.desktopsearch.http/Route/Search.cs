@@ -16,6 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using myoddweb.desktopsearch.http.Models;
+using myoddweb.desktopsearch.interfaces.Persisters;
 using Newtonsoft.Json;
 
 namespace myoddweb.desktopsearch.http.Route
@@ -26,7 +27,7 @@ namespace myoddweb.desktopsearch.http.Route
     /// This is the search route
     /// The method is 'search' while the value is the query. 
     /// </summary>
-    public Search() : base(new[] { "Search" }, Method.Post)
+    public Search(IPersister persister, interfaces.Logging.ILogger logger) : base(new[] { "Search" }, Method.Post, persister, logger )
     {
     }
 

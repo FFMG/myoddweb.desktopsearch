@@ -14,12 +14,11 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Configs;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.http
 {
@@ -31,11 +30,6 @@ namespace myoddweb.desktopsearch.http
     private readonly IWebServer _webServer;
 
     /// <summary>
-    /// Our logger.
-    /// </summary>
-    private readonly interfaces.Logging.ILogger _logger;
-
-    /// <summary>
     /// The Http listner
     /// </summary>
     private readonly HttpListener _listener;
@@ -43,7 +37,7 @@ namespace myoddweb.desktopsearch.http
     /// <summary>
     /// The currently running thread ... if it is runnnin
     /// </summary>
-    private Task _thread;
+    private Task _task;
 
     /// <summary>
     /// The cancellation token.
@@ -61,16 +55,29 @@ namespace myoddweb.desktopsearch.http
     private List<Route.Route> _routes;
 
     /// <summary>
+    /// The persister
+    /// </summary>
+    private readonly IPersister _persister;
+
+    /// <summary>
+    /// Our logger.
+    /// </summary>
+    private readonly interfaces.Logging.ILogger _logger;
+
+    /// <summary>
     /// The handle we need to use to de-register our cancellation function.
     /// </summary>
     private CancellationTokenRegistration _cancelationToken;
 
-    public HttpServer( IWebServer webServer, interfaces.Logging.ILogger logger )
+    public HttpServer( IWebServer webServer, IPersister persister, interfaces.Logging.ILogger logger )
     {
       if (!HttpListener.IsSupported)
       {
         throw new NotSupportedException("The Http Listener is not supported.");
       }
+
+      // save our persister
+      _persister = persister ?? throw new ArgumentNullException(nameof(persister));
 
       // the webserver config
       _webServer = webServer ?? throw new ArgumentNullException( nameof(webServer));
@@ -89,16 +96,16 @@ namespace myoddweb.desktopsearch.http
       _running = true;
 
       _routes = new List<Route.Route> { 
-        new Route.Home(),
-        new Route.Javascript("myoddweb.desktopsearch.http.js"),
-        new Route.StyleSheet("myoddweb.desktopsearch.http.css"),
-        new Route.Search()
+        new Route.Home( _persister, _logger),
+        new Route.Javascript("myoddweb.desktopsearch.http.js", _persister, _logger),
+        new Route.StyleSheet("myoddweb.desktopsearch.http.css", _persister, _logger),
+        new Route.Search( _persister, _logger)
       };
 
       _listener.Prefixes.Add( $"http://*:{_webServer.Port}/");
       _listener.Start();
 
-      _thread = Task.Factory.StartNew( 
+      _task = Task.Factory.StartNew( 
         async () => await ListenAsync().ConfigureAwait(false),
         _token 
         );
@@ -118,12 +125,12 @@ namespace myoddweb.desktopsearch.http
       _running = false;
       _listener?.Stop();
 
-      if (null != _thread)
+      if (null != _task)
       {
-        helper.Wait.UntilAsync( () => _thread.IsCompleted, _token).Wait(_token);
+        helper.Wait.UntilAsync( () => _task.IsCompleted, _token).Wait(_token);
       }
 
-      _thread = null;
+      _task = null;
     }
 
     private void Cancel()

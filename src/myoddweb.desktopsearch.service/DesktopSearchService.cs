@@ -246,7 +246,7 @@ namespace myoddweb.desktopsearch.service
         _processor = new Processor( fileParsers, config, persister, logger, directory);
 
         // create the http server
-        _http = new HttpServer( config.WebServer, logger);
+        _http = new HttpServer( config.WebServer, persister, logger);
 
         // we can now start the parser as well as the processor
         _parser.Start(token);
