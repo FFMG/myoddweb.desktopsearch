@@ -12,35 +12,18 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Collections.Generic;
 
-namespace myoddweb.desktopsearch.interfaces.Configs
+using System.ComponentModel;
+using myoddweb.desktopsearch.interfaces.Configs;
+using Newtonsoft.Json;
+
+namespace myoddweb.desktopsearch.service.Configs
 {
-  public interface IConfig
+  internal class ConfigWebServer : IWebServer
   {
-    /// <summary>
-    /// The paths information.
-    /// </summary>
-    IPaths Paths { get; }
-
-    /// <summary>
-    /// All the timers.
-    /// </summary>
-    ITimers Timers { get; }
-
-    /// <summary>
-    /// All the loggers
-    /// </summary>
-    List<ILogger> Loggers { get; }
-
-    /// <summary>
-    /// The processors variables
-    /// </summary>
-    IProcessors Processors { get; }
-
-    /// <summary>
-    /// The web server information
-    /// </summary>
-    IWebServer WebServer { get; }
+    /// <inheritdoc />
+    [DefaultValue(9501)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public int Port { get; }
   }
 }

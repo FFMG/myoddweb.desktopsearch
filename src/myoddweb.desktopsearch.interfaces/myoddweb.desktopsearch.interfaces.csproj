@@ -46,6 +46,7 @@
     <Compile Include="Configs\IPaths.cs" />
     <Compile Include="Configs\IProcessors.cs" />
     <Compile Include="Configs\ITimers.cs" />
+    <Compile Include="Configs\IWebServer.cs" />
     <Compile Include="IO\IDirectory.cs" />
     <Compile Include="IO\IFileParser.cs" />
     <Compile Include="IO\IFileSystemEvent.cs" />

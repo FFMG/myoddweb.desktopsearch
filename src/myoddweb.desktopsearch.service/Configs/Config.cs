@@ -12,7 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -42,6 +41,10 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public IProcessors Processors { get; protected set; }
 
+    [DefaultValue(null)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public IWebServer WebServer { get; protected set; }
+
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context)
     {
@@ -56,6 +59,12 @@ namespace myoddweb.desktopsearch.service.Configs
         // set the default values.
         Processors = JsonConvert.DeserializeObject<ConfigProcessor>("{}");
       }
+
+      if (null == Processors)
+      {
+        // set the default values.
+        WebServer = JsonConvert.DeserializeObject<ConfigWebServer>("{}");
+      }
     }
 
     /// <summary>
@@ -63,14 +72,21 @@ namespace myoddweb.desktopsearch.service.Configs
     /// </summary>
     /// <param name="paths"></param>
     /// <param name="timers"></param>
+    /// <param name="webserver"></param>
     /// <param name="loggers"></param>
     /// <param name="processor"></param>
-    public Config(ConfigPaths paths, ConfigTimers timers, ConfigProcessor processor, IEnumerable<ConfigLogger> loggers )
+    public Config(
+      ConfigPaths paths, 
+      ConfigTimers timers, 
+      ConfigProcessor processor, 
+      ConfigWebServer webserver,
+      IEnumerable<ConfigLogger> loggers )
     {
       Paths = paths;
       Timers = timers;
       Loggers = RecreateLoggers(loggers);
       Processors = processor;
+      WebServer = webserver;
     }
 
     /// <summary>

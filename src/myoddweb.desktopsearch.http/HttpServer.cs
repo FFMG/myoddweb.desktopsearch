@@ -17,11 +17,22 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Configs;
 
 namespace myoddweb.desktopsearch.http
 {
   public class HttpServer
   {
+    /// <summary>
+    /// All the needed webserver information.
+    /// </summary>
+    private readonly IWebServer _webServer;
+
+    /// <summary>
+    /// Our logger.
+    /// </summary>
+    private readonly interfaces.Logging.ILogger _logger;
+
     /// <summary>
     /// The Http listner
     /// </summary>
@@ -52,12 +63,20 @@ namespace myoddweb.desktopsearch.http
     /// </summary>
     private CancellationTokenRegistration _cancelationToken;
 
-    public HttpServer()
+    public HttpServer( IWebServer webServer, interfaces.Logging.ILogger logger )
     {
       if (!HttpListener.IsSupported)
       {
         throw new NotSupportedException("The Http Listener is not supported.");
       }
+
+      // the webserver config
+      _webServer = webServer ?? throw new ArgumentNullException( nameof(webServer));
+
+      // the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      // create our listener.
       _listener = new HttpListener();
     }
 
@@ -73,7 +92,7 @@ namespace myoddweb.desktopsearch.http
         new Route.Search()
       };
 
-      _listener.Prefixes.Add("http://*:9123/");
+      _listener.Prefixes.Add( $"http://*:{_webServer.Port}/");
       _listener.Start();
 
       _thread = Task.Factory.StartNew( 
@@ -157,6 +176,7 @@ namespace myoddweb.desktopsearch.http
       }
       catch (OperationCanceledException)
       {
+        _logger.Warning("Received cancellation request - Http server");
         throw;
       }
       catch (HttpListenerException)
