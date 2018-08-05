@@ -12,36 +12,26 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Collections.Generic;
+
 using System.Net;
-using Newtonsoft.Json;
 
 namespace myoddweb.desktopsearch.http.Route
 {
-  internal class Search : Route
+  internal class RouteResponse
   {
     /// <summary>
-    /// This is the search route
-    /// The method is 'search' while the value is the query. 
+    /// The body of our response.
     /// </summary>
-    public Search() : base(new[] { "Search", "{query}" }, Method.Get)
-    {
-    }
+    public string Response { get; set; }
 
     /// <summary>
-    /// Build the response packet
+    /// The route status code.
     /// </summary>
-    /// <param name="parameters"></param>
-    /// <param name="request"></param>
-    /// <returns></returns>
-    protected override RouteResponse OnProcess(Dictionary<string, string> parameters, HttpListenerRequest request)
-    {
-      return new RouteResponse
-      {
-        Response = JsonConvert.SerializeObject(parameters),
-        StatusCode = HttpStatusCode.OK,
-        ContentType = "application/json"
-      };
-    }
+    public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
+
+    /// <summary>
+    /// The contents.
+    /// </summary>
+    public string ContentType  { get; set; } = "text/plain";
   }
 }

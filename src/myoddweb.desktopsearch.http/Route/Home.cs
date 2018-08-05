@@ -12,19 +12,49 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
-using Newtonsoft.Json;
+using System.Reflection;
 
 namespace myoddweb.desktopsearch.http.Route
 {
-  internal class Search : Route
+  internal class Home : Route
   {
+    /// <summary>
+    /// The home page body.
+    /// </summary>
+    private string _homePage;
+
+    /// <summary>
+    /// Get the home page body
+    /// </summary>
+    private string HomePage
+    {
+      get
+      {
+        if (null != _homePage)
+        {
+          return _homePage;
+        }
+
+        var assembly = Assembly.GetExecutingAssembly();
+        const string resourceName = "myoddweb.desktopsearch.http.Route.index.html";
+        using (var stream = assembly.GetManifestResourceStream(resourceName))
+        using (var reader = new StreamReader(stream ?? throw new InvalidOperationException()))
+        {
+          _homePage = reader.ReadToEnd();
+          return _homePage;
+        }
+      }
+    }
+
     /// <summary>
     /// This is the search route
     /// The method is 'search' while the value is the query. 
     /// </summary>
-    public Search() : base(new[] { "Search", "{query}" }, Method.Get)
+    public Home() : base(new string [0], Method.Get)
     {
     }
 
@@ -38,9 +68,9 @@ namespace myoddweb.desktopsearch.http.Route
     {
       return new RouteResponse
       {
-        Response = JsonConvert.SerializeObject(parameters),
+        Response = HomePage,
         StatusCode = HttpStatusCode.OK,
-        ContentType = "application/json"
+        ContentType = "text/html"
       };
     }
   }

@@ -16,11 +16,10 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text.RegularExpressions;
-using Newtonsoft.Json;
 
 namespace myoddweb.desktopsearch.http.Route
 {
-  internal class Route
+  internal abstract class Route
   {
     public enum Method
     {
@@ -28,15 +27,6 @@ namespace myoddweb.desktopsearch.http.Route
       Get,
       Post
     }
-    /// <summary>
-    /// The contents.
-    /// </summary>
-    public string ContentType => "application/json";
-
-    /// <summary>
-    /// The route status code.
-    /// </summary>
-    public HttpStatusCode StatusCode => HttpStatusCode.OK;
 
     /// <summary>
     /// All the parts in the route.
@@ -187,11 +177,13 @@ namespace myoddweb.desktopsearch.http.Route
     /// </summary>
     /// <param name="request"></param>
     /// <returns></returns>
-    public virtual string Process( HttpListenerRequest request )
+    public RouteResponse Process( HttpListenerRequest request )
     {
       // Get all the parameters.
       var parameters = GetParameters(request.Url.Segments);
-      return JsonConvert.SerializeObject(parameters);
+
+      // and then get the routes to return the response.
+      return OnProcess( parameters, request );
     }
 
     /// <summary>
@@ -213,6 +205,14 @@ namespace myoddweb.desktopsearch.http.Route
       }
       return parameters;
     }
+
+    /// <summary>
+    /// All the route get to build their own responses now.
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    protected abstract RouteResponse OnProcess(Dictionary<string, string> parameters, HttpListenerRequest request);
   }
 }
 

@@ -68,6 +68,7 @@ namespace myoddweb.desktopsearch.http
       _running = true;
 
       _routes = new List<Route.Route> { 
+        new Route.Home(),
         new Route.Search()
       };
 
@@ -107,6 +108,10 @@ namespace myoddweb.desktopsearch.http
       Stop();
     }
 
+    /// <summary>
+    /// Handle all our requests here.
+    /// </summary>
+    /// <returns></returns>
     private async Task ListenAsync()
     {
       try
@@ -124,16 +129,16 @@ namespace myoddweb.desktopsearch.http
                 continue;
               }
 
-              var ret = route.Process(ctx.Request);
+              var routeResponse = route.Process(ctx.Request);
               var response = ctx.Response;
 
-              response.StatusCode = (int)route.StatusCode;
-              response.ContentType = route.ContentType;
+              response.StatusCode = (int)routeResponse.StatusCode;
+              response.ContentType = routeResponse.ContentType;
 
               // build the response stream.
               // only start writting to it now as the OS is allowed to send the response
               // as soon as we get something from it.
-              var bOutput = System.Text.Encoding.UTF8.GetBytes(ret);
+              var bOutput = System.Text.Encoding.UTF8.GetBytes(routeResponse.Response);
               response.ContentLength64 = bOutput.Length;
               var outputStream = response.OutputStream;
               outputStream.Write(bOutput, 0, bOutput.Length);
