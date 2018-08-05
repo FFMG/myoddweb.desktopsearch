@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using myoddweb.desktopsearch.http.Models;
 using Newtonsoft.Json;
 
 namespace myoddweb.desktopsearch.http.Route
@@ -35,13 +36,14 @@ namespace myoddweb.desktopsearch.http.Route
       try
       {
         // get the search query.
-        var search = JsonConvert.DeserializeObject<Models.SearchRequest>(raw);
+        var search = JsonConvert.DeserializeObject<SearchRequest>(raw);
 
-        // we can now build the response model.
+        // build the response packet.
+        var response = BuildResponse(search);
 
         return new RouteResponse
         {
-          Response = JsonConvert.SerializeObject(parameters),
+          Response = JsonConvert.SerializeObject(response),
           StatusCode = HttpStatusCode.OK,
           ContentType = "application/json"
         };
@@ -54,6 +56,22 @@ namespace myoddweb.desktopsearch.http.Route
           StatusCode = HttpStatusCode.InternalServerError
         };
       }
+    }
+
+    /// <summary>
+    /// Given the search request, build the response.
+    /// </summary>
+    /// <param name="search"></param>
+    /// <returns></returns>
+    private List<SearchResponse> BuildResponse(SearchRequest search)
+    {
+      // we can now build the response model.
+      return new List<SearchResponse>
+      {
+        new SearchResponse{ FullName = "c:\\test1.txt", Directory = "C:\\", Name = "test1.txt"},
+        new SearchResponse{ FullName = "c:\\test2.txt", Directory = "C:\\", Name = "test2.txt" },
+        new SearchResponse{ FullName = "c:\\test3.txt", Directory = "C:\\", Name = "test3.txt" }
+      };
     }
   }
 }

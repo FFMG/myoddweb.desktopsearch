@@ -1,4 +1,9 @@
-﻿function myoddweb() {
+﻿// some const values
+SEARCH_BOX_ID = "#search-box";
+SEARCH_RESULT_CONTAINER = ".live-search-result";
+
+// The class that manages the query and so on
+function myoddweb() {
 
   // pseudo-const variable
   this.MIN_QUERY_LENGTH = 3;
@@ -31,9 +36,23 @@
 
   // function to do the actual query.
   // we will do no validation here.
-  this._query = function() {
-    $.post("/Search", JSON.stringify({ what: this._querystr, count: this.MAX_NUMBER_ITEMS }), function(data) {
+  this._query = function () {
 
+    // before we do anything we need to reset the results
+    $(SEARCH_RESULT_CONTAINER).empty();
+
+    $.post("/Search", JSON.stringify({ what: this._querystr, count: this.MAX_NUMBER_ITEMS }), function (objs) {
+      $.each(objs, function (i, item) {
+        $(SEARCH_RESULT_CONTAINER).append(
+          "<div class='live-search-result-element'>" + 
+            "<div class='live-search-result-element-top'>" + item.Name + "</div>"+
+            "<div class='live-search-result-element-bottom'>" +
+              item.FullName + "<br />"+
+              item.Directory +
+              "</div>" +
+          "</div>"
+        );
+      });
     }, "json");
   }
 }
@@ -47,7 +66,7 @@ $(document).ready(
   function () {
 
     // When the user finishes typing
-    $("#search-box").keyup(
+    $(SEARCH_BOX_ID).keyup(
 
       // get the string in the message box.
       function () {
