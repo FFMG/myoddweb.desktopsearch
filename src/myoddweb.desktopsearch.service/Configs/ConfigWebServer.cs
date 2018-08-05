@@ -24,6 +24,6 @@ namespace myoddweb.desktopsearch.service.Configs
     /// <inheritdoc />
     [DefaultValue(9501)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public int Port { get; }
+    public int Port { get; protected set; }
   }
 }
