@@ -248,10 +248,10 @@ namespace myoddweb.desktopsearch.service
         // create the http server
         _http = new HttpServer( config.WebServer, persister, logger);
 
-        // we can now start the parser as well as the processor
-        _parser.Start(token);
-        _processor.Start(token);
-        _http.Start(token);
+        // we can now start everything 
+        _http.Start(token);       //  the http server
+        _parser.Start(token);     //  the parser
+        _processor.Start(token);  //  the processor
       }
       catch (AggregateException)
       {
@@ -266,6 +266,7 @@ namespace myoddweb.desktopsearch.service
         _startupThreadBusy = false;
       }
 
+      // if there were any errors in startup stop everything.
       if (errorDuringStartup)
       {
         Stop();
