@@ -69,6 +69,7 @@ namespace myoddweb.desktopsearch.http
 
       _routes = new List<Route.Route> { 
         new Route.Home(),
+        new Route.Javascript("myoddweb.desktopsearch.http.js"),
         new Route.Search()
       };
 

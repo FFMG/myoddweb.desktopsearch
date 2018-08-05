@@ -12,6 +12,7 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -20,57 +21,49 @@ using System.Reflection;
 
 namespace myoddweb.desktopsearch.http.Route
 {
-  internal class Home : Route
+  internal class Javascript : Route
   {
     /// <summary>
     /// The home page body.
     /// </summary>
-    private string _homePage;
+    private string _script;
 
     /// <summary>
     /// Get the home page body
     /// </summary>
-    private string HomePage
+    private string ScriptPage
     {
       get
       {
-        if (null != _homePage)
+        if (null != _script)
         {
-          return _homePage;
+          return _script;
         }
 
         var assembly = Assembly.GetExecutingAssembly();
-        const string resourceName = "myoddweb.desktopsearch.http.Resources.index.html";
-        using (var stream = assembly.GetManifestResourceStream(resourceName))
+        using (var stream = assembly.GetManifestResourceStream(_resourceName))
         using (var reader = new StreamReader(stream ?? throw new InvalidOperationException()))
         {
-          _homePage = reader.ReadToEnd();
-          return _homePage;
+          _script = reader.ReadToEnd();
+          return _script;
         }
       }
     }
 
-    /// <summary>
-    /// This is the search route
-    /// The method is 'search' while the value is the query. 
-    /// </summary>
-    public Home() : base(new string [0], Method.Get)
+    private readonly string _resourceName;
+
+    public Javascript( string script) : base( new []{script}, Method.Get )
     {
+      _resourceName = $"myoddweb.desktopsearch.http.Resources.{script}";
     }
 
-    /// <summary>
-    /// Build the response packet
-    /// </summary>
-    /// <param name="parameters"></param>
-    /// <param name="request"></param>
-    /// <returns></returns>
     protected override RouteResponse OnProcess(Dictionary<string, string> parameters, HttpListenerRequest request)
     {
       return new RouteResponse
       {
-        Response = HomePage,
+        Response = ScriptPage,
         StatusCode = HttpStatusCode.OK,
-        ContentType = "text/html"
+        ContentType = "application/javascript"
       };
     }
   }
