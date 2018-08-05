@@ -14,7 +14,9 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Configs;
@@ -89,6 +91,7 @@ namespace myoddweb.desktopsearch.http
       _routes = new List<Route.Route> { 
         new Route.Home(),
         new Route.Javascript("myoddweb.desktopsearch.http.js"),
+        new Route.StyleSheet("myoddweb.desktopsearch.http.css"),
         new Route.Search()
       };
 
@@ -149,7 +152,8 @@ namespace myoddweb.desktopsearch.http
                 continue;
               }
 
-              var routeResponse = route.Process(ctx.Request);
+              var request = ctx.Request;
+              var routeResponse = route.Process(request);
               var response = ctx.Response;
 
               response.StatusCode = (int)routeResponse.StatusCode;

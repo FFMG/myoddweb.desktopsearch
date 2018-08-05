@@ -46,12 +46,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="HttpServer.cs" />
+    <Compile Include="Models\SearchRequest.cs" />
     <Compile Include="Route\Home.cs" />
     <Compile Include="Route\Javascript.cs" />
     <Compile Include="Route\Route.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Route\RouteFile.cs" />
     <Compile Include="Route\RouteResponse.cs" />
     <Compile Include="Route\Search.cs" />
+    <Compile Include="Route\StyleSheet.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -71,6 +74,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\myoddweb.desktopsearch.http.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\myoddweb.desktopsearch.http.css" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

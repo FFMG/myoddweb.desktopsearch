@@ -14,7 +14,9 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace myoddweb.desktopsearch.http.Route
@@ -179,11 +181,42 @@ namespace myoddweb.desktopsearch.http.Route
     /// <returns></returns>
     public RouteResponse Process( HttpListenerRequest request )
     {
-      // Get all the parameters.
-      var parameters = GetParameters(request.Url.Segments);
+      try
+      {
+        // get the body
+        var body = GetBody(request);
 
-      // and then get the routes to return the response.
-      return OnProcess( parameters, request );
+        // Get all the parameters.
+        var parameters = GetParameters(request.Url.Segments);
+
+        // and then get the routes to return the response.
+        return OnProcess(body, parameters, request);
+      }
+      catch (Exception e)
+      {
+        return new RouteResponse
+        {
+          Response = e.Message,
+          StatusCode = HttpStatusCode.InternalServerError
+        };
+      }
+    }
+
+
+    /// <summary>
+    /// Get the body from a request
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    private static string GetBody(HttpListenerRequest request)
+    {
+      using (var receiveStream = request.InputStream)
+      {
+        using (var readStream = new StreamReader(receiveStream, Encoding.UTF8))
+        {
+          return readStream.ReadToEnd();
+        }
+      }
     }
 
     /// <summary>
@@ -209,10 +242,11 @@ namespace myoddweb.desktopsearch.http.Route
     /// <summary>
     /// All the route get to build their own responses now.
     /// </summary>
+    /// <param name="raw">The raw body content.</param>
     /// <param name="parameters"></param>
     /// <param name="request"></param>
     /// <returns></returns>
-    protected abstract RouteResponse OnProcess(Dictionary<string, string> parameters, HttpListenerRequest request);
+    protected abstract RouteResponse OnProcess(string raw, Dictionary<string, string> parameters, HttpListenerRequest request);
   }
 }
 

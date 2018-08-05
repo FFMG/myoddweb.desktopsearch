@@ -14,10 +14,9 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 namespace myoddweb.desktopsearch.http.Route
 {
-  internal class Javascript : RouteFile
+  internal class StyleSheet : RouteFile
   {
-
-    public Javascript( string script) : base( script, "application/javascript" )
+    public StyleSheet(string script) : base(script, "text/css")
     {
     }
   }

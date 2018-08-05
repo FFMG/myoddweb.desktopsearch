@@ -12,6 +12,7 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+using System;
 using System.Collections.Generic;
 using System.Net;
 using Newtonsoft.Json;
@@ -24,24 +25,35 @@ namespace myoddweb.desktopsearch.http.Route
     /// This is the search route
     /// The method is 'search' while the value is the query. 
     /// </summary>
-    public Search() : base(new[] { "Search", "{query}" }, Method.Get)
+    public Search() : base(new[] { "Search" }, Method.Post)
     {
     }
 
-    /// <summary>
-    /// Build the response packet
-    /// </summary>
-    /// <param name="parameters"></param>
-    /// <param name="request"></param>
-    /// <returns></returns>
-    protected override RouteResponse OnProcess(Dictionary<string, string> parameters, HttpListenerRequest request)
+    /// <inheritdoc />
+    protected override RouteResponse OnProcess(string raw, Dictionary<string, string> parameters, HttpListenerRequest request)
     {
-      return new RouteResponse
+      try
       {
-        Response = JsonConvert.SerializeObject(parameters),
-        StatusCode = HttpStatusCode.OK,
-        ContentType = "application/json"
-      };
+        // get the search query.
+        var search = JsonConvert.DeserializeObject<Models.SearchRequest>(raw);
+
+        // we can now build the response model.
+
+        return new RouteResponse
+        {
+          Response = JsonConvert.SerializeObject(parameters),
+          StatusCode = HttpStatusCode.OK,
+          ContentType = "application/json"
+        };
+      }
+      catch (Exception e)
+      {
+        return new RouteResponse
+        {
+          Response = e.Message,
+          StatusCode = HttpStatusCode.InternalServerError
+        };
+      }
     }
   }
 }

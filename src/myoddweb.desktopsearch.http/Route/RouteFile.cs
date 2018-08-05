@@ -20,42 +20,53 @@ using System.Reflection;
 
 namespace myoddweb.desktopsearch.http.Route
 {
-  internal class Home : Route
+  internal class RouteFile : Route
   {
+    #region Member Variables
     /// <summary>
     /// The home page body.
     /// </summary>
-    private string _homePage;
+    private string _script;
 
+    /// <summary>
+    /// The full rescource name
+    /// </summary>
+    private readonly string _resourceName;
+    #endregion
+
+    #region Properties
     /// <summary>
     /// Get the home page body
     /// </summary>
-    private string HomePage
+    private string ScriptPage
     {
       get
       {
-        if (null != _homePage)
+        if (null != _script)
         {
-          return _homePage;
+          return _script;
         }
 
         var assembly = Assembly.GetExecutingAssembly();
-        const string resourceName = "myoddweb.desktopsearch.http.Resources.index.html";
-        using (var stream = assembly.GetManifestResourceStream(resourceName))
+        using (var stream = assembly.GetManifestResourceStream(_resourceName))
         using (var reader = new StreamReader(stream ?? throw new InvalidOperationException()))
         {
-          _homePage = reader.ReadToEnd();
-          return _homePage;
+          _script = reader.ReadToEnd();
+          return _script;
         }
       }
     }
 
     /// <summary>
-    /// This is the search route
-    /// The method is 'search' while the value is the query. 
+    /// The file content type.
     /// </summary>
-    public Home() : base(new string [0], Method.Get)
+    private string ContentType { get; }
+    #endregion
+
+    protected RouteFile(string script, string contentType ) : base(new[] { script }, Method.Get)
     {
+      _resourceName = $"myoddweb.desktopsearch.http.Resources.{script}";
+      ContentType = contentType;
     }
 
     /// <inheritdoc />
@@ -63,9 +74,9 @@ namespace myoddweb.desktopsearch.http.Route
     {
       return new RouteResponse
       {
-        Response = HomePage,
+        Response = ScriptPage,
         StatusCode = HttpStatusCode.OK,
-        ContentType = "text/html"
+        ContentType = ContentType
       };
     }
   }
