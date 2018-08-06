@@ -12,7 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -113,5 +112,14 @@ namespace myoddweb.desktopsearch.helper
       // do the actual waiting for the event.
       await UntilAsync(what, Environment.ProcessorCount, token ).ConfigureAwait( false );
     }
+
+    /// <summary>
+    /// The non async equivalent of UntilAsync
+    /// </summary>
+    /// <param name="what"></param>
+    public static void Until(Func<bool> what)
+    {
+      UntilAsync(what).Wait();
+    }
   }
-}
+  }
