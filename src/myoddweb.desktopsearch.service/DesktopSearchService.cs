@@ -49,6 +49,11 @@ namespace myoddweb.desktopsearch.service
     private Parser _parser;
 
     /// <summary>
+    /// The logger created.
+    /// </summary>
+    private interfaces.Logging.ILogger _logger;
+
+    /// <summary>
     /// The files/folders processor.
     /// </summary>
     private Processor _processor;
@@ -223,7 +228,7 @@ namespace myoddweb.desktopsearch.service
         var config = CreateConfig();
 
         // and the logger
-        var logger = CreateLogger(config.Loggers );
+        _logger = CreateLogger(config.Loggers );
 
         // create the cancellation source
         _cancellationTokenSource = new CancellationTokenSource();
@@ -231,35 +236,51 @@ namespace myoddweb.desktopsearch.service
         var token = _cancellationTokenSource.Token;
 
         // the persister
-        var persister = new SqlitePersister(logger, token );
+        var persister = new SqlitePersister(_logger, token );
 
         // the directory parser
-        var directory = new Directory(logger, config.Paths );
+        var directory = new Directory(_logger, config.Paths );
 
         // and we can now create and start the parser.
-        _parser = new Parser( config, persister, logger, directory );
+        _parser = new Parser( config, persister, _logger, directory );
 
         // we now need to create the files parsers
         var fileParsers = CreateFileParsers<IFileParser>( config.Paths.ComponentsPaths );
 
         // create the processor
-        _processor = new Processor( fileParsers, config, persister, logger, directory);
+        _processor = new Processor( fileParsers, config, persister, _logger, directory);
 
         // create the http server
-        _http = new HttpServer( config.WebServer, persister, logger);
+        _http = new HttpServer( config.WebServer, persister, _logger);
 
         // we can now start everything 
         _http.Start(token);       //  the http server
         _parser.Start(token);     //  the parser
         _processor.Start(token);  //  the processor
       }
-      catch (AggregateException)
+      catch (AggregateException ex)
       {
         errorDuringStartup = true;
+        if (null != _logger)
+        {
+          _logger.Exception(ex);
+        }
+        else
+        {
+          Console.WriteLine( ex.Message );
+        }
       }
-      catch (Exception )
+      catch (Exception ex )
       {
         errorDuringStartup = true;
+        if (null != _logger)
+        {
+          _logger.Exception(ex);
+        }
+        else
+        {
+          Console.WriteLine(ex.Message);
+        }
       }
       finally
       {
