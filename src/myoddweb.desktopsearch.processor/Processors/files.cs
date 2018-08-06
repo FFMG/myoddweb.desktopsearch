@@ -14,7 +14,6 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -195,7 +194,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
     }
 
-    private async Task<bool> ProcessFileUpdates(List<PendingFileUpdate> pendingUpdates, int start, CancellationToken token)
+    private async Task ProcessFileUpdates(List<PendingFileUpdate> pendingUpdates, int start, CancellationToken token)
     {
       // make sure that we never do more than the total number of items
       // from our current start position.
@@ -203,7 +202,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       var count = _numberOfFilesToProcess + start > max ? max - start : (int)_numberOfFilesToProcess;
 
       // and process those files.
-      return await ProcessFileUpdates(pendingUpdates.GetRange( start, count), token).ConfigureAwait(false);
+      await ProcessFileUpdates(pendingUpdates.GetRange( start, count), token).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -212,13 +211,13 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ProcessFileUpdates(IReadOnlyCollection<PendingFileUpdate> pendingUpdates,
+    private async Task ProcessFileUpdates(IReadOnlyCollection<PendingFileUpdate> pendingUpdates,
       CancellationToken token)
     {
       if (null == pendingUpdates || !pendingUpdates.Any())
       {
-        // this is not an error
-        return true;
+        // this is not an error, just nothing to do.
+        return;
       }
 
       try
@@ -229,60 +228,13 @@ namespace myoddweb.desktopsearch.processor.Processors
           // get out if needed.
           token.ThrowIfCancellationRequested();
 
-          if (await ProcessFileUpdate(pendingFileUpdate, token).ConfigureAwait(false))
-          {
-            continue;
-          }
-
-          return false;
+          // try and process the file
+          await ProcessFileUpdate(pendingFileUpdate, token).ConfigureAwait(false);
         }
       }
       catch (OperationCanceledException)
       {
         _logger.Warning("Received cancellation request - Process files update");
-        throw;
-      }
-
-      return await MarkFilesProcessedAsync(pendingUpdates, token).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Mark a group of files as processed.
-    /// </summary>
-    /// <param name="pendingUpdates"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<bool> MarkFilesProcessedAsync(IEnumerable<PendingFileUpdate> pendingUpdates, CancellationToken token)
-    { 
-      // get the transaction
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        //  we probably cancelled.
-        return false;
-      }
-      try
-      {
-        // mark all the files as done.
-        if (!await _persister.MarkFilesProcessedAsync(pendingUpdates.Select(u => u.FileId), transaction, token).ConfigureAwait(false))
-        {
-          _persister.Rollback(transaction);
-          return false;
-        }
-
-        // we made it!
-        _persister.Commit(transaction);
-        return true;
-      }
-      catch (OperationCanceledException)
-      {
-        _persister.Rollback(transaction);
-        _logger.Warning("Received cancellation request - Process files update");
-        throw;
-      }
-      catch
-      {
-        _persister.Rollback(transaction);
         throw;
       }
     }
@@ -293,21 +245,24 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ProcessFileUpdate( PendingFileUpdate pendingFileUpdate, CancellationToken token)
+    private async Task ProcessFileUpdate( PendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
       try
       {
         switch (pendingFileUpdate.PendingUpdateType)
         {
           case UpdateType.Created:
-            return await WorkCreatedAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
+            await WorkCreatedAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
+            break;
 
           case UpdateType.Deleted:
-            return await WorkDeletedAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
+            await WorkDeletedAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
+            break;
 
           case UpdateType.Changed:
             // renamed or content/settingss changed
-            return await WorkChangedAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
+            await WorkChangedAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
+            break;
 
           default:
             throw new ArgumentOutOfRangeException();
@@ -316,7 +271,6 @@ namespace myoddweb.desktopsearch.processor.Processors
       catch (Exception e)
       {
         _logger.Exception(e);
-        return false;
       }
     }
 
@@ -374,7 +328,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       // because the file was deleted from the db  we must remove the words for it.
       // we could technically end up with orphan words, (words with no id)
       // but that's not really that important.
-      await DeleteFileFromFilesAndWordsAsync(fileId, token).ConfigureAwait(false);
+      await DeleteFileFromFilesAndWordsMarkFileProcessedAsync(fileId, token).ConfigureAwait(false);
 
       // always true ... otherwsise we throw.
       return true;
@@ -421,7 +375,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       // do we have any work to do?
       if (!tasks.Any())
       {
-        await DeleteFileFromFilesAndWordsAsync(fileId, token).ConfigureAwait(false);
+        await DeleteFileFromFilesAndWordsMarkFileProcessedAsync(fileId, token).ConfigureAwait(false);
         return;
       }
 
@@ -435,7 +389,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       if (!words.Any())
       {
         // we found no words ... so remove whatever we might have.
-        await DeleteFileFromFilesAndWordsAsync(fileId, token).ConfigureAwait(false);
+        await DeleteFileFromFilesAndWordsMarkFileProcessedAsync(fileId, token).ConfigureAwait(false);
         return;
       }
 
@@ -443,7 +397,11 @@ namespace myoddweb.desktopsearch.processor.Processors
       var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
       try
       {
+        // add all the words of that file
         await _persister.AddOrUpdateWordsToFileAsync( words, fileId, transaction, token).ConfigureAwait(false);
+
+        // and mark it as process.
+        await _persister.MarkFileProcessedAsync(fileId, transaction, token).ConfigureAwait(false);
         _persister.Commit(transaction);
       }
       catch (Exception e)
@@ -454,13 +412,25 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
     }
 
-    private async Task DeleteFileFromFilesAndWordsAsync(long fileId, CancellationToken token)
+    /// <summary>
+    /// Delete all the wods for that file, (if there were any)
+    /// And mark it as processed.
+    /// </summary>
+    /// <param name="fileId"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task DeleteFileFromFilesAndWordsMarkFileProcessedAsync(long fileId, CancellationToken token)
     {
       // we have no tasks ... to get rid of any data we might have.
       var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
       try
       {
+        // remove the words
         await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
+
+        // and mark it as process.
+        await _persister.MarkFileProcessedAsync(fileId, transaction, token).ConfigureAwait(false);
+
         _persister.Commit(transaction);
       }
       catch (Exception e)
