@@ -19,6 +19,7 @@ using System.Linq;
 using System.Security;
 using System.Security.AccessControl;
 using System.Security.Principal;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.helper
@@ -478,18 +479,14 @@ namespace myoddweb.desktopsearch.helper
       // A = {2,3,4}
       // B = {3,4,5}
       // RC = {5}
-      var fisRelativeComplement = new List<FileInfo>();
+      var fisRelativeComplement = new HashSet<FileInfo>( new FileInfoComparer() );
       foreach (var fi in fisB)
       {
-        if (fisA.Any(fiA => fi.FullName == fiA.FullName))
-        {
-          continue;
-        }
         fisRelativeComplement.Add(fi);
       }
 
       // return the relatibe complements.
-      return Distinct(fisRelativeComplement);
+      return fisRelativeComplement.ToList();
     }
 
     /// <summary>
