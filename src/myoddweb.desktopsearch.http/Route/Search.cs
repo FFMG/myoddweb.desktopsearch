@@ -14,7 +14,11 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics;
 using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
 using myoddweb.desktopsearch.http.Models;
 using myoddweb.desktopsearch.interfaces.Persisters;
 using Newtonsoft.Json;
@@ -40,7 +44,7 @@ namespace myoddweb.desktopsearch.http.Route
         var search = JsonConvert.DeserializeObject<SearchRequest>(raw);
 
         // build the response packet.
-        var response = BuildResponse(search);
+        var response = BuildResponse(search).Result;
 
         return new RouteResponse
         {
@@ -64,15 +68,67 @@ namespace myoddweb.desktopsearch.http.Route
     /// </summary>
     /// <param name="search"></param>
     /// <returns></returns>
-    private List<SearchResponse> BuildResponse(SearchRequest search)
+    private async Task<List<SearchResponse>> BuildResponse(SearchRequest search)
     {
-      // we can now build the response model.
-      return new List<SearchResponse>
+      var token = CancellationToken.None;
+      var transaction = await Persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      try
       {
-        new SearchResponse{ FullName = "c:\\test1.txt", Directory = "C:\\", Name = "test1.txt"},
-        new SearchResponse{ FullName = "c:\\test2.txt", Directory = "C:\\", Name = "test2.txt" },
-        new SearchResponse{ FullName = "c:\\test3.txt", Directory = "C:\\", Name = "test3.txt" }
-      };
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
+
+        var sql = $@"select 
+	                w.word as word,
+	                f.name as name,
+	                fo.path as path
+                from words w, FilesWords fw, Files f, Folders fo where 
+	                w.word like printf( ""%s%s"",@search,""%"" )
+                  AND fw.wordid = w.id
+	                AND f.id = fw.fileid
+	                AND fo.id = f.folderid
+                  LIMIT {search.Count} 
+                ";
+
+        var list = new List<SearchResponse>();
+        using (var cmd = Persister.CreateDbCommand(sql, transaction))
+        {
+          var pSearch = cmd.CreateParameter();
+          pSearch.DbType = DbType.String;
+          pSearch.ParameterName = "@search";
+          cmd.Parameters.Add(pSearch);
+          pSearch.Value = search.What;
+          var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
+          while (reader.Read())
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            // add this update
+            var word = (string)reader["word"];
+            var name = (string)reader["name"];
+            var path = (string)reader["path"];
+            list.Add(new SearchResponse { FullName = System.IO.Path.Combine(path, name), Directory = path, Name = name, Word = word });
+          }
+        }
+
+        // we are done here.
+        Persister.Commit(transaction);
+
+        // log it.
+        stopwatch.Stop();
+        Logger.Information( $"Completed search for '{search.What}' found {list.Count} result(s) (Time Elapsed: {stopwatch.Elapsed:g})");
+
+        // we can now build the response model.
+        return list;
+      }
+      catch (Exception e)
+      {
+        Persister.Rollback(transaction);
+        Logger.Exception(e);
+      }
+
+      // return nothing
+      return new List<SearchResponse>();
     }
   }
 }

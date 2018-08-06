@@ -30,5 +30,10 @@ namespace myoddweb.desktopsearch.http.Models
     /// The file full name
     /// </summary>
     public string FullName { get; set; }
+
+    /// <summary>
+    /// The actual word that was matched.
+    /// </summary>
+    public string Word { get; set; }
   }
 }
