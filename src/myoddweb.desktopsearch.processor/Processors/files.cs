@@ -124,8 +124,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           stopwatch.Stop();
           if (processedFiles > 0)
           {
-            _logger.Verbose(
-              $"Processed {(processedFiles > pendingUpdates.Count ? pendingUpdates.Count : processedFiles)} pending file updates (Time Elapsed: {stopwatch.Elapsed:g})");
+            _logger.Verbose( $"Processed {(processedFiles > pendingUpdates.Count ? pendingUpdates.Count : processedFiles)} pending file updates (Time Elapsed: {stopwatch.Elapsed:g})");
           }
 
           // Adjust the number of items we will be doing the next time.
@@ -346,6 +345,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       var file = await GetFileAsync(fileId, token).ConfigureAwait(false);
       if (null == file)
       {
+        await MarkFileProcessedAsync(fileId, token).ConfigureAwait(false);
         _logger.Warning( $"Unable to find, and process created file id: {fileId}.");
         return true;
       }
@@ -354,6 +354,29 @@ namespace myoddweb.desktopsearch.processor.Processors
       await ProcessFile( file, fileId, token ).ConfigureAwait(false);
 
       // return that the work was complete.
+      return true;
+    }
+
+    /// <summary>
+    /// A folder was changed
+    /// </summary>
+    /// <param name="fileId"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public async Task<bool> WorkChangedAsync(long fileId, CancellationToken token)
+    {
+      var file = await GetFileAsync(fileId, token).ConfigureAwait(false);
+      if (null == file)
+      {
+        await MarkFileProcessedAsync(fileId, token).ConfigureAwait(false);
+        _logger.Warning($"Unable to find, and process changed id: {fileId}.");
+        return true;
+      }
+
+      //  process it...
+      await ProcessFile(file, fileId, token).ConfigureAwait(false);
+
+      // return if we cancelled.
       return true;
     }
 
@@ -441,6 +464,24 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
     }
 
+    private async Task MarkFileProcessedAsync(long fileId, CancellationToken token)
+    {
+      // we have no tasks ... to get rid of any data we might have.
+      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      try
+      {
+        // and mark it as process.
+        await _persister.MarkFileProcessedAsync(fileId, transaction, token).ConfigureAwait(false);
+        _persister.Commit(transaction);
+      }
+      catch (Exception e)
+      {
+        _persister.Rollback(transaction);
+        _logger.Exception(e);
+        throw;
+      }
+    }
+
     private async Task<Words> ProcessFile( IFileParser parser, FileInfo file, CancellationToken token)
     {
       if( !parser.Supported(file))
@@ -457,28 +498,6 @@ namespace myoddweb.desktopsearch.processor.Processors
         _logger.Verbose($"Parser : {parser.Name} processed {words.Count} words.");
       }
       return words;
-    }
-
-    /// <summary>
-    /// A folder was changed
-    /// </summary>
-    /// <param name="fileId"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    public async Task<bool> WorkChangedAsync(long fileId, CancellationToken token)
-    {
-      var file = await GetFileAsync(fileId, token).ConfigureAwait(false);
-      if (null == file)
-      {
-        _logger.Warning($"Unable to find, and process changed id: {fileId}.");
-        return true;
-      }
-
-      //  process it...
-      await ProcessFile(file, fileId, token).ConfigureAwait(false);
-
-      // return if we cancelled.
-      return true;
     }
 
     /// <summary>

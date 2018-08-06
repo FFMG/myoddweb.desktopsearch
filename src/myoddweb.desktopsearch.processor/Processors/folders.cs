@@ -191,7 +191,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
     }
 
-    private async Task<bool> ProcessFolderUpdates(List<PendingFolderUpdate> pendingUpdates, int start,CancellationToken token)
+    private async Task ProcessFolderUpdates(List<PendingFolderUpdate> pendingUpdates, int start,CancellationToken token)
     {
       // make sure that we never do more than the total number of items
       // from our current start position.
@@ -199,71 +199,32 @@ namespace myoddweb.desktopsearch.processor.Processors
       var count = _numberOfFoldersToProcess + start > max ? max - start : (int) _numberOfFoldersToProcess;
 
       // and process those files.
-      return await ProcessFolderUpdates(pendingUpdates.GetRange(start, count), token).ConfigureAwait(false);
+      await ProcessFolderUpdates(pendingUpdates.GetRange(start, count), token).ConfigureAwait(false);
     }
 
-    private async Task<bool> ProcessFolderUpdates(IReadOnlyCollection<PendingFolderUpdate> pendingUpdates, CancellationToken token)
+    private async Task ProcessFolderUpdates(IReadOnlyCollection<PendingFolderUpdate> pendingUpdates, CancellationToken token)
     { 
       if (null == pendingUpdates || !pendingUpdates.Any())
       {
-        // this is not an error
-        return true;
+        // this is not an error, just nothing to do.
+        return;
       }
 
-      IDbTransaction transaction = null;
       try
       {
-        // get the transaction
-        transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
-        if (null == transaction)
-        {
-          //  we probably cancelled.
-          return false;
-        }
-
         // process all the data one at a time.
         foreach (var pendingFolderUpdate in pendingUpdates)
         {
           // get out if needed.
           token.ThrowIfCancellationRequested();
 
-          if (await ProcessFolderUpdate(transaction, pendingFolderUpdate, token).ConfigureAwait(false))
-          {
-            continue;
-          }
-
-          // something did not work, so roll back and get out.
-          _persister.Rollback(transaction);
-          return false;
+          // process this folder update.
+          await ProcessFolderUpdateAsync(pendingFolderUpdate, token).ConfigureAwait(false);
         }
-
-        // mark all the folders as done.
-        if (!await _persister.MarkDirectoriesProcessedAsync(pendingUpdates.Select(u => u.FolderId), transaction, token)
-          .ConfigureAwait(false))
-        {
-          _persister.Rollback(transaction);
-          return false;
-        }
-
-        // we made it!
-        _persister.Commit(transaction);
-        return true;
       }
       catch (OperationCanceledException)
       {
-        if (null != transaction)
-        {
-          _persister.Rollback(transaction);
-        }
         _logger.Warning("Received cancellation request - Process pending folder updates");
-        throw;
-      }
-      catch
-      {
-        if (null != transaction)
-        {
-          _persister.Rollback(transaction);
-        }
         throw;
       }
     }
@@ -271,25 +232,54 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// Process a single folder update
     /// </summary>
-    /// <param name="transaction"></param>
     /// <param name="pendingFolderUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ProcessFolderUpdate(IDbTransaction transaction, PendingFolderUpdate pendingFolderUpdate, CancellationToken token )
+    private async Task ProcessFolderUpdateAsync(PendingFolderUpdate pendingFolderUpdate, CancellationToken token)
+    {
+      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      if (null == transaction)
+      {
+        return;
+      }
+
+      try
+      {
+        // try and do the work in transaction
+        await ProcessFolderUpdateWithinTransactionAsync(pendingFolderUpdate, transaction, token).ConfigureAwait(false);
+        
+        // mark it as complete.
+        await _persister.MarkDirectoryProcessedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
+
+        // we are done
+        _persister.Commit(transaction);
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        _persister.Rollback(transaction);
+        throw;
+      }
+    }
+
+    private async Task ProcessFolderUpdateWithinTransactionAsync(PendingFolderUpdate pendingFolderUpdate, IDbTransaction transaction, CancellationToken token)
     {
       try
       {
         switch (pendingFolderUpdate.PendingUpdateType)
         {
           case UpdateType.Created:
-            return await WorkCreatedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
+            await WorkCreatedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
+            break;
 
           case UpdateType.Deleted:
-            return await WorkDeletedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
+            await WorkDeletedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
+            break;
 
           case UpdateType.Changed:
             // renamed or content/settingss changed
-            return await WorkChangedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
+            await WorkChangedAsync(pendingFolderUpdate.FolderId, transaction, token).ConfigureAwait(false);
+            break;
 
           default:
             throw new ArgumentOutOfRangeException();
@@ -298,7 +288,6 @@ namespace myoddweb.desktopsearch.processor.Processors
       catch (Exception e)
       {
         _logger.Exception(e);
-        return false;
       }
     }
 
@@ -309,19 +298,21 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<bool> WorkCreatedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
+    public async Task WorkCreatedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
     {
-      var directory = await _persister.GetDirectoryAsync(folderId, transaction, token).ConfigureAwait(false);
+      var directory = await GetDirectoryAsync(folderId, transaction, token).ConfigureAwait(false);
       if (null == directory)
       {
-        return false;
+        // we are done 
+        return;
       }
 
       // get the files in that directory.
       var files = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait(false);
       if (files == null)
       {
-        return true;
+        // we are done 
+        return;
       }
 
       // and add them to the persiser
@@ -335,8 +326,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         _logger.Error($"Unable to add {files.Count} file(s) from the new directory: {directory.FullName}.");
       }
 
-      // we made it.
-      return true;
+      // mark it as processed.
+      await _persister.MarkDirectoryProcessedAsync(folderId, transaction, token).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -346,9 +337,9 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task<bool> WorkDeletedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
+    public Task WorkDeletedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
     {
-      return Task.FromResult(true);
+      return Task.CompletedTask;
     }
 
     /// <summary>
@@ -358,18 +349,18 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<bool> WorkChangedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
+    public async Task WorkChangedAsync(long folderId, IDbTransaction transaction, CancellationToken token)
     {
       // Get the files currently on record
       // this can be null if we have nothing.
-      var filesOnRecord = await _persister.GetFilesAsync(folderId, transaction, token).ConfigureAwait(false);
+      var filesOnRecord = await GetFilesAsync(folderId, transaction, token).ConfigureAwait(false);
 
       // look for the directory name, if we found nothing on record
       // then we will have to go and look in the database.
       DirectoryInfo directory;
       if (null == filesOnRecord || !filesOnRecord.Any())
       {
-        directory = await _persister.GetDirectoryAsync(folderId, transaction, token).ConfigureAwait(false);
+        directory = await GetDirectoryAsync(folderId, transaction, token).ConfigureAwait(false);
       }
       else
       {
@@ -380,7 +371,8 @@ namespace myoddweb.desktopsearch.processor.Processors
       // if we have no directory then we have nothing...
       if (directory == null)
       {
-        return false;
+        // we are done 
+        return;
       }
 
       // then get the ones in the file.
@@ -398,13 +390,14 @@ namespace myoddweb.desktopsearch.processor.Processors
         await _persister.DeleteFilesAsync(filesToRemove, transaction, token).ConfigureAwait(false);
       }
 
+      // anything to add?
       if (filesToAdd.Any())
       {
         await _persister.AddOrUpdateFilesAsync(filesToAdd, transaction, token).ConfigureAwait(false);
       }
 
-      // we made it
-      return true;
+      // mark it as processed.
+      await _persister.MarkDirectoryProcessedAsync(folderId, transaction, token).ConfigureAwait(false);
     }
     
     /// <summary>
@@ -412,21 +405,19 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync(CancellationToken token)
+    private async Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync( CancellationToken token)
     {
-      IDbTransaction transaction = null;
+      // get the transaction
+      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      if (null == transaction)
+      {
+        //  we probably cancelled.
+        return null;
+      }
       try
       {
-        // get the transaction
-        transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
-        if (null == transaction)
-        {
-          //  we probably cancelled.
-          return null;
-        }
 
-        var pendingUpdates = await _persister
-          .GetPendingFolderUpdatesAsync(_currentNumberOfFoldersToProcess, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _persister.GetPendingFolderUpdatesAsync(_currentNumberOfFoldersToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending folder updates.");
@@ -441,21 +432,39 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       catch (OperationCanceledException)
       {
-        if (null != transaction)
-        {
-          _persister.Rollback(transaction);
-        }
+        _persister.Rollback(transaction);
         throw;
       }
       catch (Exception e)
       {
-        if (null != transaction)
-        {
-          _persister.Rollback(transaction);
-        }
+        _persister.Rollback(transaction);
         _logger.Exception(e);
         return null;
       }
+    }
+
+    /// <summary>
+    /// Get a list of files in a directory
+    /// </summary>
+    /// <param name="folderId"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<List<FileInfo>> GetFilesAsync(long folderId, IDbTransaction transaction, CancellationToken token)
+    {
+      return await _persister.GetFilesAsync(folderId, transaction, token).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Get a directory given a folder id.
+    /// </summary>
+    /// <param name="folderId"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<DirectoryInfo> GetDirectoryAsync(long folderId, IDbTransaction transaction, CancellationToken token)
+    {
+      return await _persister.GetDirectoryAsync(folderId, transaction, token).ConfigureAwait(false);
     }
   }
 }
