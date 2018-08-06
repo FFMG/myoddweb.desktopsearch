@@ -212,7 +212,8 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ProcessFileUpdates(IReadOnlyCollection<PendingFileUpdate> pendingUpdates, CancellationToken token)
+    private async Task<bool> ProcessFileUpdates(IReadOnlyCollection<PendingFileUpdate> pendingUpdates,
+      CancellationToken token)
     {
       if (null == pendingUpdates || !pendingUpdates.Any())
       {
@@ -220,33 +221,48 @@ namespace myoddweb.desktopsearch.processor.Processors
         return true;
       }
 
-      IDbTransaction transaction = null;
       try
       {
-        // get the transaction
-        transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
-        if (null == transaction)
-        {
-          //  we probably cancelled.
-          return false;
-        }
-
         // process all the data one at a time.
         foreach (var pendingFileUpdate in pendingUpdates)
         {
           // get out if needed.
           token.ThrowIfCancellationRequested();
 
-          if (await ProcessFileUpdate(transaction, pendingFileUpdate, token).ConfigureAwait(false))
+          if (await ProcessFileUpdate(pendingFileUpdate, token).ConfigureAwait(false))
           {
             continue;
           }
 
-          // something did not work, so roll back and get out.
-          _persister.Rollback(transaction);
           return false;
         }
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Process files update");
+        throw;
+      }
 
+      return await MarkFilesProcessedAsync(pendingUpdates, token).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Mark a group of files as processed.
+    /// </summary>
+    /// <param name="pendingUpdates"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> MarkFilesProcessedAsync(IEnumerable<PendingFileUpdate> pendingUpdates, CancellationToken token)
+    { 
+      // get the transaction
+      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      if (null == transaction)
+      {
+        //  we probably cancelled.
+        return false;
+      }
+      try
+      {
         // mark all the files as done.
         if (!await _persister.MarkFilesProcessedAsync(pendingUpdates.Select(u => u.FileId), transaction, token).ConfigureAwait(false))
         {
@@ -260,19 +276,13 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       catch (OperationCanceledException)
       {
-        if (null != transaction)
-        {
-          _persister.Rollback(transaction);
-        }
+        _persister.Rollback(transaction);
         _logger.Warning("Received cancellation request - Process files update");
         throw;
       }
       catch
       {
-        if (null != transaction)
-        {
-          _persister.Rollback(transaction);
-        }
+        _persister.Rollback(transaction);
         throw;
       }
     }
@@ -280,25 +290,24 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// Process a single list update
     /// </summary>
-    /// <param name="transaction"></param>
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ProcessFileUpdate( IDbTransaction transaction, PendingFileUpdate pendingFileUpdate, CancellationToken token)
+    private async Task<bool> ProcessFileUpdate( PendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
       try
       {
         switch (pendingFileUpdate.PendingUpdateType)
         {
           case UpdateType.Created:
-            return await WorkCreatedAsync(pendingFileUpdate.FileId, transaction, token).ConfigureAwait(false);
+            return await WorkCreatedAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
 
           case UpdateType.Deleted:
-            return await WorkDeletedAsync(pendingFileUpdate.FileId, transaction, token).ConfigureAwait(false);
+            return await WorkDeletedAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
 
           case UpdateType.Changed:
             // renamed or content/settingss changed
-            return await WorkChangedAsync(pendingFileUpdate.FileId, transaction, token).ConfigureAwait(false);
+            return await WorkChangedAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
 
           default:
             throw new ArgumentOutOfRangeException();
@@ -318,25 +327,21 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync( CancellationToken token)
     {
-      IDbTransaction transaction = null;
+      // get the transaction
+      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      if (null == transaction)
+      {
+        //  we probably cancelled.
+        return null;
+      }
+
       try
       {
-        // get the transaction
-        transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
-        if (null == transaction)
-        {
-          //  we probably cancelled.
-          return null;
-        }
-
-        var pendingUpdates = await _persister
-          .GetPendingFileUpdatesAsync(_currentNumberOfFilesToProcess, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _persister.GetPendingFileUpdatesAsync(_currentNumberOfFilesToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending files updates.");
           // we will now return null
-          // but at least we will commit.
-
           _persister.Rollback(transaction);
           return null;
         }
@@ -346,19 +351,13 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       catch (OperationCanceledException)
       {
-        if (null != transaction)
-        {
-          _persister.Rollback(transaction);
-        }
+        _persister.Rollback(transaction);
         _logger.Warning("Received cancellation request - Get pending updates");
         throw;
       }
       catch (Exception e)
       {
-        if (null != transaction)
-        {
-          _persister.Rollback(transaction);
-        }
+        _persister.Rollback(transaction);
         _logger.Exception(e);
         return null;
       }
@@ -368,31 +367,37 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// A folder was deleted
     /// </summary>
     /// <param name="fileId"></param>
-    /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<bool> WorkDeletedAsync(long fileId, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> WorkDeletedAsync(long fileId, CancellationToken token)
     {
       // because the file was deleted from the db  we must remove the words for it.
       // we could technically end up with orphan words, (words with no id)
       // but that's not really that important.
-      return await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
+      await DeleteFileFromFilesAndWordsAsync(fileId, token).ConfigureAwait(false);
+
+      // always true ... otherwsise we throw.
+      return true;
     }
 
     /// <summary>
     /// A folder was created
     /// </summary>
     /// <param name="fileId"></param>
-    /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<bool> WorkCreatedAsync(long fileId, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> WorkCreatedAsync(long fileId, CancellationToken token)
     {
       // get the file we just created.
-      var file = await _persister.GetFileAsync(fileId, transaction, token).ConfigureAwait(false);
+      var file = await GetFileAsync(fileId, token).ConfigureAwait(false);
+      if (null == file)
+      {
+        _logger.Warning( $"Unable to find, and process created file id: {fileId}.");
+        return true;
+      }
 
       //  process it...
-      await ProcessFile( file, fileId, transaction, token ).ConfigureAwait(false);
+      await ProcessFile( file, fileId, token ).ConfigureAwait(false);
 
       // return that the work was complete.
       return true;
@@ -403,10 +408,9 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// </summary>
     /// <param name="file"></param>
     /// <param name="fileId"></param>
-    /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task ProcessFile(FileInfo file, long fileId, IDbTransaction transaction, CancellationToken token)
+    private async Task ProcessFile(FileInfo file, long fileId, CancellationToken token)
     {
       var tasks = new List<Task<Words>>();
       foreach (var parser in _parsers)
@@ -417,8 +421,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       // do we have any work to do?
       if (!tasks.Any())
       {
-        // we have no tasks ... to get rid of any data we might have.
-        await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
+        await DeleteFileFromFilesAndWordsAsync(fileId, token).ConfigureAwait(false);
         return;
       }
 
@@ -432,12 +435,40 @@ namespace myoddweb.desktopsearch.processor.Processors
       if (!words.Any())
       {
         // we found no words ... so remove whatever we might have.
-        await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
+        await DeleteFileFromFilesAndWordsAsync(fileId, token).ConfigureAwait(false);
         return;
       }
 
       // then we add the words to the database.
-      await _persister.AddOrUpdateWordsToFileAsync( words, fileId, transaction, token).ConfigureAwait(false);
+      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      try
+      {
+        await _persister.AddOrUpdateWordsToFileAsync( words, fileId, transaction, token).ConfigureAwait(false);
+        _persister.Commit(transaction);
+      }
+      catch (Exception e)
+      {
+        _persister.Rollback(transaction);
+        _logger.Exception(e);
+        throw;
+      }
+    }
+
+    private async Task DeleteFileFromFilesAndWordsAsync(long fileId, CancellationToken token)
+    {
+      // we have no tasks ... to get rid of any data we might have.
+      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      try
+      {
+        await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
+        _persister.Commit(transaction);
+      }
+      catch (Exception e)
+      {
+        _persister.Rollback(transaction);
+        _logger.Exception(e);
+        throw;
+      }
     }
 
     private async Task<Words> ProcessFile( IFileParser parser, FileInfo file, CancellationToken token)
@@ -462,19 +493,46 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// A folder was changed
     /// </summary>
     /// <param name="fileId"></param>
-    /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<bool> WorkChangedAsync(long fileId, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> WorkChangedAsync(long fileId, CancellationToken token)
     {
-      // get the file that changed.
-      var file = await _persister.GetFileAsync(fileId, transaction, token).ConfigureAwait(false);
+      var file = await GetFileAsync(fileId, token).ConfigureAwait(false);
+      if (null == file)
+      {
+        _logger.Warning($"Unable to find, and process changed id: {fileId}.");
+        return true;
+      }
 
       //  process it...
-      await ProcessFile(file, fileId, transaction, token).ConfigureAwait(false);
+      await ProcessFile(file, fileId, token).ConfigureAwait(false);
 
       // return if we cancelled.
       return true;
+    }
+
+    /// <summary>
+    /// Get a File from the persister.
+    /// </summary>
+    /// <param name="fileId"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<FileInfo> GetFileAsync( long fileId, CancellationToken token)
+    {
+      // get the file that changed.
+      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      try
+      {
+        var file = await _persister.GetFileAsync(fileId, transaction, token).ConfigureAwait(false);
+        _persister.Commit(transaction);
+        return file;
+      }
+      catch (Exception e)
+      {
+        _persister.Rollback(transaction);
+        _logger.Exception(e);
+        throw;
+      }
     }
   }
 }
