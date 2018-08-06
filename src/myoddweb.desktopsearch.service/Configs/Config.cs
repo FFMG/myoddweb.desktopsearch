@@ -60,7 +60,7 @@ namespace myoddweb.desktopsearch.service.Configs
         Processors = JsonConvert.DeserializeObject<ConfigProcessor>("{}");
       }
 
-      if (null == Processors)
+      if (null == WebServer)
       {
         // set the default values.
         WebServer = JsonConvert.DeserializeObject<ConfigWebServer>("{}");
