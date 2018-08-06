@@ -153,15 +153,19 @@ namespace myoddweb.desktopsearch.processor
         // do the actual work.
         lock (_lock)
         {
-          //  get all the processors to do their work.
-          foreach (var processor in _processors)
+          // don't overdo the work load.
+          if (_tasks.Count(t => !t.IsCompleted) < Environment.ProcessorCount * _processors.Count)
           {
-            // then wait...
-            _tasks.Add(processor.WorkAsync(_token));
-          }
+            //  get all the processors to do their work.
+            foreach (var processor in _processors)
+            {
+              // then wait...
+              _tasks.Add(processor.WorkAsync(_token));
+            }
 
-          // remove the completed events.
-          _tasks.RemoveAll(t => t.IsCompleted || t.IsCanceled );
+            // remove the completed events.
+            _tasks.RemoveAll(t => t.IsCompleted || t.IsCanceled);
+          }
         }
       }
       catch (Exception exception)
