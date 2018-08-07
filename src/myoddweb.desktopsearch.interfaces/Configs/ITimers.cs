@@ -21,11 +21,5 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     /// Small processing gaps is better than large gaps.
     /// </summary>
     int EventsParserMs { get; }
-
-    /// <summary>
-    /// How often we want to process changed/created/deleted
-    /// Small processing gaps is better than large gaps.
-    /// </summary>
-    int EventsProcessorMs { get; }
   }
 }

@@ -16,16 +16,5 @@ namespace myoddweb.desktopsearch.interfaces.Configs
 {
   public interface IProcessors
   {
-    /// <summary>
-    /// How many folders we will be processing at a time.
-    /// The numbers are dynamically adjusted.
-    /// </summary>
-    long NumberOfFoldersToProcessPerEvent { get; }
-
-    /// <summary>
-    /// How many files we will be processing at a time.
-    /// The numbers are dynamically adjusted.
-    /// </summary>
-    long NumberOfFilesToProcessPerEvent { get; }
   }
 }

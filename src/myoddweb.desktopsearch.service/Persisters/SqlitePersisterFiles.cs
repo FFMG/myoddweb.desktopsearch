@@ -250,6 +250,18 @@ namespace myoddweb.desktopsearch.service.Persisters
         return true;
       }
 
+      // delete this by folder id.
+      return await DeleteFilesAsync(folderId, transaction, token).ConfigureAwait(false);
+    }
+    
+    /// <inheritdoc />
+    public async Task<bool> DeleteFilesAsync(long folderId, IDbTransaction transaction, CancellationToken token)
+    {
+      if (null == transaction)
+      {
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+      }
+
       // get the files for that folder so we can fag them as touched.
       var fileIds = await GetFileIdsAsync(folderId, transaction, token).ConfigureAwait(false);
       if (fileIds.Any())
@@ -275,7 +287,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           var deletedFiles = await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false);
 
           // and give a message...
-          _logger.Verbose($"Deleted {deletedFiles} file(s) from folder {directory.FullName} ({folderId}).");
+          _logger.Verbose($"Deleted {deletedFiles} file(s) from folder id: {folderId}.");
 
           // get out if needed.
           token.ThrowIfCancellationRequested();
