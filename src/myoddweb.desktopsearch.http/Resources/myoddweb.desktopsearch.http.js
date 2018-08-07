@@ -1,6 +1,7 @@
 ﻿// some const values
-SEARCH_BOX_ID = "#search-box";
-SEARCH_RESULT_CONTAINER = ".live-search-result";
+SEARCH_BOX_CONTAINER = ".live-search-box";        // the class that has the search text
+SEARCH_RESULT_CONTAINER = ".live-search-result";  // the class that will contain the search results.
+KEY_UP_DELAY = 450;                               // how long we will wait until we send the 'word' to the service
 
 // The class that manages the query and so on
 function myoddweb() {
@@ -39,6 +40,24 @@ function myoddweb() {
     this._query();
   }
 
+  this._msToTime = function(s) {
+
+    // Pad to 2 or 3 digits, default is 2
+    function pad(n, z) {
+      z = z || 2;
+      return ('00' + n).slice(-z);
+    }
+
+    var ms = s % 1000;
+    s = (s - ms) / 1000;
+    var secs = s % 60;
+    s = (s - secs) / 60;
+    var mins = s % 60;
+    var hrs = (s - mins) / 60;
+
+    return pad(hrs) + ':' + pad(mins) + ':' + pad(secs) + '.' + pad(ms, 3);
+  }
+
   // function to do the actual query.
   // we will do no validation here.
   this._query = function () {
@@ -46,19 +65,41 @@ function myoddweb() {
     // before we do anything we need to reset the results
     $(SEARCH_RESULT_CONTAINER).empty();
 
+    $(SEARCH_RESULT_CONTAINER).append(
+      "<div class='live-search-result-element'>" +
+      "<div class='live-search-result-element-top'>Wait ...</div>" +
+      "</div>" +
+      "</div>"
+    );
+
+    var mow = this;
     $.post("/Search", JSON.stringify({ what: this._querystr, count: this.MAX_NUMBER_ITEMS }), function (objs) {
-      $.each(objs, function (i, item) {
+
+      // we have to do this again in case we have more than one query on the go.
+      $(SEARCH_RESULT_CONTAINER).empty();
+
+      var words = objs.Words;
+      $.each(words, function (i, item) {
         $(SEARCH_RESULT_CONTAINER).append(
           "<div class='live-search-result-element'>" + 
-            "<div class='live-search-result-element-top'>" + item.Name + "</div>"+
-            "<div class='live-search-result-element-bottom'>" +
-              "<strong>Full Path:</strong>" + item.FullName + "<br />"+
-              "<strong>Path:</strong>" + item.Directory  + "<br />"+
-              "<strong>Word:</strong>" + item.Word +
-              "</div>" +
+          "<div class='live-search-result-element-top'>" + item.Name + "</div>"+
+          "<div class='live-search-result-element-bottom'>" +
+            "<strong>Full Path:</strong>" + item.FullName + "<br />"+
+            "<strong>Path:</strong>" + item.Directory  + "<br />"+
+            "<strong>Word:</strong>" + item.Actual +
+          "</div>" +
           "</div>"
         );
       });
+
+      var ms = mow._msToTime(objs.ElapsedMilliseconds);
+      $(SEARCH_RESULT_CONTAINER).append(
+        "<div class='live-search-result-element'>" +
+        "<div class='live-search-result-element-top'>Time Elapsed: " + ms + "</div>" +
+        "</div>" +
+        "</div>"
+      );
+
     }, "json");
   }
 
@@ -80,14 +121,14 @@ $(document).ready(
   function () {
 
     // When the user finishes typing
-    $(SEARCH_BOX_ID).keyup(
+    $(SEARCH_BOX_CONTAINER).keyup(
       function () {
         var what = $(this).val();
         _myoddweb.delaykeyup(function() {
             // get the string in the message box.
             _myoddweb.query(what);
           },
-          350);
+          KEY_UP_DELAY);
       }
     );
   }

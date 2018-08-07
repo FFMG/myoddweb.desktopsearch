@@ -22,13 +22,6 @@ namespace myoddweb.desktopsearch.helper
   {
     #region Const variables
     /// <summary>
-    /// The number of iterations we want our spinwait to do.
-    /// SpinWait essentially puts the processor into a very tight loop, with the loop count specified by the iterations parameter.
-    /// The duration of the wait therefore depends on the speed of the processor.
-    /// </summary>
-    private const int NumberOfIterations = 1024;
-
-    /// <summary>
     /// How many ms we want to sleep in case we only have a single cpu
     /// </summary>
     private const int SingleProcessorSleep = 10;
@@ -48,6 +41,7 @@ namespace myoddweb.desktopsearch.helper
     /// <returns></returns>
     private static async Task UntilAsync(Func<bool> what, int numProcessors, CancellationToken token)
     {
+      var spinWait = numProcessors;
       var count = 0;
       while (!what())
       {
@@ -58,9 +52,14 @@ namespace myoddweb.desktopsearch.helper
           // reset
           count = 0;
 
+          // The number of iterations we want our spinwait to do.
+          // SpinWait essentially puts the processor into a very tight loop, with the loop count specified by the iterations parameter.
+          // The duration of the wait therefore depends on the speed of the processor.
+          //
           // do some noop operations on our current CPU
           // @see https://msdn.microsoft.com/en-us/library/system.threading.thread.spinwait%28v=vs.110%29.aspx?f=255&MSPPError=-2147217396
-          Thread.SpinWait(NumberOfIterations);
+          Thread.SpinWait(spinWait);
+          spinWait = spinWait > 1024 ? numProcessors : spinWait*2;
           continue;
         }
 

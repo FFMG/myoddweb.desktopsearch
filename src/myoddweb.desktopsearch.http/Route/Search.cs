@@ -68,15 +68,16 @@ namespace myoddweb.desktopsearch.http.Route
     /// </summary>
     /// <param name="search"></param>
     /// <returns></returns>
-    private async Task<List<SearchResponse>> BuildResponse(SearchRequest search)
+    private async Task<SearchResponse> BuildResponse(SearchRequest search)
     {
+      // we want the stopwatch to include the getting of the transaction as well.
+      var stopwatch = new Stopwatch();
+      stopwatch.Start();
+
       var token = CancellationToken.None;
       var transaction = await Persister.Begin(token).ConfigureAwait(false);
       try
       {
-        var stopwatch = new Stopwatch();
-        stopwatch.Start();
-
         var sql = $@"select 
 	                w.word as word,
 	                f.name as name,
@@ -89,7 +90,7 @@ namespace myoddweb.desktopsearch.http.Route
                   LIMIT {search.Count} 
                 ";
 
-        var list = new List<SearchResponse>();
+        var words = new List<Word>();
         using (var cmd = Persister.CreateDbCommand(sql, transaction))
         {
           var pSearch = cmd.CreateParameter();
@@ -107,7 +108,7 @@ namespace myoddweb.desktopsearch.http.Route
             var word = (string)reader["word"];
             var name = (string)reader["name"];
             var path = (string)reader["path"];
-            list.Add(new SearchResponse { FullName = System.IO.Path.Combine(path, name), Directory = path, Name = name, Word = word });
+            words.Add(new Word { FullName = System.IO.Path.Combine(path, name), Directory = path, Name = name, Actual = word });
           }
         }
 
@@ -116,10 +117,14 @@ namespace myoddweb.desktopsearch.http.Route
 
         // log it.
         stopwatch.Stop();
-        Logger.Information( $"Completed search for '{search.What}' found {list.Count} result(s) (Time Elapsed: {stopwatch.Elapsed:g})");
+        Logger.Information( $"Completed search for '{search.What}' found {words.Count} result(s) (Time Elapsed: {stopwatch.Elapsed:g})");
 
         // we can now build the response model.
-        return list;
+        return new SearchResponse
+        {
+          Words = words,
+          ElapsedMilliseconds = stopwatch.ElapsedMilliseconds
+        };
       }
       catch (Exception e)
       {
@@ -128,7 +133,7 @@ namespace myoddweb.desktopsearch.http.Route
       }
 
       // return nothing
-      return new List<SearchResponse>();
+      return new SearchResponse();
     }
   }
 }
