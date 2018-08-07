@@ -24,6 +24,11 @@ function myoddweb() {
 
     // is it less than the max size?
     if (what.length < this.MIN_QUERY_LENGTH) {
+
+      // we are not searching, (yet), but the string is not the same anymore
+      // so we will clear the content until we actually do some work.
+      $(SEARCH_RESULT_CONTAINER).empty();
+
       return;
     }
 
@@ -56,6 +61,14 @@ function myoddweb() {
       });
     }, "json");
   }
+
+  this.delaykeyup = function () {
+    var timer = 0;
+    return function (callback, ms) {
+      clearTimeout(timer);
+      timer = setTimeout(callback, ms);
+    };
+  }()
 }
 
 // our one and only instance of our class.
@@ -68,10 +81,14 @@ $(document).ready(
 
     // When the user finishes typing
     $(SEARCH_BOX_ID).keyup(
-
-      // get the string in the message box.
       function () {
-        _myoddweb.query( $(this).val() );
-    });
+        var what = $(this).val();
+        _myoddweb.delaykeyup(function() {
+            // get the string in the message box.
+            _myoddweb.query(what);
+          },
+          350);
+      }
+    );
   }
 );
