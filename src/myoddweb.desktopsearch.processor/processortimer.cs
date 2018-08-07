@@ -90,8 +90,10 @@ namespace myoddweb.desktopsearch.processor
 
       // process the item ... and when done
       // restart the timer.
-      _task = _processor.WorkAsync(_token).ContinueWith( 
-        task => StartProcessorTimer( task.Result == 0 ? QuietEventsProcessorMs : BusyEventsProcessorMs ), _token );
+      _task = _processor.WorkAsync(_token).
+        ContinueWith( 
+          task => StartProcessorTimer( task.Result == 0 ? QuietEventsProcessorMs : BusyEventsProcessorMs ), _token 
+        );
     }
 
     /// <summary>

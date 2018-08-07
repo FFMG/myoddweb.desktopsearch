@@ -98,16 +98,16 @@ namespace myoddweb.desktopsearch.processor.Processors
         switch (pendingFolderUpdate.PendingUpdateType)
         {
           case UpdateType.Created:
-            await WorkCreatedAsync(pendingFolderUpdate.FolderId, token).ConfigureAwait(false);
+            await WorkCreatedAsync(pendingFolderUpdate, token).ConfigureAwait(false);
             break;
 
           case UpdateType.Deleted:
-            await WorkDeletedAsync(pendingFolderUpdate.FolderId, token).ConfigureAwait(false);
+            await WorkDeletedAsync(pendingFolderUpdate, token).ConfigureAwait(false);
             break;
 
           case UpdateType.Changed:
             // renamed or content/settingss changed
-            await WorkChangedAsync(pendingFolderUpdate.FolderId, token).ConfigureAwait(false);
+            await WorkChangedAsync(pendingFolderUpdate, token).ConfigureAwait(false);
             break;
 
           default:
@@ -128,12 +128,12 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// A folder was created
     /// </summary>
-    /// <param name="folderId"></param>
+    /// <param name="pendingUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task WorkCreatedAsync(long folderId, CancellationToken token)
+    public async Task WorkCreatedAsync(PendingFolderUpdate pendingUpdate, CancellationToken token)
     {
-      var directory = await GetDirectoryAsync(folderId, token).ConfigureAwait(false);
+      var directory = pendingUpdate.Directory;
       if (null == directory)
       {
         // we are done 
@@ -180,10 +180,10 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// A folder was deleted
     /// </summary>
-    /// <param name="folderId"></param>
+    /// <param name="pendingUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task WorkDeletedAsync(long folderId, CancellationToken token)
+    public async Task WorkDeletedAsync(PendingFolderUpdate pendingUpdate, CancellationToken token)
     {
       var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
@@ -193,7 +193,8 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        await _persister.DeleteFilesAsync(folderId, transaction, token);
+        // using the foler id is the fastest.
+        await _persister.DeleteFilesAsync(pendingUpdate.FolderId, transaction, token);
 
         // we are done
         _persister.Commit(transaction);
@@ -208,27 +209,18 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// A folder was changed
     /// </summary>
-    /// <param name="folderId"></param>
+    /// <param name="pendingUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task WorkChangedAsync(long folderId, CancellationToken token)
+    public async Task WorkChangedAsync(PendingFolderUpdate pendingUpdate, CancellationToken token)
     {
       // Get the files currently on record
       // this can be null if we have nothing.
-      var filesOnRecord = await GetFilesAsync(folderId, token).ConfigureAwait(false);
+      var filesOnRecord = await GetFilesAsync(pendingUpdate.FolderId, token).ConfigureAwait(false);
 
       // look for the directory name, if we found nothing on record
       // then we will have to go and look in the database.
-      DirectoryInfo directory;
-      if (null == filesOnRecord || !filesOnRecord.Any())
-      {
-        directory = await GetDirectoryAsync(folderId, token).ConfigureAwait(false);
-      }
-      else
-      {
-        var fi = filesOnRecord.First();
-        directory = fi.Directory;
-      }
+      var directory = pendingUpdate.Directory;
 
       // if we have no directory then we have nothing...
       if (directory == null)
@@ -362,39 +354,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         throw;
       }
     }
-
-    /// <summary>
-    /// Get a directory given a folder id.
-    /// </summary>
-    /// <param name="folderId"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<DirectoryInfo> GetDirectoryAsync(long folderId, CancellationToken token)
-    {
-      var transaction = await _persister.Begin(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        throw new Exception("Unable to get transaction!");
-      }
-
-      try
-      {
-        // get the directory
-        var directory = await _persister.GetDirectoryAsync(folderId, transaction, token).ConfigureAwait(false);
-
-        // we are done
-        _persister.Commit(transaction);
-
-        // return our directory.
-        return directory;
-      }
-      catch (Exception)
-      {
-        _persister.Rollback(transaction);
-        throw;
-      }
-    }
-
+ 
     /// <summary>
     /// Touch the directory to mark it for an update again.
     /// </summary>

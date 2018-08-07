@@ -13,13 +13,13 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.IO;
 using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
@@ -55,7 +55,7 @@ namespace myoddweb.desktopsearch.service.IO
           return _ignorePaths;
         }
 
-        _ignorePaths = helper.IO.Paths.GetIgnorePaths(_paths, _logger);
+        _ignorePaths = Paths.GetIgnorePaths(_paths, _logger);
         return _ignorePaths;
       }
     }
@@ -157,14 +157,14 @@ namespace myoddweb.desktopsearch.service.IO
           return null;
         }
 
-        var posibleFiles = new ConcurrentBag<FileInfo>();
-        await Task.Run( () => Parallel.ForEach(files, file =>
+        var posibleFiles = new HashSet<FileInfo>( new FileInfoComparer() );
+        foreach (var file in files)
         {
-          if (helper.File.CanReadFile(file))
+          if (await Task.Run( () => helper.File.CanReadFile(file), token).ConfigureAwait(false))
           {
             posibleFiles.Add(file);
           }
-        }), token).ConfigureAwait(false);
+        }
 
         // if we found nothing we return null.
         return posibleFiles.Any() ? posibleFiles.ToList() : null;

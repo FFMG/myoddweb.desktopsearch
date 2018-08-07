@@ -137,6 +137,10 @@ namespace myoddweb.desktopsearch.parser
           totalDirectories += directories.Count;
         }
 
+        // only now, that everything is done
+        // we can set the last time we checked flag
+        await SetLastUpdatedTimeAsync( token ).ConfigureAwait( false );
+
         // stop the watch and log how many items we found.
         stopwatch.Stop();
         _logger.Information($"Parsed {totalDirectories} directories (Time Elapsed: {stopwatch.Elapsed:g})");
@@ -155,45 +159,74 @@ namespace myoddweb.desktopsearch.parser
     }
 
     /// <summary>
+    /// Update the config to set the last access time to now.
+    /// </summary>
+    /// <param name="token"></param>
+    private async Task SetLastUpdatedTimeAsync(CancellationToken token)
+    {
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
+      if (null == transaction)
+      {
+        //  we probably cancelled.
+        throw new Exception("Unable to get transaction!");
+      }
+
+      try
+      {
+        // finally we can set the last time we checked the entire data tree.
+        await _persister.SetConfigValueAsync("LastAccessTimeUtc", DateTime.UtcNow, transaction, token).ConfigureAwait(false);
+
+        // we can commit our code.
+        _persister.Commit(transaction);
+      }
+      catch (Exception)
+      {
+        _persister.Rollback(transaction);
+        throw;
+      }
+    }
+
+    /// <summary>
     /// Check if we want to parse this directory or not.
     /// </summary>
     /// <param name="directories"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> PersistDirectories(IReadOnlyList<DirectoryInfo> directories, CancellationToken token)
+    private async Task<bool> PersistDirectories(IEnumerable<DirectoryInfo> directories, CancellationToken token)
     {
-      IDbTransaction transaction = null;
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
+      if (null == transaction)
+      {
+        //  we probably cancelled.
+        throw new Exception( "Unable to get transaction!" );
+      }
+
       try
       {
-        transaction = await _persister.Begin(token).ConfigureAwait(false);
-        if (null == transaction)
-        {
-          //  we probably cancelled.
-          return false;
-        }
-
-        // add the folder to the list.
-        if (!await _persister.AddOrUpdateDirectoriesAsync(directories, transaction, token).ConfigureAwait(false))
-        {
-          _persister.Rollback(transaction);
-          return false;
-        }
-
         // get the last time we did this
-        var lastAccessTimeUtc = await _persister.GetConfigValueAsync<DateTime>("LastAccessTimeUtc", DateTime.MinValue, transaction, token ).ConfigureAwait(false);
+        var lastAccessTimeUtc = await _persister.GetConfigValueAsync("LastAccessTimeUtc", DateTime.MinValue, transaction, token ).ConfigureAwait(false);
         foreach (var directory in directories)
         {
-          if (directory.LastAccessTimeUtc < lastAccessTimeUtc)
+          // if the directory exist... and it was flaged as newer than the last time
+          // we checked the directory, then all we need to do is touch it.
+          if (await _persister.DirectoryExistsAsync(directory, transaction, token).ConfigureAwait(false))
           {
-            continue;
+            if (directory.LastAccessTimeUtc < lastAccessTimeUtc)
+            {
+              // the file has not changed since the last time
+              continue;
+            }
+
+            // the file has changed.
+            await _persister.TouchDirectoryAsync(directory, UpdateType.Changed, transaction, token).ConfigureAwait(false);
           }
-
-          // touch the directory to indicate that we need some work done to it.
-          await _persister.TouchDirectoryAsync(directory, UpdateType.Changed, transaction, token ).ConfigureAwait(false);
+          else
+          {
+            // the file is brand new ... so we need to add it to our list.
+            // this will 'touch' it.
+            await _persister.AddOrUpdateDirectoryAsync(directory, transaction, token).ConfigureAwait(false);
+          }
         }
-
-        // finally we can set the last time we checked the entire data tree.
-        await _persister.SetConfigValueAsync("LastAccessTimeUtc", DateTime.UtcNow, transaction, token ).ConfigureAwait(false);
 
         // we can commit our code.
         _persister.Commit(transaction);
@@ -201,25 +234,11 @@ namespace myoddweb.desktopsearch.parser
         // all done
         return true;
       }
-      catch (OperationCanceledException)
+      catch (Exception)
       {
-        if (null != transaction)
-        {
-          _persister.Rollback(transaction);
-        }
+        _persister.Rollback(transaction);
         throw;
       }
-      catch (Exception e)
-      {
-        if (null != transaction)
-        {
-          _persister.Rollback(transaction);
-        }
-        _logger.Exception(e);
-      }
-
-      // if we are here
-      return false;
     }
 
     #region Start Parsing
