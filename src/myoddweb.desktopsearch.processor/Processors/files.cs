@@ -158,7 +158,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
 
       //  process it...
-      await ProcessFile( file, fileId, token ).ConfigureAwait(false);
+      await ProcessFile( file, fileId, true, token ).ConfigureAwait(false);
 
       // return that the work was complete.
       return true;
@@ -180,7 +180,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
 
       //  process it...
-      await ProcessFile(file, fileId, token).ConfigureAwait(false);
+      await ProcessFile(file, fileId, false, token).ConfigureAwait(false);
 
       // return if we cancelled.
       return true;
@@ -195,7 +195,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="fileId"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task ProcessFile(FileInfo file, long fileId, CancellationToken token)
+    private async Task ProcessFile(FileInfo file, long fileId, bool wasJustCreated, CancellationToken token)
     {
       var tasks = new List<Task<Words>>();
       foreach (var parser in _parsers)
@@ -206,7 +206,12 @@ namespace myoddweb.desktopsearch.processor.Processors
       // do we have any work to do?
       if (!tasks.Any())
       {
-        await DeleteFileFromFilesAndWordsAsync(fileId, token).ConfigureAwait(false);
+        // if we just created the file... there is nothing more to do
+        // there should be no words for a newly created files.
+        if (!wasJustCreated)
+        {
+          await DeleteFileFromFilesAndWordsAsync(fileId, token).ConfigureAwait(false);
+        }
         return;
       }
 
@@ -219,8 +224,13 @@ namespace myoddweb.desktopsearch.processor.Processors
       // do we have any work to do?
       if (!words.Any())
       {
-        // we found no words ... so remove whatever we might have.
-        await DeleteFileFromFilesAndWordsAsync(fileId, token).ConfigureAwait(false);
+        // if we just created the file... there is nothing more to do
+        // there should be no words for a newly created files.
+        if (!wasJustCreated)
+        {
+          // we found no words ... so remove whatever we might have.
+          await DeleteFileFromFilesAndWordsAsync(fileId, token).ConfigureAwait(false);
+        }
         return;
       }
 
@@ -419,7 +429,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         _persister.Commit(transaction);
         return pendingUpdate;
       }
-      catch (Exception e)
+      catch (Exception)
       {
         _persister.Rollback(transaction);
         throw;

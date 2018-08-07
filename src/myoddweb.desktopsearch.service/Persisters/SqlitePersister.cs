@@ -122,6 +122,15 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return await _transaction.Begin(token).ConfigureAwait(false);
       }
+      catch (OperationCanceledException e)
+      {
+        // is it my token?
+        if (e.CancellationToken != token)
+        {
+          _logger.Exception(e);
+        }
+        throw;
+      }
       catch (Exception e)
       {
         _logger.Exception(e);
