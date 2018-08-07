@@ -405,6 +405,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         var pendingUpdate = pendingUpdates.FirstOrDefault();
         if (null == pendingUpdate)
         {
+          // we will now return null
+          _persister.Commit(transaction);
           return null;
         }
 

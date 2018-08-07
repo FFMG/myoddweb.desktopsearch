@@ -61,7 +61,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       try
       {
         // then get _all_ the file updates that we want to do.
-        var pendingUpdate = await GetPendingFolderUpdateAsync(token).ConfigureAwait(false);
+        var pendingUpdate = await GetPendingFolderUpdateAndMarkDirectoryProcessedAsync(token).ConfigureAwait(false);
         if (null == pendingUpdate)
         {
           return 0;
@@ -93,12 +93,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task ProcessFolderUpdateAsync(PendingFolderUpdate pendingFolderUpdate, CancellationToken token)
     {
-      // the first thing we will do is mark the folder as processed.
-      // if anything goes wrong _after_ that we will try and 'touch' it again.
-      // by doing it that way around we ensure that we never keep the transaction.
-      // and we don't run the risk of someone else trying to process this again.
-      await MarkDirectoryProcessedAsync(pendingFolderUpdate.FolderId, token).ConfigureAwait(false);
-
       try
       {
         switch (pendingFolderUpdate.PendingUpdateType)
@@ -120,11 +114,8 @@ namespace myoddweb.desktopsearch.processor.Processors
             throw new ArgumentOutOfRangeException();
         }
       }
-      catch (Exception e)
+      catch (Exception)
       {
-        // log the error
-        _logger.Exception(e);
-
         // something did not work ... re-touch the directory
         await TouchDirectoryAsync(pendingFolderUpdate.FolderId, pendingFolderUpdate.PendingUpdateType, token).ConfigureAwait(false);
 
@@ -179,9 +170,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception e)
+      catch (Exception)
       {
-        _logger.Exception(e);
         _persister.Rollback(transaction);
         throw;
       }
@@ -208,9 +198,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception e)
+      catch (Exception)
       {
-        _logger.Exception(e);
         _persister.Rollback(transaction);
         throw;
       }
@@ -280,9 +269,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception e)
+      catch (Exception)
       {
-        _logger.Exception(e);
         _persister.Rollback(transaction);
         throw;
       }
@@ -295,7 +283,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<PendingFolderUpdate> GetPendingFolderUpdateAsync( CancellationToken token)
+    private async Task<PendingFolderUpdate> GetPendingFolderUpdateAndMarkDirectoryProcessedAsync( CancellationToken token)
     {
       // get the transaction
       var transaction = await _persister.Begin(token).ConfigureAwait(false);
@@ -306,7 +294,6 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       try
       {
-
         var pendingUpdates = await _persister.GetPendingFolderUpdatesAsync(1, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
@@ -317,15 +304,29 @@ namespace myoddweb.desktopsearch.processor.Processors
           return null;
         }
 
+        var pendingUpdate = pendingUpdates.FirstOrDefault();
+        if (null == pendingUpdate)
+        {
+          // we will now return null
+          _persister.Commit(transaction);
+          return null;
+        }
+
+        // the first thing we will do is mark the folder as processed.
+        // if anything goes wrong _after_ that we will try and 'touch' it again.
+        // by doing it that way around we ensure that we never keep the transaction.
+        // and we don't run the risk of someone else trying to process this again.
+        await _persister.MarkDirectoryProcessedAsync(pendingUpdate.FolderId, transaction, token).ConfigureAwait(false);
+
+        // we are done here.
         _persister.Commit(transaction);
 
         // return null if we cancelled.
         return pendingUpdates.FirstOrDefault();
       }
-      catch (Exception e)
+      catch (Exception)
       {
         _persister.Rollback(transaction);
-        _logger.Exception(e);
         return null;
       }
     }
@@ -355,9 +356,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         // return our files.
         return files;
       }
-      catch (Exception e)
+      catch (Exception)
       {
-        _logger.Exception(e);
         _persister.Rollback(transaction);
         throw;
       }
@@ -388,9 +388,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         // return our directory.
         return directory;
       }
-      catch (Exception e)
+      catch (Exception)
       {
-        _logger.Exception(e);
         _persister.Rollback(transaction);
         throw;
       }
@@ -419,39 +418,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception e)
+      catch (Exception)
       {
-        _logger.Exception(e);
-        _persister.Rollback(transaction);
-        throw;
-      }
-    }
-
-    /// <summary>
-    /// Mark this folder as processed.
-    /// </summary>
-    /// <param name="folderId"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task MarkDirectoryProcessedAsync(long folderId, CancellationToken token)
-    {
-      var transaction = await _persister.Begin(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        throw new Exception("Unable to get transaction!");
-      }
-
-      try
-      {
-        // mark it as persisted.
-        await _persister.MarkDirectoryProcessedAsync(folderId, transaction, token).ConfigureAwait(false);
-
-        // we are done
-        _persister.Commit(transaction);
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
         _persister.Rollback(transaction);
         throw;
       }
