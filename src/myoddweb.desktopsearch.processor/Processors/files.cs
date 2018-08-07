@@ -61,7 +61,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       try
       {
         // then get _all_ the file updates that we want to do.
-        var pendingUpdate = await GetPendingFileUpdateAsync(token).ConfigureAwait(false);
+        var pendingUpdate = await GetPendingFileUpdateAndMarkFileProcessedAsync(token).ConfigureAwait(false);
         if (null == pendingUpdate)
         {
           //  probably was canceled.
@@ -94,12 +94,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task ProcessFileUpdate(PendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
-      // the first thing we will do is mark the file as processed.
-      // if anything goes wrong _after_ that we will try and 'touch' it again.
-      // by doing it that way around we ensure that we never keep the transaction.
-      // and we don't run the risk of someone else trying to process this again.
-      await MarkFileProcessedAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
-
       // now try and process the files.
       try
       {
@@ -122,11 +116,8 @@ namespace myoddweb.desktopsearch.processor.Processors
             throw new ArgumentOutOfRangeException();
         }
       }
-      catch (Exception e)
+      catch (Exception)
       {
-        // log the error
-        _logger.Exception(e);
-
         // something did not work ... re-touch the files
         await TouchFileAsync(pendingFileUpdate.FileId, pendingFileUpdate.PendingUpdateType, token).ConfigureAwait(false);
 
@@ -287,9 +278,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception e)
+      catch (Exception)
       {
-        _logger.Exception(e);
         _persister.Rollback(transaction);
         throw;
       }
@@ -318,9 +308,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception e)
+      catch (Exception)
       {
-        _logger.Exception(e);
         _persister.Rollback(transaction);
         throw;
       }
@@ -348,9 +337,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception e)
+      catch (Exception)
       {
-        _logger.Exception(e);
         _persister.Rollback(transaction);
         throw;
       }
@@ -381,39 +369,8 @@ namespace myoddweb.desktopsearch.processor.Processors
         // return the file we found
         return file;
       }
-      catch (Exception e)
+      catch (Exception)
       {
-        _logger.Exception(e);
-        _persister.Rollback(transaction);
-        throw;
-      }
-    }
-
-    /// <summary>
-    /// Mark the given file as processed.
-    /// </summary>
-    /// <param name="fileId"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task MarkFileProcessedAsync(long fileId, CancellationToken token)
-    {
-      var transaction = await _persister.Begin(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        throw new Exception("Unable to get transaction!");
-      }
-
-      try
-      {
-        // mark it as persisted.
-        await _persister.MarkFileProcessedAsync(fileId, transaction, token).ConfigureAwait(false);
-
-        // we are done
-        _persister.Commit(transaction);
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
         _persister.Rollback(transaction);
         throw;
       }
@@ -424,7 +381,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<PendingFileUpdate> GetPendingFileUpdateAsync(CancellationToken token)
+    private async Task<PendingFileUpdate> GetPendingFileUpdateAndMarkFileProcessedAsync(CancellationToken token)
     {
       // get the transaction
       var transaction = await _persister.Begin(token).ConfigureAwait(false);
@@ -445,13 +402,24 @@ namespace myoddweb.desktopsearch.processor.Processors
           return null;
         }
 
+        var pendingUpdate = pendingUpdates.FirstOrDefault();
+        if (null == pendingUpdate)
+        {
+          return null;
+        }
+
+        // the first thing we will do is mark the file as processed.
+        // if anything goes wrong _after_ that we will try and 'touch' it again.
+        // by doing it that way around we ensure that we never keep the transaction.
+        // and we don't run the risk of someone else trying to process this again.
+        await _persister.MarkFileProcessedAsync(pendingUpdate.FileId, transaction, token).ConfigureAwait(false);
+
         _persister.Commit(transaction);
-        return pendingUpdates.FirstOrDefault();
+        return pendingUpdate;
       }
       catch (Exception e)
       {
         _persister.Rollback(transaction);
-        _logger.Exception(e);
         throw;
       }
     }

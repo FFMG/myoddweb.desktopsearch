@@ -79,7 +79,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
       }
 
-      _connectionString = $"Data Source={source};Version=3;Pooling=True;Max Pool Size=5;";
+      _connectionString = $"Data Source={source};Version=3;Pooling=True;Max Pool Size=15;";
 
       _transaction = new TransactionSpiner(CreateTransaction, FreeResources );
 
