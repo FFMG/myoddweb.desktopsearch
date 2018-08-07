@@ -22,9 +22,15 @@ namespace myoddweb.desktopsearch.processor
   internal class ProcessorTimer
   {
     /// <summary>
-    /// Very short delay until we process the next event.
+    /// Very short delay when work was picked up
     /// </summary>
-    private const int EventsProcessorMs = 1;
+    private const int BusyEventsProcessorMs = 1;
+
+    /// <summary>
+    /// Much bigger delay for when we want to throlle back
+    /// </summary>
+    private const int QuietEventsProcessorMs = 1000;
+
 
     #region Member variables
     /// <summary>
@@ -57,14 +63,14 @@ namespace myoddweb.desktopsearch.processor
     /// <summary>
     /// Start the event processor timer
     /// </summary>
-    private void StartProcessorTimer()
+    private void StartProcessorTimer( int interval)
     {
       if (null != _timer)
       {
         return;
       }
 
-      _timer = new System.Timers.Timer(EventsProcessorMs)
+      _timer = new System.Timers.Timer(interval)
       {
         AutoReset = false,
         Enabled = true
@@ -85,7 +91,7 @@ namespace myoddweb.desktopsearch.processor
       // process the item ... and when done
       // restart the timer.
       _task = _processor.WorkAsync(_token).ContinueWith( 
-        task => StartProcessorTimer(), _token );
+        task => StartProcessorTimer( task.Result == 0 ? QuietEventsProcessorMs : BusyEventsProcessorMs ), _token );
     }
 
     /// <summary>
@@ -110,8 +116,8 @@ namespace myoddweb.desktopsearch.processor
       // set the token
       _token = token;
 
-      // start the timer.
-      StartProcessorTimer();
+      // start the timer using the 'quiet' delays.
+      StartProcessorTimer( QuietEventsProcessorMs );
     }
 
     public void Stop()

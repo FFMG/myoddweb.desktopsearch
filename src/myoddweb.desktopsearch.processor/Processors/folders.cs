@@ -56,7 +56,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task WorkAsync(CancellationToken token)
+    public async Task<int> WorkAsync(CancellationToken token)
     {
       try
       {
@@ -64,11 +64,14 @@ namespace myoddweb.desktopsearch.processor.Processors
         var pendingUpdate = await GetPendingFolderUpdateAsync(token).ConfigureAwait(false);
         if (null == pendingUpdate)
         {
-          return;
+          return 0;
         }
 
+        // process the update.
         await ProcessFolderUpdateAsync(pendingUpdate, token).ConfigureAwait( false );
 
+        // we processed one update
+        return 1;
       }
       catch (OperationCanceledException)
       {
@@ -78,6 +81,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       catch (Exception e)
       {
         _logger.Exception(e);
+        throw;
       }
     }
 

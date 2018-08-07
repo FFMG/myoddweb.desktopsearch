@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
@@ -54,22 +55,10 @@ namespace myoddweb.desktopsearch.processor
 
       // Create the various processors, they will not start doing anything just yet
       // or at least, they shouldn't
-      _timers = new List<ProcessorTimer>
-      {
-        new ProcessorTimer(new Folders( persister, logger, directory )),
-
-        new ProcessorTimer(new Files( fileParsers, persister, logger )),
-        new ProcessorTimer(new Files( fileParsers, persister, logger )),
-        new ProcessorTimer(new Files( fileParsers, persister, logger )),
-        new ProcessorTimer(new Files( fileParsers, persister, logger )),
-        new ProcessorTimer(new Files( fileParsers, persister, logger )),
-        new ProcessorTimer(new Files( fileParsers, persister, logger )),
-        new ProcessorTimer(new Files( fileParsers, persister, logger )),
-        new ProcessorTimer(new Files( fileParsers, persister, logger )),
-        new ProcessorTimer(new Files( fileParsers, persister, logger )),
-        new ProcessorTimer(new Files( fileParsers, persister, logger ))
-
-      };
+      _timers = new List<ProcessorTimer>();
+      var maxNumberOfThreads = (Environment.ProcessorCount * 2);
+      _timers.AddRange(Enumerable.Repeat(new ProcessorTimer(new Folders(persister, logger, directory)), maxNumberOfThreads));
+      _timers.AddRange(Enumerable.Repeat(new ProcessorTimer(new Files(fileParsers, persister, logger)), maxNumberOfThreads));
     }
 
     #region Start/Stop functions
@@ -82,10 +71,7 @@ namespace myoddweb.desktopsearch.processor
       Stop();
 
       // start the timers
-      foreach (var timer in _timers)
-      {
-        timer.Start( token );
-      }
+      _timers.ForEach(t => t.Start( token));
 
       // register the token cancellation
       _cancellationTokenRegistration = token.Register(TokenCancellation);
@@ -100,10 +86,7 @@ namespace myoddweb.desktopsearch.processor
       _cancellationTokenRegistration.Dispose();
 
       // and we can stop the timers.
-      foreach (var timer in _timers)
-      {
-        timer.Stop();
-      }
+      _timers.ForEach(t => t.Stop());
     }
 
     /// <summary>

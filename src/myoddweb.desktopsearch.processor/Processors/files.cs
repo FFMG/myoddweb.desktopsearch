@@ -56,7 +56,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task WorkAsync(CancellationToken token)
+    public async Task<int> WorkAsync(CancellationToken token)
     {
       try
       {
@@ -65,9 +65,14 @@ namespace myoddweb.desktopsearch.processor.Processors
         if (null == pendingUpdate)
         {
           //  probably was canceled.
-          return;
+          return 0;
         }
+
+        // process the update.
         await ProcessFileUpdate(pendingUpdate, token).ConfigureAwait(false);
+
+        // we processed one update
+        return 1;
       }
       catch (OperationCanceledException)
       {
@@ -77,6 +82,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       catch (Exception e)
       {
         _logger.Exception(e);
+        throw;
       }
     }
 
