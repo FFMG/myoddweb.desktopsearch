@@ -273,7 +273,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task TouchFileAsync(long fileId, UpdateType type, CancellationToken token)
     {
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -304,7 +304,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task AddOrUpdateWordsToFileAsync(Words words, long fileId, CancellationToken token)
     {
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -334,7 +334,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task DeleteFileFromFilesAndWordsAsync(long fileId, CancellationToken token)
     {
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -364,7 +364,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task<FileInfo> GetFileAsync( long fileId, CancellationToken token)
     {
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -397,7 +397,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task MarkFileProcessedAsync(long fileId, CancellationToken token)
     {
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -427,7 +427,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     private async Task<PendingFileUpdate> GetPendingFileUpdateAsync(CancellationToken token)
     {
       // get the transaction
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");

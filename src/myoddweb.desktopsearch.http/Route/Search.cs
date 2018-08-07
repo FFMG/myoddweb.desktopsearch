@@ -71,7 +71,7 @@ namespace myoddweb.desktopsearch.http.Route
     private async Task<List<SearchResponse>> BuildResponse(SearchRequest search)
     {
       var token = CancellationToken.None;
-      var transaction = await Persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await Persister.Begin(token).ConfigureAwait(false);
       try
       {
         var stopwatch = new Stopwatch();

@@ -157,7 +157,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         return;
       }
       
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -195,7 +195,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     public async Task WorkDeletedAsync(long folderId, CancellationToken token)
     {
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -257,7 +257,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       // we want to remove all the files that are on record but not on file.
       var filesToRemove = helper.File.RelativeComplement(filesOnFile, filesOnRecord);
 
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -298,7 +298,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     private async Task<PendingFolderUpdate> GetPendingFolderUpdateAsync( CancellationToken token)
     {
       // get the transaction
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         //  we probably cancelled.
@@ -338,7 +338,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task<List<FileInfo>> GetFilesAsync(long folderId, CancellationToken token)
     {
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -371,7 +371,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task<DirectoryInfo> GetDirectoryAsync(long folderId, CancellationToken token)
     {
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -405,7 +405,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task TouchDirectoryAsync(long folderId, UpdateType type, CancellationToken token)
     {
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -435,7 +435,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task MarkDirectoryProcessedAsync(long folderId, CancellationToken token)
     {
-      var transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");

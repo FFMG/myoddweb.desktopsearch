@@ -115,7 +115,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     #region Transactions
     /// <inheritdoc/>
-    public async Task<IDbTransaction> BeginTransactionAsync(CancellationToken token)
+    public async Task<IDbTransaction> Begin(CancellationToken token)
     {
       // set the value
       try

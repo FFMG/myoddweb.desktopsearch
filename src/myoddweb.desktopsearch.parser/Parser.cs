@@ -165,7 +165,7 @@ namespace myoddweb.desktopsearch.parser
       IDbTransaction transaction = null;
       try
       {
-        transaction = await _persister.BeginTransactionAsync(token).ConfigureAwait(false);
+        transaction = await _persister.Begin(token).ConfigureAwait(false);
         if (null == transaction)
         {
           //  we probably cancelled.

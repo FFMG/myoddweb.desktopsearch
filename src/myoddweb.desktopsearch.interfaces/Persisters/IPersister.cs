@@ -37,7 +37,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IDbTransaction> BeginTransactionAsync( CancellationToken token );
+    Task<IDbTransaction> Begin( CancellationToken token );
 
     /// <summary>
     /// Rollback the current transaction.
