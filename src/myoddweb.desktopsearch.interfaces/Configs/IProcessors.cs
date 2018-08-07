@@ -16,5 +16,16 @@ namespace myoddweb.desktopsearch.interfaces.Configs
 {
   public interface IProcessors
   {
+    /// <summary>
+    /// The number of concurrent directories processor
+    /// If that number is too high... things might break.
+    /// </summary>
+    int ConcurrentDirectoriesProcessor { get; }
+
+    /// <summary>
+    /// The number of concurrent file processor
+    /// If that number is too high... things might break.
+    /// </summary>
+    int ConcurrentFilesProcessor { get; }
   }
 }

@@ -248,7 +248,7 @@ namespace myoddweb.desktopsearch.service
         var fileParsers = CreateFileParsers<IFileParser>( config.Paths.ComponentsPaths );
 
         // create the processor
-        _processor = new Processor( fileParsers, config, persister, _logger, directory);
+        _processor = new Processor( fileParsers, config.Processors, persister, _logger, directory);
 
         // create the http server
         _http = new HttpServer( config.WebServer, persister, _logger);

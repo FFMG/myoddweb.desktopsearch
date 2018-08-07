@@ -72,20 +72,20 @@ namespace myoddweb.desktopsearch.service.Configs
     /// </summary>
     /// <param name="paths"></param>
     /// <param name="timers"></param>
+    /// <param name="processors"></param>
     /// <param name="webserver"></param>
     /// <param name="loggers"></param>
-    /// <param name="processor"></param>
     public Config(
       ConfigPaths paths, 
       ConfigTimers timers, 
-      ConfigProcessor processor, 
+      ConfigProcessor processors, 
       ConfigWebServer webserver,
       IEnumerable<ConfigLogger> loggers )
     {
       Paths = paths;
       Timers = timers;
       Loggers = RecreateLoggers(loggers);
-      Processors = processor;
+      Processors = processors;
       WebServer = webserver;
     }
 

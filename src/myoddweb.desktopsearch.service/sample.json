@@ -22,12 +22,11 @@
     }
   ],
   "Timers": {
-    "EventsParserMs": 30000,
-    "EventsProcessorMs": 2000
+    "EventsParserMs": 30000
   },
   "Processors": {
-    "NumberOfFoldersToProcessPerEvent": 100,
-    "NumberOfFilesToProcessPerEvent": 100
+    "ConcurrentDirectoriesProcessor": 15,
+    "ConcurrentFilesProcessor": 25
   },
   "Paths": {
     "ParseFixedDrives": true,

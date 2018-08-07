@@ -12,7 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System.ComponentModel;
 using myoddweb.desktopsearch.interfaces.Configs;
 using Newtonsoft.Json;
@@ -22,13 +21,13 @@ namespace myoddweb.desktopsearch.service.Configs
   internal class ConfigProcessor : IProcessors
   {
     /// <inheritdoc />
-    [DefaultValue(50)]
+    [DefaultValue(15)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public long NumberOfFoldersToProcessPerEvent { get; protected set; }
+    public int ConcurrentDirectoriesProcessor { get; protected set; }
 
     /// <inheritdoc />
-    [DefaultValue(100)]
+    [DefaultValue(25)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public long NumberOfFilesToProcessPerEvent { get; protected set; }
+    public int ConcurrentFilesProcessor { get; protected set; }
   }
 }
