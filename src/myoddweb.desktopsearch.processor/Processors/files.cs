@@ -255,11 +255,13 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       // look for the words
       var words = await parser.ParseAsync(file, _logger, token).ConfigureAwait(false);
-      if (words.Any())
+      if (words != null && words.Any() )
       {
         // if we found any, log it.
         _logger.Verbose($"Parser : {parser.Name} processed {words.Count} words.");
       }
+
+      // null values are ignored.
       return words;
     }
     #endregion
