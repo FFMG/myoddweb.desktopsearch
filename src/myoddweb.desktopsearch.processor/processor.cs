@@ -56,8 +56,15 @@ namespace myoddweb.desktopsearch.processor
       // Create the various processors, they will not start doing anything just yet
       // or at least, they shouldn't
       _timers = new List<ProcessorTimer>();
-      _timers.AddRange(Enumerable.Repeat(new ProcessorTimer(new Folders(persister, logger, directory)), config.ConcurrentDirectoriesProcessor));
-      _timers.AddRange(Enumerable.Repeat(new ProcessorTimer(new Files(fileParsers, persister, logger)), config.ConcurrentFilesProcessor));
+      for( var i = 0; i < config.ConcurrentDirectoriesProcessor; ++i)
+      {
+        _timers.Add( new ProcessorTimer(new Folders(persister, logger, directory)));
+      }
+
+      for (var i = 0; i < config.ConcurrentFilesProcessor; ++i)
+      {
+        _timers.Add( new ProcessorTimer(new Files(fileParsers, persister, logger)));
+      }
     }
 
     #region Start/Stop functions

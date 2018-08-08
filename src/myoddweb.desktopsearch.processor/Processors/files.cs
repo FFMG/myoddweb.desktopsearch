@@ -100,16 +100,16 @@ namespace myoddweb.desktopsearch.processor.Processors
         switch (pendingFileUpdate.PendingUpdateType)
         {
           case UpdateType.Created:
-            await WorkCreatedAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
+            await WorkCreatedAsync(pendingFileUpdate, token).ConfigureAwait(false);
             break;
 
           case UpdateType.Deleted:
-            await WorkDeletedAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
+            await WorkDeletedAsync(pendingFileUpdate, token).ConfigureAwait(false);
             break;
 
           case UpdateType.Changed:
             // renamed or content/settingss changed
-            await WorkChangedAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
+            await WorkChangedAsync(pendingFileUpdate, token).ConfigureAwait(false);
             break;
 
           default:
@@ -127,38 +127,39 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     #region Workers
+
     /// <summary>
     /// A folder was deleted
     /// </summary>
-    /// <param name="fileId"></param>
+    /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task WorkDeletedAsync(long fileId, CancellationToken token)
+    public async Task WorkDeletedAsync(PendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
       // because the file was deleted from the db we must remove the words for it.
       // we could technically end up with orphan words, (words with no file ids for it)
       // but that's not really that important, maybe one day we will vacuum those words?.
-      await DeleteFileFromFilesAndWordsAsync(fileId, token).ConfigureAwait(false);
+      await DeleteFileFromFilesAndWordsAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
     }
 
     /// <summary>
     /// A folder was created
     /// </summary>
-    /// <param name="fileId"></param>
+    /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<bool> WorkCreatedAsync(long fileId, CancellationToken token)
+    public async Task<bool> WorkCreatedAsync(PendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
       // get the file we just created.
-      var file = await GetFileAsync(fileId, token).ConfigureAwait(false);
+      var file = pendingFileUpdate.File;
       if (null == file)
       {
-        _logger.Warning( $"Unable to find, and process created file id: {fileId}.");
+        _logger.Warning( $"Unable to find, and process created file id: {pendingFileUpdate.FileId}.");
         return true;
       }
 
       //  process it...
-      await ProcessFile( file, fileId, true, token ).ConfigureAwait(false);
+      await ProcessFile( pendingFileUpdate, true, token ).ConfigureAwait(false);
 
       // return that the work was complete.
       return true;
@@ -167,20 +168,20 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// A folder was changed
     /// </summary>
-    /// <param name="fileId"></param>
+    /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<bool> WorkChangedAsync(long fileId, CancellationToken token)
+    public async Task<bool> WorkChangedAsync(PendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
-      var file = await GetFileAsync(fileId, token).ConfigureAwait(false);
+      var file = pendingFileUpdate.File;
       if (null == file)
       {
-        _logger.Warning($"Unable to find, and process changed id: {fileId}.");
+        _logger.Warning($"Unable to find, and process changed id: {pendingFileUpdate.FileId}.");
         return true;
       }
 
       //  process it...
-      await ProcessFile(file, fileId, false, token).ConfigureAwait(false);
+      await ProcessFile(pendingFileUpdate, false, token).ConfigureAwait(false);
 
       // return if we cancelled.
       return true;
@@ -188,19 +189,20 @@ namespace myoddweb.desktopsearch.processor.Processors
     #endregion
 
     #region Processors
+
     /// <summary>
     /// Process a file.
     /// </summary>
-    /// <param name="file"></param>
-    /// <param name="fileId"></param>
+    /// <param name="pendingFileUpdate"></param>
+    /// <param name="wasJustCreated"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task ProcessFile(FileInfo file, long fileId, bool wasJustCreated, CancellationToken token)
+    private async Task ProcessFile(PendingFileUpdate pendingFileUpdate, bool wasJustCreated, CancellationToken token)
     {
       var tasks = new List<Task<Words>>();
       foreach (var parser in _parsers)
       {
-        tasks.Add( ProcessFile(parser, file, token));
+        tasks.Add( ProcessFile(parser, pendingFileUpdate.File, token));
       }
 
       // do we have any work to do?
@@ -210,7 +212,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         // there should be no words for a newly created files.
         if (!wasJustCreated)
         {
-          await DeleteFileFromFilesAndWordsAsync(fileId, token).ConfigureAwait(false);
+          await DeleteFileFromFilesAndWordsAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
         }
         return;
       }
@@ -229,13 +231,13 @@ namespace myoddweb.desktopsearch.processor.Processors
         if (!wasJustCreated)
         {
           // we found no words ... so remove whatever we might have.
-          await DeleteFileFromFilesAndWordsAsync(fileId, token).ConfigureAwait(false);
+          await DeleteFileFromFilesAndWordsAsync(pendingFileUpdate.FileId, token).ConfigureAwait(false);
         }
         return;
       }
 
       // add all the words of that file
-      await AddOrUpdateWordsToFileAsync( words, fileId, token).ConfigureAwait(false);
+      await AddOrUpdateWordsToFileAsync( words, pendingFileUpdate.FileId, token).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -348,38 +350,6 @@ namespace myoddweb.desktopsearch.processor.Processors
 
         // we are done
         _persister.Commit(transaction);
-      }
-      catch (Exception)
-      {
-        _persister.Rollback(transaction);
-        throw;
-      }
-    }
-
-    /// <summary>
-    /// Get a File from the persister.
-    /// </summary>
-    /// <param name="fileId"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<FileInfo> GetFileAsync( long fileId, CancellationToken token)
-    {
-      var transaction = await _persister.Begin(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        throw new Exception("Unable to get transaction!");
-      }
-
-      try
-      {
-        // get the file that changed.
-        var file = await _persister.GetFileAsync(fileId, transaction, token).ConfigureAwait(false);
-
-        // we are done
-        _persister.Commit(transaction);
-
-        // return the file we found
-        return file;
       }
       catch (Exception)
       {

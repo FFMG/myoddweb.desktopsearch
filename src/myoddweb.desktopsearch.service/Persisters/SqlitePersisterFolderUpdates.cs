@@ -156,7 +156,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             // set the folder id.
-            cmd.Parameters["@id"].Value = folderId;
+            pId.Value = folderId;
 
             // this could return 0 if the row has already been processed
             await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false);
@@ -191,7 +191,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we want to get the latest updated folders.
-        var sql = $"SELECT fu.folderid as folderid, fu.type as type, f.path FROM {TableFolderUpdates} fu, {TableFolders} f LIMIT {limit}";
+        var sql = $"SELECT fu.folderid as folderid, fu.type as type, f.path FROM {TableFolderUpdates} fu, {TableFolders} f WHERE f.id=fu.folderid "+
+                  $"ORDER BY fu.ticks DESC LIMIT { limit}";
         using (var cmd = CreateDbCommand(sql, transaction))
         {
           var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);

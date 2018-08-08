@@ -213,7 +213,9 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we want to get the latest updated folders.
-        var sql = $"SELECT fileid, type FROM {TableFileUpdates} ORDER BY ticks DESC LIMIT {limit}";
+        var sql = "SELECT fu.fileid as fileid, fu.type as type, f.name as name, fo.path FROM "+
+                 $"{TableFileUpdates} fu, {TableFiles} f, {TableFolders} fo "+
+                 $"WHERE f.id = fu.fileid and fo.id = f.folderid ORDER BY fu.ticks DESC LIMIT {limit}";
         using (var cmd = CreateDbCommand(sql, transaction))
         {
           var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
@@ -225,6 +227,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             // add this update
             pendingUpdates.Add(new PendingFileUpdate(
               (long) reader["fileid"],
+              new FileInfo( Path.Combine((string)reader["path"], (string)reader["name"])),
               (UpdateType) (long) reader["type"]
             ));
           }

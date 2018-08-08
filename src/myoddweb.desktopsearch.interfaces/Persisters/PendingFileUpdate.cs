@@ -12,6 +12,9 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System.IO;
+
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
   public class PendingFileUpdate
@@ -22,14 +25,22 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     public long FileId { get; }
 
     /// <summary>
+    /// Get the file info.
+    /// </summary>
+    public FileInfo File { get; }
+
+    /// <summary>
     /// The pending update type.
     /// </summary>
     public UpdateType PendingUpdateType { get; }
 
-    public PendingFileUpdate(long fileId, UpdateType pendingUpdateType)
+    public PendingFileUpdate(long fileId, FileInfo file, UpdateType pendingUpdateType)
     {
       // set the file id.
       FileId = fileId;
+
+      // the file.
+      File = file;
 
       // the pending update type.
       PendingUpdateType = pendingUpdateType;
