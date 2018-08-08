@@ -184,7 +184,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // then remove all the ids that are in our _current_ list
       // but that are not in our given list.
-      var diffIds = currentIds.Except(ids).ToList();
+      var diffIds = currentIds.Except(ids).ToArray();
 
       // those are the id that we want to delete.
       if (!diffIds.Any())
@@ -246,7 +246,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<long>> GetWordIdsForFile( long fileId, IDbTransaction transaction, CancellationToken token)
+    private async Task<HashSet<long>> GetWordIdsForFile( long fileId, IDbTransaction transaction, CancellationToken token)
     {
       // first we get the ids that are in the 
       try
@@ -264,17 +264,18 @@ namespace myoddweb.desktopsearch.service.Persisters
           pFId.Value = fileId;
 
           // the list of wordIds 
-          var wordIds = new List<long>();
+          var wordIds = new HashSet<long>();
 
           //  execute the query itself.
           var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
+          var ordinal = reader.GetOrdinal("wordid");
           while (reader.Read())
           {
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
             // add this id to the list.
-            wordIds.Add((long) reader["wordid"]);
+            wordIds.Add( reader.GetInt64(ordinal));
           }
 
           // return all the word ids that we found for this files.
@@ -289,7 +290,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       catch (Exception e)
       {
         _logger.Exception(e);
-        return new List<long>();
+        return new HashSet<long>();
       }
     }
     #endregion

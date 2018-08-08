@@ -199,11 +199,9 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task ProcessFile(PendingFileUpdate pendingFileUpdate, bool wasJustCreated, CancellationToken token)
     {
-      var tasks = new List<Task<Words>>();
-      foreach (var parser in _parsers)
-      {
-        tasks.Add( ProcessFile(parser, pendingFileUpdate.File, token));
-      }
+      // start allt he tasks
+      var tasks = new HashSet<Task<Words>>();
+      _parsers.ForEach(parser => { tasks.Add(ProcessFile(parser, pendingFileUpdate.File, token)); });
 
       // do we have any work to do?
       if (!tasks.Any())
@@ -218,7 +216,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
 
       // wait for all the parsers to do their work
-      var totalWords = await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
+      var totalWords = await Task.WhenAll( tasks.ToArray() ).ConfigureAwait(false);
 
       // merge them all into one.
       var words = new Words( totalWords );
@@ -260,7 +258,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       if (words != null && words.Any() )
       {
         // if we found any, log it.
-        _logger.Verbose($"Parser : {parser.Name} processed {words.Count} words.");
+        _logger.Verbose($"Parser : {parser.Name} processed {words.Count} words in {file.FullName}.");
       }
 
       // null values are ignored.

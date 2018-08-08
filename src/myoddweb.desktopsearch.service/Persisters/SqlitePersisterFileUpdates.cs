@@ -48,7 +48,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     public async Task<bool> TouchFileAsync(long fileId, UpdateType type, IDbTransaction transaction, CancellationToken token)
     {
       // just make the files do all the work.
-      return await TouchFilesAsync(new List<long> { fileId }, type, transaction, token).ConfigureAwait(false);
+      return await TouchFilesAsync(new [] { fileId }, type, transaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -102,9 +102,9 @@ namespace myoddweb.desktopsearch.service.Persisters
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
-            cmd.Parameters["@id"].Value = fileId;
-            cmd.Parameters["@type"].Value = (long) type;
-            cmd.Parameters["@ticks"].Value = DateTime.UtcNow.Ticks;
+            pId.Value = fileId;
+            pType.Value = (long) type;
+            pTicks.Value = DateTime.UtcNow.Ticks;
             if (0 == await ExecuteNonQueryAsync( cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding file the file update: {fileId} to persister");
