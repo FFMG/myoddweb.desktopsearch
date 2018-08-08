@@ -19,7 +19,6 @@ using System.Linq;
 using System.Security;
 using System.Security.AccessControl;
 using System.Security.Principal;
-using System.Text.RegularExpressions;
 using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 
@@ -211,7 +210,7 @@ namespace myoddweb.desktopsearch.helper
 
       return readAllow && !readDeny;
     }
-
+    
     /// <summary>
     /// If the given path is the child of any given parent directories.
     /// </summary>
@@ -301,33 +300,6 @@ namespace myoddweb.desktopsearch.helper
     }
 
     /// <summary>
-    /// Clean the full name of the drive,
-    /// </summary>
-    /// <param name="d"></param>
-    /// <returns></returns>
-    private static string CleanFullName(DirectoryInfo d)
-    {
-      // get the input, throw in case of null.
-      var input = d?.FullName ?? throw new ArgumentNullException( nameof(d));
-
-      // Cater for network drives.
-      // we cannot just look for '\'  as you can type '\hello' to navidate
-      // to the current directory.
-      var isNetword = input.Length > 2 && (input[0] == '\\' && input[1] == '\\');
-
-      // simple clean up
-      input = input.Replace('/', '\\').Trim();
-
-      // replace all the double back spaces
-      var rgx = new Regex("\\\\{2,}");  //  2 or more '\'
-      input = rgx.Replace(input, "\\" ).TrimEnd('\\');
-
-      // if this is a network drive remember to add 
-      // the leading '\' that we removed with the previous regex.
-      return isNetword ? "\\" + input : input;
-    }
-
-    /// <summary>
     /// Check if a directory is a child of the parent
     /// </summary>
     /// <param name="parent"></param>
@@ -348,8 +320,8 @@ namespace myoddweb.desktopsearch.helper
 
       #region Fast Checks
       // "c:\foo\bar" is a child of "c:\foo"
-      var pFullName = CleanFullName(parent);
-      var cFullName = CleanFullName(child);
+      var pFullName = DirectoryInfoComparer.FullName(parent);
+      var cFullName = DirectoryInfoComparer.FullName(child);
 
       // if the parent is longer than the child
       // then it cannot posibly be a child.
@@ -383,25 +355,8 @@ namespace myoddweb.desktopsearch.helper
     /// <returns></returns>
     public static bool Equals( DirectoryInfo diA, DirectoryInfo diB)
     {
-      if (null == diA)
-      {
-        throw new ArgumentNullException( nameof(diA));
-      }
-      if (null == diB)
-      {
-        throw new ArgumentNullException(nameof(diB));
-      }
-
-      // quick check 
-      if ( string.Equals(diA.FullName, diB.FullName, StringComparison.OrdinalIgnoreCase))
-      {
-        return true;
-      }
-
-      // cleanup check
-      var pFullName = CleanFullName( diA );
-      var cFullName = CleanFullName( diB );
-      return string.Equals(pFullName, cFullName, StringComparison.OrdinalIgnoreCase);
+      var dic = new DirectoryInfoComparer();
+      return dic.Equals(diA, diB);
     }
 
     /// <summary>
@@ -596,3 +551,4 @@ namespace myoddweb.desktopsearch.helper
     }
   }
 }
+

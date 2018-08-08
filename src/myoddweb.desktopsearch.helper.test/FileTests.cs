@@ -12,7 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -25,6 +24,16 @@ namespace myoddweb.desktopsearch.parser.test
   [TestFixture]
   internal class FileTests
   {
+    [TestCase("c:/a/bb/c", "c:/a/b/cc")]
+    [TestCase("cc:/a/b/c", "c:/a/bb/c")]        //  root is wrong
+    [TestCase("c:/a/bbb/c.d", "c:/a/b.d/c.d")]  // dot is wrong (first one)
+    public void SameLenghButNotTheSame(string parent, string path)
+    {
+      Assert.IsFalse(
+        File.IsSubDirectory(parent, path)
+      );
+    }
+
     [TestCase("c:/parent", "c:/child")]
     [TestCase("c:/b", "c:/a")]    //  same length... but not same 
     [TestCase("c:/aa", "c:/a/")]  //  same length... but not same 
@@ -652,19 +661,19 @@ namespace myoddweb.desktopsearch.parser.test
     [Test]
     public void BothNullDirectoryInfoCompare()
     {
-      Assert.Throws<ArgumentNullException>(() => File.Equals(null, null));
+      Assert.IsTrue( File.Equals(null, null) );
     }
 
     [Test]
     public void NullLhsDirectoryInfoCompare()
     {
-      Assert.Throws<ArgumentNullException>(() => File.Equals(null, new DirectoryInfo("c:/test/")));
+      Assert.IsFalse( File.Equals(null, new DirectoryInfo("c:/test/")));
     }
 
     [Test]
     public void NullRhsDirectoryInfoCompare()
     {
-      Assert.Throws<ArgumentNullException>(() => File.Equals( new DirectoryInfo("c:/test/"), null ));
+      Assert.IsFalse( File.Equals( new DirectoryInfo("c:/test/"), null ));
     }
 
     [TestCase("c:/", "c:/")]

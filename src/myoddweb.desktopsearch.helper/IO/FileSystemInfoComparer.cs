@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace myoddweb.desktopsearch.helper.IO
 {
@@ -35,13 +36,91 @@ namespace myoddweb.desktopsearch.helper.IO
         return false;
       }
 
-      // then we compare the full name ignoring the case.
-      return string.Equals(x.FullName, y.FullName, StringComparison.InvariantCultureIgnoreCase);
+      // cleanup check
+      var xx = FullName(x);
+      var yy = FullName(y);
+
+      // if they are not the same lengh, they are not the same
+      if (xx.Length != yy.Length)
+      {
+        return false;
+      }
+
+      // we now know they are exactly the same size.
+      // check that back slashes are at the same position...
+      // it is better to do that first
+      // if we compare case we might run the risk of local
+      // characters not returning proper values.
+      var l = xx.Length;
+      for (var i = 0; i < l; ++i)
+      {
+        // if either of them is a backslash and either of them is not equal
+        // then we know that they cannot be the same.
+        if ((xx[i] == '\\' || yy[i] == '\\') && xx[i] != yy[i])
+        {
+          return false;
+        }
+        if ((xx[i] == '.' || yy[i] == '.') && xx[i] != yy[i])
+        {
+          return false;
+        }
+        if ((xx[i] == ':' || yy[i] == ':') && xx[i] != yy[i])
+        {
+          return false;
+        }
+      }
+
+      // just about everything seems to math...
+      // we can try and compare strings now.
+      // and hope that there is no funny characters that make then
+      // almost equal...
+      return string.Equals(xx, yy, StringComparison.OrdinalIgnoreCase);
     }
 
     public int GetHashCode(T obj)
     {
-      return obj.FullName.GetHashCode();
+      return FullName(obj).GetHashCode();
+    }
+
+
+    /// <summary>
+    /// The backslash regex
+    /// </summary>
+    // ReSharper disable once StaticMemberInGenericType
+    private static Regex Rgx { get; } = new Regex("\\\\{2,}");
+
+    /// <summary>
+    /// Cleanup the given full name so we can use it.
+    /// </summary>
+    /// <param name="x"></param>
+    /// <returns></returns>
+    public static string FullName(T x)
+    {
+      // get the input, throw in case of null.
+      var input = x?.FullName ?? throw new ArgumentNullException(nameof(x));
+
+      // Cater for network drives.
+      // we cannot just look for '\'  as you can type '\hello' to navidate
+      // to the current directory.
+      var isNetword = input.Length > 2 && (input[0] == '\\' && input[1] == '\\');
+
+      // simple clean up
+      input = input.Replace('/', '\\').Trim();
+
+      if (x is DirectoryInfo)
+      {
+        // add a backslash at the end
+        // if there is one already it will be removed.
+        input += '\\';
+      }
+
+      // replace all the double back spaces
+      // with just a single one.
+      input = Rgx.Replace(input, "\\");
+
+      // if this is a network drive remember to add 
+      // the leading '\' that we removed with the previous regex.
+      return isNetword ? "\\" + input : input;
     }
   }
 }
