@@ -25,6 +25,38 @@ namespace myoddweb.desktopsearch.parser.test
   [TestFixture]
   internal class FileTests
   {
+    [TestCase("c:/parent", "c:/child")]
+    [TestCase("c:/b", "c:/a")]    //  same length... but not same 
+    [TestCase("c:/aa", "c:/a/")]  //  same length... but not same 
+    [TestCase("c:/aa", "c://a")]  //  same length... but not same 
+    public void ParentIsLongerThanChild(string parent, string path)
+    {
+      Assert.IsFalse(
+        File.IsSubDirectory(parent, path)
+      );
+    }
+
+    [TestCase("c:/", "d:/")]
+    [TestCase("c:/parent", "d:/parent")]
+    [TestCase("c:/parent", "D:/Parent")]
+    [TestCase("c:/parent", "d:/parent/")]
+    [TestCase("c:/parent", "d://parent//")]
+    [TestCase("c:/parent", "d:/parent/child")]
+    public void DifferentRootPaths(string parent, string path)
+    {
+      Assert.IsFalse(
+        File.IsSubDirectory(parent, path)
+      );
+    }
+
+    [TestCase("cc:/parent", "ddd:/parent")]
+    public void DifferentRootPathsLongRootPath(string parent, string path)
+    {
+      Assert.IsFalse(
+        File.IsSubDirectory(parent, path)
+      );
+    }
+
     [TestCase("c:/", "d:/")]
     [TestCase("c:\\", "d:\\")]
     [TestCase("c:\\Test", "d:\\Test")]

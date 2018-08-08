@@ -19,6 +19,7 @@ using System.Linq;
 using System.Security;
 using System.Security.AccessControl;
 using System.Security.Principal;
+using System.Text.RegularExpressions;
 using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 
@@ -300,6 +301,33 @@ namespace myoddweb.desktopsearch.helper
     }
 
     /// <summary>
+    /// Clean the full name of the drive,
+    /// </summary>
+    /// <param name="d"></param>
+    /// <returns></returns>
+    private static string CleanFullName(DirectoryInfo d)
+    {
+      // get the input, throw in case of null.
+      var input = d?.FullName ?? throw new ArgumentNullException( nameof(d));
+
+      // Cater for network drives.
+      // we cannot just look for '\'  as you can type '\hello' to navidate
+      // to the current directory.
+      var isNetword = input.Length > 2 && (input[0] == '\\' && input[1] == '\\');
+
+      // simple clean up
+      input = input.Replace('/', '\\').Trim();
+
+      // replace all the double back spaces
+      var rgx = new Regex("\\\\{2,}");  //  2 or more '\'
+      input = rgx.Replace(input, "\\" ).TrimEnd('\\');
+
+      // if this is a network drive remember to add 
+      // the leading '\' that we removed with the previous regex.
+      return isNetword ? "\\" + input : input;
+    }
+
+    /// <summary>
     /// Check if a directory is a child of the parent
     /// </summary>
     /// <param name="parent"></param>
@@ -307,6 +335,7 @@ namespace myoddweb.desktopsearch.helper
     /// <returns></returns>
     public static bool IsSubDirectory(DirectoryInfo parent, DirectoryInfo child)
     {
+      #region Sanity Check
       if (null == parent)
       {
         throw new ArgumentNullException(nameof(parent));
@@ -315,20 +344,35 @@ namespace myoddweb.desktopsearch.helper
       {
         throw new ArgumentNullException(nameof(child));
       }
+      #endregion
+
+      #region Fast Checks
+      // "c:\foo\bar" is a child of "c:\foo"
+      var pFullName = CleanFullName(parent);
+      var cFullName = CleanFullName(child);
+
+      // if the parent is longer than the child
+      // then it cannot posibly be a child.
+      if (pFullName.Length > cFullName.Length)
+      {
+        return false;
+      }
 
       // are they equal?
-      if (Equals(parent, child))
+      if (pFullName.Length == cFullName.Length)
       {
-        return true;
+        return Equals(parent, child);
       }
 
-      if ( child.Parent != null && IsSubDirectory(parent, child.Parent))
+      // if the root paths are not the same... then don't do it.
+      if (string.Compare(Path.GetPathRoot(pFullName), Path.GetPathRoot(cFullName), StringComparison.OrdinalIgnoreCase) != 0)
       {
-        return true;
+        return false;
       }
+      #endregion
 
-      // if we made it this far, it is not the same.
-      return false;
+      //  is the child a substring of the parent...
+      return cFullName.ToUpper().Contains(pFullName.ToUpper());
     }
 
     /// <summary>
@@ -349,14 +393,14 @@ namespace myoddweb.desktopsearch.helper
       }
 
       // quick check 
-      if (string.Equals(diA.FullName, diB.FullName, StringComparison.OrdinalIgnoreCase))
+      if ( string.Equals(diA.FullName, diB.FullName, StringComparison.OrdinalIgnoreCase))
       {
         return true;
       }
 
       // cleanup check
-      var pFullName = diA.FullName.Replace( '/', '\\').TrimEnd('\\');
-      var cFullName = diB.FullName.Replace('/', '\\').TrimEnd('\\');
+      var pFullName = CleanFullName( diA );
+      var cFullName = CleanFullName( diB );
       return string.Equals(pFullName, cFullName, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -474,14 +518,19 @@ namespace myoddweb.desktopsearch.helper
       {
         return new List<FileInfo>();
       }
-      
+
       // we can now go around B and find all the ones that are _not_ in A
       // A = {2,3,4}
       // B = {3,4,5}
       // RC = {5}
-      var fisRelativeComplement = new HashSet<FileInfo>( new FileInfoComparer() );
+      var fc = new FileInfoComparer();
+      var fisRelativeComplement = new HashSet<FileInfo>( fc );
       foreach (var fi in fisB)
       {
+        if ( fisA.Contains(fi, fc))
+        {
+          continue;
+        }
         fisRelativeComplement.Add(fi);
       }
 
