@@ -21,13 +21,18 @@ namespace myoddweb.desktopsearch.service.Configs
   internal class ConfigProcessor : IProcessors
   {
     /// <inheritdoc />
-    [DefaultValue(15)]
+    [DefaultValue(2)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int ConcurrentDirectoriesProcessor { get; protected set; }
 
     /// <inheritdoc />
-    [DefaultValue(25)]
+    [DefaultValue(8)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int ConcurrentFilesProcessor { get; protected set; }
+
+    /// <inheritdoc />
+    [DefaultValue(100)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public int UpdatesPerFilesEvent { get; protected set; }
   }
 }

@@ -63,7 +63,7 @@ namespace myoddweb.desktopsearch.processor
 
       for (var i = 0; i < config.ConcurrentFilesProcessor; ++i)
       {
-        _timers.Add( new ProcessorTimer(new Files(fileParsers, persister, logger)));
+        _timers.Add( new ProcessorTimer(new Files( config.UpdatesPerFilesEvent, fileParsers, persister, logger)));
       }
     }
 

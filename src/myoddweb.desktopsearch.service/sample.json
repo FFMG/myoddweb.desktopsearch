@@ -25,8 +25,9 @@
     "EventsParserMs": 30000
   },
   "Processors": {
-    "ConcurrentDirectoriesProcessor": 15,
-    "ConcurrentFilesProcessor": 25
+    "ConcurrentDirectoriesProcessor": 2,
+    "ConcurrentFilesProcessor": 8,
+    "UpdatesPerFilesEvent" : 100  
   },
   "Paths": {
     "ParseFixedDrives": true,

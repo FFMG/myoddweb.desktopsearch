@@ -27,5 +27,12 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     /// If that number is too high... things might break.
     /// </summary>
     int ConcurrentFilesProcessor { get; }
+
+    /// <summary>
+    /// The number of events we wand to do per processing events.
+    /// Don't make that number too small as it will take forever to parse
+    /// But also not too big as it blocks the database when/if there is work to do.
+    /// </summary>
+    int UpdatesPerFilesEvent { get; }
   }
 }

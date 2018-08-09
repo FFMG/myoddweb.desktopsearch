@@ -62,16 +62,16 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// The number of updates we want to try and do at a time.
     /// </summary>
-    private readonly int _numUpdatesToTry;
+    private readonly int _updatesPerFilesEvent;
     #endregion
 
-    public Files( int numUpdatesToTry, List<IFileParser> parsers, IPersister persister, ILogger logger)
+    public Files( int updatesPerFilesEvent, List<IFileParser> parsers, IPersister persister, ILogger logger)
     {
-      if (numUpdatesToTry <= 0)
+      if (updatesPerFilesEvent <= 0)
       {
-        throw new ArgumentException( $"The number of files to try per events cannot be -ve or zero, ({numUpdatesToTry})");
+        throw new ArgumentException( $"The number of files to try per events cannot be -ve or zero, ({updatesPerFilesEvent})");
       }
-      _numUpdatesToTry = numUpdatesToTry;
+      _updatesPerFilesEvent = updatesPerFilesEvent;
 
       // make sure that the parsers are valid.
       _parsers = parsers ?? throw new ArgumentNullException(nameof(parsers));
@@ -131,7 +131,12 @@ namespace myoddweb.desktopsearch.processor.Processors
           switch (pendingFileUpdate.PendingUpdateType)
           {
             case UpdateType.Created:
-              completedPendingFileUpdates.Add(await WorkCreatedAsync(pendingFileUpdate, token).ConfigureAwait(false));
+              // only add the pending updates where there are actual words to add.
+              var cpfu = await WorkCreatedAsync(pendingFileUpdate, token).ConfigureAwait(false);
+              if (cpfu.Words?.Any() ?? false)
+              {
+                completedPendingFileUpdates.Add(cpfu);
+              }
               break;
 
             case UpdateType.Deleted:
@@ -289,29 +294,6 @@ namespace myoddweb.desktopsearch.processor.Processors
         return;
       }
 
-      // assume that we have nothing to do.
-      var mustComplete = false;
-
-      if (completedPendingFileUpdates.Any(p => p.PendingUpdateType == UpdateType.Deleted || p.PendingUpdateType == UpdateType.Changed))
-      {
-        // if we created or changed a file we must go ahead
-        // because we have to delete the posible words.
-        // we don't know yet if there are any words to delete.
-        mustComplete = true;
-      }
-      else
-      if (completedPendingFileUpdates.Any(p => p.PendingUpdateType == UpdateType.Created && p.Words != null && p.Words.Any() ))
-      {
-        // we created a new file _and_ we have some new words we would like to pass.
-        mustComplete = true;
-      }
-
-      if (!mustComplete)
-      {
-        // we have nothing to delete and nothing to add.
-        return;
-      }
-
       var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
@@ -411,7 +393,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        var pendingUpdates = await _persister.GetPendingFileUpdatesAsync(_numUpdatesToTry, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _persister.GetPendingFileUpdatesAsync(_updatesPerFilesEvent, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending file updates.");
