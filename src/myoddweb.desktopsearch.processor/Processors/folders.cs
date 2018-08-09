@@ -144,7 +144,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       var files = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait(false);
       if (files == null)
       {
-        // we are done 
+        // there is nothing to add to this directory so we are done.
         return;
       }
       
@@ -214,10 +214,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     public async Task WorkChangedAsync(PendingFolderUpdate pendingUpdate, CancellationToken token)
     {
-      // Get the files currently on record
-      // this can be null if we have nothing.
-      var filesOnRecord = await GetFilesAsync(pendingUpdate.FolderId, token).ConfigureAwait(false);
-
       // look for the directory name, if we found nothing on record
       // then we will have to go and look in the database.
       var directory = pendingUpdate.Directory;
@@ -228,6 +224,10 @@ namespace myoddweb.desktopsearch.processor.Processors
         // we are done 
         return;
       }
+
+      // Get the files currently on record
+      // this can be null if we have nothing.
+      var filesOnRecord = pendingUpdate.Files;
 
       // then get the ones in the file.
       var filesOnFile = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait(false);
@@ -320,38 +320,6 @@ namespace myoddweb.desktopsearch.processor.Processors
       {
         _persister.Rollback(transaction);
         return null;
-      }
-    }
-
-    /// <summary>
-    /// Get a list of files in a directory
-    /// </summary>
-    /// <param name="folderId"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<List<FileInfo>> GetFilesAsync(long folderId, CancellationToken token)
-    {
-      var transaction = await _persister.Begin(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        throw new Exception("Unable to get transaction!");
-      }
-
-      try
-      {
-        // get the files.
-        var files = await _persister.GetFilesAsync(folderId, transaction, token).ConfigureAwait(false);
-
-        // we are done
-        _persister.Commit(transaction);
-
-        // return our files.
-        return files;
-      }
-      catch (Exception)
-      {
-        _persister.Rollback(transaction);
-        throw;
       }
     }
  

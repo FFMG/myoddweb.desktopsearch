@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -126,7 +127,7 @@ namespace myoddweb.desktopsearch.parser
           }
 
           // process all the files.
-          if (!await PersistDirectories(directories, token).ConfigureAwait(false))
+          if (!await PersistDirectories(path, directories, token).ConfigureAwait(false))
           {
             stopwatch.Stop();
             _logger.Warning($"Parsing was cancelled (Time Elapsed: {stopwatch.Elapsed:g})");
@@ -189,11 +190,14 @@ namespace myoddweb.desktopsearch.parser
     /// <summary>
     /// Check if we want to parse this directory or not.
     /// </summary>
+    /// <param name="parent"></param>
     /// <param name="directories"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> PersistDirectories(IEnumerable<DirectoryInfo> directories, CancellationToken token)
+    private async Task<bool> PersistDirectories(DirectoryInfo parent, IEnumerable<DirectoryInfo> directories, CancellationToken token)
     {
+      _logger.Verbose($"Finishing directory parsing: {parent.FullName}");
+
       var transaction = await _persister.Begin(token).ConfigureAwait(false);
       if (null == transaction)
       {
@@ -203,6 +207,9 @@ namespace myoddweb.desktopsearch.parser
 
       try
       {
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
+
         // get the last time we did this
         var lastAccessTimeUtc = await _persister.GetConfigValueAsync("LastAccessTimeUtc", DateTime.MinValue, transaction, token ).ConfigureAwait(false);
         foreach (var directory in directories)
@@ -225,11 +232,26 @@ namespace myoddweb.desktopsearch.parser
             // the file is brand new ... so we need to add it to our list.
             // this will 'touch' it.
             await _persister.AddOrUpdateDirectoryAsync(directory, transaction, token).ConfigureAwait(false);
+
+            // look for all the files in that directory.
+            // so they can also be added.
+            var files = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait(false);
+            if (files != null)
+            {
+              await _persister.AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false);
+            }
+
+            // the folder has been parsed
+            await _persister.MarkDirectoryProcessedAsync(directory, transaction, token).ConfigureAwait(false);
           }
         }
 
         // we can commit our code.
         _persister.Commit(transaction);
+
+        // stop the watch and log how many items we found.
+        stopwatch.Stop();
+        _logger.Information($"Completed directory parsing: {parent.FullName} (Time Elapsed: {stopwatch.Elapsed:g})");
 
         // all done
         return true;

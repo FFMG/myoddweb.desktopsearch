@@ -79,9 +79,9 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
       }
 
-      _connectionString = $"Data Source={source};Version=3;Pooling=True;Max Pool Size=15;";
+      _connectionString = $"Data Source={source};Version=3;Pooling=True;Max Pool Size=100;";
 
-      _transaction = new TransactionSpiner(CreateTransaction, FreeResources );
+      _transaction = new TransactionSpiner(CreateConnection, FreeResources );
 
       // update the db if need be.
       Update(token).Wait();
@@ -99,7 +99,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       _connection = null;
     }
 
-    private IDbConnection CreateTransaction()
+    private IDbConnection CreateConnection()
     {
       // try and open the database.
       if (_connection != null)

@@ -315,11 +315,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<List<FileInfo>> GetFilesAsync(long directoryId, IDbTransaction transaction, CancellationToken token)
+    public async Task<List<FileInfo>> GetFilesAsync(long directoryId, IDbTransaction transaction,
+      CancellationToken token)
     {
       if (null == transaction)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(transaction),
+          "You have to be within a tansaction when calling this function.");
       }
 
       // look for the directory
@@ -328,6 +330,22 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         // with no directory, there is nothing we can do.
         return null;
+      }
+
+      // then pass the two values we have
+      return await GetFilesAsync(directoryId, directory, transaction, token).ConfigureAwait(false);
+    }
+
+    private async Task<List<FileInfo>> GetFilesAsync(long directoryId, DirectoryInfo directory, IDbTransaction transaction, CancellationToken token)
+    {
+      if (null == transaction)
+      {
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+      }
+
+      if (null == directory)
+      {
+        throw new ArgumentNullException(nameof(directory), "The directory passed to us cannot be empty.");
       }
 
       // the pending updates
@@ -344,7 +362,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pId);
 
           // set the folder id.
-          cmd.Parameters["@id"].Value = directoryId;
+          pId.Value = directoryId;
           var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
           while (reader.Read())
           {

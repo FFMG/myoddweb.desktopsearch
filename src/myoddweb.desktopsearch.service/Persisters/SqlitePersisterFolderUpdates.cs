@@ -201,14 +201,29 @@ namespace myoddweb.desktopsearch.service.Persisters
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
+            // the folder id
+            var folderId = (long) reader["folderid"];
+
+            // the directory for that folder
+            var directory = new DirectoryInfo((string) reader["path"]);
+
+            // the update type
+            var type = (UpdateType) (long) reader["type"];
+
+            // Get the files currently on record this can be null if we have nothing.
+            // if the folder was just created we are not going to bother getting more data.
+            var filesOnRecord = type == UpdateType.Created ? new List<FileInfo>() : await GetFilesAsync(folderId, directory, transaction, token).ConfigureAwait(false);
+
             // add this update
             pendingUpdates.Add(new PendingFolderUpdate(
-              (long) reader["folderid"],
-              new DirectoryInfo( (string)reader["path"] ), 
-              (UpdateType) (long) reader["type"]
+              folderId,
+              directory,
+              filesOnRecord,
+              type
             ));
           }
         }
+
       }
       catch (OperationCanceledException)
       {

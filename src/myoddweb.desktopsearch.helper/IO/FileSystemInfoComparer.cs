@@ -14,13 +14,36 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace myoddweb.desktopsearch.helper.IO
 {
   public class FileSystemInfoComparer<T> : IEqualityComparer<T> where T : FileSystemInfo
   {
+    #region Member variables
+    /// <summary>
+    /// All the legal non string characters that could help us
+    /// tell if a name is different to another
+    /// Without actually looking at the string itself.
+    /// </summary>
+    private readonly ReadOnlyCollection<char> _legalNonStringCharacters = new List<char>{ '\\', '.', '$', ' ', ':' }.AsReadOnly();
+
+    /// <summary>
+    /// The backslash regex
+    /// </summary>
+    // ReSharper disable once StaticMemberInGenericType
+    private static Regex Rgx { get; } = new Regex("\\\\{2,}");
+    #endregion
+
+    /// <summary>
+    /// Check if 2 file items are equal.
+    /// </summary>
+    /// <param name="x"></param>
+    /// <param name="y"></param>
+    /// <returns></returns>
     public bool Equals(T x, T y)
     {
       // if they are both null, they are the same.
@@ -36,7 +59,9 @@ namespace myoddweb.desktopsearch.helper.IO
         return false;
       }
 
-      // cleanup check
+      // cleanup the 2 full names.
+      // this is needed to make sure we are comparing
+      // apples and apples.
       var xx = FullName(x);
       var yy = FullName(y);
 
@@ -47,24 +72,16 @@ namespace myoddweb.desktopsearch.helper.IO
       }
 
       // we now know they are exactly the same size.
-      // check that back slashes are at the same position...
+      // check that non letter strings are at the same position...
       // it is better to do that first
       // if we compare case we might run the risk of local
-      // characters not returning proper values.
+      // characters not returning proper values, (a good example is turkish characters).
       var l = xx.Length;
       for (var i = 0; i < l; ++i)
       {
         // if either of them is a backslash and either of them is not equal
         // then we know that they cannot be the same.
-        if ((xx[i] == '\\' || yy[i] == '\\') && xx[i] != yy[i])
-        {
-          return false;
-        }
-        if ((xx[i] == '.' || yy[i] == '.') && xx[i] != yy[i])
-        {
-          return false;
-        }
-        if ((xx[i] == ':' || yy[i] == ':') && xx[i] != yy[i])
+        if (_legalNonStringCharacters.Any(a => (xx[i] == a || yy[i] == a) && xx[i] != yy[i]))
         {
           return false;
         }
@@ -81,13 +98,6 @@ namespace myoddweb.desktopsearch.helper.IO
     {
       return FullName(obj).GetHashCode();
     }
-
-
-    /// <summary>
-    /// The backslash regex
-    /// </summary>
-    // ReSharper disable once StaticMemberInGenericType
-    private static Regex Rgx { get; } = new Regex("\\\\{2,}");
 
     /// <summary>
     /// Cleanup the given full name so we can use it.

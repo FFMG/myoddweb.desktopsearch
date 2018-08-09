@@ -353,10 +353,10 @@ namespace myoddweb.desktopsearch.helper
     /// <param name="diA"></param>
     /// <param name="diB"></param>
     /// <returns></returns>
-    public static bool Equals( DirectoryInfo diA, DirectoryInfo diB)
+    public static bool Equals<T>( T diA, T diB) where T : FileSystemInfo
     {
-      var dic = new DirectoryInfoComparer();
-      return dic.Equals(diA, diB);
+      var fsic = new FileSystemInfoComparer<T>();
+      return fsic.Equals(diA, diB);
     }
 
     /// <summary>
