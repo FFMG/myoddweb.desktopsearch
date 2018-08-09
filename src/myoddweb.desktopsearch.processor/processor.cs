@@ -14,7 +14,6 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
@@ -58,12 +57,12 @@ namespace myoddweb.desktopsearch.processor
       _timers = new List<ProcessorTimer>();
       for( var i = 0; i < config.ConcurrentDirectoriesProcessor; ++i)
       {
-        _timers.Add( new ProcessorTimer(new Folders(persister, logger, directory)));
+        _timers.Add( new ProcessorTimer(new Folders(persister, logger, directory), config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
       }
 
       for (var i = 0; i < config.ConcurrentFilesProcessor; ++i)
       {
-        _timers.Add( new ProcessorTimer(new Files( config.UpdatesPerFilesEvent, fileParsers, persister, logger)));
+        _timers.Add( new ProcessorTimer(new Files( config.UpdatesPerFilesEvent, fileParsers, persister, logger), config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
       }
     }
 

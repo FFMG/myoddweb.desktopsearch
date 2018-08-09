@@ -17,6 +17,19 @@ namespace myoddweb.desktopsearch.interfaces.Configs
   public interface IProcessors
   {
     /// <summary>
+    /// When the file/folders updates are compelte
+    /// the is the amount of time we want to wait
+    /// before we check again...
+    /// </summary>
+    int QuietEventsProcessorMs { get; }
+
+    /// <summary>
+    /// If we still have files/folders/... to check
+    /// this is the amount of time between processing we want to wai.t
+    /// </summary>
+    int BusyEventsProcessorMs { get; }
+
+    /// <summary>
     /// The number of concurrent directories processor
     /// If that number is too high... things might break.
     /// </summary>

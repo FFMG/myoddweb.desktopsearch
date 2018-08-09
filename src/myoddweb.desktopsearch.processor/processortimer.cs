@@ -21,17 +21,6 @@ namespace myoddweb.desktopsearch.processor
 {
   internal class ProcessorTimer
   {
-    /// <summary>
-    /// Very short delay when work was picked up
-    /// </summary>
-    private const int BusyEventsProcessorMs = 1;
-
-    /// <summary>
-    /// Much bigger delay for when we want to throlle back
-    /// </summary>
-    private const int QuietEventsProcessorMs = 5000;
-
-
     #region Member variables
     /// <summary>
     /// The processor we are currently running.
@@ -52,10 +41,37 @@ namespace myoddweb.desktopsearch.processor
     /// The current task.
     /// </summary>
     private Task _task;
+
+    /// <summary>
+    /// When the file/folders updates are compelte
+    /// the is the amount of time we want to wait
+    /// before we check again...
+    /// </summary>
+    private int QuietEventsProcessorMs { get; }
+
+    /// <summary>
+    /// If we still have files/folders/... to check
+    /// this is the amount of time between processing we want to wai.t
+    /// </summary>
+    private int BusyEventsProcessorMs { get; }
     #endregion
 
-    public ProcessorTimer(IProcessor processor)
+    public ProcessorTimer(IProcessor processor, int quietEventsProcessorMs, int busyEventsProcessorMs)
     {
+      QuietEventsProcessorMs = quietEventsProcessorMs;
+      BusyEventsProcessorMs = busyEventsProcessorMs;
+      if (QuietEventsProcessorMs <= 0)
+      {
+        throw new ArgumentException( $"The quiet event processor timer cannot be -ve or zeor ({QuietEventsProcessorMs})");
+      }
+      if (BusyEventsProcessorMs <= 0)
+      {
+        throw new ArgumentException($"The busy event processor timmer cannot be -ve or zeor ({BusyEventsProcessorMs})");
+      }
+      if (BusyEventsProcessorMs > QuietEventsProcessorMs )
+      {
+        throw new ArgumentException($"The busy event processor timer cannot be more than the quiet event processor timer ({QuietEventsProcessorMs} < {BusyEventsProcessorMs})");
+      }
       _processor = processor ?? throw new ArgumentNullException(nameof(processor));
     }
 
@@ -63,7 +79,7 @@ namespace myoddweb.desktopsearch.processor
     /// <summary>
     /// Start the event processor timer
     /// </summary>
-    private void StartProcessorTimer( int interval)
+    private void StartProcessorTimer( double interval)
     {
       if (null != _timer)
       {
@@ -92,14 +108,25 @@ namespace myoddweb.desktopsearch.processor
       // restart the timer.
       _task = _processor.WorkAsync(_token).
         ContinueWith( 
-          task => StartProcessorTimer( task.Result < _processor.MaxUpdatesToProcess ? Almost(QuietEventsProcessorMs) : BusyEventsProcessorMs ), _token 
+          task => StartProcessorTimer( task.Result < _processor.MaxUpdatesToProcess ? Almost(QuietEventsProcessorMs) : Almost(BusyEventsProcessorMs) ), _token 
         );
     }
 
-    private static int Almost(int given)
+    /// <summary>
+    /// Given a static time, this function tries to randomize it a little.
+    /// This helps to prevent posible collisions.
+    /// </summary>
+    /// <param name="given"></param>
+    /// <returns></returns>
+    private static double Almost(int given)
     {
+      // get a random number
       var rnd = new Random( DateTime.UtcNow.Millisecond );
-      return (int)((given * .9) + (rnd.NextDouble() * ( given * 0.2)));
+
+      // and get it withing +/- 10% of the actual value.
+      // we add 20% so that we are within -10% and +10% of the actual value...
+      // we use ceiling to make sure we never get zero...
+      return (given * .9) + (rnd.NextDouble() * ( given * 0.2));
     }
 
     /// <summary>
