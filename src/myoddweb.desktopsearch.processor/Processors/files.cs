@@ -59,10 +59,11 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// </summary>
     private readonly List<IFileParser> _parsers;
 
+    /// <inheritdoc />
     /// <summary>
     /// The number of updates we want to try and do at a time.
     /// </summary>
-    private readonly int _updatesPerFilesEvent;
+    public int MaxUpdatesToProcess { get; }
     #endregion
 
     public Files( int updatesPerFilesEvent, List<IFileParser> parsers, IPersister persister, ILogger logger)
@@ -71,7 +72,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       {
         throw new ArgumentException( $"The number of files to try per events cannot be -ve or zero, ({updatesPerFilesEvent})");
       }
-      _updatesPerFilesEvent = updatesPerFilesEvent;
+      MaxUpdatesToProcess = updatesPerFilesEvent;
 
       // make sure that the parsers are valid.
       _parsers = parsers ?? throw new ArgumentNullException(nameof(parsers));
@@ -393,7 +394,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        var pendingUpdates = await _persister.GetPendingFileUpdatesAsync(_updatesPerFilesEvent, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _persister.GetPendingFileUpdatesAsync(MaxUpdatesToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending file updates.");

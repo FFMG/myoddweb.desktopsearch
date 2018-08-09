@@ -13,8 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -41,6 +39,12 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// The persister.
     /// </summary>
     private readonly IPersister _persister;
+
+    /// <inheritdoc />
+    /// <summary>
+    /// We only process one item at a time here.
+    /// </summary>
+    public int MaxUpdatesToProcess => 1;
     #endregion
 
     public Folders(IPersister persister, ILogger logger, IDirectory directory)
@@ -286,7 +290,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       try
       {
-        var pendingUpdates = await _persister.GetPendingFolderUpdatesAsync(1, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _persister.GetPendingFolderUpdatesAsync(MaxUpdatesToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending folder updates.");

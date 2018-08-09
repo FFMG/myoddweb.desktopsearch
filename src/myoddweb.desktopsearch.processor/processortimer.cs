@@ -92,7 +92,7 @@ namespace myoddweb.desktopsearch.processor
       // restart the timer.
       _task = _processor.WorkAsync(_token).
         ContinueWith( 
-          task => StartProcessorTimer( task.Result == 0 ? QuietEventsProcessorMs : BusyEventsProcessorMs ), _token 
+          task => StartProcessorTimer( task.Result < _processor.MaxUpdatesToProcess ? QuietEventsProcessorMs : BusyEventsProcessorMs ), _token 
         );
     }
 
