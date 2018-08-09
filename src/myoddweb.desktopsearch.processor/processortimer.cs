@@ -29,7 +29,7 @@ namespace myoddweb.desktopsearch.processor
     /// <summary>
     /// Much bigger delay for when we want to throlle back
     /// </summary>
-    private const int QuietEventsProcessorMs = 1000;
+    private const int QuietEventsProcessorMs = 5000;
 
 
     #region Member variables
@@ -92,8 +92,14 @@ namespace myoddweb.desktopsearch.processor
       // restart the timer.
       _task = _processor.WorkAsync(_token).
         ContinueWith( 
-          task => StartProcessorTimer( task.Result < _processor.MaxUpdatesToProcess ? QuietEventsProcessorMs : BusyEventsProcessorMs ), _token 
+          task => StartProcessorTimer( task.Result < _processor.MaxUpdatesToProcess ? Almost(QuietEventsProcessorMs) : BusyEventsProcessorMs ), _token 
         );
+    }
+
+    private static int Almost(int given)
+    {
+      var rnd = new Random( DateTime.UtcNow.Millisecond );
+      return (int)((given * .9) + (rnd.NextDouble() * ( given * 0.2)));
     }
 
     /// <summary>
