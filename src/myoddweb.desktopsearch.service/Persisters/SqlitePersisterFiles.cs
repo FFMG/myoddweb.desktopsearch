@@ -501,9 +501,9 @@ namespace myoddweb.desktopsearch.service.Persisters
               return false;
             }
 
-            cmd.Parameters["@id"].Value = nextId;
-            cmd.Parameters["@folderid"].Value = folderId;
-            cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
+            pId.Value = nextId;
+            pFolderId.Value = folderId;
+            pName.Value = file.Name.ToLowerInvariant();
             if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding file: {file.FullName} to persister");

@@ -45,5 +45,13 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
       // the pending update type.
       PendingUpdateType = pendingUpdateType;
     }
+
+    /// <summary>
+    /// Copy contructor.
+    /// </summary>
+    /// <param name="pu"></param>
+    public PendingFileUpdate(PendingFileUpdate pu) : this(pu.FileId, pu.File, pu.PendingUpdateType)
+    {
+    }
   }
 }

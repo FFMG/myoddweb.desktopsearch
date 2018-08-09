@@ -14,10 +14,8 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -194,7 +192,7 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="directories"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> PersistDirectories(DirectoryInfo parent, IEnumerable<DirectoryInfo> directories, CancellationToken token)
+    private async Task<bool> PersistDirectories(FileSystemInfo parent, IEnumerable<DirectoryInfo> directories, CancellationToken token)
     {
       _logger.Verbose($"Finishing directory parsing: {parent.FullName}");
 
