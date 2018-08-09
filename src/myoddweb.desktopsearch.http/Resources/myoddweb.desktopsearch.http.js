@@ -15,11 +15,11 @@ function myoddweb() {
   // the last query we did
   this._querystr = "";
 
-  this.query = function (what) {
+  this.query = function (what, force ) {
     what = $.trim(what);
 
     // have we done this already?
-    if (this._querystr === what) {
+    if (force === false && this._querystr === what) {
       return;
     }
 
@@ -92,10 +92,12 @@ function myoddweb() {
         );
       });
 
+      var pct = (((objs.Status.Files - objs.Status.PendingUpdates) / objs.Status.Files)*100).toFixed(4) + '%';
       var ms = mow._msToTime(objs.ElapsedMilliseconds);
       $(SEARCH_RESULT_CONTAINER).append(
         "<div class='live-search-result-element'>" +
-        "<div class='live-search-result-element-top'>Time Elapsed: " + ms + "</div>" +
+        " <div class='live-search-result-element-top'>Time Elapsed: " + ms + "</div>" +
+        " <div class='live-search-result-element-top'>" + pct + " indexed</div>" +
         "</div>" +
         "</div>"
       );
@@ -126,10 +128,18 @@ $(document).ready(
         var what = $(this).val();
         _myoddweb.delaykeyup(function() {
             // get the string in the message box.
-            _myoddweb.query(what);
+            _myoddweb.query(what, false );
           },
           KEY_UP_DELAY);
       }
     );
+
+    $(SEARCH_BOX_CONTAINER).keypress(function (e) {
+      var what = $(this).val();
+      if (e.which === 13) {
+        // get the string in the message box.
+        _myoddweb.query(what, true );
+      }
+    });
   }
 );

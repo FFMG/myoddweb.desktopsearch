@@ -12,25 +12,18 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Collections.Generic;
-
 namespace myoddweb.desktopsearch.http.Models
 {
-  internal class SearchResponse
+  internal class StatusResponse
   {
     /// <summary>
-    /// All the words we found.
+    /// The number of files we are still processing
     /// </summary>
-    public List<Word> Words { get; set; }
+    public long PendingUpdates { get; set; }
 
     /// <summary>
-    /// How long it took to get the insformation.
+    /// The number of files on record.
     /// </summary>
-    public long ElapsedMilliseconds { get; set; }
-
-    /// <summary>
-    /// The status of the entire system.
-    /// </summary>
-    public StatusResponse Status { get; set; }
+    public long Files { get; set; }
   }
 }
