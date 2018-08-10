@@ -12,7 +12,10 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using System.ComponentModel;
+using System.Runtime.Serialization;
 using myoddweb.desktopsearch.interfaces.Configs;
 using Newtonsoft.Json;
 
@@ -31,18 +34,36 @@ namespace myoddweb.desktopsearch.service.Configs
     public int BusyEventsProcessorMs { get; protected set; }
 
     /// <inheritdoc />
-    [DefaultValue(2)]
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    [JsonProperty]
     public int ConcurrentDirectoriesProcessor { get; protected set; }
 
     /// <inheritdoc />
-    [DefaultValue(8)]
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    [JsonProperty]
     public int ConcurrentFilesProcessor { get; protected set; }
 
     /// <inheritdoc />
     [DefaultValue(100)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int UpdatesPerFilesEvent { get; protected set; }
+
+    public ConfigProcessor()
+    {
+      // the number of files to process 
+      ConcurrentDirectoriesProcessor = (int)Math.Ceiling(Environment.ProcessorCount / 2.0 );
+      ConcurrentFilesProcessor = Environment.ProcessorCount;
+    }
+
+    [OnDeserialized]
+    internal void OnDeserialized(StreamingContext context)
+    {
+      if (ConcurrentDirectoriesProcessor <= 0)
+      {
+        throw new ArgumentException( $"The ConcurrentDirectoriesProcessor cannot be -ve or zeor ({ConcurrentDirectoriesProcessor}");
+      }
+      if (ConcurrentFilesProcessor <= 0)
+      {
+        throw new ArgumentException($"The ConcurrentFilesProcessor cannot be -ve or zeor ({ConcurrentFilesProcessor}");
+      }
+    }
   }
 }
