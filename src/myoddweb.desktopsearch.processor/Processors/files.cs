@@ -305,6 +305,9 @@ namespace myoddweb.desktopsearch.processor.Processors
       {
         foreach (var pendingFileUpdate in completedPendingFileUpdates )
         {
+          // get out if we are cancelling
+          token.ThrowIfCancellationRequested();
+
           var words = pendingFileUpdate.Words;
           var fileId = pendingFileUpdate.FileId;
 
@@ -333,6 +336,9 @@ namespace myoddweb.desktopsearch.processor.Processors
                 await _persister.AddOrUpdateWordsToFileAsync(words, fileId, transaction, token).ConfigureAwait(false);
               }
               break;
+
+            default:
+              throw new ArgumentOutOfRangeException();
           }
         }
 
