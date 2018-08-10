@@ -25,7 +25,7 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class SqlitePersister 
   {
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordToFileAsync(IWord word, long fileId, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateWordToFileAsync(Word word, long fileId, IDbTransaction transaction, CancellationToken token)
     {
       return await AddOrUpdateWordsToFileAsync(new Words( word ), fileId, transaction, token ).ConfigureAwait(false);
     }

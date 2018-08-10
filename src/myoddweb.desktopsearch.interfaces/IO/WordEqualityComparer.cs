@@ -16,9 +16,9 @@ using System.Collections.Generic;
 
 namespace myoddweb.desktopsearch.interfaces.IO
 {
-  public class WordEqualityComparer : IEqualityComparer<IWord>
+  public class WordEqualityComparer : IEqualityComparer<Word>
   {
-    public bool Equals(IWord x, IWord y)
+    public bool Equals(Word x, Word y)
     {
       if (x == null && y == null)
       {
@@ -28,12 +28,12 @@ namespace myoddweb.desktopsearch.interfaces.IO
       {
         return false;
       }
-      return x.Word == y.Word;
+      return x.Value == y.Value;
     }
 
-    public int GetHashCode(IWord obj)
+    public int GetHashCode(Word obj)
     {
-      return obj.Word.GetHashCode();
+      return obj.Value.GetHashCode();
     }
   }
 }

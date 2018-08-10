@@ -30,7 +30,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateWordAsync(IWord word, IDbTransaction transaction, CancellationToken token);
+    Task<bool> AddOrUpdateWordAsync(Word word, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Add or update multiple word.

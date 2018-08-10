@@ -18,17 +18,8 @@ using System.Threading;
 
 namespace myoddweb.desktopsearch.interfaces.IO
 {
-  public class Words : HashSet<IWord>
+  public class Words : HashSet<Word>
   {
-    /// <inheritdoc />
-    /// <summary>
-    /// Internal class to allow us to manage the sting inserts.
-    /// </summary>
-    internal class InternalWord : IWord
-    {
-      public string Word { get; set; }
-    }
-
     /// <inheritdoc />
     /// <summary>
     /// Base constructor.
@@ -42,7 +33,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// Constructor with a single word.
     /// </summary>
     /// <param name="word"></param>
-    public Words(IWord word ) : this()
+    public Words(Word word ) : this()
     {
       // just add this word.
       Add(word);
@@ -63,7 +54,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// Add a single string word to our list.
     /// </summary>
     /// <param name="word"></param>
-    public void UnionWith(IWord word)
+    public void UnionWith(Word word)
     {
       Add( word );
     }
@@ -74,7 +65,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="word"></param>
     public void UnionWith(string word )
     {
-      UnionWith(new InternalWord {Word = word});
+      UnionWith(new Word( word  ));
     }
 
     /// <summary>

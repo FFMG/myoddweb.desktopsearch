@@ -25,7 +25,7 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class SqlitePersister 
   {
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordAsync(IWord word, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateWordAsync(Word word, IDbTransaction transaction, CancellationToken token)
     {
       return await AddOrUpdateWordsAsync( new Words(word), transaction, token ).ConfigureAwait(false);
     }
@@ -54,7 +54,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    private async Task<long> GetWordIdAsync(IWord word, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    private async Task<long> GetWordIdAsync(Word word, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
     {
       var ids = await GetWordIdsAsync( new Words(word), transaction, token, createIfNotFound).ConfigureAwait(false);
       return ids.Any() ? ids[0] : -1;
@@ -87,7 +87,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           var ids = new List<long>(words.Count);
           foreach (var word in words)
           {
-            cmd.Parameters["@word"].Value = word.Word;
+            cmd.Parameters["@word"].Value = word.Value;
             var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
             if (null == value || value == DBNull.Value)
             {
@@ -168,7 +168,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             cmd.Parameters["@id"].Value = nextId;
-            cmd.Parameters["@word"].Value = word.Word;
+            cmd.Parameters["@word"].Value = word.Value;
             if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding word: {word} to persister");
@@ -223,7 +223,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             // the words are case sensitive
-            cmd.Parameters["@word"].Value = word.Word;
+            cmd.Parameters["@word"].Value = word.Value;
             if (null != await ExecuteScalarAsync(cmd, token).ConfigureAwait(false))
             {
               continue;

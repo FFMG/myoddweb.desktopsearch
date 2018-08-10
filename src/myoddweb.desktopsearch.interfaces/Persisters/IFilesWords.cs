@@ -30,7 +30,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateWordToFileAsync(IWord word, long fileId, IDbTransaction transaction, CancellationToken token);
+    Task<bool> AddOrUpdateWordToFileAsync(Word word, long fileId, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Add multiple words to a single file id
