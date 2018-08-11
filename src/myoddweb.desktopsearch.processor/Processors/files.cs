@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -157,7 +158,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         // the last step is to pass all the words that we found.
         // this will be within it's own transaction
         // but the parsing has been done already.
-        await CompletePendingFileUpdate(completedPendingFileUpdates, token).ConfigureAwait(false);
+        await CompletePendingFileUpdates(completedPendingFileUpdates, token).ConfigureAwait(false);
       }
       catch (Exception)
       {
@@ -286,7 +287,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="completedPendingFileUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task CompletePendingFileUpdate(HashSet<CompletedPendingFileUpdate> completedPendingFileUpdates, CancellationToken token)
+    private async Task CompletePendingFileUpdates(HashSet<CompletedPendingFileUpdate> completedPendingFileUpdates, CancellationToken token)
     {
       // do some smart checking...
       if (!completedPendingFileUpdates.Any())
@@ -295,60 +296,96 @@ namespace myoddweb.desktopsearch.processor.Processors
         return;
       }
 
-      var transaction = await _persister.Begin(token).ConfigureAwait(false);
-      if (null == transaction)
+      var ts = DateTime.UtcNow;
+      IDbTransaction transaction = null;
+      foreach (var pendingFileUpdate in completedPendingFileUpdates )
       {
-        throw new Exception("Unable to get transaction!");
-      }
-
-      try
-      {
-        foreach (var pendingFileUpdate in completedPendingFileUpdates )
+        if (null == transaction)
         {
-          // get out if we are cancelling
-          token.ThrowIfCancellationRequested();
-
-          var words = pendingFileUpdate.Words;
-          var fileId = pendingFileUpdate.FileId;
-
-          switch (pendingFileUpdate.PendingUpdateType)
+          transaction = await _persister.Begin(token).ConfigureAwait(false);
+          if (null == transaction)
           {
-            case UpdateType.Created:
-              // this was newly created, so we just want to add the words.
-              // there should be nothing to delete.
-              if (words != null)
-              {
-                await _persister.AddOrUpdateWordsToFileAsync(words, fileId, transaction, token).ConfigureAwait(false);
-              }
-              break;
-
-            case UpdateType.Deleted:
-              // we deleted the file, so remove the words.
-              await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
-              break;
-
-            case UpdateType.Changed:
-              //  we changed the file, so we have to delete the old words
-              // as well as add the new ones.
-              await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
-              if (words != null)
-              {
-                await _persister.AddOrUpdateWordsToFileAsync(words, fileId, transaction, token).ConfigureAwait(false);
-              }
-              break;
-
-            default:
-              throw new ArgumentOutOfRangeException();
+            throw new Exception("Unable to get transaction!");
           }
         }
 
+        try
+        {
+          // try and process it.
+          await CompletePendingFileUpdate(pendingFileUpdate, transaction, token).ConfigureAwait(false);
+
+          // get out if we are cancelling
+          token.ThrowIfCancellationRequested();
+
+          // Did this all take more than 5 seconds?
+          // then commit ... just to free the locks.
+          if ((ts - DateTime.UtcNow).TotalSeconds > 5)
+          {
+            // we are done
+            _persister.Commit(transaction);
+            transaction = null;
+            ts = DateTime.UtcNow;
+          }
+        }
+        catch (Exception)
+        {
+          if (transaction != null)
+          {
+            _persister.Rollback(transaction);
+          }
+          throw;
+        }
+      }
+
+      // commit the transaction one last time
+      // if we have not done it already.
+      if (transaction != null)
+      {
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception)
+    }
+
+    /// <summary>
+    /// Complete a single pending task.
+    /// </summary>
+    /// <param name="pendingFileUpdate"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task CompletePendingFileUpdate(CompletedPendingFileUpdate pendingFileUpdate, IDbTransaction transaction, CancellationToken token)
+    {
+      var words = pendingFileUpdate.Words;
+      var fileId = pendingFileUpdate.FileId;
+
+      switch (pendingFileUpdate.PendingUpdateType)
       {
-        _persister.Rollback(transaction);
-        throw;
+        case UpdateType.Created:
+          // this was newly created, so we just want to add the words.
+          // there should be nothing to delete.
+          if (words != null)
+          {
+            await _persister.AddOrUpdateWordsToFileAsync(words, fileId, transaction, token).ConfigureAwait(false);
+          }
+          break;
+
+        case UpdateType.Deleted:
+          // we deleted the file, so remove the words.
+          await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
+          break;
+
+        case UpdateType.Changed:
+          //  we changed the file, so we have to delete the old words
+          // as well as add the new ones.
+          await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
+          if (words != null)
+          {
+            await _persister.AddOrUpdateWordsToFileAsync(words, fileId, transaction, token).ConfigureAwait(false);
+          }
+          break;
+
+        default:
+          throw new ArgumentOutOfRangeException();
       }
     }
 

@@ -67,9 +67,26 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return false;
       }
+
+      // the parts table
+      if (!await CreatePartsAsync(transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // the words parts table
+      if (!await CreateWordsPartsAsync(transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
       return true;
     }
 
+    /// <summary>
+    /// All the words
+    /// </summary>
+    /// <param name="transaction"></param>
+    /// <returns></returns>
     private async Task<bool> CreateWordsAsync(IDbTransaction transaction)
     {
       if (!await
@@ -85,6 +102,11 @@ namespace myoddweb.desktopsearch.service.Persisters
       return true;
     }
 
+    /// <summary>
+    /// All the word ids in a file id
+    /// </summary>
+    /// <param name="transaction"></param>
+    /// <returns></returns>
     private async Task<bool> CreateFilesWordsAsync(IDbTransaction transaction)
     {
       if (!await
@@ -94,6 +116,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
 
+      // there can only be one word and one id.
       if (
         !await
           ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{TableFilesWords}_wordid_fileid ON {TableFilesWords}(wordid, fileid);", transaction).ConfigureAwait(false))
@@ -152,7 +175,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // index to get the last 'x' updated folders.
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolderUpdates}_ticks ON {TableFolderUpdates}(ticks); ", transaction).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolderUpdates}_ticks ON {TableFolderUpdates}(ticks);", transaction).ConfigureAwait(false))
       {
         return false;
       }
@@ -160,10 +183,73 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the folderid index so we can add/remove folders once processed.
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolderUpdates}_folderid ON {TableFolderUpdates}(folderid); ", transaction).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolderUpdates}_folderid ON {TableFolderUpdates}(folderid);", transaction).ConfigureAwait(false))
       {
         return false;
       }
+      return true;
+    }
+
+    /// <summary>
+    /// Table to link a part of work to a word, (and from a word to a file).
+    /// </summary>
+    /// <param name="transaction"></param>
+    /// <returns></returns>
+    private async Task<bool> CreateWordsPartsAsync(IDbTransaction transaction)
+    {
+      if (!await
+        ExecuteNonQueryAsync($"CREATE TABLE {TableWordsParts} (wordid integer, partid integer)", transaction)
+          .ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // find the word if that matches the part id
+      // the part is not unique
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableWordsParts}_partid ON {TableWordsParts}(partid);", transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // find all the parts that matche  the word.
+      // the word id is not unique
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableWordsParts}_wordid ON {TableWordsParts}(wordid);", transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // we need to be able to remove word + parts together, and they have to be unique.
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{TableWordsParts}_wordid_partid ON {TableWordsParts}(wordid, partid);", transaction).ConfigureAwait(false))
+      {
+        return false;
+      }
+      return true;
+    }
+
+    /// <summary>
+    /// Create all the word parts table.
+    /// each part is unique...
+    /// </summary>
+    /// <param name="transaction"></param>
+    /// <returns></returns>
+    private async Task<bool> CreatePartsAsync(IDbTransaction transaction)
+    {
+      if (!await
+        ExecuteNonQueryAsync($"CREATE TABLE {TableParts} (id integer PRIMARY KEY, part TEXT UNIQUE)", transaction)
+          .ConfigureAwait(false))
+      {
+        return false;
+      }
+      
+      // no need to create an index on text ... it is unique.
+      // and id is also unique
+
       return true;
     }
 
@@ -184,7 +270,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // index to get the last 'x' updated files.
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFileUpdates}_ticks ON {TableFileUpdates}(ticks); ", transaction).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFileUpdates}_ticks ON {TableFileUpdates}(ticks);", transaction).ConfigureAwait(false))
       {
         return false;
       }
@@ -192,7 +278,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the files index so we can add/remove files once processed.
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFileUpdates}_fileid ON {TableFileUpdates}(fileid); ", transaction).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFileUpdates}_fileid ON {TableFileUpdates}(fileid);", transaction).ConfigureAwait(false))
       {
         return false;
       }
@@ -214,7 +300,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       if ( 
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolders}_path ON {TableFolders}(path); ", transaction).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolders}_path ON {TableFolders}(path);", transaction).ConfigureAwait(false))
       {
         return false;
       }
@@ -236,7 +322,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       if (!await
-        ExecuteNonQueryAsync($"CREATE INDEX index_{TableConfig}_name ON {TableConfig}(name); ", transaction).ConfigureAwait(false))
+        ExecuteNonQueryAsync($"CREATE INDEX index_{TableConfig}_name ON {TableConfig}(name);", transaction).ConfigureAwait(false))
       {
         return false;
       }

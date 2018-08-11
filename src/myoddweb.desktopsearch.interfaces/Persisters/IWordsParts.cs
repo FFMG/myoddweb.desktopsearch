@@ -12,40 +12,25 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IPersister : IConfig, IFolders, IFolderUpdates, IFiles, IFileUpdates, IWords, IFilesWords, IParts, IWordsParts
+  public interface IWordsParts
   {
     /// <summary>
-    /// Create a command with a transaction.
+    /// Add part ids and word ids, if the word already exists then we will add it
+    /// And remove whatever words might already exist.
     /// </summary>
-    /// <param name="sql"></param>
+    /// <param name="wordId"></param>
+    /// <param name="partIds"></param>
     /// <param name="transaction"></param>
-    /// <returns></returns>
-    DbCommand CreateDbCommand(string sql, IDbTransaction transaction);
-
-    /// <summary>
-    /// Get a database transaction.
-    /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IDbTransaction> Begin( CancellationToken token );
-
-    /// <summary>
-    /// Rollback the current transaction.
-    /// </summary>
-    /// <returns></returns>
-    bool Rollback(IDbTransaction transaction);
-
-    /// <summary>
-    /// Commit the current transaction.
-    /// </summary>
-    /// <returns></returns>
-    bool Commit(IDbTransaction transaction);
+    Task AddOrUpdateWordParts( long wordId, HashSet<long> partIds, IDbTransaction transaction, CancellationToken token);
   }
 }

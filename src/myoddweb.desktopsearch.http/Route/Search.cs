@@ -65,17 +65,26 @@ namespace myoddweb.desktopsearch.http.Route
 
     private async Task<List<Word>> GetWords(SearchRequest search, IDbTransaction transaction, CancellationToken token)
     {
-      var sql = $@"select 
-	                w.word as word,
-	                f.name as name,
-	                fo.path as path
-                from words w, FilesWords fw, Files f, Folders fo where 
-	                w.word like printf( ""%s%s"",@search,""%"" )
-                  AND fw.wordid = w.id
-	                AND f.id = fw.fileid
-	                AND fo.id = f.folderid
-                  LIMIT {search.Count} 
-                ";
+      var sql = $@"
+      select 
+	      w.word as word,
+	      f.name as name,
+	      fo.path as path 
+      from 
+	      Parts p, 
+	      WordsParts wp, 
+	      Words w,
+	      FilesWords fw, 
+	      Files f, 
+	      Folders fo
+      Where p.part = @search
+        AND wp.partid = p.id
+        AND w.id = wp.wordid
+        AND fw.wordid = w.id
+        AND f.id = fw.fileid
+        AND fo.id = f.folderid
+      LIMIT {search.Count} 
+                      ";
 
       var words = new List<Word>( search.Count );
       using (var cmd = Persister.CreateDbCommand(sql, transaction))

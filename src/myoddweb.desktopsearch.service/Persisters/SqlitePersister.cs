@@ -34,6 +34,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     private const string TableFileUpdates = "FileUpdates";
     private const string TableWords = "Words";
     private const string TableFilesWords = "FilesWords";
+    private const string TableParts = "Parts";
+    private const string TableWordsParts = "WordsParts";
     #endregion
 
     #region Member variables

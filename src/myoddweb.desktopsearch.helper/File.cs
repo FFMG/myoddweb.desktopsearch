@@ -462,14 +462,14 @@ namespace myoddweb.desktopsearch.helper
 
       // if we have a null A then everything in B is the relative
       // complement as they never intercet.
-      if (null == fisA)
+      if (null == fisA || !fisA.Any())
       {
-        return Distinct(fisB);
+        return Distinct(fisB ?? new List<FileInfo>());
       }
 
       // If B is empty then it will never intercet with A
       // so there is no complement values.
-      if (null == fisB)
+      if (null == fisB || !fisB.Any())
       {
         return new List<FileInfo>();
       }

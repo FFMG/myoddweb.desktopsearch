@@ -373,6 +373,9 @@ namespace myoddweb.desktopsearch.service.Persisters
             fileInfos.Add(new FileInfo(
               Path.Combine(directory.FullName, (string) reader["name"])));
           }
+
+          // return whatever we found
+          return fileInfos;
         }
       }
       catch (OperationCanceledException)
@@ -383,11 +386,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       catch (Exception e)
       {
         _logger.Exception(e);
-        return null;
+        throw;
       }
-
-      // return whatever we found
-      return fileInfos;
     }
 
     /// <inheritdoc />

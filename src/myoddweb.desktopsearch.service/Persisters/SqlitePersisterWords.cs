@@ -39,27 +39,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // rebuild the list of directory with only those that need to be inserted.
-      return await InsertWordsAsync(
+      await InsertWordsAsync(
         await RebuildWordsListAsync(words, transaction, token).ConfigureAwait(false),
         transaction, token).ConfigureAwait(false);
+      return true;
     }
 
     #region Private word functions
-
-    /// <summary>
-    /// Get the ID for a given work, add it if we are don't find it and are asked to do.
-    /// </summary>
-    /// <param name="word"></param>
-    /// <param name="transaction"></param>
-    /// <param name="token"></param>
-    /// <param name="createIfNotFound"></param>
-    /// <returns></returns>
-    private async Task<long> GetWordIdAsync(Word word, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
-    {
-      var ids = await GetWordIdsAsync( new Words(word), transaction, token, createIfNotFound).ConfigureAwait(false);
-      return ids.Any() ? ids[0] : -1;
-    }
-
     /// <summary>
     /// Get the id of a list of words we match the words to ids
     ///   [word1] => [id1]
@@ -72,6 +58,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     private async Task<List<long>> GetWordIdsAsync(Words words, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
     {
+      // do we have anything to even look for?
+      if (words.Count == 0)
+      {
+        return new List<long>();
+      }
+
       try
       {
         // we do not check for the token as the underlying functions will throw if needed. 
@@ -85,9 +77,10 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pWord);
 
           var ids = new List<long>(words.Count);
+          var wordsToAdd = new Words();
           foreach (var word in words)
           {
-            cmd.Parameters["@word"].Value = word.Value;
+            pWord.Value = word.Value;
             var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
             if (null == value || value == DBNull.Value)
             {
@@ -98,22 +91,19 @@ namespace myoddweb.desktopsearch.service.Persisters
                 continue;
               }
 
-              // try and add the word, if that does not work, then we cannot go further.
-              if (!await InsertWordsAsync( new Words(word), transaction, token).ConfigureAwait(false))
-              {
-                ids.Add(-1);
-                continue;
-              }
-
-              // try one more time to look for it .. and if we do not find it, then just return -1
-              ids.Add(await GetWordIdAsync(word, transaction, token, false).ConfigureAwait(false));
+              // add this word to our list
+              wordsToAdd.Add(word);
               continue;
             }
 
             // get the path id.
             ids.Add((long) value);
           }
+          
+          // finally we need to add all the words that were not found.
+          ids.AddRange( await InsertWordsAsync(wordsToAdd, transaction, token).ConfigureAwait(false));
 
+          // return all the ids we added, (or not).
           return ids;
         }
       }
@@ -136,13 +126,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> InsertWordsAsync(Words words, IDbTransaction transaction, CancellationToken token)
+    private async Task<List<long>> InsertWordsAsync(Words words, IDbTransaction transaction, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!words.Any())
       {
-        return true;
+        return new List<long>();
       }
+
+      // the ids of the words we just added
+      var ids = new List<long>( words.Count );
 
       // get the next id.
       var nextId = await GetNextWordIdAsync(transaction, token).ConfigureAwait(false);
@@ -160,36 +153,49 @@ namespace myoddweb.desktopsearch.service.Persisters
         pWord.ParameterName = "@word";
         cmd.Parameters.Add(pWord);
 
-        foreach (var word in words)
+        try
         {
-          try
+          foreach (var word in words)
           {
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
-            cmd.Parameters["@id"].Value = nextId;
-            cmd.Parameters["@word"].Value = word.Value;
+            pId.Value = nextId;
+            pWord.Value = word.Value;
             if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
-              _logger.Error($"There was an issue adding word: {word} to persister");
+              _logger.Error($"There was an issue adding word: {word.Value} to persister");
               continue;
             }
+
+            // we now can add the parts
+            var partIds = await AddOrUpdateParts(word.Parts, transaction, token).ConfigureAwait(false);
+
+            // marry the word id, (that we just added).
+            // with the partIds, (that we just added).
+            await AddOrUpdateWordParts(nextId, partIds, transaction, token).ConfigureAwait(false);
+
+            // we added this id.
+            ids.Add( nextId );
 
             // we can now move on to the next folder id.
             ++nextId;
           }
-          catch (OperationCanceledException)
-          {
-            _logger.Warning("Received cancellation request - Insert multiple words");
-            throw;
-          }
-          catch (Exception ex)
-          {
-            _logger.Exception(ex);
-          }
+
+          // all done, return whatever we did.
+          return ids;
+        }
+        catch (OperationCanceledException)
+        {
+          _logger.Warning("Received cancellation request - Insert multiple words");
+          throw;
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
+          throw;
         }
       }
-      return true;
     }
 
     /// <summary>
@@ -259,10 +265,10 @@ namespace myoddweb.desktopsearch.service.Persisters
         var sqlNextRowId = $"SELECT max(id) from {TableWords};";
         using (var cmd = CreateDbCommand(sqlNextRowId, transaction))
         {
-          var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
-
           // get out if needed.
           token.ThrowIfCancellationRequested();
+
+          var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
 
           // does not exist ...
           if (null == value || value == DBNull.Value)
