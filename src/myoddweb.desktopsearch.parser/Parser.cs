@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -196,69 +197,109 @@ namespace myoddweb.desktopsearch.parser
     {
       _logger.Verbose($"Finishing directory parsing: {parent.FullName}");
 
-      var transaction = await _persister.Begin(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        //  we probably cancelled.
-        throw new Exception( "Unable to get transaction!" );
-      }
+      // start the stopwatch
+      var stopwatch = new Stopwatch();
+      stopwatch.Start();
 
-      try
-      {
-        var stopwatch = new Stopwatch();
-        stopwatch.Start();
+      var ts = DateTime.UtcNow;
+      IDbTransaction transaction = null;
 
-        // get the last time we did this
-        var lastAccessTimeUtc = await _persister.GetConfigValueAsync("LastAccessTimeUtc", DateTime.MinValue, transaction, token ).ConfigureAwait(false);
-        foreach (var directory in directories)
+      // get the last time we did this
+      var lastAccessTimeUtc = await _persister.GetConfigValueAsync("LastAccessTimeUtc", DateTime.MinValue, transaction, token ).ConfigureAwait(false);
+      foreach (var directory in directories)
+      {
+        if (null == transaction)
         {
-          // if the directory exist... and it was flaged as newer than the last time
-          // we checked the directory, then all we need to do is touch it.
-          if (await _persister.DirectoryExistsAsync(directory, transaction, token).ConfigureAwait(false))
+          transaction = await _persister.Begin(token).ConfigureAwait(false);
+          if (null == transaction)
           {
-            if (directory.LastAccessTimeUtc < lastAccessTimeUtc)
-            {
-              // the file has not changed since the last time
-              continue;
-            }
-
-            // the file has changed.
-            await _persister.TouchDirectoryAsync(directory, UpdateType.Changed, transaction, token).ConfigureAwait(false);
-          }
-          else
-          {
-            // the file is brand new ... so we need to add it to our list.
-            // this will 'touch' it.
-            await _persister.AddOrUpdateDirectoryAsync(directory, transaction, token).ConfigureAwait(false);
-
-            // look for all the files in that directory.
-            // so they can also be added.
-            var files = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait(false);
-            if (files != null)
-            {
-              await _persister.AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false);
-            }
-
-            // the folder has been parsed
-            await _persister.MarkDirectoryProcessedAsync(directory, transaction, token).ConfigureAwait(false);
+            throw new Exception("Unable to get transaction!");
           }
         }
 
-        // we can commit our code.
-        _persister.Commit(transaction);
+        try
+        {
+          // try and persist this one directory.
+          await PersistDirectory(directory, lastAccessTimeUtc, transaction, token).ConfigureAwait(false);
 
-        // stop the watch and log how many items we found.
-        stopwatch.Stop();
-        _logger.Information($"Completed directory parsing: {parent.FullName} (Time Elapsed: {stopwatch.Elapsed:g})");
+          // Did this all take more than 5 seconds?
+          // then commit ... just to free the locks.
+          if ((DateTime.UtcNow - ts).TotalSeconds > 5)
+          {
+            // we are done
+            _persister.Commit(transaction);
+            transaction = null;
+            ts = DateTime.UtcNow;
+          }
+        }
+        catch (Exception)
+        {
+          if (transaction != null)
+          {
+            _persister.Rollback(transaction);
+          }
 
-        // all done
-        return true;
+          throw;
+        }
       }
-      catch (Exception)
+
+      // commit the transaction one last time
+      // if we have not done it already.
+      if (transaction != null)
       {
-        _persister.Rollback(transaction);
-        throw;
+        // we are done
+        _persister.Commit(transaction);
       }
+
+      // stop the watch and log how many items we found.
+      stopwatch.Stop();
+      _logger.Information($"Completed directory parsing: {parent.FullName} (Time Elapsed: {stopwatch.Elapsed:g})");
+
+      // all done
+      return true;
+    }
+
+    /// <summary>
+    /// Persist a single directory.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="lastAccessTimeUtc"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task PersistDirectory(DirectoryInfo directory, DateTime lastAccessTimeUtc, IDbTransaction transaction, CancellationToken token)
+    {
+      // if the directory exist... and it was flaged as newer than the last time
+      // we checked the directory, then all we need to do is touch it.
+      if (await _persister.DirectoryExistsAsync(directory, transaction, token).ConfigureAwait(false))
+      {
+        if (directory.LastAccessTimeUtc < lastAccessTimeUtc)
+        {
+          // the file has not changed since the last time
+          return;
+        }
+
+        // the file has changed.
+        await _persister.TouchDirectoryAsync(directory, UpdateType.Changed, transaction, token).ConfigureAwait(false);
+
+        // done
+        return;
+      }
+
+      // the file is brand new ... so we need to add it to our list.
+      // this will 'touch' it.
+      await _persister.AddOrUpdateDirectoryAsync(directory, transaction, token).ConfigureAwait(false);
+
+      // look for all the files in that directory.
+      // so they can also be added.
+      var files = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait(false);
+      if (files != null)
+      {
+        await _persister.AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false);
+      }
+
+      // the folder has been parsed
+      await _persister.MarkDirectoryProcessedAsync(directory, transaction, token).ConfigureAwait(false);
     }
 
     #region Start Parsing

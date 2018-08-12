@@ -319,7 +319,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
           // Did this all take more than 5 seconds?
           // then commit ... just to free the locks.
-          if ((ts - DateTime.UtcNow).TotalSeconds > 5)
+          if ((DateTime.UtcNow - ts).TotalSeconds > 5)
           {
             // we are done
             _persister.Commit(transaction);
