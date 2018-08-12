@@ -296,17 +296,14 @@ namespace myoddweb.desktopsearch.processor.Processors
         return;
       }
 
-      var ts = DateTime.UtcNow;
-      IDbTransaction transaction = null;
       foreach (var pendingFileUpdate in completedPendingFileUpdates )
       {
+        var tsActual = DateTime.UtcNow;
+
+        var transaction = await _persister.Begin(token).ConfigureAwait(false);
         if (null == transaction)
         {
-          transaction = await _persister.Begin(token).ConfigureAwait(false);
-          if (null == transaction)
-          {
-            throw new Exception("Unable to get transaction!");
-          }
+          throw new Exception("Unable to get transaction!");
         }
 
         try
@@ -317,32 +314,22 @@ namespace myoddweb.desktopsearch.processor.Processors
           // get out if we are cancelling
           token.ThrowIfCancellationRequested();
 
+          // we are done
+          _persister.Commit(transaction);
+          transaction = null;
+
           // Did this all take more than 5 seconds?
-          // then commit ... just to free the locks.
-          if ((DateTime.UtcNow - ts).TotalSeconds > 5)
+          var tsDiff = (DateTime.UtcNow - tsActual);
+          if (tsDiff.TotalSeconds > 5)
           {
-            // we are done
-            _persister.Commit(transaction);
-            transaction = null;
-            ts = DateTime.UtcNow;
+            _logger.Verbose( $"Processing of file: {pendingFileUpdate.File.FullName} took {tsDiff:g} ({pendingFileUpdate.Words?.Count ?? 0} words)");
           }
         }
         catch (Exception)
         {
-          if (transaction != null)
-          {
-            _persister.Rollback(transaction);
-          }
+          _persister.Rollback(transaction);
           throw;
         }
-      }
-
-      // commit the transaction one last time
-      // if we have not done it already.
-      if (transaction != null)
-      {
-        // we are done
-        _persister.Commit(transaction);
       }
     }
 
@@ -383,6 +370,9 @@ namespace myoddweb.desktopsearch.processor.Processors
             await _persister.AddOrUpdateWordsToFileAsync(words, fileId, transaction, token).ConfigureAwait(false);
           }
           break;
+
+        case UpdateType.None:
+          throw new ArgumentException( "Cannot process an update of type 'none'" );
 
         default:
           throw new ArgumentOutOfRangeException();

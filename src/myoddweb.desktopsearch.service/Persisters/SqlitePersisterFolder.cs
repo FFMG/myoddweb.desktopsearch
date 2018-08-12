@@ -41,9 +41,12 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // rebuild the list of directory with only those that need to be inserted.
-      return await InsertDirectoriesAsync(
+      var ids = await InsertDirectoriesAsync(
         await RebuildDirectoriesListAsync(directories, transaction, token).ConfigureAwait(false),
         transaction, token).ConfigureAwait(false);
+
+      // if the list is emoty... then there is somthing wrong.
+      return ids.Any( i => i != -1 );
     }
 
     /// <inheritdoc />
@@ -70,15 +73,18 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pPath2);
 
           // try and replace path1 with path2
-          cmd.Parameters["@path1"].Value = directory.FullName.ToLowerInvariant();
-          cmd.Parameters["@path2"].Value = oldDirectory.FullName.ToLowerInvariant();
+          pPath1.Value = directory.FullName.ToLowerInvariant();
+          pPath2.Value = oldDirectory.FullName.ToLowerInvariant();
           if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
           {
             // we could not rename it, this could be because of an error
             // or because the old path simply does not exist.
             // in that case we can try and simply add the new path.
             _logger.Error($"There was an issue renaming folder: {directory.FullName} to persister");
-            if (!await InsertDirectoriesAsync( new []{oldDirectory}, transaction, token).ConfigureAwait(false))
+
+            // try and add it back in...
+            var ids = await InsertDirectoriesAsync(new[] {oldDirectory}, transaction, token).ConfigureAwait(false);
+            if( !ids.Any())
             {
               return -1;
             }
@@ -92,7 +98,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
 
           // touch that folder as changed
-          await TouchDirectoryAsync(folderId, UpdateType.Changed, transaction, token).ConfigureAwait(false);
+          await TouchDirectoriesAsync(new []{folderId}, UpdateType.Changed, transaction, token).ConfigureAwait(false);
 
           // get out if needed.
           token.ThrowIfCancellationRequested();
@@ -151,16 +157,16 @@ namespace myoddweb.desktopsearch.service.Persisters
             // try and delete files given directory info.
             await DeleteFilesAsync(directory, transaction, token).ConfigureAwait(false);
 
-            // touch that folder as deleted
-            await TouchDirectoryAsync(directory, UpdateType.Deleted, transaction, token).ConfigureAwait(false);
-
             // then do the actual delete.
-            cmd.Parameters["@path"].Value = directory.FullName.ToLowerInvariant();
+            pPath.Value = directory.FullName.ToLowerInvariant();
             if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Warning($"Could not delete folder: {directory.FullName}, does it still exist?");
             }
           }
+
+          // touch all the folders as deleted.
+          await TouchDirectoriesAsync(directories, UpdateType.Deleted, transaction, token).ConfigureAwait(false);
 
           // we are done.
           return true;
@@ -261,6 +267,34 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         throw new ArgumentNullException(nameof(directory), "The given directory is null");
       }
+      var ids = await GetDirectoriesIdAsync(new List<DirectoryInfo> { directory}, transaction, token, createIfNotFound ).ConfigureAwait(false);
+      return ids.Any() ? ids.First() : -1;
+    }
+
+    /// <summary>
+    /// Get the id of a list of directories
+    /// </summary>
+    /// <param name="directories"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <param name="createIfNotFound"></param>
+    /// <returns></returns>
+    private async Task<List<long>> GetDirectoriesIdAsync(IReadOnlyCollection<DirectoryInfo> directories, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    { 
+      if (null == directories)
+      {
+        throw new ArgumentNullException(nameof(directories), "The given directory list is null");
+      }
+
+      if (!directories.Any())
+      {
+        return new List<long>();
+      }
+
+      // the list of ids.
+      var ids = new List<long>( directories.Count );
+
+      var directoriesToAdd = new List<DirectoryInfo>();
 
       // we first look for it, and, if we find it then there is nothing to do.
       var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
@@ -271,29 +305,35 @@ namespace myoddweb.desktopsearch.service.Persisters
         pPath.ParameterName = "@path";
         cmd.Parameters.Add(pPath);
 
-        cmd.Parameters["@path"].Value = directory.FullName.ToLowerInvariant();
-        var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
-        if (null == value || value == DBNull.Value)
+        foreach (var directory in directories)
         {
+          pPath.Value = directory.FullName.ToLowerInvariant();
+          var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+          if (null != value && value != DBNull.Value)
+          {
+            // get the path id.
+            ids.Add((long) value);
+            continue;
+          }
+
           if (!createIfNotFound)
           {
             // we could not find it and we do not wish to go further.
-            return -1;
+            ids.Add(-1);
+            continue;
           }
 
-          // try and add the folder, if that does not work, then we cannot go further.
-          if (!await InsertDirectoriesAsync( new[]{directory}, transaction, token).ConfigureAwait(false))
-          {
-            return -1;
-          }
-
-          // try one more time to look for it .. and if we do not find it, then just return
-          return await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
+          // we will add this
+          directoriesToAdd.Add(directory);
         }
-
-        // get the path id.
-        return (long) value;
       }
+
+      // we will then try and add all the folsers in our list
+      // and return whatever we found.
+      ids.AddRange(await InsertDirectoriesAsync(directoriesToAdd, transaction, token).ConfigureAwait(false) );
+
+      // we are done
+      return ids;
     }
 
     /// <summary>
@@ -303,13 +343,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> InsertDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, IDbTransaction transaction, CancellationToken token)
+    private async Task<List<long>> InsertDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, IDbTransaction transaction, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!directories.Any())
       {
-        return true;
+        return new List<long>();
       }
+
+      // all the ids we have just added.
+      var ids = new List<long>(directories.Count);
 
       // get the next id.
       var nextId = await GetNextDirectoryIdAsync(transaction, token).ConfigureAwait(false);
@@ -333,16 +376,16 @@ namespace myoddweb.desktopsearch.service.Persisters
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
-            cmd.Parameters["@id"].Value = nextId;
-            cmd.Parameters["@path"].Value = directory.FullName.ToLowerInvariant();
+            pId.Value = nextId;
+            pPath.Value = directory.FullName.ToLowerInvariant();
             if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding folder: {directory.FullName} to persister");
               continue;
             }
 
-            // touch that folder as created
-            await TouchDirectoryAsync(nextId, UpdateType.Created, transaction, token).ConfigureAwait(false);
+            // add it to our list of ids
+            ids.Add( nextId );
 
             // we can now move on to the next folder id.
             ++nextId;
@@ -358,7 +401,12 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
         }
       }
-      return true;
+
+      // then we can touch all the folders we created.
+      await TouchDirectoriesAsync(ids, UpdateType.Created, transaction, token).ConfigureAwait(false);
+
+      // return all the ids that we added.
+      return ids;
     }
 
     /// <summary>

@@ -19,8 +19,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   /// </summary>
   public enum UpdateType
   {
-    Created,
-    Deleted,
-    Changed
+    // those value are saved in the db
+    Created = 0,
+    Deleted = 1,
+    Changed = 2,
+
+    None    = 255 //  Nothing has happned to that file.
   }
 }

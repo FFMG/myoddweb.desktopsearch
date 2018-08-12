@@ -30,53 +30,70 @@ namespace myoddweb.desktopsearch.interfaces.IO
     private HashSet<string> _parts;
 
     /// <summary>
-    /// Get all the parts of our word.
+    /// The maximum number of meaningful charactets in the parts.
+    /// Anything longer than that will be ignored.
     /// </summary>
-    public HashSet<string> Parts
+    private int _lastMaxNumMeaningfulCharacters;
+
+    /// <summary>
+    /// Get all the parts of our word.
+    /// <param name="maxNumMeaningfulCharacters"></param>
+    /// </summary>
+    public HashSet<string> Parts(int maxNumMeaningfulCharacters)
     {
-      get
+      if (maxNumMeaningfulCharacters <= 0)
       {
-        if (_parts != null)
-        {
-          return _parts;
-        }
+        throw new ArgumentException("The number of meaningful characters cannot be zero or -ve");
+      }
 
-        // Help <- Word
-        // H
-        // He
-        // Hel
-        // Help         << the word help itslef is a 'part'
-        // e
-        // elp
-        // l
-        // lp
-        // Word len             = 4
-        // expected hashet size = 8
-        //
-        // Mix = 3 letters 
-        //     = 6 expected
-        // M
-        // Mi
-        // Mix
-        // i
-        // ix
-        // x
-
-        // Gauss formula for the sum of the serries of lettes.
-        var setSize = (Value.Length * (Value.Length + 1)) / 2;
-        _parts = new HashSet<string>();
-        for (var start = 0; start < Value.Length; ++start)
-        {
-          for (var i = start; i < Value.Length; ++i)
-          {
-            _parts.Add(Value.Substring(start, ( i -start + 1)));
-          }
-        }
-
+      if (_parts != null && _lastMaxNumMeaningfulCharacters == maxNumMeaningfulCharacters )
+      {
         return _parts;
       }
+
+      // save the last number of items, so we don't
+      //  run the same query more than once.
+      _lastMaxNumMeaningfulCharacters = maxNumMeaningfulCharacters;
+
+      // Help <- Word
+      // H
+      // He
+      // Hel
+      // Help         << the word help itslef is a 'part'
+      // e
+      // elp
+      // l
+      // lp
+      // Word len             = 4
+      // expected hashet size = 8
+      //
+      // Mix = 3 letters 
+      //     = 6 expected
+      // M
+      // Mi
+      // Mix
+      // i
+      // ix
+      // x
+
+      // Gauss formula for the sum of the serries of lettes.
+      // setsize = (Value.Length * (Value.Length + 1)) / 2;
+      _parts = new HashSet<string>();
+      for (var start = 0; start < Value.Length; ++start)
+      {
+        for (var i = start; i < Value.Length; ++i)
+        {
+          var length = (i - start + 1);
+          if (length > maxNumMeaningfulCharacters)
+          {
+            continue;
+          }
+          _parts.Add(Value.Substring(start, length ));
+        }
+      }
+      return _parts;
     }
-    
+
     /// <summary>
     /// The word we are adding.
     /// </summary>

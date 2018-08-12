@@ -38,73 +38,54 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
       }
 
-      // get all the word ids, insert the words as needed ...
-      var ids = await GetWordIdsAsync(words, transaction, token, true).ConfigureAwait(false);
+      // get all the word ids, insert them into the word table if needed.
+      // we will then add those words to the this file id.
+      var wordids = await GetWordIdsAsync(words, transaction, token, true).ConfigureAwait(false);
 
-      // before we go anywhere, we want to remove whatever is not in the list
-      // of word ids we will be adding.
-      if (!await RemoveIdsInvalidWordsInfFile(ids, fileId, transaction, token).ConfigureAwait(false))
+      // get all the current word ids already in that files.
+      var currentIds = await GetWordIdsForFile(fileId, transaction, token).ConfigureAwait(false);
+
+      // all the ids returned are the ones in the file id.
+      // if that file has any other words then they need to be removed.
+      if (!await RemoveWordIdsThatShouldNotBeInFile(fileId, wordids, currentIds, transaction, token).ConfigureAwait(false))
       {
         return false;
       }
 
       try
       {
-        // we then go around and look for the word/id, if it already exists then we do not add it again
-        // otherwise we will go ahead and add it.
-        var sqlInsert = $"INSERT INTO {TableFilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
-        using (var cmdInsert = CreateDbCommand(sqlInsert, transaction))
+        // finally we need to add all the words to the file that are not in the current file.
+        var wordIdsToAdd = wordids.Except(currentIds).ToList();
+        if (!wordIdsToAdd.Any())
+        {
+          return true;
+        }
+
+        var sql = $"INSERT INTO {TableFilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
+        using (var cmd = CreateDbCommand(sql, transaction))
         {
           // create the parameters for inserting.
-          var pWId1 = cmdInsert.CreateParameter();
-          pWId1.DbType = DbType.Int64;
-          pWId1.ParameterName = "@wordid";
-          cmdInsert.Parameters.Add(pWId1);
+          var pWId = cmd.CreateParameter();
+          pWId.DbType = DbType.Int64;
+          pWId.ParameterName = "@wordid";
+          cmd.Parameters.Add(pWId);
 
-          var pFId1 = cmdInsert.CreateParameter();
-          pFId1.DbType = DbType.Int64;
-          pFId1.ParameterName = "@fileid";
-          cmdInsert.Parameters.Add(pFId1);
+          var pFId = cmd.CreateParameter();
+          pFId.DbType = DbType.Int64;
+          pFId.ParameterName = "@fileid";
+          cmd.Parameters.Add(pFId);
 
-          var sqlSelect = $"SELECT wordid FROM {TableFilesWords} WHERE wordid=@wordid AND fileid=@fileid";
-          using (var cmdSelect = CreateDbCommand(sqlSelect, transaction))
+          // it does not eixst ... we have to add it.
+          pFId.Value = fileId;
+
+          foreach (var id in wordIdsToAdd)
           {
-            // and the prameters for selecting.
-            var pWId2 = cmdSelect.CreateParameter();
-            pWId2.DbType = DbType.Int64;
-            pWId2.ParameterName = "@wordid";
-            cmdSelect.Parameters.Add(pWId2);
-
-            var pFId2 = cmdSelect.CreateParameter();
-            pFId2.DbType = DbType.Int64;
-            pFId2.ParameterName = "@fileid";
-            cmdSelect.Parameters.Add(pFId2);
-
-            // we can now go ahead and add all the ids to the list.
-            // we will first look for it, and if nothing is returned
-            // then we assume it does not exist, and in that case we will add it.
-            pFId1.Value = fileId;
-            pFId2.Value = fileId;
-            foreach (var id in ids)
+            pWId.Value = id;
+            if (1 != await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
-              pWId2.Value = id;
-
-              // first look for that id.
-              var value = await ExecuteScalarAsync(cmdSelect, token).ConfigureAwait(false);
-              if (null != value && value != DBNull.Value)
-              {
-                // this value already exists ... no need to go further.
-                continue;
-              }
-
-              // it does not eixst ... we have to add it.
-              pWId1.Value = id;
-              if ( 1 != await ExecuteNonQueryAsync(cmdInsert, token).ConfigureAwait(false))
-              {
-                _logger.Error( $"There was an issue inserting word : {id} for file : {fileId}");
-              }
+              _logger.Error($"There was an issue inserting word : {id} for file : {fileId}");
             }
-          }// Command Select
+          }
         }// Command Insert
 
         // we are done
@@ -118,7 +99,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       catch (Exception ex)
       {
         _logger.Exception(ex);
-        return false;
+        throw;
       }
     }
 
@@ -163,31 +144,30 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     #region Private word functions
+
     /// <summary>
     /// Remove the ids that were in the words list but are not anymore.
     /// </summary>
-    /// <param name="ids"></param>
     /// <param name="fileId"></param>
+    /// <param name="expectedWordIds">The ids we want to add</param>
+    /// <param name="currentWordIds"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> RemoveIdsInvalidWordsInfFile(IReadOnlyList<long> ids, long fileId, IDbTransaction transaction, CancellationToken token)
+    private async Task<bool> RemoveWordIdsThatShouldNotBeInFile(long fileId, IReadOnlyCollection<long> expectedWordIds, IEnumerable<long> currentWordIds, IDbTransaction transaction, CancellationToken token)
     {
-      // if we have nothing in the list then we are removeing everything?
-      if (!ids.Any())
+      // if we have nothing in the list of ids we want then we want to remove everything.
+      if (!expectedWordIds.Any())
       {
         return await DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
       }
 
-      // get all the word ids on record.
-      var currentIds = await GetWordIdsForFile(fileId, transaction, token).ConfigureAwait(false);
-
-      // then remove all the ids that are in our _current_ list
+      // then remove all the ids that are in our _current_ list of words
       // but that are not in our given list.
-      var diffIds = currentIds.Except(ids).ToArray();
+      var wordIdsToRemove = currentWordIds.Except(expectedWordIds).ToArray();
 
       // those are the id that we want to delete.
-      if (!diffIds.Any())
+      if (!wordIdsToRemove.Any())
       {
         // we have nothing to do
         // but it is no an error in itslef.
@@ -196,6 +176,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       try
       {
+        // whatever word ids are left we need to remove them.
         var sqlDelete = $"DELETE FROM {TableFilesWords} WHERE wordid=@wordid and fileid=@fileid";
         using (var cmd = CreateDbCommand(sqlDelete, transaction))
         {
@@ -210,16 +191,16 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pFId);
 
           pFId.Value = fileId;
-          foreach (var diffId in diffIds)
+          foreach (var wordId in wordIdsToRemove)
           {
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
             // set the word id we are getting rid off.
-            pWId.Value = diffId;
+            pWId.Value = wordId;
             if (1 != await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
             {
-              _logger.Warning($"Could not delete word : {diffId} for file : {fileId}, does it still exist?");
+              _logger.Warning($"Could not delete word : {wordId} for file : {fileId}, does it still exist?");
             }
           }
         }
@@ -235,7 +216,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       catch (Exception e)
       {
         _logger.Exception(e);
-        return false;
+        throw;
       }
     }
 

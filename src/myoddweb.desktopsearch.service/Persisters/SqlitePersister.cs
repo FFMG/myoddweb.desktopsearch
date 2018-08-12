@@ -39,6 +39,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     #endregion
 
     #region Member variables
+    private readonly int _maxNumCharacters;
+
     /// <summary>
     /// The transactions manager.
     /// </summary>
@@ -60,9 +62,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly string _connectionString;
     #endregion
 
-    public SqlitePersister(ILogger logger, CancellationToken token)
+    public SqlitePersister(ILogger logger, int maxNumCharacters,  CancellationToken token)
     {
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      _maxNumCharacters = maxNumCharacters;
 
       // the file we are looking for.
       const string source = "database.db";

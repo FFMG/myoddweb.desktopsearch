@@ -315,17 +315,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateConfigAsync(IDbTransaction transaction)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableConfig} (name varchar(20), value varchar(255))", transaction)
+        ExecuteNonQueryAsync($"CREATE TABLE {TableConfig} (name varchar(20) PRIMARY KEY, value varchar(255))", transaction)
           .ConfigureAwait(false))
       {
         return false;
       }
 
-      if (!await
-        ExecuteNonQueryAsync($"CREATE INDEX index_{TableConfig}_name ON {TableConfig}(name);", transaction).ConfigureAwait(false))
-      {
-        return false;
-      }
+      // no need for indexes as the name is unique.
 
       return true;
     }

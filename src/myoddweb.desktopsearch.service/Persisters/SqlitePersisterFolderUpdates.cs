@@ -16,6 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -25,39 +26,35 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class SqlitePersister
   {
     /// <inheritdoc />
-    public async Task<bool> TouchDirectoryAsync(DirectoryInfo directory, UpdateType type, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<DirectoryInfo> directories, UpdateType type, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
         throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
       }
 
-      var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
-      if (-1 == folderId)
+      if (null == transaction)
+      {
+        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+      }
+
+      // if it is not a valid id then there is nothing for us to do.
+      if (!directories.Any())
       {
         return true;
       }
 
-      // we can then use the transaction id to touch the folder.
-      return await TouchDirectoryAsync(folderId, type, transaction, token).ConfigureAwait(false);
+      var folderIds = await GetDirectoriesIdAsync(directories, transaction, token, false).ConfigureAwait(false);
+
+      // we can now process all the folders.
+      return await TouchDirectoriesAsync(folderIds, type, transaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchDirectoryAsync(long folderId, UpdateType type, IDbTransaction transaction,CancellationToken token)
+    public async Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<long> folderIds, UpdateType type, IDbTransaction transaction, CancellationToken token)
     {
-      // if it is not a valid id then there is nothing for us to do.
-      if (folderId < 0)
-      {
-        return true;
-      }
-
-      if (null == transaction)
-      {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
-      }
-
       // first mark that folder id as procesed.
-      if (!await MarkDirectoryProcessedAsync(folderId, transaction, token).ConfigureAwait(false))
+      if (!await MarkDirectoriesProcessedAsync( folderIds, transaction, token).ConfigureAwait(false))
       {
         return false;
       }
@@ -81,16 +78,19 @@ namespace myoddweb.desktopsearch.service.Persisters
         cmd.Parameters.Add(pTicks);
         try
         {
-          cmd.Parameters["@id"].Value = folderId;
-          cmd.Parameters["@type"].Value = (long) type;
-          cmd.Parameters["@ticks"].Value = DateTime.UtcNow.Ticks;
-          if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+          foreach (var folderId in folderIds)
           {
-            _logger.Error($"There was an issue adding folder the folder update: {folderId} to persister");
-            return false;
-          }
+            token.ThrowIfCancellationRequested();
 
-          token.ThrowIfCancellationRequested();
+            pId.Value = folderId;
+            pType.Value = (long) type;
+            pTicks.Value = DateTime.UtcNow.Ticks;
+            if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+            {
+              // not sure why we did not throw here...
+              _logger.Error($"There was an issue adding folder the folder update: {folderId} to persister");
+            }
+          }
         }
         catch (OperationCanceledException)
         {
@@ -100,7 +100,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         catch (Exception ex)
         {
           _logger.Exception(ex);
-          return false;
+          throw;
         }
       }
 
@@ -109,16 +109,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkDirectoryProcessedAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> MarkDirectoriesProcessedAsync( IReadOnlyCollection<DirectoryInfo> directories, IDbTransaction transaction, CancellationToken token)
     {
-      var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
-      if (-1 == folderId)
-      {
-        return true;
-      }
+      var folderIds = await GetDirectoriesIdAsync(directories, transaction, token, false).ConfigureAwait(false);
 
       // we can now use the folder id to flag this as done.
-      return await MarkDirectoryProcessedAsync(folderId, transaction, token).ConfigureAwait(false);
+      return await MarkDirectoriesProcessedAsync(folderIds, transaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -170,7 +166,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         catch (Exception ex)
         {
           _logger.Exception(ex);
-          return false;
+          throw;
         }
       }
 

@@ -27,20 +27,30 @@ namespace myoddweb.desktopsearch.service.Configs
 {
   internal class Config : IConfig
   {
+    /// <inheritdoc />
+    [DefaultValue(128)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public int MaxNumCharacters { get; protected set; }
+
+    /// <inheritdoc />
     [JsonProperty(Required = Required.Always)]
     public IPaths Paths { get; protected set; }
 
+    /// <inheritdoc />
     [DefaultValue(null)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public ITimers Timers { get; protected set; }
 
+    /// <inheritdoc />
     [JsonProperty(Required = Required.Always)]
     public List<ILogger> Loggers { get; protected set; }
 
+    /// <inheritdoc />
     [DefaultValue(null)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public IProcessors Processors { get; protected set; }
 
+    /// <inheritdoc />
     [DefaultValue(null)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public IWebServer WebServer { get; protected set; }
@@ -70,12 +80,14 @@ namespace myoddweb.desktopsearch.service.Configs
     /// <summary>
     /// By using this constructor here we allowing JSon to convert from ConfigPaths > IPaths
     /// </summary>
+    /// <param name="maxNumCharacters"></param>
     /// <param name="paths"></param>
     /// <param name="timers"></param>
     /// <param name="processors"></param>
     /// <param name="webserver"></param>
     /// <param name="loggers"></param>
     public Config(
+      int maxNumCharacters,
       ConfigPaths paths, 
       ConfigTimers timers, 
       ConfigProcessor processors, 
@@ -87,6 +99,12 @@ namespace myoddweb.desktopsearch.service.Configs
       Loggers = RecreateLoggers(loggers);
       Processors = processors;
       WebServer = webserver;
+
+      if (maxNumCharacters <= 0)
+      {
+        throw new ArgumentException("The max number number of characters cannot be -ve or zero");
+      }
+      MaxNumCharacters = maxNumCharacters;
     }
 
     /// <summary>

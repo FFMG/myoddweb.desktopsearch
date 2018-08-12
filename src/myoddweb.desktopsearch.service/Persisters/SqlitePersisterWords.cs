@@ -82,22 +82,22 @@ namespace myoddweb.desktopsearch.service.Persisters
           {
             pWord.Value = word.Value;
             var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
-            if (null == value || value == DBNull.Value)
+            if (null != value && value != DBNull.Value)
             {
-              if (!createIfNotFound)
-              {
-                // we could not find it and we do not wish to go further.
-                ids.Add(-1);
-                continue;
-              }
-
-              // add this word to our list
-              wordsToAdd.Add(word);
+              // get the path id.
+              ids.Add((long) value);
               continue;
             }
 
-            // get the path id.
-            ids.Add((long) value);
+            if (!createIfNotFound)
+            {
+              // we could not find it and we do not wish to go further.
+              ids.Add(-1);
+              continue;
+            }
+
+            // add this word to our list
+            wordsToAdd.Add(word);
           }
           
           // finally we need to add all the words that were not found.
@@ -115,7 +115,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       catch (Exception ex)
       {
         _logger.Exception(ex);
-        return Enumerable.Repeat( (long)-1, words.Count ).ToList();
+        throw;
       }
     }
 
@@ -169,7 +169,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // we now can add the parts
-            var partIds = await AddOrUpdateParts(word.Parts, transaction, token).ConfigureAwait(false);
+            var partIds = await AddOrUpdateParts(word.Parts( _maxNumCharacters ), transaction, token).ConfigureAwait(false);
 
             // marry the word id, (that we just added).
             // with the partIds, (that we just added).

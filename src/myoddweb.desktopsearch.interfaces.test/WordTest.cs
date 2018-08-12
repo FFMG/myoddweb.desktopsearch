@@ -49,7 +49,7 @@ namespace myoddweb.desktopsearch.interfaces.test
     public void SimpleParts( string value, string[] expected )
     {
       var w = new Word(value);
-      Assert.That(w.Parts, Is.EquivalentTo(expected));
+      Assert.That(w.Parts( 128 ), Is.EquivalentTo(expected));
     }
 
     [TestCase("ooo", new[] { "o", "ooo", "oo" })]
@@ -57,7 +57,24 @@ namespace myoddweb.desktopsearch.interfaces.test
     public void RepeatLetters(string value, string[] expected)
     {
       var w = new Word(value);
-      Assert.That(w.Parts, Is.EquivalentTo(expected));
+      Assert.That(w.Parts(128), Is.EquivalentTo(expected));
+    }
+
+    [Test]
+    public void PartsCannotBeZero()
+    {
+      const string value = "Hello";
+      var w = new Word(value);
+      Assert.Throws<ArgumentException>(() => { var _ = w.Parts(0); });
+    }
+
+    [Test]
+    public void PartsCannotBeNegative()
+    {
+      const string value = "Hello";
+      var w = new Word(value);
+      Assert.Throws<ArgumentException>(() => { var _ = w.Parts(-1); });
+      Assert.Throws<ArgumentException>(() => { var _ = w.Parts(-42); });
     }
   }
 }

@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -158,6 +159,37 @@ namespace myoddweb.desktopsearch.parser
       }
     }
 
+
+    /// <summary>
+    /// Get the last access time from the config.
+    /// </summary>
+    /// <param name="token"></param>
+    private async Task<DateTime> GetLastUpdatedTimeAsync(CancellationToken token)
+    {
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
+      if (null == transaction)
+      {
+        //  we probably cancelled.
+        throw new Exception("Unable to get transaction!");
+      }
+
+      try
+      {
+        // finally we can set the last time we checked the entire data tree.
+        var lastAccessTimeUtc = await _persister.GetConfigValueAsync("LastAccessTimeUtc", DateTime.MinValue, transaction, token).ConfigureAwait(false);
+
+        // we can commit our code.
+        _persister.Commit(transaction);
+
+        return lastAccessTimeUtc;
+      }
+      catch (Exception)
+      {
+        _persister.Rollback(transaction);
+        throw;
+      }
+    }
+
     /// <summary>
     /// Update the config to set the last access time to now.
     /// </summary>
@@ -201,55 +233,65 @@ namespace myoddweb.desktopsearch.parser
       var stopwatch = new Stopwatch();
       stopwatch.Start();
 
-      var ts = DateTime.UtcNow;
-      IDbTransaction transaction = null;
-
       // get the last time we did this
-      var lastAccessTimeUtc = await _persister.GetConfigValueAsync("LastAccessTimeUtc", DateTime.MinValue, transaction, token ).ConfigureAwait(false);
+      var lastAccessTimeUtc = await GetLastUpdatedTimeAsync(token).ConfigureAwait(false);
+
+      // get all the changed or updated files.
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
+      if (null == transaction)
+      {
+        throw new Exception("Unable to get transaction!");
+      }
+
+      // get the list of directories that have changed.
+      var changedDirectories = new List<DirectoryInfo>();
+
+      // all the newly created directories
+      var createdDirectories = new List<DirectoryInfo>();
+
       foreach (var directory in directories)
       {
-        if (null == transaction)
-        {
-          transaction = await _persister.Begin(token).ConfigureAwait(false);
-          if (null == transaction)
-          {
-            throw new Exception("Unable to get transaction!");
-          }
-        }
-
         try
         {
           // try and persist this one directory.
-          await PersistDirectory(directory, lastAccessTimeUtc, transaction, token).ConfigureAwait(false);
-
-          // Did this all take more than 5 seconds?
-          // then commit ... just to free the locks.
-          if ((DateTime.UtcNow - ts).TotalSeconds > 5)
+          switch (await GetDirectoryUpdateType(directory, lastAccessTimeUtc, transaction, token).ConfigureAwait(false))
           {
-            // we are done
-            _persister.Commit(transaction);
-            transaction = null;
-            ts = DateTime.UtcNow;
+            case UpdateType.None:
+              //  ignore
+              break;
+
+            case UpdateType.Created:
+              createdDirectories.Add(directory);
+              break;
+
+            case UpdateType.Changed:
+              changedDirectories.Add(directory);
+              break;
+
+            //
+            case UpdateType.Deleted:
+              throw new ArgumentException( $"How can a newly parsed directory, {directory.FullName} be deleted??");
+
+            default:
+              throw new ArgumentOutOfRangeException();
           }
         }
         catch (Exception)
         {
-          if (transaction != null)
-          {
-            _persister.Rollback(transaction);
-          }
-
+          _persister.Rollback(transaction);
           throw;
         }
       }
 
       // commit the transaction one last time
       // if we have not done it already.
-      if (transaction != null)
-      {
-        // we are done
-        _persister.Commit(transaction);
-      }
+      _persister.Commit(transaction);
+
+      // update the changed directorues
+      await PersistChangedDirectories(changedDirectories, token).ConfigureAwait(false);
+
+      // update the changed directorues
+      await PersistCreatedDirectories(createdDirectories, token).ConfigureAwait(false);
 
       // stop the watch and log how many items we found.
       stopwatch.Stop();
@@ -260,14 +302,14 @@ namespace myoddweb.desktopsearch.parser
     }
 
     /// <summary>
-    /// Persist a single directory.
+    /// Get the type of update that we need to do for that directory.
     /// </summary>
     /// <param name="directory"></param>
     /// <param name="lastAccessTimeUtc"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task PersistDirectory(DirectoryInfo directory, DateTime lastAccessTimeUtc, IDbTransaction transaction, CancellationToken token)
+    private async Task<UpdateType> GetDirectoryUpdateType(DirectoryInfo directory, DateTime lastAccessTimeUtc, IDbTransaction transaction, CancellationToken token)
     {
       // if the directory exist... and it was flaged as newer than the last time
       // we checked the directory, then all we need to do is touch it.
@@ -276,30 +318,114 @@ namespace myoddweb.desktopsearch.parser
         if (directory.LastAccessTimeUtc < lastAccessTimeUtc)
         {
           // the file has not changed since the last time
-          return;
+          return UpdateType.None;
         }
+        return UpdateType.Changed;
+      }
 
-        // the file has changed.
-        await _persister.TouchDirectoryAsync(directory, UpdateType.Changed, transaction, token).ConfigureAwait(false);
+      // this is a brand new file.
+      return UpdateType.Created;
+    }
 
-        // done
+    /// <summary>
+    /// Process all the changed directories.
+    /// </summary>
+    /// <param name="directories"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task PersistChangedDirectories(IReadOnlyCollection<DirectoryInfo> directories, CancellationToken token)
+    {
+      // do we have anything to do??
+      if (!directories.Any())
+      {
         return;
       }
 
-      // the file is brand new ... so we need to add it to our list.
-      // this will 'touch' it.
-      await _persister.AddOrUpdateDirectoryAsync(directory, transaction, token).ConfigureAwait(false);
-
-      // look for all the files in that directory.
-      // so they can also be added.
-      var files = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait(false);
-      if (files != null)
+      // get all the changed or updated files.
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
+      if (null == transaction)
       {
-        await _persister.AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false);
+        throw new Exception("Unable to get transaction!");
       }
 
-      // the folder has been parsed
-      await _persister.MarkDirectoryProcessedAsync(directory, transaction, token).ConfigureAwait(false);
+      try
+      {
+        // the file has changed.
+        await _persister.TouchDirectoriesAsync(directories, UpdateType.Changed, transaction, token).ConfigureAwait(false);
+
+        // all done
+        _persister.Commit(transaction);
+      }
+      catch (Exception e)
+      {
+        _persister.Rollback(transaction);
+        _logger.Exception(e);
+        throw;
+      }
+    }
+
+    /// <summary>
+    /// Persist all the directories and files.
+    /// </summary>
+    /// <param name="directories"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task PersistCreatedDirectories(IReadOnlyCollection<DirectoryInfo> directories, CancellationToken token)
+    {
+      // do we have anything to do??
+      if (!directories.Any())
+      {
+        return;
+      }
+
+      var directoriesAndFiles = new Dictionary<DirectoryInfo, List<FileInfo>>();
+      foreach (var directory in directories)
+      {
+        // look for all the files in that directory.
+        // so they can also be added.
+        var files = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait(false);
+
+        // now add the files ass well as the directory
+        directoriesAndFiles.Add( directory, files );
+      }
+
+      // get all the changed or updated files.
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
+      if (null == transaction)
+      {
+        throw new Exception("Unable to get transaction!");
+      }
+
+      try
+      {
+        // we can now process everything in on single go.
+
+        // do all the directories at once.
+        await _persister.AddOrUpdateDirectoriesAsync(directoriesAndFiles.Keys.ToList(), transaction, token).ConfigureAwait(false);
+
+        // then do the files.
+        foreach (var directoryAndFiles in directoriesAndFiles)
+        {
+          var files = directoryAndFiles.Value;
+          if (files != null)
+          {
+            // add the files...
+            await _persister.AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false);
+          }
+        }
+
+        // all the folders have been processed.
+        await _persister.MarkDirectoriesProcessedAsync(directoriesAndFiles.Keys.ToList(), transaction, token).ConfigureAwait(false);
+
+        // all done
+        _persister.Commit(transaction);
+      }
+      catch (Exception e)
+      {
+        _persister.Rollback(transaction);
+        _logger.Exception(e);
+        throw;
+      }
     }
 
     #region Start Parsing

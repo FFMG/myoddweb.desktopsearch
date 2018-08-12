@@ -23,33 +23,33 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IFolderUpdates
   {
     /// <summary>
-    /// Flag a folder as having changed.
+    /// Flag a bunch of folders to the same type.
     /// </summary>
-    /// <param name="directory"></param>
+    /// <param name="directories"></param>
     /// <param name="type"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchDirectoryAsync(DirectoryInfo directory, UpdateType type, IDbTransaction transaction, CancellationToken token);
+    Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<DirectoryInfo> directories, UpdateType type, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
-    /// Flag a folder as having changed.
+    /// Flag a bunch of folders to the same type.
     /// </summary>
-    /// <param name="folderId"></param>
+    /// <param name="directories"></param>
     /// <param name="type"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchDirectoryAsync(long folderId, UpdateType type, IDbTransaction transaction, CancellationToken token);
+    Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<long> directories, UpdateType type, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given directory
     /// </summary>
-    /// <param name="directory"></param>
+    /// <param name="directories"></param>
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkDirectoryProcessedAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token);
+    Task<bool> MarkDirectoriesProcessedAsync(IReadOnlyCollection<DirectoryInfo> directories, IDbTransaction transaction, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given directory

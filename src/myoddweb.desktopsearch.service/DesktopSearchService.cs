@@ -236,7 +236,7 @@ namespace myoddweb.desktopsearch.service
         var token = _cancellationTokenSource.Token;
 
         // the persister
-        var persister = new SqlitePersister(_logger, token );
+        var persister = new SqlitePersister(_logger, config.MaxNumCharacters, token );
 
         // the directory parser
         var directory = new Directory(_logger, config.Paths );

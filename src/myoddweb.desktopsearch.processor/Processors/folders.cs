@@ -345,7 +345,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       try
       {
         // touch this directory again.
-        await _persister.TouchDirectoryAsync(folderId, type, transaction, token).ConfigureAwait(false);
+        await _persister.TouchDirectoriesAsync( new []{ folderId }, type, transaction, token).ConfigureAwait(false);
 
         // we are done
         _persister.Commit(transaction);

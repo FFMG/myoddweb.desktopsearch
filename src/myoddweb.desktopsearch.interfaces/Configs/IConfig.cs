@@ -42,5 +42,11 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     /// The web server information
     /// </summary>
     IWebServer WebServer { get; }
+
+    /// <summary>
+    /// The maximum number of characters we will concider when processing a word.
+    /// The word is still saved... but we just don't keep parts longer than this number.
+    /// </summary>
+    int MaxNumCharacters { get; }
   }
 }
