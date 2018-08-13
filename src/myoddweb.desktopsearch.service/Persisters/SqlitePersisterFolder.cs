@@ -41,12 +41,11 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // rebuild the list of directory with only those that need to be inserted.
-      var ids = await InsertDirectoriesAsync(
+      await InsertDirectoriesAsync(
         await RebuildDirectoriesListAsync(directories, transaction, token).ConfigureAwait(false),
         transaction, token).ConfigureAwait(false);
 
-      // if the list is emoty... then there is somthing wrong.
-      return ids.Any( i => i != -1 );
+      return true;
     }
 
     /// <inheritdoc />

@@ -50,6 +50,12 @@ namespace myoddweb.desktopsearch.interfaces.IO
       UnionWith(words);
     }
 
+    public Words(IEnumerable<Word> words) : this()
+    {
+      // Add all he words into one.
+      UnionWith(words);
+    }
+
     /// <summary>
     /// Add a single string word to our list.
     /// </summary>

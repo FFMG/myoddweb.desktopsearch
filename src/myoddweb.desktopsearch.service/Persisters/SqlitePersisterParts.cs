@@ -25,7 +25,7 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class SqlitePersister
   {
     /// <inheritdoc />
-    public async Task<HashSet<long>> AddOrUpdateParts(HashSet<string> parts, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdatePartsAsync(HashSet<string> parts, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -33,23 +33,38 @@ namespace myoddweb.desktopsearch.service.Persisters
           "You have to be within a tansaction when calling this function.");
       }
 
-      // the ids of all the parts, (added or otherwise).
-      var partIds = new HashSet<long>();
+      // rebuild the list of directory with only those that need to be inserted.
+      await InsertPartsAsync(
+        await RebuildPartsListAsync(parts, transaction, token).ConfigureAwait(false),
+        transaction, token).ConfigureAwait(false);
+      return true;
+    }
 
-      // if we have not words... then move on.
+    #region Private parts function
+    /// <summary>
+    /// Insert parts and return the id of the added parts.
+    /// </summary>
+    /// <param name="parts"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<HashSet<long>> InsertPartsAsync(HashSet<string> parts, IDbTransaction transaction, CancellationToken token)
+    {
       if (!parts.Any())
       {
-        return partIds;
+        return new HashSet<long>();
       }
 
-      // get the next id, we only get the next id when actually needed.
-      long nextId = -1;
+      // the ids of all the parts inserted.
+      var partIds = new HashSet<long>();
+
+      // get the next valid id.
+      var nextId = await GetNextPartIdAsync(transaction, token).ConfigureAwait(false);
 
       try
       {
-        // the query to insert a new word
+        // whatever is now left is to be inserted
         var sqlInsert = $"INSERT INTO {TableParts} (id, part) VALUES (@id, @part)";
-        var sqlSelect = $"SELECT id FROM {TableParts} WHERE part = @part";
         using (var cmdInsert = CreateDbCommand(sqlInsert, transaction))
         {
           var pId = cmdInsert.CreateParameter();
@@ -62,55 +77,25 @@ namespace myoddweb.desktopsearch.service.Persisters
           pIPart.ParameterName = "@part";
           cmdInsert.Parameters.Add(pIPart);
 
-          // then create the select command
-          using (var cmdSelect = CreateDbCommand(sqlSelect, transaction))
+          foreach (var part in parts)
           {
-            var pSPart = cmdInsert.CreateParameter();
-            pSPart.DbType = DbType.String;
-            pSPart.ParameterName = "@part";
-            cmdSelect.Parameters.Add(pSPart);
+            pId.Value = nextId;
+            pIPart.Value = part;
 
-            // we can now go around first looking for the part
-            // if we find it, then we can add it to the list of ids.
-            // if we do not find it, we will add it and move the ids along
-            foreach (var part in parts)
+            if (0 == await ExecuteNonQueryAsync(cmdInsert, token).ConfigureAwait(false))
             {
-              // get out if needed.
-              token.ThrowIfCancellationRequested();
-
-              pSPart.Value = part;
-
-              var value = await ExecuteScalarAsync(cmdSelect, token).ConfigureAwait(false);
-              if (null != value && value != DBNull.Value)
-              {
-                partIds.Add((long) value);
-                continue;
-              }
-
-              // this part does not exist
-              // so we must now add it.
-              if (-1 == nextId)
-              {
-                nextId = await GetNextPartIdAsync(transaction, token).ConfigureAwait(false);
-              }
-              pId.Value = nextId;
-              pIPart.Value = part;
-              if (0 == await ExecuteNonQueryAsync(cmdInsert, token).ConfigureAwait(false))
-              {
-                _logger.Error($"There was an issue adding part: {part} to persister");
-                continue;
-              }
-
-              // we added it, so we can add it to our list
-              partIds.Add(nextId);
-
-              // and move on to the next id.
-              ++nextId;
+              _logger.Error($"There was an issue adding part: {part} to persister");
+              continue;
             }
 
-            // return all the ids we added.
-            return partIds;
+            // we added it, so we can add it to our list
+            partIds.Add(nextId);
+
+            // and move on to the next id.
+            ++nextId;
           }
+          // return all the ids we added.
+          return partIds;
         }
       }
       catch (OperationCanceledException)
@@ -125,7 +110,134 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
-    #region Private parts function
+    /// <summary>
+    /// Given a list of directories, re-create the ones that we need to insert.
+    /// </summary>
+    /// <param name="parts"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<HashSet<string>> RebuildPartsListAsync(HashSet<string> parts, IDbTransaction transaction, CancellationToken token)
+    {
+      if (!parts.Any())
+      {
+        return new HashSet<string>();
+      }
+
+      try
+      {
+        // the actual list of parts we need to add.
+        var actualParts = new HashSet<string>();
+
+        // first look for what we have and insert what we do not have.
+        var sql = $"SELECT id FROM {TableParts} WHERE part = @part";
+        using (var cmd = CreateDbCommand(sql, transaction))
+        {
+          var pSPart = cmd.CreateParameter();
+          pSPart.DbType = DbType.String;
+          pSPart.ParameterName = "@part";
+          cmd.Parameters.Add(pSPart);
+
+          foreach (var part in parts)
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            pSPart.Value = part;
+
+            var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+            if (null != value && value != DBNull.Value)
+            {
+              // this part already exists, no need to go further.
+              continue;
+            }
+
+            // we could not locate this part
+            actualParts.Add(part);
+          }
+          return actualParts;
+        }
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Building part list");
+        throw;
+      }
+    }
+
+    /// <summary>
+    /// Get the id number of all the parts.
+    /// </summary>
+    /// <param name="parts"></param>
+    /// <param name="transaction"></param>
+    /// <param name="token"></param>
+    /// <param name="createIfNotFound"></param>
+    /// <returns></returns>
+    private async Task<HashSet<long>> GetPartIdsAsync(HashSet<string> parts, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    { 
+      // the ids of all the parts, (added or otherwise).
+      var partIds = new HashSet<long>();
+
+      // if we have not words... then move on.
+      if (!parts.Any())
+      {
+        return partIds;
+      }
+
+      try
+      {
+        // the parts we actually need to add.
+        var partsToAdd = new HashSet<string>();
+
+        // first look for what we have and insert what we do not have.
+        var sqlSelect = $"SELECT id FROM {TableParts} WHERE part = @part";
+        using (var cmdSelect = CreateDbCommand(sqlSelect, transaction))
+        {
+          var pSPart = cmdSelect.CreateParameter();
+          pSPart.DbType = DbType.String;
+          pSPart.ParameterName = "@part";
+          cmdSelect.Parameters.Add(pSPart);
+
+          foreach (var part in parts)
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            pSPart.Value = part;
+
+            var value = await ExecuteScalarAsync(cmdSelect, token).ConfigureAwait(false);
+            if (null != value && value != DBNull.Value)
+            {
+              partIds.Add((long) value);
+              continue;
+            }
+
+            if (!createIfNotFound)
+            {
+              // we could not find it and we do not wish to go further.
+              partIds.Add(-1);
+              continue;
+            }
+
+            // we could not locate this part
+            // so it will need to be added.
+            partsToAdd.Add(part);
+          }
+        }
+        
+        // then add the ids of the remaining parts.
+        partIds.UnionWith( await InsertPartsAsync( partsToAdd, transaction, token ).ConfigureAwait(false));
+
+        // return everything we found.
+        return partIds;
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Get Next valid Part id");
+        throw;
+      }
+    }
+
     /// <summary>
     /// Get the next row ID we can use.
     /// </summary>
@@ -160,7 +272,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         _logger.Warning("Received cancellation request - Get Next valid Part id");
         throw;
       }
-
       #endregion
     }
   }

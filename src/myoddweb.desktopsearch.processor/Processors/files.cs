@@ -300,6 +300,56 @@ namespace myoddweb.desktopsearch.processor.Processors
       {
         var tsActual = DateTime.UtcNow;
 
+        // complete the update
+        await CompleteWordsUpdate(pendingFileUpdate.Words, token).ConfigureAwait(false);
+
+        // complete the update
+        await CompletePendingFileUpdate(pendingFileUpdate, token).ConfigureAwait( false );
+
+        // Did this all take more than 5 seconds?
+        var tsDiff = (DateTime.UtcNow - tsActual);
+        if (tsDiff.TotalSeconds > 5)
+        {
+          _logger.Verbose($"Processing of file: {pendingFileUpdate.File.FullName} took {tsDiff:g} ({pendingFileUpdate.Words?.Count ?? 0} words)");
+        }
+      }
+    }
+
+    /// <summary>
+    /// Complete an update, open a transaction and insert all the parts.
+    /// </summary>
+    /// <param name="words"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task CompleteWordsUpdate(Words words, CancellationToken token)
+    {
+      const int length = 500;
+      var tasks = new List<Task>();
+      for (var i = 0; i < words.Count; i+= length)
+      {
+        var i1 = i;
+        tasks.Add( Task.Run(() =>
+          {
+            // get the sub words.
+            var subWords = new Words(words.Skip(i1).Take(length));
+
+            // then flatten the list of parts, (do it outside of the transaction).
+            var _ = new HashSet<string>(subWords.SelectMany(w => w.Parts(128)));
+          }, token)
+        );
+      }
+
+      // then wait for them all.
+      await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
+
+      for (var i = 0; i < words.Count; i += length)
+      {
+        // get the sub words.
+        var subWords = new Words(words.Skip(i).Take(length));
+
+        // then flatten the list of parts, (do it outside of the transaction).
+        var s = new HashSet<string>(subWords.SelectMany(w => w.Parts(128)));
+
         var transaction = await _persister.Begin(token).ConfigureAwait(false);
         if (null == transaction)
         {
@@ -308,28 +358,83 @@ namespace myoddweb.desktopsearch.processor.Processors
 
         try
         {
-          // try and process it.
-          await CompletePendingFileUpdate(pendingFileUpdate, transaction, token).ConfigureAwait(false);
-
           // get out if we are cancelling
           token.ThrowIfCancellationRequested();
 
+          // try and process it.
+          await _persister.AddOrUpdatePartsAsync(s, transaction, token).ConfigureAwait(false);
+
           // we are done
           _persister.Commit(transaction);
-          transaction = null;
-
-          // Did this all take more than 5 seconds?
-          var tsDiff = (DateTime.UtcNow - tsActual);
-          if (tsDiff.TotalSeconds > 5)
-          {
-            _logger.Verbose( $"Processing of file: {pendingFileUpdate.File.FullName} took {tsDiff:g} ({pendingFileUpdate.Words?.Count ?? 0} words)");
-          }
         }
         catch (Exception)
         {
           _persister.Rollback(transaction);
           throw;
         }
+      }
+
+      const int length2 = 1000;
+      for (var i = 0; i < words.Count; i += length2)
+      {
+        // get the sub words.
+        var subWords = new Words( words.Skip(i).Take(length2) );
+
+        var transaction = await _persister.Begin(token).ConfigureAwait(false);
+        if (null == transaction)
+        {
+          throw new Exception("Unable to get transaction!");
+        }
+
+        try
+        {
+          // get out if we are cancelling
+          token.ThrowIfCancellationRequested();
+
+          // try and process it.
+          await _persister.AddOrUpdateWordsAsync(subWords, transaction, token).ConfigureAwait(false);
+
+          // we are done
+          _persister.Commit(transaction);
+        }
+        catch (Exception)
+        {
+          _persister.Rollback(transaction);
+          throw;
+        }
+      }
+    }
+
+    /// <summary>
+    /// Complete an update, open a transaction and insert all the parts.
+    /// </summary>
+    /// <param name="pendingFileUpdate"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task CompletePendingFileUpdate(CompletedPendingFileUpdate pendingFileUpdate, CancellationToken token)
+    {
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
+      if (null == transaction)
+      {
+        throw new Exception("Unable to get transaction!");
+      }
+
+      try
+      {
+        // try and process it.
+        await CompletePendingFileUpdate(pendingFileUpdate, transaction, token).ConfigureAwait(false);
+
+        // get out if we are cancelling
+        token.ThrowIfCancellationRequested();
+
+        // we are done
+        _persister.Commit(transaction);
+        transaction = null;
+      }
+      catch (Exception)
+      {
+        _persister.Rollback(transaction);
+        throw;
       }
     }
 

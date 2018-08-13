@@ -169,11 +169,11 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // we now can add the parts
-            var partIds = await AddOrUpdateParts(word.Parts( _maxNumCharacters ), transaction, token).ConfigureAwait(false);
+            var partIds = await GetPartIdsAsync(word.Parts( _maxNumCharacters ), transaction, token, true ).ConfigureAwait(false);
 
             // marry the word id, (that we just added).
             // with the partIds, (that we just added).
-            await AddOrUpdateWordParts(nextId, partIds, transaction, token).ConfigureAwait(false);
+            await InsertWordParts(nextId, partIds, transaction, token).ConfigureAwait(false);
 
             // we added this id.
             ids.Add( nextId );
@@ -229,7 +229,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             // the words are case sensitive
-            cmd.Parameters["@word"].Value = word.Value;
+            pWord.Value = word.Value;
             if (null != await ExecuteScalarAsync(cmd, token).ConfigureAwait(false))
             {
               continue;
