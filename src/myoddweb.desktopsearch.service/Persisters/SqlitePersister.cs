@@ -44,7 +44,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// The transactions manager.
     /// </summary>
-    private readonly TransactionSpiner _transaction;
+    private readonly TransactionSpinner _transactionSpinner;
 
     /// <summary>
     /// The current connection
@@ -87,7 +87,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       _connectionString = $"Data Source={source};Version=3;Pooling=True;Max Pool Size=100;";
 
-      _transaction = new TransactionSpiner(CreateConnection, FreeResources );
+      _transactionSpinner = new TransactionSpinner(CreateConnection, FreeResources );
 
       // update the db if need be.
       Update(token).Wait();
@@ -120,13 +120,38 @@ namespace myoddweb.desktopsearch.service.Persisters
     #endregion
 
     #region Transactions
+
+    /// <inheritdoc/>
+    public async Task<IDbTransaction> BeginReadonly(CancellationToken token)
+    {
+      // set the value
+      try
+      {
+        return await _transactionSpinner.BeginReadonly(token).ConfigureAwait(false);
+      }
+      catch (OperationCanceledException e)
+      {
+        // is it my token?
+        if (e.CancellationToken != token)
+        {
+          _logger.Exception(e);
+        }
+        throw;
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        throw;
+      }
+    }
+
     /// <inheritdoc/>
     public async Task<IDbTransaction> Begin(CancellationToken token)
     {
       // set the value
       try
       {
-        return await _transaction.Begin(token).ConfigureAwait(false);
+        return await _transactionSpinner.Begin(token).ConfigureAwait(false);
       }
       catch (OperationCanceledException e)
       {
@@ -153,7 +178,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new ArgumentNullException(nameof(transaction));
         }
-        _transaction.Rollback(transaction);
+        _transactionSpinner.Rollback(transaction);
         return true;
       }
       catch (Exception rollbackException)
@@ -172,7 +197,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new ArgumentNullException( nameof(transaction));
         }
-        _transaction.Commit(transaction);
+        _transactionSpinner.Commit(transaction);
         return true;
       }
       catch (Exception commitException)
