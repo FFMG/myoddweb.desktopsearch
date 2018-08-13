@@ -323,85 +323,27 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task CompleteWordsUpdate(Words words, CancellationToken token)
     {
-      const int length = 500;
-      var tasks = new List<Task>();
-      for (var i = 0; i < words.Count; i+= length)
+      var transaction = await _persister.Begin(token).ConfigureAwait(false);
+      if (null == transaction)
       {
-        var i1 = i;
-        tasks.Add( Task.Run(() =>
-          {
-            // get the sub words.
-            var subWords = new Words(words.Skip(i1).Take(length));
-
-            // then flatten the list of parts, (do it outside of the transaction).
-            var _ = new HashSet<string>(subWords.SelectMany(w => w.Parts(128)));
-          }, token)
-        );
+        throw new Exception("Unable to get transaction!");
       }
 
-      // then wait for them all.
-      await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
-
-      for (var i = 0; i < words.Count; i += length)
+      try
       {
-        // get the sub words.
-        var subWords = new Words(words.Skip(i).Take(length));
+        // get out if we are cancelling
+        token.ThrowIfCancellationRequested();
 
-        // then flatten the list of parts, (do it outside of the transaction).
-        var s = new HashSet<string>(subWords.SelectMany(w => w.Parts(128)));
+        // add all the words...
+        await _persister.AddOrUpdateWordsAsync(words, transaction, token).ConfigureAwait(false);
 
-        var transaction = await _persister.Begin(token).ConfigureAwait(false);
-        if (null == transaction)
-        {
-          throw new Exception("Unable to get transaction!");
-        }
-
-        try
-        {
-          // get out if we are cancelling
-          token.ThrowIfCancellationRequested();
-
-          // try and process it.
-          await _persister.AddOrUpdatePartsAsync(s, transaction, token).ConfigureAwait(false);
-
-          // we are done
-          _persister.Commit(transaction);
-        }
-        catch (Exception)
-        {
-          _persister.Rollback(transaction);
-          throw;
-        }
+        // we are done
+        _persister.Commit(transaction);
       }
-
-      const int length2 = 1000;
-      for (var i = 0; i < words.Count; i += length2)
+      catch (Exception)
       {
-        // get the sub words.
-        var subWords = new Words( words.Skip(i).Take(length2) );
-
-        var transaction = await _persister.Begin(token).ConfigureAwait(false);
-        if (null == transaction)
-        {
-          throw new Exception("Unable to get transaction!");
-        }
-
-        try
-        {
-          // get out if we are cancelling
-          token.ThrowIfCancellationRequested();
-
-          // try and process it.
-          await _persister.AddOrUpdateWordsAsync(subWords, transaction, token).ConfigureAwait(false);
-
-          // we are done
-          _persister.Commit(transaction);
-        }
-        catch (Exception)
-        {
-          _persister.Rollback(transaction);
-          throw;
-        }
+        _persister.Rollback(transaction);
+        throw;
       }
     }
 

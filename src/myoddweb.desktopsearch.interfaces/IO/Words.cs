@@ -56,6 +56,12 @@ namespace myoddweb.desktopsearch.interfaces.IO
       UnionWith(words);
     }
 
+    public Words(IEnumerable<string> words) : this()
+    {
+      // Add all he words into one.
+      UnionWith(words);
+    }
+
     /// <summary>
     /// Add a single string word to our list.
     /// </summary>
@@ -88,6 +94,29 @@ namespace myoddweb.desktopsearch.interfaces.IO
 
         // ignore null or empty sets.
         if (w == null || !w.Any())
+        {
+          continue;
+        }
+
+        // check the union
+        UnionWith(w);
+      }
+    }
+
+    /// <summary>
+    /// Join multiple list of words together.
+    /// </summary>
+    /// <param name="words"></param>
+    /// <param name="token"></param>
+    public void UnionWith(IEnumerable<string> words, CancellationToken token = default(CancellationToken))
+    {
+      foreach (var w in words)
+      {
+        // check if we need to get out.
+        token.ThrowIfCancellationRequested();
+
+        // ignore null or empty sets.
+        if (w == null )
         {
           continue;
         }

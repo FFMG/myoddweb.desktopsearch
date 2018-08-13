@@ -209,11 +209,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
-        // make that list unique
-        var uniqueList = words.Distinct();
-
         // The list of words we will be adding to the list.
-        var actualWords = new Words();
+        var actualWords = new List<string>(words.Count);
 
         // we first look for it, and, if we find it then there is nothing to do.
         var sqlGetRowId = $"SELECT id FROM {TableWords} WHERE word=@word";
@@ -223,7 +220,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           pWord.DbType = DbType.String;
           pWord.ParameterName = "@word";
           cmd.Parameters.Add(pWord);
-          foreach (var word in uniqueList)
+          foreach (var word in words)
           {
             // get out if needed.
             token.ThrowIfCancellationRequested();
@@ -237,12 +234,12 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             // we could not find this word
             // so we will just add it to our list.
-            actualWords.UnionWith(word);
+            actualWords.Add(word.Value);
           }
         }
 
         //  we know that the list is unique thanks to the uniqueness above.
-        return actualWords;
+        return new Words( actualWords );
       }
       catch (OperationCanceledException)
       {

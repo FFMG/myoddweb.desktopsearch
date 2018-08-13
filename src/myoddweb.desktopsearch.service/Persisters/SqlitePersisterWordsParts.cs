@@ -104,7 +104,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task InsertWordParts(long wordId, HashSet<long> partIds, IDbTransaction transaction, CancellationToken token)
+    private async Task InsertWordParts(long wordId, IReadOnlyCollection<long> partIds, IDbTransaction transaction, CancellationToken token)
     {
       // we might not have anything to do
       if (!partIds.Any())

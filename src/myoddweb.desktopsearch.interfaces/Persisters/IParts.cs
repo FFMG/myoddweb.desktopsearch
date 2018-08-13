@@ -28,6 +28,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdatePartsAsync(HashSet<string> parts, IDbTransaction transaction, CancellationToken token);
+    Task<bool> AddOrUpdatePartsAsync(IReadOnlyCollection<string> parts, IDbTransaction transaction, CancellationToken token);
   }
 }

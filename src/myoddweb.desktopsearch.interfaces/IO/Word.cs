@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace myoddweb.desktopsearch.interfaces.IO
 {
@@ -27,7 +28,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <summary>
     /// All the parts of the word.
     /// </summary>
-    private HashSet<string> _parts;
+    private IReadOnlyCollection<string> _parts;
 
     /// <summary>
     /// The maximum number of meaningful charactets in the parts.
@@ -39,7 +40,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// Get all the parts of our word.
     /// <param name="maxNumMeaningfulCharacters"></param>
     /// </summary>
-    public HashSet<string> Parts(int maxNumMeaningfulCharacters)
+    public IReadOnlyCollection<string> Parts(int maxNumMeaningfulCharacters)
     {
       if (maxNumMeaningfulCharacters <= 0)
       {
@@ -76,21 +77,27 @@ namespace myoddweb.desktopsearch.interfaces.IO
       // ix
       // x
 
-      // Gauss formula for the sum of the serries of lettes.
-      // setsize = (Value.Length * (Value.Length + 1)) / 2;
-      _parts = new HashSet<string>();
-      for (var start = 0; start < Value.Length; ++start)
+      // Gauss formula for the sum of the serries of letters.
+      var l = Value.Length;
+      var setsize = (l * (l + 1)) / 2;
+      var parts = new List<string>(setsize);
+      for (var start = 0; start < l; ++start)
       {
-        for (var i = start; i < Value.Length; ++i)
+        for (var i = start; i < l; ++i)
         {
           var length = (i - start + 1);
           if (length > maxNumMeaningfulCharacters)
           {
             continue;
           }
-          _parts.Add(Value.Substring(start, length ));
+          parts.Add(Value.Substring(start, length ));
         }
       }
+
+      // convert it to a list and remove duplicates.
+      _parts = parts.Distinct().ToList();
+
+      // then return the value.
       return _parts;
     }
 

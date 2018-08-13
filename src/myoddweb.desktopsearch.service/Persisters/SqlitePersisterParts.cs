@@ -25,7 +25,7 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class SqlitePersister
   {
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdatePartsAsync(HashSet<string> parts, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdatePartsAsync(IReadOnlyCollection<string> parts, IDbTransaction transaction, CancellationToken token)
     {
       if (null == transaction)
       {
@@ -48,15 +48,15 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<HashSet<long>> InsertPartsAsync(HashSet<string> parts, IDbTransaction transaction, CancellationToken token)
+    private async Task<List<long>> InsertPartsAsync(IReadOnlyCollection<string> parts, IDbTransaction transaction, CancellationToken token)
     {
       if (!parts.Any())
       {
-        return new HashSet<long>();
+        return new List<long>();
       }
 
       // the ids of all the parts inserted.
-      var partIds = new HashSet<long>();
+      var partIds = new List<long>(parts.Count);
 
       // get the next valid id.
       var nextId = await GetNextPartIdAsync(transaction, token).ConfigureAwait(false);
@@ -77,7 +77,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           pIPart.ParameterName = "@part";
           cmdInsert.Parameters.Add(pIPart);
 
-          foreach (var part in parts)
+          foreach (var part in parts.Distinct())
           {
             pId.Value = nextId;
             pIPart.Value = part;
@@ -117,17 +117,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<HashSet<string>> RebuildPartsListAsync(HashSet<string> parts, IDbTransaction transaction, CancellationToken token)
+    private async Task<string[]> RebuildPartsListAsync(IReadOnlyCollection<string> parts, IDbTransaction transaction, CancellationToken token)
     {
       if (!parts.Any())
       {
-        return new HashSet<string>();
+        return new string[0];
       }
 
       try
       {
         // the actual list of parts we need to add.
-        var actualParts = new HashSet<string>();
+        var actualParts = new List<string>(parts.Count);
 
         // first look for what we have and insert what we do not have.
         var sql = $"SELECT id FROM {TableParts} WHERE part = @part";
@@ -138,7 +138,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           pSPart.ParameterName = "@part";
           cmd.Parameters.Add(pSPart);
 
-          foreach (var part in parts)
+          foreach (var part in parts.Distinct())
           {
             // get out if needed.
             token.ThrowIfCancellationRequested();
@@ -155,7 +155,10 @@ namespace myoddweb.desktopsearch.service.Persisters
             // we could not locate this part
             actualParts.Add(part);
           }
-          return actualParts;
+
+          // we don't need to make is distinct as our for loop
+          // make sure that we were only selecting unique values.
+          return actualParts.ToArray();
         }
       }
       catch (OperationCanceledException)
@@ -173,10 +176,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    private async Task<HashSet<long>> GetPartIdsAsync(HashSet<string> parts, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    private async Task<List<long>> GetPartIdsAsync(IReadOnlyCollection<string> parts, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
     { 
       // the ids of all the parts, (added or otherwise).
-      var partIds = new HashSet<long>();
+      var partIds = new List<long>(parts.Count);
 
       // if we have not words... then move on.
       if (!parts.Any())
@@ -187,7 +190,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // the parts we actually need to add.
-        var partsToAdd = new HashSet<string>();
+        var partsToAdd = new List<string>(parts.Count);
 
         // first look for what we have and insert what we do not have.
         var sqlSelect = $"SELECT id FROM {TableParts} WHERE part = @part";
@@ -226,7 +229,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
         
         // then add the ids of the remaining parts.
-        partIds.UnionWith( await InsertPartsAsync( partsToAdd, transaction, token ).ConfigureAwait(false));
+        partIds.AddRange( await InsertPartsAsync( partsToAdd.ToArray(), transaction, token ).ConfigureAwait(false));
 
         // return everything we found.
         return partIds;

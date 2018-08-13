@@ -28,7 +28,7 @@ namespace myoddweb.desktopsearch.service.Configs
   internal class Config : IConfig
   {
     /// <inheritdoc />
-    [DefaultValue(128)]
+    [DefaultValue(25)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int MaxNumCharacters { get; protected set; }
 
