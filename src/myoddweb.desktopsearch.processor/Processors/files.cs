@@ -287,7 +287,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="completedPendingFileUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task CompletePendingFileUpdates(HashSet<CompletedPendingFileUpdate> completedPendingFileUpdates, CancellationToken token)
+    private async Task CompletePendingFileUpdates(IReadOnlyCollection<CompletedPendingFileUpdate> completedPendingFileUpdates, CancellationToken token)
     {
       // do some smart checking...
       if (!completedPendingFileUpdates.Any())
@@ -296,86 +296,36 @@ namespace myoddweb.desktopsearch.processor.Processors
         return;
       }
 
-      foreach (var pendingFileUpdate in completedPendingFileUpdates )
+      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
+      if (null == transaction)
       {
-        var tsActual = DateTime.UtcNow;
+        throw new Exception("Unable to get transaction!");
+      }
 
-        // complete the update
-        await CompleteWordsUpdate(pendingFileUpdate.Words, token).ConfigureAwait(false);
-
-        // complete the update
-        await CompletePendingFileUpdate(pendingFileUpdate, token).ConfigureAwait( false );
-
-        // Did this all take more than 5 seconds?
-        var tsDiff = (DateTime.UtcNow - tsActual);
-        if (tsDiff.TotalSeconds > 5)
+      try
+      {
+        foreach (var pendingFileUpdate in completedPendingFileUpdates)
         {
-          _logger.Verbose($"Processing of file: {pendingFileUpdate.File.FullName} took {tsDiff:g} ({pendingFileUpdate.Words?.Count ?? 0} words)");
+          var tsActual = DateTime.UtcNow;
+
+          // complete the update
+          await CompletePendingFileUpdate(pendingFileUpdate, transaction, token).ConfigureAwait(false);
+
+          // Did this all take more than 5 seconds?
+          var tsDiff = (DateTime.UtcNow - tsActual);
+          if (tsDiff.TotalSeconds > 5)
+          {
+            _logger.Verbose( $"Processing of file: {pendingFileUpdate.File.FullName} took {tsDiff:g} ({pendingFileUpdate.Words?.Count ?? 0} words)");
+          }
         }
-      }
-    }
 
-    /// <summary>
-    /// Complete an update, open a transaction and insert all the parts.
-    /// </summary>
-    /// <param name="words"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task CompleteWordsUpdate(Words words, CancellationToken token)
-    {
-      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        throw new Exception("Unable to get transaction!");
-      }
-
-      try
-      {
-        // get out if we are cancelling
-        token.ThrowIfCancellationRequested();
-
-        // add all the words...
-        await _persister.AddOrUpdateWordsAsync(words, transaction, token).ConfigureAwait(false);
-
-        // we are done
+        // all done
         _persister.Commit(transaction);
       }
-      catch (Exception)
+      catch( Exception e )
       {
-        _persister.Rollback(transaction);
-        throw;
-      }
-    }
-
-    /// <summary>
-    /// Complete an update, open a transaction and insert all the parts.
-    /// </summary>
-    /// <param name="pendingFileUpdate"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task CompletePendingFileUpdate(CompletedPendingFileUpdate pendingFileUpdate, CancellationToken token)
-    {
-      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        throw new Exception("Unable to get transaction!");
-      }
-
-      try
-      {
-        // try and process it.
-        await CompletePendingFileUpdate(pendingFileUpdate, transaction, token).ConfigureAwait(false);
-
-        // get out if we are cancelling
-        token.ThrowIfCancellationRequested();
-
-        // we are done
         _persister.Commit(transaction);
-        transaction = null;
-      }
-      catch (Exception)
-      {
-        _persister.Rollback(transaction);
+        _logger.Exception(e);
         throw;
       }
     }
@@ -432,7 +382,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFileUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task TouchFileAsync(List<PendingFileUpdate> pendingFileUpdates, CancellationToken token)
+    private async Task TouchFileAsync(IEnumerable<PendingFileUpdate> pendingFileUpdates, CancellationToken token)
     {
       var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
       if (null == transaction)
