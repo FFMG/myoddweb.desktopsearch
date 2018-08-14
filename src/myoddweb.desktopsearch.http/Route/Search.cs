@@ -157,7 +157,7 @@ namespace myoddweb.desktopsearch.http.Route
       stopwatch.Start();
 
       var token = CancellationToken.None;
-      var transaction = await Persister.BeginReadonly(token).ConfigureAwait(false);
+      var transaction = await Persister.BeginRead(token).ConfigureAwait(false);
       try
       {
         // search the words.

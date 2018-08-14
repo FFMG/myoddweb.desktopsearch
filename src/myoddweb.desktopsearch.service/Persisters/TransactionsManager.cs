@@ -12,6 +12,7 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -21,15 +22,22 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal class TransactionSpinnerReadOnly : IDbTransaction
+  /// <summary>
+  /// Class to manage readonly transactions.
+  /// </summary>
+  internal class TransactionsManagerReadOnly : IDbTransaction
   {
+    /// <summary>
+    /// The parent transaction.
+    /// </summary>
     public IDbTransaction Transaction { get; }
 
-    public TransactionSpinnerReadOnly(IDbTransaction transaction)
+    public TransactionsManagerReadOnly(IDbTransaction transaction)
     {
       Transaction = transaction;
     }
 
+    #region IDBTransaction
     public void Dispose()
     {
       Transaction?.Dispose();
@@ -47,9 +55,10 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     public IDbConnection Connection => Transaction.Connection;
     public IsolationLevel IsolationLevel => Transaction.IsolationLevel;
+    #endregion
   }
 
-  internal class TransactionSpinner
+  internal class TransactionsManager
   {
     #region Member variables
     /// <summary>
@@ -69,7 +78,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly object _lock = new object();
 
     private IDbTransaction _transaction;
-    private readonly List<TransactionSpinnerReadOnly> _readonlyTransactions = new List<TransactionSpinnerReadOnly>();
+    private readonly List<TransactionsManagerReadOnly> _readonlyTransactions = new List<TransactionsManagerReadOnly>();
 
     private readonly CreateConnection _createConnection;
     private readonly FreeResources _freeResources;
@@ -85,18 +94,19 @@ namespace myoddweb.desktopsearch.service.Persisters
     private TransactionOwner _transactionOwner;
     #endregion
 
-    public TransactionSpinner(CreateConnection createConnection, FreeResources freeResources)
+    public TransactionsManager(CreateConnection createConnection, FreeResources freeResources)
     {
       _createConnection = createConnection ?? throw new ArgumentNullException(nameof(createConnection));
       _freeResources = freeResources ?? throw new ArgumentNullException(nameof(freeResources));
     }
 
     /// <summary>
-    /// Begin a transaction.
+    /// Begin a read transaction.
+    /// There can be more than one.
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task<IDbTransaction> BeginReadonly(CancellationToken token)
+    public Task<IDbTransaction> BeginRead(CancellationToken token)
     {
       for (; ; )
       {
@@ -109,12 +119,12 @@ namespace myoddweb.desktopsearch.service.Persisters
           // if the transaction is null, then create one.
           if (_transaction == null)
           {
-            Begin(token).Wait(token);
+            BeginWrite(token).Wait(token);
             _transactionOwner = TransactionOwner.ReadonlyIsOwner;
           }
 
           // return the current transaction
-          var trans = new TransactionSpinnerReadOnly(_transaction);
+          var trans = new TransactionsManagerReadOnly(_transaction);
           
           // and add it to the list.
           _readonlyTransactions.Add(trans);
@@ -124,11 +134,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <summary>
-    /// Begin a transaction.
+    /// Begin a write transaction.
+    /// There can only be one
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<IDbTransaction> Begin( CancellationToken token )
+    public async Task<IDbTransaction> BeginWrite( CancellationToken token )
     {
       for (;;)
       {
@@ -167,7 +178,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       lock (_lock)
       {
-        if (transaction is TransactionSpinnerReadOnly trans)
+        if (transaction is TransactionsManagerReadOnly trans)
         {
           FinishReadonlyTransaction(trans);
           return;
@@ -185,26 +196,34 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       lock (_lock)
       {
-        if (null == _transaction)
-        {
-          return;
-        }
-
-        if (_readonlyTransactions.Any())
-        {
-          _transactionOwner = TransactionOwner.ReadyToRollBack;
-          return;
-        }
-
-        // roll back
-        _transaction.Rollback();
-
-        // free resources
-        _freeResources( );
-
-        // done  with the transaction
-        _transaction = null;
+        RollbackInLock();
       }
+    }
+
+    /// <summary>
+    /// Rollback a transaction within a lock.
+    /// </summary>
+    private void RollbackInLock()
+    {
+      if (null == _transaction)
+      {
+        return;
+      }
+
+      if (_readonlyTransactions.Any())
+      {
+        _transactionOwner = TransactionOwner.ReadyToRollBack;
+        return;
+      }
+
+      // roll back
+      _transaction.Rollback();
+
+      // free resources
+      _freeResources();
+
+      // done  with the transaction
+      _transaction = null;
     }
 
     /// <summary>
@@ -215,7 +234,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       lock (_lock)
       {
-        if (transaction is TransactionSpinnerReadOnly trans)
+        if (transaction is TransactionsManagerReadOnly trans)
         {
           FinishReadonlyTransaction( trans );
           return;
@@ -233,38 +252,54 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       lock (_lock)
       {
-        if (null == _transaction)
-        {
-          return;
-        }
-
-        if (_readonlyTransactions.Any())
-        {
-          _transactionOwner = TransactionOwner.ReadyToCommit;
-          return;
-        }
-
-        // commit 
-        _transaction.Commit();
-
-        // free resources
-        _freeResources();
-
-        // done  with the transaction
-        _transaction = null;
+        CommitInLock();
       }
     }
 
-    private void FinishReadonlyTransaction(TransactionSpinnerReadOnly trans)
+    /// <summary>
+    /// Commit the tansaction while we are in lock.
+    /// </summary>
+    private void CommitInLock()
+    {
+      // do we actually have anything to do?
+      if (null == _transaction)
+      {
+        return;
+      }
+
+      // if we have any read only transactions, then we can stop.
+      if (_readonlyTransactions.Any())
+      {
+        _transactionOwner = TransactionOwner.ReadyToCommit;
+        return;
+      }
+
+      // commit 
+      _transaction.Commit();
+
+      // free resources
+      _freeResources();
+
+      // done  with the transaction
+      _transaction = null;
+    }
+
+    /// <summary>
+    /// Complete the readonly transaction.
+    /// </summary>
+    /// <param name="trans"></param>
+    private void FinishReadonlyTransaction(TransactionsManagerReadOnly trans)
     {
       lock (_lock)
       {
+        // remove ourselves from the list.
         _readonlyTransactions.RemoveAll(t => t == trans);
         if (_readonlyTransactions.Any())
         {
           return;
         }
 
+        // now complete the parent transaction
         switch (_transactionOwner)
         {
           case TransactionOwner.None:

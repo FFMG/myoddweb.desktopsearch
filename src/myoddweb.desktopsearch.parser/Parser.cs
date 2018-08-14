@@ -166,7 +166,7 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="token"></param>
     private async Task<DateTime> GetLastUpdatedTimeAsync(CancellationToken token)
     {
-      var transaction = await _persister.Begin(token).ConfigureAwait(false);
+      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
       if (null == transaction)
       {
         //  we probably cancelled.
@@ -196,7 +196,7 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="token"></param>
     private async Task SetLastUpdatedTimeAsync(CancellationToken token)
     {
-      var transaction = await _persister.Begin(token).ConfigureAwait(false);
+      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
       if (null == transaction)
       {
         //  we probably cancelled.
@@ -237,7 +237,7 @@ namespace myoddweb.desktopsearch.parser
       var lastAccessTimeUtc = await GetLastUpdatedTimeAsync(token).ConfigureAwait(false);
 
       // get all the changed or updated files.
-      var transaction = await _persister.Begin(token).ConfigureAwait(false);
+      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -342,7 +342,7 @@ namespace myoddweb.desktopsearch.parser
       }
 
       // get all the changed or updated files.
-      var transaction = await _persister.Begin(token).ConfigureAwait(false);
+      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -390,7 +390,7 @@ namespace myoddweb.desktopsearch.parser
       }
 
       // get all the changed or updated files.
-      var transaction = await _persister.Begin(token).ConfigureAwait(false);
+      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");

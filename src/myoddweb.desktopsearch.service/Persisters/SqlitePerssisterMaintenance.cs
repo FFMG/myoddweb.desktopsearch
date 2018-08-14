@@ -356,7 +356,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     protected async Task Update(CancellationToken token)
     {
       // if the config table does not exis, then we have to asume it is brand new.
-      var transaction = await Begin(token).ConfigureAwait(false);
+      var transaction = await BeginWrite(token).ConfigureAwait(false);
       try
       {
         if (!TableExists(TableConfig, transaction ))

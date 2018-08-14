@@ -44,7 +44,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// The transactions manager.
     /// </summary>
-    private readonly TransactionSpinner _transactionSpinner;
+    private readonly TransactionsManager _transactionSpinner;
 
     /// <summary>
     /// The current connection
@@ -87,7 +87,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       _connectionString = $"Data Source={source};Version=3;Pooling=True;Max Pool Size=100;";
 
-      _transactionSpinner = new TransactionSpinner(CreateConnection, FreeResources );
+      _transactionSpinner = new TransactionsManager(CreateConnection, FreeResources );
 
       // update the db if need be.
       Update(token).Wait();
@@ -122,12 +122,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     #region Transactions
 
     /// <inheritdoc/>
-    public async Task<IDbTransaction> BeginReadonly(CancellationToken token)
+    public async Task<IDbTransaction> BeginRead(CancellationToken token)
     {
       // set the value
       try
       {
-        return await _transactionSpinner.BeginReadonly(token).ConfigureAwait(false);
+        return await _transactionSpinner.BeginRead(token).ConfigureAwait(false);
       }
       catch (OperationCanceledException e)
       {
@@ -146,12 +146,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc/>
-    public async Task<IDbTransaction> Begin(CancellationToken token)
+    public async Task<IDbTransaction> BeginWrite(CancellationToken token)
     {
       // set the value
       try
       {
-        return await _transactionSpinner.Begin(token).ConfigureAwait(false);
+        return await _transactionSpinner.BeginWrite(token).ConfigureAwait(false);
       }
       catch (OperationCanceledException e)
       {

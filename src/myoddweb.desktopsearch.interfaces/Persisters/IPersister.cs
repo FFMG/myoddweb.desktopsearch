@@ -34,14 +34,14 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IDbTransaction> Begin( CancellationToken token );
+    Task<IDbTransaction> BeginWrite( CancellationToken token );
 
     /// <summary>
     /// Get a database readonly transaction.
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IDbTransaction> BeginReadonly(CancellationToken token);
+    Task<IDbTransaction> BeginRead(CancellationToken token);
 
     /// <summary>
     /// Rollback the current transaction.

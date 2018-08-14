@@ -70,7 +70,7 @@ namespace myoddweb.desktopsearch.parser.IO
         Logger.Warning("Trying to start an event processing when the previous one does not seem to have ended.");
         return;
       }
-      _currentTransaction = _persister.Begin(token).Result;
+      _currentTransaction = _persister.BeginWrite(token).Result;
     }
 
     /// <inheritdoc />
