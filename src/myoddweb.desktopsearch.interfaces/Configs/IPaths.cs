@@ -25,6 +25,11 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     List<string> IgnoredPaths { get; }
 
     /// <summary>
+    /// If we want to ignore the internet path or not.
+    /// </summary>
+    bool IgnoreInternetCache { get; }
+
+    /// <summary>
     /// Paths where all the components are located.
     /// </summary>
     List<string> ComponentsPaths { get; }

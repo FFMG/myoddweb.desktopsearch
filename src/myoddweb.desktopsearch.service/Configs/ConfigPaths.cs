@@ -41,6 +41,10 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public List<string> IgnoredPaths { get; protected set; }
 
+    [DefaultValue(true)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public bool IgnoreInternetCache { get; protected set; }
+
     [JsonProperty(Required = Required.Always)]
     public List<string> ComponentsPaths { get; protected set; }
 
@@ -49,6 +53,7 @@ namespace myoddweb.desktopsearch.service.Configs
     {
       if (null == IgnoredPaths)
       {
+        //  https://www.microsoft.com/en-us/wdsi/help/folder-variables
         IgnoredPaths = new List<string>
         {
           "%temp%",
@@ -56,8 +61,15 @@ namespace myoddweb.desktopsearch.service.Configs
           "%ProgramFiles%",
           "%ProgramFiles(x86)%",
           "%ProgramW6432%",
-          "%windir%"
+          "%windir%",
+          "%SystemRoot%",
+          "$recycle.bin"
         };
+      }
+
+      if (IgnoreInternetCache)
+      {
+        IgnoredPaths.Add(Environment.GetFolderPath(Environment.SpecialFolder.InternetCache));
       }
 
       if (!ComponentsPaths.Any())
