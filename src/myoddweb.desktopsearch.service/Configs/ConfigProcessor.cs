@@ -24,13 +24,12 @@ namespace myoddweb.desktopsearch.service.Configs
   internal class ConfigProcessor : IProcessors
   {
     /// <inheritdoc />
-    [DefaultValue(5000)]
+    [DefaultValue(10000)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int QuietEventsProcessorMs { get; protected set; }
 
     /// <inheritdoc />
-    [DefaultValue(1)]
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    [JsonProperty]
     public int BusyEventsProcessorMs { get; protected set; }
 
     /// <inheritdoc />
@@ -48,14 +47,34 @@ namespace myoddweb.desktopsearch.service.Configs
 
     public ConfigProcessor()
     {
-      // the number of files to process 
+      // the number of directories processor.
       ConcurrentDirectoriesProcessor = (int)Math.Ceiling(Environment.ProcessorCount / 2.0 );
+
+      // the number of files to process 
+      // as we, (normally), have more files than directories
+      // we want to use the number of processors to do them all.
       ConcurrentFilesProcessor = Environment.ProcessorCount;
+
+      // this is per ms, so we want to have one busy processor every ms 
+      BusyEventsProcessorMs = Environment.ProcessorCount;
     }
 
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context)
     {
+      if (BusyEventsProcessorMs <= 0)
+      {
+        throw new ArgumentException($"The 'BusyEventsProcessorMs'({BusyEventsProcessorMs}) cannot be -ve or zero");
+      }
+      if (QuietEventsProcessorMs <= 0)
+      {
+        throw new ArgumentException($"The 'QuietEventsProcessorMs'({QuietEventsProcessorMs}) cannot be -ve or zero");
+      }
+      if (QuietEventsProcessorMs < BusyEventsProcessorMs)
+      {
+        throw new ArgumentException("The 'QuietEventsProcessorMs' cannot be less than the 'BusyEventsProcessorMs'");
+      }
+
       if (ConcurrentDirectoriesProcessor <= 0)
       {
         throw new ArgumentException( $"The ConcurrentDirectoriesProcessor cannot be -ve or zeor ({ConcurrentDirectoriesProcessor}");

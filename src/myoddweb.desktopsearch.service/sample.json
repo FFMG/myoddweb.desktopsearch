@@ -30,7 +30,7 @@
     "ConcurrentDirectoriesProcessor": 2,
     "ConcurrentFilesProcessor": 8,
     "UpdatesPerFilesEvent": 100,
-    "QuietEventsProcessorMs": 5000,
+    "QuietEventsProcessorMs": 10000,
     "BusyEventsProcessorMs" :  1 
   },
   "Paths": {

@@ -232,6 +232,33 @@ namespace myoddweb.desktopsearch.service.Persisters
             ));
           }
         }
+
+        // deleted files are not found here, this is because
+        // the previous query looks for left join for the file name/directory name
+        // if the files is deleted... they do not exist anymore.
+        if (pendingUpdates.Count < limit)
+        {
+          sql = $"SELECT fileid, type FROM {TableFileUpdates} WHERE type={(int)UpdateType.Deleted} ORDER BY ticks DESC LIMIT {limit - pendingUpdates.Count}";
+          using (var cmd = CreateDbCommand(sql, transaction))
+          {
+            var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
+            while (reader.Read())
+            {
+              // get out if needed.
+              token.ThrowIfCancellationRequested();
+
+              // add this update
+              pendingUpdates.Add(new PendingFileUpdate(
+                (long)reader["fileid"],
+                null,
+                UpdateType.Deleted
+              ));
+            }
+          }
+        }
+
+        // return whatever we found
+        return pendingUpdates;
       }
       catch (OperationCanceledException)
       {
@@ -243,9 +270,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         _logger.Exception(e);
         return null;
       }
-
-      // return whatever we found
-      return pendingUpdates;
     }
   }
 }
