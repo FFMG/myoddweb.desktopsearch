@@ -71,8 +71,8 @@ namespace myoddweb.desktopsearch.parser.text
             token.ThrowIfCancellationRequested();
 
             // split the line into words.
-            var words = _reg.Matches(line).OfType<Match>().Select(m => new Word( m.Groups[0].Value ));
-            textWord.UnionWith(words);
+            var words = _reg.Matches(line).OfType<Match>().Select(m => new Word( m.Groups[0].Value )).ToArray();
+            textWord.Add(words, token);
           }
         }
       }

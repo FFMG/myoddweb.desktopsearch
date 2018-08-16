@@ -18,13 +18,13 @@ using System.Threading;
 
 namespace myoddweb.desktopsearch.interfaces.IO
 {
-  public class Words : HashSet<Word>
+  public class Words : List<Word>
   {
     /// <inheritdoc />
     /// <summary>
     /// Base constructor.
     /// </summary>
-    public Words() : base(new WordEqualityComparer())
+    public Words()
     {
     }
 
@@ -44,40 +44,49 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// Constructor with a list of words.
     /// </summary>
     /// <param name="words"></param>
-    public Words(IEnumerable<Words> words ) : this()
+    public Words(Words[] words ) : base( words.Sum( w => w.Count) )
     {
       // Add all he words into one.
-      UnionWith(words);
+      Add(words);
     }
 
-    public Words(IEnumerable<Word> words) : this()
+    public Words(Word[] words) : base( words.Count() )
     {
       // Add all he words into one.
-      UnionWith(words);
+
+      Add(words);
     }
 
-    public Words(IEnumerable<string> words) : this()
+    public Words(IReadOnlyCollection<string> words) : base(words.Count)
     {
       // Add all he words into one.
-      UnionWith(words);
+      Add(words);
     }
 
+    #region Private Manipulators
     /// <summary>
-    /// Add a single string word to our list.
+    /// Join multiple list of words together.
     /// </summary>
-    /// <param name="word"></param>
-    public void UnionWith(Word word)
+    /// <param name="words"></param>
+    /// <param name="token"></param>
+    private void AddAllowDuplicates(Words words, CancellationToken token = default(CancellationToken))
     {
-      Add( word );
-    }
+      for (var i = 0; i < words.Count; ++i)
+      {
+        // check if we need to get out.
+        token.ThrowIfCancellationRequested();
 
-    /// <summary>
-    /// Add a single string word to our list.
-    /// </summary>
-    /// <param name="word"></param>
-    public void UnionWith(string word )
-    {
-      UnionWith(new Word( word  ));
+        var w = words[i];
+
+        // ignore null or empty sets.
+        if (w == null)
+        {
+          continue;
+        }
+
+        // check the union
+        Add(w);
+      }
     }
 
     /// <summary>
@@ -85,8 +94,16 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// </summary>
     /// <param name="words"></param>
     /// <param name="token"></param>
-    public void UnionWith(IEnumerable<Words> words, CancellationToken token = default(CancellationToken))
+    private void Add(Words[] words, CancellationToken token = default(CancellationToken))
     {
+      var sum = words.Sum(w => w.Count());
+      if (sum == 0)
+      {
+        return;
+      }
+      // reset the capacity
+      ResizeCapacity(sum);
+
       foreach (var w in words)
       {
         // check if we need to get out.
@@ -99,8 +116,41 @@ namespace myoddweb.desktopsearch.interfaces.IO
         }
 
         // check the union
-        UnionWith(w);
+        AddAllowDuplicates(w, token);
       }
+
+      // make it distinct
+      Distinct();
+    }
+
+    /// <summary>
+    /// Create destinct List.
+    /// </summary>
+    private void Distinct()
+    {
+      var distinct = this.Distinct(new WordEqualityComparer()).ToArray();
+      Clear();
+      Capacity = distinct.Count();
+      AddRange( distinct );
+    }
+    
+    /// <summary>
+    /// Reset the capacity.
+    /// </summary>
+    /// <param name="newSize"></param>
+    private void ResizeCapacity(int newSize)
+    {
+      Capacity += (newSize - (Capacity - Count));
+    }
+    #endregion
+
+    /// <summary>
+    /// Add a single string word to our list.
+    /// </summary>
+    /// <param name="word"></param>
+    public void Add(string word)
+    {
+      Add(new Word(word));
     }
 
     /// <summary>
@@ -108,8 +158,48 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// </summary>
     /// <param name="words"></param>
     /// <param name="token"></param>
-    public void UnionWith(IEnumerable<string> words, CancellationToken token = default(CancellationToken))
+    public void Add(Word[] words, CancellationToken token = default(CancellationToken))
     {
+      var sum = words.Count();
+      if (sum == 0)
+      {
+        return;
+      }
+
+      // reset the capacity
+      ResizeCapacity(sum);
+      foreach (var w in words)
+      {
+        // check if we need to get out.
+        token.ThrowIfCancellationRequested();
+
+        // ignore null or empty sets.
+        if (w == null)
+        {
+          continue;
+        }
+
+        // check the union
+        Add(w);
+      }
+
+      Distinct();
+    }
+
+    /// <summary>
+    /// Join multiple list of words together.
+    /// </summary>
+    /// <param name="words"></param>
+    /// <param name="token"></param>
+    public void Add(IReadOnlyCollection<string> words, CancellationToken token = default(CancellationToken))
+    {
+      var sum = words.Count();
+      if (sum == 0)
+      {
+        return;
+      }
+      // reset the capacity
+      ResizeCapacity(sum);
       foreach (var w in words)
       {
         // check if we need to get out.
@@ -122,7 +212,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
         }
 
         // check the union
-        UnionWith(w);
+        Add(w);
       }
     }
   }
