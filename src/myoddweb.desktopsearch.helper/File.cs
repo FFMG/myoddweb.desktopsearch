@@ -479,7 +479,7 @@ namespace myoddweb.desktopsearch.helper
       // B = {3,4,5}
       // RC = {5}
       var fc = new FileInfoComparer();
-      var fisRelativeComplement = new HashSet<FileInfo>( fc );
+      var fisRelativeComplement = new List<FileInfo>( fisB.Count );
       foreach (var fi in fisB)
       {
         if ( fisA.Contains(fi, fc))
@@ -490,7 +490,7 @@ namespace myoddweb.desktopsearch.helper
       }
 
       // return the relatibe complements.
-      return fisRelativeComplement.ToList();
+      return fisRelativeComplement.Distinct(fc).ToList();
     }
 
     /// <summary>
