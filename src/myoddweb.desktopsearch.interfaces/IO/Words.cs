@@ -71,21 +71,19 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="token"></param>
     private void AddAllowDuplicates(Words words, CancellationToken token = default(CancellationToken))
     {
-      for (var i = 0; i < words.Count; ++i)
+      foreach (var word in words)
       {
         // check if we need to get out.
         token.ThrowIfCancellationRequested();
 
-        var w = words[i];
-
         // ignore null or empty sets.
-        if (w == null)
+        if (word == null)
         {
           continue;
         }
 
         // check the union
-        Add(w);
+        Add(word);
       }
     }
 
