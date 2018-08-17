@@ -16,6 +16,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
 using myoddweb.desktopsearch.interfaces.Configs;
@@ -62,9 +63,15 @@ namespace myoddweb.desktopsearch.service.Configs
           "%ProgramFiles(x86)%",
           "%ProgramW6432%",
           "%windir%",
-          "%SystemRoot%",
-          "$recycle.bin"
+          "%SystemRoot%"
         };
+
+        // Add the recycle bins as well.
+        var drvs = DriveInfo.GetDrives();
+        foreach (var drv in drvs.Where(d => d.DriveType == DriveType.Fixed))
+        {
+          IgnoredPaths.Add( Path.Combine(drv.Name, "$recycle.bin"));
+        }
       }
 
       if (IgnoreInternetCache)
