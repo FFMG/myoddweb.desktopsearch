@@ -46,6 +46,10 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public bool IgnoreInternetCache { get; protected set; }
 
+    [DefaultValue(true)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public bool IgnoreRecycleBins { get; protected set; }
+
     [JsonProperty(Required = Required.Always)]
     public List<string> ComponentsPaths { get; protected set; }
 
@@ -65,15 +69,20 @@ namespace myoddweb.desktopsearch.service.Configs
           "%windir%",
           "%SystemRoot%"
         };
+      }
 
+      // Recycle Bins
+      if (IgnoreRecycleBins)
+      {
         // Add the recycle bins as well.
         var drvs = DriveInfo.GetDrives();
         foreach (var drv in drvs.Where(d => d.DriveType == DriveType.Fixed))
         {
-          IgnoredPaths.Add( Path.Combine(drv.Name, "$recycle.bin"));
+          IgnoredPaths.Add(Path.Combine(drv.Name, "$recycle.bin"));
         }
       }
 
+      // internet cache
       if (IgnoreInternetCache)
       {
         IgnoredPaths.Add(Environment.GetFolderPath(Environment.SpecialFolder.InternetCache));

@@ -30,6 +30,11 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     bool IgnoreInternetCache { get; }
 
     /// <summary>
+    /// If we want to ignore the recycle bins or not.
+    /// </summary>
+    bool IgnoreRecycleBins { get; }
+
+    /// <summary>
     /// Paths where all the components are located.
     /// </summary>
     List<string> ComponentsPaths { get; }

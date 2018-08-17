@@ -47,12 +47,12 @@
       "%ProgramFiles(x86)%",
       "%ProgramW6432%",
       "%windir%",
-      "%SystemRoot%",
-      "$recycle.bin"
+      "%SystemRoot%"
     ],
     "ComponentsPaths": [
       ".\\"
     ],
-    "IgnoreInternetCache": true
+    "IgnoreInternetCache": true,
+    "IgnoreRecycleBins": true
   }
 }
