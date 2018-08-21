@@ -35,6 +35,11 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     bool IgnoreRecycleBins { get; }
 
     /// <summary>
+    /// Do we want to exclude the current path from parsing.
+    /// </summary>
+    bool IgnoreCurrentPath { get; }
+
+    /// <summary>
     /// Paths where all the components are located.
     /// </summary>
     List<string> ComponentsPaths { get; }

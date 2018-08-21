@@ -50,6 +50,10 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public bool IgnoreRecycleBins { get; protected set; }
 
+    [DefaultValue(true)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public bool IgnoreCurrentPath { get; protected set; }
+
     [JsonProperty(Required = Required.Always)]
     public List<string> ComponentsPaths { get; protected set; }
 
@@ -69,6 +73,13 @@ namespace myoddweb.desktopsearch.service.Configs
           "%windir%",
           "%SystemRoot%"
         };
+      }
+
+      // Recycle Bins
+      if (IgnoreCurrentPath)
+      {
+        //  ignore the current path
+        IgnoredPaths.Add( Directory.GetCurrentDirectory() );
       }
 
       // Recycle Bins

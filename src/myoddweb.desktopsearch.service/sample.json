@@ -53,6 +53,7 @@
       ".\\"
     ],
     "IgnoreInternetCache": true,
-    "IgnoreRecycleBins": true
+    "IgnoreRecycleBins": true,
+    "IgnoreCurrentPath" :  true
   }
 }
