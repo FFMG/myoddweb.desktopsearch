@@ -16,42 +16,11 @@ using System.Collections.Generic;
 
 namespace myoddweb.desktopsearch.interfaces.Configs
 {
-  public interface IConfig
+  public interface IDatabase
   {
     /// <summary>
-    /// The paths information.
+    /// Path information we want to ignore
     /// </summary>
-    IPaths Paths { get; }
-
-    /// <summary>
-    /// All the timers.
-    /// </summary>
-    ITimers Timers { get; }
-
-    /// <summary>
-    /// All the loggers
-    /// </summary>
-    List<ILogger> Loggers { get; }
-
-    /// <summary>
-    /// The processors variables
-    /// </summary>
-    IProcessors Processors { get; }
-
-    /// <summary>
-    /// The web server information
-    /// </summary>
-    IWebServer WebServer { get; }
-
-    /// <summary>
-    /// The database connection information
-    /// </summary>
-    IDatabase Database { get; }
-
-    /// <summary>
-    /// The maximum number of characters we will concider when processing a word.
-    /// The word is still saved... but we just don't keep parts longer than this number.
-    /// </summary>
-    int MaxNumCharacters { get; }
+    List<string> IgnoredPaths { get; }
   }
 }

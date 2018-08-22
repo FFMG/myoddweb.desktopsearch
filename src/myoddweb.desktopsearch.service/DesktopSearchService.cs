@@ -239,7 +239,9 @@ namespace myoddweb.desktopsearch.service
         var persister = new SqlitePersister(_logger, config.MaxNumCharacters, token );
 
         // the directory parser
-        var directory = new Directory(_logger, config.Paths );
+        var paths = config.Paths.IgnoredPaths;
+        paths.AddRange(config.Database?.IgnoredPaths ?? new List<string>() );
+        var directory = new Directory(_logger, paths );
 
         // and we can now create and start the parser.
         _parser = new Parser( config, persister, _logger, directory );

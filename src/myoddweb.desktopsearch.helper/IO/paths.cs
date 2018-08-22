@@ -16,6 +16,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using myoddweb.desktopsearch.interfaces.Configs;
 
 namespace myoddweb.desktopsearch.helper.IO
@@ -26,24 +27,25 @@ namespace myoddweb.desktopsearch.helper.IO
     /// Get all the paths we want to ignore.
     /// </summary>
     /// <returns></returns>
-    public static IReadOnlyCollection<DirectoryInfo> GetIgnorePaths( IPaths paths, interfaces.Logging.ILogger logger )
+    public static IReadOnlyCollection<DirectoryInfo> GetIgnorePaths( List<string> paths, interfaces.Logging.ILogger logger )
     {
-      var ignorePaths = new List<DirectoryInfo>();
+      var ignorePaths = new List<DirectoryInfo>( paths.Count );
 
       // get all the paths we want to ignore.
-      foreach (var path in paths.IgnoredPaths)
+      foreach (var path in paths)
       {
         try
         {
-          var expendedVariable = Environment.ExpandEnvironmentVariables(path);
-          ignorePaths.Add(new DirectoryInfo(expendedVariable));
+          var ePath = Environment.ExpandEnvironmentVariables(path);
+          var fullPath =  Path.GetFullPath(ePath);
+          ignorePaths.Add(new DirectoryInfo(fullPath));
         }
         catch (Exception e)
         {
           logger.Exception(e);
         }
       }
-      return ignorePaths;
+      return ignorePaths.Distinct( new DirectoryInfoComparer() ).ToList();
     }
 
     /// <summary>

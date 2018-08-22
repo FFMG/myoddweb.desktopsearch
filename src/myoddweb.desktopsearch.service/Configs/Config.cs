@@ -55,6 +55,10 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public IWebServer WebServer { get; protected set; }
 
+    /// <inheritdoc />
+    [JsonProperty(Required = Required.Always)]
+    public IDatabase Database { get; protected set; }
+
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context)
     {
@@ -85,6 +89,7 @@ namespace myoddweb.desktopsearch.service.Configs
     /// <param name="timers"></param>
     /// <param name="processors"></param>
     /// <param name="webserver"></param>
+    /// <param name="database"></param>
     /// <param name="loggers"></param>
     public Config(
       int maxNumCharacters,
@@ -92,6 +97,7 @@ namespace myoddweb.desktopsearch.service.Configs
       ConfigTimers timers, 
       ConfigProcessor processors, 
       ConfigWebServer webserver,
+      ConfigSqliteDatabase database,
       IEnumerable<ConfigLogger> loggers )
     {
       Paths = paths;
@@ -99,6 +105,7 @@ namespace myoddweb.desktopsearch.service.Configs
       Loggers = RecreateLoggers(loggers);
       Processors = processors;
       WebServer = webserver;
+      Database = database;
 
       if (maxNumCharacters <= 0)
       {

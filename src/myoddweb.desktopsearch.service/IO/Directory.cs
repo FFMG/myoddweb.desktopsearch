@@ -36,7 +36,7 @@ namespace myoddweb.desktopsearch.service.IO
     /// <summary>
     /// The paths information, (ignored paths and so on).
     /// </summary>
-    private readonly IPaths _paths;
+    private readonly List<string> _paths;
 
     /// <summary>
     /// The current ignored paths
@@ -65,7 +65,7 @@ namespace myoddweb.desktopsearch.service.IO
     /// </summary>
     /// <param name="logger"></param>
     /// <param name="paths"></param>
-    public Directory(ILogger logger, IPaths paths )
+    public Directory(ILogger logger, List<string> paths )
     {
       // The logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
