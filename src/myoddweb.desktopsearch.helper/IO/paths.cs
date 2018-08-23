@@ -27,7 +27,7 @@ namespace myoddweb.desktopsearch.helper.IO
     /// Get all the paths we want to ignore.
     /// </summary>
     /// <returns></returns>
-    public static IReadOnlyCollection<DirectoryInfo> GetIgnorePaths( List<string> paths, interfaces.Logging.ILogger logger )
+    public static IReadOnlyCollection<DirectoryInfo> GetIgnorePaths( IReadOnlyCollection<string> paths, interfaces.Logging.ILogger logger )
     {
       var ignorePaths = new List<DirectoryInfo>( paths.Count );
 
@@ -36,6 +36,10 @@ namespace myoddweb.desktopsearch.helper.IO
       {
         try
         {
+          if( null == path )
+          {
+            continue;
+          }
           var ePath = Environment.ExpandEnvironmentVariables(path);
           var fullPath =  Path.GetFullPath(ePath);
           ignorePaths.Add(new DirectoryInfo(fullPath));
@@ -89,7 +93,8 @@ namespace myoddweb.desktopsearch.helper.IO
       }
 
       // This is the list of all the paths we want to parse.
-      return startPaths;
+      // remove all the duplicates.
+      return startPaths.Distinct(new DirectoryInfoComparer()).ToList();
     }
   }
 }

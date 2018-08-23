@@ -14,7 +14,6 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Runtime.Serialization;
 using myoddweb.desktopsearch.interfaces.Configs;
 using Newtonsoft.Json;
 
@@ -23,10 +22,10 @@ namespace myoddweb.desktopsearch.service.Configs
   internal class ConfigSqliteDatabase : IDatabase
   {
     /// <summary>
-    /// The path to the database.
+    /// The source to the database.
     /// </summary>
     [JsonProperty(Required = Required.Always)]
-    public string Path { get; protected set; }
+    public string Source { get; protected set; }
 
     /// <inheritdoc />
     [DefaultValue(null)]

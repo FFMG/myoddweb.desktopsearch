@@ -54,5 +54,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// </summary>
     /// <returns></returns>
     bool Commit(IDbTransaction transaction);
+
+    /// <summary>
+    /// Start the database work.
+    /// </summary>
+    /// <param name="token"></param>
+    void Start(CancellationToken token);
   }
 }

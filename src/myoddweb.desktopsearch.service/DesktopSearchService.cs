@@ -33,6 +33,7 @@ using Microsoft.Win32;
 using Newtonsoft.Json;
 using Directory = myoddweb.desktopsearch.service.IO.Directory;
 using ILogger = myoddweb.desktopsearch.interfaces.Configs.ILogger;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service
 {
@@ -127,7 +128,7 @@ namespace myoddweb.desktopsearch.service
     /// Create the config interface
     /// </summary>
     /// <returns></returns>
-    private IConfig CreateConfig()
+    private interfaces.Configs.IConfig CreateConfig()
     {
       var json = File.ReadAllText(_arguments["config"]);
       return JsonConvert.DeserializeObject<Config>(json);
@@ -214,6 +215,37 @@ namespace myoddweb.desktopsearch.service
     }
 
     /// <summary>
+    /// Create the directories parser/handler.
+    /// </summary>
+    /// <param name="logger"></param>
+    /// <param name="config"></param>
+    /// <returns></returns>
+    private static IDirectory CreateDirectory(interfaces.Logging.ILogger logger, interfaces.Configs.IConfig config )
+    {
+      var paths = config.Paths.IgnoredPaths;
+      paths.AddRange(config.Database?.IgnoredPaths ?? new List<string>());
+      return new Directory( logger, paths);
+    }
+
+    /// <summary>
+    /// Create the persister
+    /// </summary>
+    /// <param name="logger"></param>
+    /// <param name="config"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private static IPersister CreatePersister(interfaces.Logging.ILogger logger, interfaces.Configs.IConfig config, CancellationToken token )
+    {
+      var sqlData = config.Database as ConfigSqliteDatabase;
+      if( sqlData != null )
+      {
+        return new SqlitePersister(logger, sqlData.Source, config.MaxNumCharacters );
+      }
+
+      throw new ArgumentException("Unknown Database type.");
+    }
+
+    /// <summary>
     /// Start the process as a service or as a console app.
     /// </summary>
     /// <returns></returns>
@@ -236,12 +268,10 @@ namespace myoddweb.desktopsearch.service
         var token = _cancellationTokenSource.Token;
 
         // the persister
-        var persister = new SqlitePersister(_logger, config.MaxNumCharacters, token );
+        var persister = CreatePersister( _logger, config, token);
 
         // the directory parser
-        var paths = config.Paths.IgnoredPaths;
-        paths.AddRange(config.Database?.IgnoredPaths ?? new List<string>() );
-        var directory = new Directory(_logger, paths );
+        var directory = CreateDirectory( _logger, config );
 
         // and we can now create and start the parser.
         _parser = new Parser( config, persister, _logger, directory );
@@ -256,6 +286,7 @@ namespace myoddweb.desktopsearch.service
         _http = new HttpServer( config.WebServer, persister, _logger);
 
         // we can now start everything 
+        persister.Start(token);
         _http.Start(token);       //  the http server
         _parser.Start(token);     //  the parser
         _processor.Start(token);  //  the processor

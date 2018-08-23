@@ -39,12 +39,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     #endregion
 
     #region Member variables
+    /// <summary>
+    /// The maximum number of characters per words...
+    /// Characters after that are ignored.
+    /// </summary>
     private readonly int _maxNumCharacters;
 
     /// <summary>
     /// The transactions manager.
     /// </summary>
-    private readonly TransactionsManager _transactionSpinner;
+    private TransactionsManager _transactionSpinner;
 
     /// <summary>
     /// The current connection
@@ -59,24 +63,62 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// The connection string to use
     /// </summary>
-    private readonly string _connectionString;
+    private string _connectionString;
+
+    /// <summary>
+    /// The database source.
+    /// </summary>
+    private readonly string _source;
     #endregion
 
-    public SqlitePersister(ILogger logger, int maxNumCharacters,  CancellationToken token)
+    /// <summary>
+    /// Get the connection string
+    /// </summary>
+    private string ConnectionString
     {
+      get
+      {
+        if (_connectionString != null)
+        {
+          return _connectionString;
+        }
+
+        //  try and create the connection string
+        if ( null == _transactionSpinner)
+        {
+          throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
+        }
+        _connectionString = $"Data Source={_source};Version=3;Pooling=True;Max Pool Size=100;";
+
+        // the created connection string
+        return _connectionString;
+      }
+    }
+
+    public SqlitePersister(ILogger logger, string source, int maxNumCharacters)
+    {
+      // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
+      // the source
+      _source = source ?? throw new ArgumentNullException(nameof(source));
+
+      // the number of characters.
       _maxNumCharacters = maxNumCharacters;
+    }
 
-      // the file we are looking for.
-      const string source = "database.db";
-
+    /// <summary>
+    /// Start the database...
+    /// </summary>
+    /// <param name="token"></param>
+    public void Start( CancellationToken token )
+    {
       // check that the file does exists.
-      if (!File.Exists(source))
+      if (!File.Exists(_source))
       {
         try
         {
-          SQLiteConnection.CreateFile(source);
+          SQLiteConnection.CreateFile(_source);
         }
         catch (Exception ex)
         {
@@ -85,9 +127,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
       }
 
-      _connectionString = $"Data Source={source};Version=3;Pooling=True;Max Pool Size=100;";
-
-      _transactionSpinner = new TransactionsManager(CreateConnection, FreeResources );
+      // the connection spinner.
+      _transactionSpinner = new TransactionsManager(CreateConnection, FreeResources);
 
       // update the db if need be.
       Update(token).Wait();
@@ -113,7 +154,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         return _connection;
       }
 
-      _connection = new SQLiteConnection(_connectionString);
+      _connection = new SQLiteConnection(ConnectionString);
       _connection.Open();
       return _connection;
     }
@@ -127,6 +168,10 @@ namespace myoddweb.desktopsearch.service.Persisters
       // set the value
       try
       {
+        if (null == _transactionSpinner)
+        {
+          throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
+        }
         return await _transactionSpinner.BeginRead(token).ConfigureAwait(false);
       }
       catch (OperationCanceledException e)
@@ -151,6 +196,10 @@ namespace myoddweb.desktopsearch.service.Persisters
       // set the value
       try
       {
+        if (null == _transactionSpinner)
+        {
+          throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
+        }
         return await _transactionSpinner.BeginWrite(token).ConfigureAwait(false);
       }
       catch (OperationCanceledException e)
@@ -178,6 +227,10 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new ArgumentNullException(nameof(transaction));
         }
+        if (null == _transactionSpinner)
+        {
+          throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
+        }
         _transactionSpinner.Rollback(transaction);
         return true;
       }
@@ -196,6 +249,10 @@ namespace myoddweb.desktopsearch.service.Persisters
         if (null == transaction)
         {
           throw new ArgumentNullException( nameof(transaction));
+        }
+        if (null == _transactionSpinner)
+        {
+          throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
         _transactionSpinner.Commit(transaction);
         return true;

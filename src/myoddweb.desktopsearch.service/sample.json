@@ -1,5 +1,5 @@
 ﻿{
-  "MaxNumCharacters" : 25,
+  "MaxNumCharacters": 25,
 
   "WebServer": {
     "Port": 9501
@@ -31,7 +31,7 @@
     "ConcurrentFilesProcessor": 8,
     "UpdatesPerFilesEvent": 100,
     "QuietEventsProcessorMs": 10000,
-    "BusyEventsProcessorMs" :  1 
+    "BusyEventsProcessorMs": 1
   },
   "Paths": {
     "ParseFixedDrives": true,
@@ -54,6 +54,10 @@
     ],
     "IgnoreInternetCache": true,
     "IgnoreRecycleBins": true,
-    "IgnoreCurrentPath" :  true
+    "IgnoreCurrentPath": true
+  },
+  "Database": {
+    "Source": ".\\database.db",
+    "IgnoredPaths": [ ".\\" ]
   }
 }

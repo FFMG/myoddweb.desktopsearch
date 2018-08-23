@@ -36,7 +36,7 @@ namespace myoddweb.desktopsearch.service.IO
     /// <summary>
     /// The paths information, (ignored paths and so on).
     /// </summary>
-    private readonly List<string> _paths;
+    private readonly IReadOnlyCollection<string> _paths;
 
     /// <summary>
     /// The current ignored paths
