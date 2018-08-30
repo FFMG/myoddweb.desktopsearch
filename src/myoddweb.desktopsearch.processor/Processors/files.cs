@@ -315,16 +315,27 @@ namespace myoddweb.desktopsearch.processor.Processors
           var tsDiff = (DateTime.UtcNow - tsActual);
           if (tsDiff.TotalSeconds > 5)
           {
-            _logger.Verbose( $"Processing of file: {pendingFileUpdate.File.FullName} took {tsDiff:g} ({pendingFileUpdate.Words?.Count ?? 0} words)");
+            _logger.Verbose(
+              $"Processing of file: {pendingFileUpdate.File.FullName} took {tsDiff:g} ({pendingFileUpdate.Words?.Count ?? 0} words)");
           }
         }
 
         // all done
         _persister.Commit(transaction);
       }
-      catch( Exception e )
+      catch (OperationCanceledException e)
       {
-        _persister.Commit(transaction);
+        _persister.Rollback(transaction);
+        if (e.CancellationToken != token)
+        {
+          // was not my token that cancelled!
+          _logger.Exception(e);
+        }
+        throw;
+      }
+      catch ( Exception e )
+      {
+        _persister.Rollback(transaction);
         _logger.Exception(e);
         throw;
       }
