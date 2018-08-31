@@ -13,7 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Collections.Generic;
-using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,9 +24,9 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// Add or update a list of words.
     /// </summary>
     /// <param name="parts"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdatePartsAsync(IReadOnlyCollection<string> parts, IDbTransaction transaction, CancellationToken token);
+    Task<bool> AddOrUpdatePartsAsync(IReadOnlyCollection<string> parts, IConnectionFactory connectionFactory, CancellationToken token);
   }
 }

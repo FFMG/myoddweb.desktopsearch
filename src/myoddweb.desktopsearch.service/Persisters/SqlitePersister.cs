@@ -51,11 +51,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     private TransactionsManager _transactionSpinner;
 
     /// <summary>
-    /// The current connection
-    /// </summary>
-    private SQLiteConnection _connection;
-
-    /// <summary>
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
@@ -107,10 +102,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       _maxNumCharacters = maxNumCharacters;
     }
 
-    /// <summary>
-    /// Start the database...
-    /// </summary>
-    /// <param name="token"></param>
+    /// <inheritdoc />
     public void Start( CancellationToken token )
     {
       // check that the file does exists.
@@ -127,43 +119,34 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
       }
 
-      // the connection spinner.
-      _transactionSpinner = new TransactionsManager(CreateConnection, FreeResources);
+      // create the connection spinner and pass the function to create transactions.
+      _transactionSpinner = new TransactionsManager(ConnectionFactory);
 
       // update the db if need be.
-      Update(token).Wait();
+      Update(token).Wait( token );
     }
 
     #region TransactionSpiner functions
-    private void FreeResources()
+    /// <summary>
+    /// Create the connection factory
+    /// </summary>
+    /// <param name="isReadOnly"></param>
+    /// <returns></returns>
+    private IConnectionFactory ConnectionFactory( bool isReadOnly )
     {
-      if (_connection == null )
+      var connection = new SQLiteConnection(ConnectionString);
+      connection.Open();
+      if (isReadOnly)
       {
-        return;
-      }
-      _connection.Close();
-      _connection.Dispose();
-      _connection = null;
-    }
-
-    private IDbConnection CreateConnection()
-    {
-      // try and open the database.
-      if (_connection != null)
-      {
-        return _connection;
-      }
-
-      _connection = new SQLiteConnection(ConnectionString);
-      _connection.Open();
-      return _connection;
+        return new SqliteReadOnlyConnectionFactory(connection);
+      } 
+      return new SqliteReadWriteConnectionFactory( connection );
     }
     #endregion
 
-    #region Transactions
-
+    #region IPersister functions
     /// <inheritdoc/>
-    public async Task<IDbTransaction> BeginRead(CancellationToken token)
+    public async Task<IConnectionFactory> BeginRead(CancellationToken token)
     {
       // set the value
       try
@@ -191,7 +174,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc/>
-    public async Task<IDbTransaction> BeginWrite(CancellationToken token)
+    public async Task<IConnectionFactory> BeginWrite(CancellationToken token)
     {
       // set the value
       try
@@ -219,19 +202,19 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc/>
-    public bool Rollback(IDbTransaction transaction)
+    public bool Rollback(IConnectionFactory connectionFactory)
     {
       try
       {
-        if (null == transaction)
+        if (null == connectionFactory)
         {
-          throw new ArgumentNullException(nameof(transaction));
+          throw new ArgumentNullException(nameof(connectionFactory));
         }
         if (null == _transactionSpinner)
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        _transactionSpinner.Rollback(transaction);
+        _transactionSpinner.Rollback(connectionFactory);
         return true;
       }
       catch (Exception rollbackException)
@@ -242,19 +225,19 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc/>
-    public bool Commit(IDbTransaction transaction)
+    public bool Commit(IConnectionFactory connectionFactory)
     {
       try
       {
-        if (null == transaction)
+        if (null == connectionFactory)
         {
-          throw new ArgumentNullException( nameof(transaction));
+          throw new ArgumentNullException( nameof(connectionFactory));
         }
         if (null == _transactionSpinner)
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        _transactionSpinner.Commit(transaction);
+        _transactionSpinner.Commit(connectionFactory);
         return true;
       }
       catch (Exception commitException)
@@ -266,26 +249,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     #endregion
 
     #region Commands
-    /// <inheritdoc/>
-    public DbCommand CreateDbCommand(string sql, IDbTransaction transaction)
-    {
-      if (_connection == null)
-      {
-        throw new Exception("The database is not open!");
-      }
-      return new SQLiteCommand(sql, _connection, transaction as SQLiteTransaction);
-    }
-
     /// <summary>
     /// </summary>
     /// <param name="sql"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <returns></returns>
-    private async Task<bool> ExecuteNonQueryAsync(string sql, IDbTransaction transaction )
+    private async Task<bool> ExecuteNonQueryAsync(string sql, IConnectionFactory connectionFactory )
     {
       try
       {
-        using (var command = CreateDbCommand(sql, transaction ))
+        using (var command = connectionFactory.CreateCommand(sql))
         {
           await ExecuteNonQueryAsync(command, CancellationToken.None).ConfigureAwait(false);
         }

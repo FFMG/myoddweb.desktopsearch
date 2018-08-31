@@ -19,29 +19,30 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
   internal partial class SqlitePersister 
   {
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordAsync(Word word, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateWordAsync(Word word, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      return await AddOrUpdateWordsAsync( new Words(word), transaction, token ).ConfigureAwait(false);
+      return await AddOrUpdateWordsAsync( new Words(word), connectionFactory, token ).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordsAsync(Words words, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateWordsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       // rebuild the list of directory with only those that need to be inserted.
       await InsertWordsAsync(
-        await RebuildWordsListAsync(words, transaction, token).ConfigureAwait(false),
-        transaction, token).ConfigureAwait(false);
+        await RebuildWordsListAsync(words, connectionFactory, token).ConfigureAwait(false),
+        connectionFactory, token).ConfigureAwait(false);
       return true;
     }
 
@@ -52,11 +53,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     ///   [word2] => [id2]
     /// </summary>
     /// <param name="words"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    private async Task<List<long>> GetWordIdsAsync(Words words, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    private async Task<List<long>> GetWordIdsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
     {
       // do we have anything to even look for?
       if (words.Count == 0)
@@ -69,7 +70,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         // we do not check for the token as the underlying functions will throw if needed. 
         // look for the word, add it if needed.
         var sql = $"SELECT id FROM {TableWords} WHERE word=@word";
-        using (var cmd = CreateDbCommand(sql, transaction))
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pWord = cmd.CreateParameter();
           pWord.DbType = DbType.String;
@@ -101,7 +102,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
           
           // finally we need to add all the words that were not found.
-          ids.AddRange( await InsertWordsAsync(wordsToAdd, transaction, token).ConfigureAwait(false));
+          ids.AddRange( await InsertWordsAsync(wordsToAdd, connectionFactory, token).ConfigureAwait(false));
 
           // return all the ids we added, (or not).
           return ids;
@@ -123,10 +124,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Given a list of words, re-create the ones that we need to insert.
     /// </summary>
     /// <param name="words"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<long>> InsertWordsAsync(Words words, IDbTransaction transaction, CancellationToken token)
+    private async Task<List<long>> InsertWordsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!words.Any())
@@ -138,10 +139,10 @@ namespace myoddweb.desktopsearch.service.Persisters
       var ids = new List<long>( words.Count );
 
       // get the next id.
-      var nextId = await GetNextWordIdAsync(transaction, token).ConfigureAwait(false);
+      var nextId = await GetNextWordIdAsync(connectionFactory, token).ConfigureAwait(false);
 
       var sqlInsert = $"INSERT INTO {TableWords} (id, word) VALUES (@id, @word)";
-      using (var cmd = CreateDbCommand(sqlInsert, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var pId = cmd.CreateParameter();
         pId.DbType = DbType.Int64;
@@ -169,11 +170,11 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // we now can add the parts
-            var partIds = await GetPartIdsAsync(word.Parts( _maxNumCharacters ), transaction, token, true ).ConfigureAwait(false);
+            var partIds = await GetPartIdsAsync(word.Parts( _maxNumCharacters ), connectionFactory, token, true ).ConfigureAwait(false);
 
             // marry the word id, (that we just added).
             // with the partIds, (that we just added).
-            await InsertWordParts(nextId, partIds, transaction, token).ConfigureAwait(false);
+            await InsertWordParts(nextId, partIds, connectionFactory, token).ConfigureAwait(false);
 
             // we added this id.
             ids.Add( nextId );
@@ -202,10 +203,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Given a list of directories, re-create the ones that we need to insert.
     /// </summary>
     /// <param name="words"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<Words> RebuildWordsListAsync(Words words, IDbTransaction transaction, CancellationToken token)
+    private async Task<Words> RebuildWordsListAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {
@@ -213,8 +214,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         var actualWords = new List<string>(words.Count);
 
         // we first look for it, and, if we find it then there is nothing to do.
-        var sqlGetRowId = $"SELECT id FROM {TableWords} WHERE word=@word";
-        using (var cmd = CreateDbCommand(sqlGetRowId, transaction))
+        var sql = $"SELECT id FROM {TableWords} WHERE word=@word";
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pWord = cmd.CreateParameter();
           pWord.DbType = DbType.String;
@@ -251,16 +252,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Get the next row ID we can use.
     /// </summary>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> GetNextWordIdAsync(IDbTransaction transaction, CancellationToken token )
+    private async Task<long> GetNextWordIdAsync(IConnectionFactory connectionFactory, CancellationToken token )
     {
       try
       {
         // we first look for it, and, if we find it then there is nothing to do.
-        var sqlNextRowId = $"SELECT max(id) from {TableWords};";
-        using (var cmd = CreateDbCommand(sqlNextRowId, transaction))
+        var sql = $"SELECT max(id) from {TableWords};";
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           // get out if needed.
           token.ThrowIfCancellationRequested();

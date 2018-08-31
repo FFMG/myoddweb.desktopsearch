@@ -17,16 +17,17 @@ using System;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
   internal partial class SqlitePersister
   {
     /// <inheritdoc />
-    public async Task<T> GetConfigValueAsync<T>(string name, T defaultValue, IDbTransaction transaction, CancellationToken token)
+    public async Task<T> GetConfigValueAsync<T>(string name, T defaultValue, IConnectionFactory connectionFactory, CancellationToken token)
     {
       var sql = $"SELECT value FROM {TableConfig} WHERE name=@name";
-      using (var cmd = CreateDbCommand(sql, transaction ))
+      using (var cmd = connectionFactory.CreateCommand(sql))
       {
         var pName = cmd.CreateParameter();
         pName.DbType = DbType.String;
@@ -48,17 +49,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> SetConfigValueAsync<T>(string name, T value, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> SetConfigValueAsync<T>(string name, T value, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // we will need the string
       var stringValue = ConfigTypeToString(value);
-      var current = await GetConfigValueAsync<object>(name, null, transaction, token ).ConfigureAwait(false);
+      var current = await GetConfigValueAsync<object>(name, null, connectionFactory, token ).ConfigureAwait(false);
       var sql = null == current ? 
         $"INSERT INTO {TableConfig} (name, value) values (@name, @value)" : 
         $"UPDATE {TableConfig} SET value=@value WHERE name=@name";
 
       // do it now.
-      using (var cmd = CreateDbCommand(sql, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sql))
       {
         var pName = cmd.CreateParameter();
         pName.DbType = DbType.String;

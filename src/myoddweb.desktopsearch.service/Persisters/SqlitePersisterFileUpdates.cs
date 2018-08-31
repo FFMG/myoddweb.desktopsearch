@@ -26,33 +26,33 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class SqlitePersister
   {
     /// <inheritdoc />
-    public async Task<bool> TouchFileAsync(FileInfo file, UpdateType type, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> TouchFileAsync(FileInfo file, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction),
+        throw new ArgumentNullException(nameof(connectionFactory),
           "You have to be within a tansaction when calling this function.");
       }
 
-      var fileId = await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
+      var fileId = await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
       if (-1 == fileId)
       {
         return true;
       }
 
       // then we can do the update
-      return await TouchFilesAsync(new [] {fileId}, type, transaction, token).ConfigureAwait(false);
+      return await TouchFilesAsync(new [] {fileId}, type, connectionFactory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchFileAsync(long fileId, UpdateType type, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> TouchFileAsync(long fileId, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // just make the files do all the work.
-      return await TouchFilesAsync(new [] { fileId }, type, transaction, token).ConfigureAwait(false);
+      return await TouchFilesAsync(new [] { fileId }, type, connectionFactory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchFilesAsync(IEnumerable<long> fileIds, UpdateType type, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> TouchFilesAsync(IEnumerable<long> fileIds, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == fileIds)
       {
@@ -66,19 +66,19 @@ namespace myoddweb.desktopsearch.service.Persisters
         return true;
       }
 
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       // first mark that folder id as procesed.
-      if (!await MarkFilesProcessedAsync( ids, transaction, token).ConfigureAwait(false))
+      if (!await MarkFilesProcessedAsync( ids, connectionFactory, token).ConfigureAwait(false))
       {
         return false;
       }
 
       var sqlInsert = $"INSERT INTO {TableFileUpdates} (fileid, type, ticks) VALUES (@id, @type, @ticks)";
-      using (var cmd = CreateDbCommand(sqlInsert, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         try
         {
@@ -127,15 +127,15 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkFileProcessedAsync(FileInfo file, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> MarkFileProcessedAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       // look for the files id
-      var fileId = await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
+      var fileId = await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
 
       // did we find it?
       if (fileId == -1)
@@ -144,26 +144,26 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // then we can do it by id.
-      return await MarkFilesProcessedAsync(new []{fileId}, transaction, token).ConfigureAwait(false);
+      return await MarkFilesProcessedAsync(new []{fileId}, connectionFactory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkFileProcessedAsync(long fileId, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> MarkFileProcessedAsync(long fileId, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // just make the files do all the work.
-      return await MarkFilesProcessedAsync(new [] { fileId }, transaction, token).ConfigureAwait(false);
+      return await MarkFilesProcessedAsync(new [] { fileId }, connectionFactory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkFilesProcessedAsync(IEnumerable<long> fileIds, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> MarkFilesProcessedAsync(IEnumerable<long> fileIds, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       var sqlDelete = $"DELETE FROM {TableFileUpdates} WHERE fileid = @id";
-      using (var cmd = CreateDbCommand(sqlDelete, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sqlDelete))
       {
         try
         {
@@ -201,11 +201,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync(long limit, IDbTransaction transaction, CancellationToken token)
+    public async Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync(long limit, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       // the pending updates
@@ -216,7 +216,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var sql = "SELECT fu.fileid as fileid, fu.type as type, f.name as name, fo.path FROM "+
                  $"{TableFileUpdates} fu, {TableFiles} f, {TableFolders} fo "+
                  $"WHERE f.id = fu.fileid and fo.id = f.folderid ORDER BY fu.ticks DESC LIMIT {limit}";
-        using (var cmd = CreateDbCommand(sql, transaction))
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
           while (reader.Read())
@@ -239,7 +239,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         if (pendingUpdates.Count < limit)
         {
           sql = $"SELECT fileid, type FROM {TableFileUpdates} WHERE type={(int)UpdateType.Deleted} ORDER BY ticks DESC LIMIT {limit - pendingUpdates.Count}";
-          using (var cmd = CreateDbCommand(sql, transaction))
+          using (var cmd = connectionFactory.CreateCommand(sql))
           {
             var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
             while (reader.Read())

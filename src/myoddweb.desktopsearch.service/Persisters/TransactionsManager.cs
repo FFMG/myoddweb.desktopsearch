@@ -12,89 +12,41 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal class Transaction : IDbTransaction
-  {
-    /// <summary>
-    /// The parent transaction.
-    /// </summary>
-    public IDbTransaction Actual { get; }
-
-    public Transaction(IDbTransaction actual )
-    {
-      Actual = actual;
-    }
-
-    #region IDBTransaction
-    public void Dispose()
-    {
-      Actual?.Dispose();
-    }
-
-    public void Commit()
-    {
-      throw new InvalidOperationException("You cannot commit or rollback this ...");
-    }
-
-    public void Rollback()
-    {
-      throw new InvalidOperationException("You cannot commit or rollback this ...");
-    }
-
-    public IDbConnection Connection => Actual.Connection;
-    public IsolationLevel IsolationLevel => Actual.IsolationLevel;
-    #endregion
-  }
-
   internal class TransactionsManager
   {
     #region Member variables
     /// <summary>
     /// The function that will create the connection every time we need one.
     /// </summary>
+    /// <param name="isReadOnly">If we want a readonly factory only.</param>
     /// <returns></returns>
-    public delegate IDbConnection CreateConnection();
-
-    /// <summary>
-    /// The function that will dispose of the reources.
-    /// </summary>
-    public delegate void FreeResources();
+    public delegate IConnectionFactory CreateFactory( bool isReadOnly );
 
     /// <summary>
     /// Our lock
     /// </summary>
     private readonly object _lock = new object();
 
-    private IDbTransaction _transaction;
-    private readonly List<Transaction> _transactions = new List<Transaction>();
+    /// <summary>
+    /// This is the write connection factory
+    /// We can only have one at a time.
+    /// </summary>
+    private IConnectionFactory _transaction;
 
-    private readonly CreateConnection _createConnection;
-    private readonly FreeResources _freeResources;
-
-    private enum TransactionOwner
-    {
-      None,
-      ReadyToRollBack,
-      ReadyToCommit,
-      ReadonlyIsOwner
-    }
-
-    private TransactionOwner _transactionOwner;
+    private readonly CreateFactory _createFactory;
     #endregion
 
-    public TransactionsManager(CreateConnection createConnection, FreeResources freeResources)
+    public TransactionsManager(CreateFactory createFactory)
     {
-      _createConnection = createConnection ?? throw new ArgumentNullException(nameof(createConnection));
-      _freeResources = freeResources ?? throw new ArgumentNullException(nameof(freeResources));
+      _createFactory = createFactory ?? throw new ArgumentNullException(nameof(createFactory));
     }
 
     /// <summary>
@@ -103,28 +55,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task<IDbTransaction> BeginRead(CancellationToken token)
+    public Task<IConnectionFactory> BeginRead(CancellationToken token)
     {
       // get out if needed.
       token.ThrowIfCancellationRequested();
 
-      // now trans and create the transaction
-      lock (_lock)
-      {
-        // if the transaction is null, then create one.
-        if (_transaction == null)
-        {
-          BeginWrite(token).Wait(token);
-          _transactionOwner = TransactionOwner.ReadonlyIsOwner;
-        }
+      // create the transaction
+      var trans = _createFactory( true );
 
-        // return the current transaction
-        var trans = new Transaction(_transaction);
-        
-        // and add it to the list.
-        _transactions.Add(trans);
-        return Task.FromResult<IDbTransaction>(trans);
-      }
+      // return our created factory.
+      return Task.FromResult(trans);
     }
 
     /// <summary>
@@ -133,7 +73,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<IDbTransaction> BeginWrite( CancellationToken token )
+    public async Task<IConnectionFactory> BeginWrite( CancellationToken token )
     {
       for (;;)
       {
@@ -151,11 +91,9 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // create the connection
-          var connection = _createConnection();
-
           // we were able to get a null transaction
           // ... and we are inside the lock
-          _transaction = connection.BeginTransaction();
+          _transaction = _createFactory( false );
           return _transaction;
         }
       }
@@ -164,17 +102,22 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Rollback a transaction
     /// </summary>
-    /// <param name="transaction"></param>
-    public void Rollback(IDbTransaction transaction)
+    /// <param name="connectionFactory"></param>
+    public void Rollback(IConnectionFactory connectionFactory)
     {
+      // we don't need the lock for readonly factories
+      if (connectionFactory.IsReadOnly)
+      {
+        FinishReadonlyTransaction(connectionFactory);
+        return;
+      }
+
       lock (_lock)
       {
-        if (transaction is Transaction trans)
-        {
-          FinishReadonlyTransaction(trans);
-          return;
-        }
-        if (transaction != _transaction)
+        // this is not a readonly transaction
+        // so if it is not our factory
+        // then we have no idea where it comes from.
+        if (connectionFactory != _transaction)
         {
           throw new ArgumentException("The given transaction was not created by this class");
         }
@@ -201,17 +144,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         return;
       }
 
-      if (_transactions.Any())
-      {
-        _transactionOwner = TransactionOwner.ReadyToRollBack;
-        return;
-      }
-
       // roll back
       _transaction.Rollback();
-
-      // free resources
-      _freeResources();
 
       // done  with the transaction
       _transaction = null;
@@ -220,17 +154,21 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Commit a transaction.
     /// </summary>
-    /// <param name="transaction"></param>
-    public void Commit(IDbTransaction transaction)
+    /// <param name="connectionFactory"></param>
+    public void Commit(IConnectionFactory connectionFactory )
     {
+      // we don't need the lock for readonly
+      if (connectionFactory.IsReadOnly)
+      {
+        FinishReadonlyTransaction(connectionFactory);
+        return;
+      }
+
       lock (_lock)
       {
-        if (transaction is Transaction trans)
-        {
-          FinishReadonlyTransaction( trans );
-          return;
-        }
-        if (transaction != _transaction)
+        // if this is not a readonly factory
+        // and this is not our factory, then we do not know where it comes from.
+        if (connectionFactory != _transaction)
         {
           throw new ArgumentException("The given transaction was not created by this class");
         }
@@ -258,18 +196,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         return;
       }
 
-      // if we have any read only transactions, then we can stop.
-      if (_transactions.Any())
-      {
-        _transactionOwner = TransactionOwner.ReadyToCommit;
-        return;
-      }
-
       // commit 
       _transaction.Commit();
-
-      // free resources
-      _freeResources();
 
       // done  with the transaction
       _transaction = null;
@@ -279,37 +207,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Complete the readonly transaction.
     /// </summary>
     /// <param name="trans"></param>
-    private void FinishReadonlyTransaction(Transaction trans)
+    private void FinishReadonlyTransaction(IConnectionFactory trans)
     {
-      lock (_lock)
-      {
-        // remove ourselves from the list.
-        _transactions.RemoveAll(t => t == trans);
-        if (_transactions.Any())
-        {
-          return;
-        }
-
-        // now complete the parent transaction
-        switch (_transactionOwner)
-        {
-          case TransactionOwner.None:
-            break;
-
-          case TransactionOwner.ReadyToRollBack:
-          case TransactionOwner.ReadonlyIsOwner:
-            Rollback(trans.Actual);
-            break;
-
-          case TransactionOwner.ReadyToCommit:
-            Commit(trans.Actual);
-            break;
-
-          default:
-            throw new ArgumentOutOfRangeException();
-        }
-        _transactionOwner = TransactionOwner.None;
-      }
     }
   }
 }

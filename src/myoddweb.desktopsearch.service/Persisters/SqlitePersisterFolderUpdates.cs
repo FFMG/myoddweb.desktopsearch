@@ -26,16 +26,16 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class SqlitePersister
   {
     /// <inheritdoc />
-    public async Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<DirectoryInfo> directories, UpdateType type, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<DirectoryInfo> directories, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       // if it is not a valid id then there is nothing for us to do.
@@ -44,23 +44,23 @@ namespace myoddweb.desktopsearch.service.Persisters
         return true;
       }
 
-      var folderIds = await GetDirectoriesIdAsync(directories, transaction, token, false).ConfigureAwait(false);
+      var folderIds = await GetDirectoriesIdAsync(directories, connectionFactory, token, false).ConfigureAwait(false);
 
       // we can now process all the folders.
-      return await TouchDirectoriesAsync(folderIds, type, transaction, token).ConfigureAwait(false);
+      return await TouchDirectoriesAsync(folderIds, type, connectionFactory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<long> folderIds, UpdateType type, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<long> folderIds, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // first mark that folder id as procesed.
-      if (!await MarkDirectoriesProcessedAsync( folderIds, transaction, token).ConfigureAwait(false))
+      if (!await MarkDirectoriesProcessedAsync( folderIds, connectionFactory, token).ConfigureAwait(false))
       {
         return false;
       }
 
       var sqlInsert = $"INSERT INTO {TableFolderUpdates} (folderid, type, ticks) VALUES (@id, @type, @ticks)";
-      using (var cmd = CreateDbCommand(sqlInsert, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var pId = cmd.CreateParameter();
         pId.DbType = DbType.Int64;
@@ -109,35 +109,35 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkDirectoriesProcessedAsync( IReadOnlyCollection<DirectoryInfo> directories, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> MarkDirectoriesProcessedAsync( IReadOnlyCollection<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      var folderIds = await GetDirectoriesIdAsync(directories, transaction, token, false).ConfigureAwait(false);
+      var folderIds = await GetDirectoriesIdAsync(directories, connectionFactory, token, false).ConfigureAwait(false);
 
       // we can now use the folder id to flag this as done.
-      return await MarkDirectoriesProcessedAsync(folderIds, transaction, token).ConfigureAwait(false);
+      return await MarkDirectoriesProcessedAsync(folderIds, connectionFactory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkDirectoryProcessedAsync(long folderId, IDbTransaction transaction,CancellationToken token)
+    public async Task<bool> MarkDirectoryProcessedAsync(long folderId, IConnectionFactory connectionFactory,CancellationToken token)
     {
       // if it is not a valid id then there is nothing for us to do.
       if (folderId < 0)
       {
         return true;
       }
-      return await MarkDirectoriesProcessedAsync(new List<long> {folderId}, transaction, token).ConfigureAwait(false);
+      return await MarkDirectoriesProcessedAsync(new List<long> {folderId}, connectionFactory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkDirectoriesProcessedAsync(IEnumerable<long> folderIds, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> MarkDirectoriesProcessedAsync(IEnumerable<long> folderIds, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       var sqlDelete = $"DELETE FROM {TableFolderUpdates} WHERE folderid = @id";
-      using (var cmd = CreateDbCommand(sqlDelete, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sqlDelete))
       {
         try
         {
@@ -175,11 +175,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync(long limit, IDbTransaction transaction, CancellationToken token)
+    public async Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync(long limit, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       // the pending updates
@@ -189,7 +189,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         // we want to get the latest updated folders.
         var sql = $"SELECT fu.folderid as folderid, fu.type as type, f.path FROM {TableFolderUpdates} fu, {TableFolders} f WHERE f.id=fu.folderid "+
                   $"ORDER BY fu.ticks DESC LIMIT { limit}";
-        using (var cmd = CreateDbCommand(sql, transaction))
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
           while (reader.Read())
@@ -208,7 +208,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             // Get the files currently on record this can be null if we have nothing.
             // if the folder was just created we are not going to bother getting more data.
-            var filesOnRecord = type == UpdateType.Created ? new List<FileInfo>() : await GetFilesAsync(folderId, directory, transaction, token).ConfigureAwait(false);
+            var filesOnRecord = type == UpdateType.Created ? new List<FileInfo>() : await GetFilesAsync(folderId, directory, connectionFactory, token).ConfigureAwait(false);
 
             // add this update
             pendingUpdates.Add(new PendingFolderUpdate(

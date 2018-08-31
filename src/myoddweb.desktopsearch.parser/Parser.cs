@@ -306,14 +306,14 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     /// <param name="directory"></param>
     /// <param name="lastAccessTimeUtc"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<UpdateType> GetDirectoryUpdateType(DirectoryInfo directory, DateTime lastAccessTimeUtc, IDbTransaction transaction, CancellationToken token)
+    private async Task<UpdateType> GetDirectoryUpdateType(DirectoryInfo directory, DateTime lastAccessTimeUtc, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // if the directory exist... and it was flaged as newer than the last time
       // we checked the directory, then all we need to do is touch it.
-      if (await _persister.DirectoryExistsAsync(directory, transaction, token).ConfigureAwait(false))
+      if (await _persister.DirectoryExistsAsync(directory, connectionFactory, token).ConfigureAwait(false))
       {
         if (directory.LastAccessTimeUtc < lastAccessTimeUtc)
         {
@@ -355,6 +355,11 @@ namespace myoddweb.desktopsearch.parser
 
         // all done
         _persister.Commit(transaction);
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - parsing changed directories parsing");
+        throw;
       }
       catch (Exception e)
       {
@@ -401,7 +406,8 @@ namespace myoddweb.desktopsearch.parser
         // we can now process everything in on single go.
 
         // do all the directories at once.
-        await _persister.AddOrUpdateDirectoriesAsync(directoriesAndFiles.Keys.ToList(), transaction, token).ConfigureAwait(false);
+        await _persister.AddOrUpdateDirectoriesAsync(directoriesAndFiles.Keys.ToList(), transaction, token)
+          .ConfigureAwait(false);
 
         // then do the files.
         foreach (var directoryAndFiles in directoriesAndFiles)
@@ -415,10 +421,16 @@ namespace myoddweb.desktopsearch.parser
         }
 
         // all the folders have been processed.
-        await _persister.MarkDirectoriesProcessedAsync(directoriesAndFiles.Keys.ToList(), transaction, token).ConfigureAwait(false);
+        await _persister.MarkDirectoriesProcessedAsync(directoriesAndFiles.Keys.ToList(), transaction, token)
+          .ConfigureAwait(false);
 
         // all done
         _persister.Commit(transaction);
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - parsing created directories parsing");
+        throw;
       }
       catch (Exception e)
       {

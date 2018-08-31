@@ -13,7 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,65 +26,65 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// </summary>
     /// <param name="file"></param>
     /// <param name="type"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchFileAsync(FileInfo file, UpdateType type, IDbTransaction transaction, CancellationToken token);
+    Task<bool> TouchFileAsync(FileInfo file, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Flag a file as having changed.
     /// </summary>
     /// <param name="fileId"></param>
     /// <param name="type"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchFileAsync(long fileId, UpdateType type, IDbTransaction transaction, CancellationToken token);
+    Task<bool> TouchFileAsync(long fileId, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Touch a list of files
     /// </summary>
     /// <param name="fileIds"></param>
     /// <param name="type"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchFilesAsync( IEnumerable<long> fileIds, UpdateType type, IDbTransaction transaction, CancellationToken token);
+    Task<bool> TouchFilesAsync( IEnumerable<long> fileIds, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given file
     /// </summary>
     /// <param name="file"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkFileProcessedAsync(FileInfo file, IDbTransaction transaction, CancellationToken token);
+    Task<bool> MarkFileProcessedAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given file
     /// </summary>
     /// <param name="fileId"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkFileProcessedAsync(long fileId, IDbTransaction transaction, CancellationToken token);
+    Task<bool> MarkFileProcessedAsync(long fileId, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given file
     /// </summary>
     /// <param name="fileIds"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkFilesProcessedAsync(IEnumerable<long> fileIds, IDbTransaction transaction, CancellationToken token);
+    Task<bool> MarkFilesProcessedAsync(IEnumerable<long> fileIds, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Get a number of pending updates.
     /// </summary>
     /// <param name="limit">The maximum number of pending updates we are looking for.</param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync(long limit, IDbTransaction transaction, CancellationToken token);
+    Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync(long limit, IConnectionFactory connectionFactory, CancellationToken token);
   }
 }

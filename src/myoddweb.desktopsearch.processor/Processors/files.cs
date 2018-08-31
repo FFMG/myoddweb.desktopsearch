@@ -345,10 +345,10 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// Complete a single pending task.
     /// </summary>
     /// <param name="pendingFileUpdate"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task CompletePendingFileUpdate(CompletedPendingFileUpdate pendingFileUpdate, IDbTransaction transaction, CancellationToken token)
+    private async Task CompletePendingFileUpdate(CompletedPendingFileUpdate pendingFileUpdate, IConnectionFactory connectionFactory, CancellationToken token)
     {
       var words = pendingFileUpdate.Words;
       var fileId = pendingFileUpdate.FileId;
@@ -360,22 +360,22 @@ namespace myoddweb.desktopsearch.processor.Processors
           // there should be nothing to delete.
           if (words != null)
           {
-            await _persister.AddOrUpdateWordsToFileAsync(words, fileId, transaction, token).ConfigureAwait(false);
+            await _persister.AddOrUpdateWordsToFileAsync(words, fileId, connectionFactory, token).ConfigureAwait(false);
           }
           break;
 
         case UpdateType.Deleted:
           // we deleted the file, so remove the words.
-          await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
+          await _persister.DeleteFileFromFilesAndWordsAsync(fileId, connectionFactory, token).ConfigureAwait(false);
           break;
 
         case UpdateType.Changed:
           //  we changed the file, so we have to delete the old words
           // as well as add the new ones.
-          await _persister.DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
+          await _persister.DeleteFileFromFilesAndWordsAsync(fileId, connectionFactory, token).ConfigureAwait(false);
           if (words != null)
           {
-            await _persister.AddOrUpdateWordsToFileAsync(words, fileId, transaction, token).ConfigureAwait(false);
+            await _persister.AddOrUpdateWordsToFileAsync(words, fileId, connectionFactory, token).ConfigureAwait(false);
           }
           break;
 

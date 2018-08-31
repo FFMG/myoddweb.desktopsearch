@@ -63,7 +63,7 @@ namespace myoddweb.desktopsearch.http.Route
       }
     }
 
-    private async Task<List<Word>> GetWords(SearchRequest search, IDbTransaction transaction, CancellationToken token)
+    private async Task<List<Word>> GetWords(SearchRequest search, IConnectionFactory connectionFactory, CancellationToken token)
     {
       var sql = $@"
       select 
@@ -87,7 +87,7 @@ namespace myoddweb.desktopsearch.http.Route
                       ";
 
       var words = new List<Word>( search.Count );
-      using (var cmd = Persister.CreateDbCommand(sql, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sql))
       {
         var pSearch = cmd.CreateParameter();
         pSearch.DbType = DbType.String;
@@ -111,7 +111,7 @@ namespace myoddweb.desktopsearch.http.Route
       return words;
     }
 
-    private async Task<StatusResponse> GetStatus(IDbTransaction transaction, CancellationToken token)
+    private async Task<StatusResponse> GetStatus(IConnectionFactory connectionFactory, CancellationToken token)
     {
       const string sql = @"SELECT  (
         SELECT COUNT(*)
@@ -122,7 +122,7 @@ namespace myoddweb.desktopsearch.http.Route
         FROM   Files
         ) AS Files";
 
-      using (var cmd = Persister.CreateDbCommand(sql, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sql))
       {
         var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
         if (!reader.Read())

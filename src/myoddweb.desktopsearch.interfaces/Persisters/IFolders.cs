@@ -13,7 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,63 +26,63 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// </summary>
     /// <param name="directory"></param>
     /// <param name="oldDirectory"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<long> RenameOrAddDirectoryAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, IDbTransaction transaction, CancellationToken token);
+    Task<long> RenameOrAddDirectoryAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Add or update an existing directory.
     /// </summary>
     /// <param name="directory"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token);
+    Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Update multiple directories at once.
     /// </summary>
     /// <param name="directories"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, IDbTransaction transaction, CancellationToken token);
+    Task<bool> AddOrUpdateDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Delete a single folder.
     /// </summary>
     /// <param name="directory"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteDirectoryAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token);
+    Task<bool> DeleteDirectoryAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Delete multiple folders.
     /// </summary>
     /// <param name="directories"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, IDbTransaction transaction, CancellationToken token);
+    Task<bool> DeleteDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Check that we have the directory on record.
     /// </summary>
     /// <param name="directory"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DirectoryExistsAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token);
+    Task<bool> DirectoryExistsAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Get the directory info if posible, otherwise return null if we have no record of it.
     /// </summary>
     /// <param name="directoryId"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<DirectoryInfo> GetDirectoryAsync(long directoryId, IDbTransaction transaction, CancellationToken token);
+    Task<DirectoryInfo> GetDirectoryAsync(long directoryId, IConnectionFactory connectionFactory, CancellationToken token);
   }
 }

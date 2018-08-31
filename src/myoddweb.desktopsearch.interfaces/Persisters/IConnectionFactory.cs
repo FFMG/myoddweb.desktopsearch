@@ -12,23 +12,40 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+
+using System;
+using System.Data;
+using System.Data.Common;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IWordsParts
+  public interface IConnectionFactory
   {
     /// <summary>
-    /// Add part ids and word ids, if the word already exists then we will add it
-    /// And remove whatever words might already exist.
+    /// If the factory is readonly or not.
     /// </summary>
-    /// <param name="wordId"></param>
-    /// <param name="partIds"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
+    bool IsReadOnly { get; }
+
+    /// <summary>
+    /// The current connection
+    /// </summary>
+    IDbConnection Connection { get; }
+
+    /// <summary>
+    /// Create a db commands
+    /// </summary>
+    /// <param name="sql"></param>
     /// <returns></returns>
-    Task AddOrUpdateWordParts( long wordId, HashSet<long> partIds, IConnectionFactory connectionFactory, CancellationToken token);
+    DbCommand CreateCommand( string sql );
+
+    /// <summary>
+    /// Commit a transaction, (and close the transaction)
+    /// </summary>
+    void Commit();
+
+    /// <summary>
+    /// rollback a transaction, (and close the transaction)
+    /// </summary>
+    void Rollback();
   }
 }

@@ -27,34 +27,34 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class SqlitePersister 
   {
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateFileAsync(FileInfo file, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateFileAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      return await AddOrUpdateFilesAsync(new [] { file }, transaction, token ).ConfigureAwait(false);
+      return await AddOrUpdateFilesAsync(new [] { file }, connectionFactory, token ).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateFilesAsync(IReadOnlyList<FileInfo> files, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateFilesAsync(IReadOnlyList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       // rebuild the list of directory with only those that need to be inserted.
       return await InsertFilesAsync(
-        await RebuildFilesListAsync(files, transaction, token).ConfigureAwait(false),
-        transaction, token).ConfigureAwait(false);
+        await RebuildFilesListAsync(files, connectionFactory, token).ConfigureAwait(false),
+        connectionFactory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<long> RenameOrAddFileAsync(FileInfo file, FileInfo oldFile, IDbTransaction transaction, CancellationToken token)
+    public async Task<long> RenameOrAddFileAsync(FileInfo file, FileInfo oldFile, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
       // this is the new folder, we might as well create it if it does not exit.
-      var folderId = await GetDirectoryIdAsync(file.Directory, transaction, token, true).ConfigureAwait(false);
+      var folderId = await GetDirectoryIdAsync(file.Directory, connectionFactory, token, true).ConfigureAwait(false);
       if (-1 == folderId)
       {
         // we cannot create the parent folder id
@@ -63,18 +63,18 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // get the old folder.
-      var oldFolderId = await GetDirectoryIdAsync(oldFile.Directory, transaction, token, true).ConfigureAwait(false);
+      var oldFolderId = await GetDirectoryIdAsync(oldFile.Directory, connectionFactory, token, true).ConfigureAwait(false);
       if (-1 == oldFolderId)
       {
         // this cannot be a renaming, as the parent dirctory does not exist.
         // so we will just try and add it.
         // by calling the 'GetFile' function and creating it if needed we will insert the file.
-        return await GetFileIdAsync( file, transaction, token, true ).ConfigureAwait(false);
+        return await GetFileIdAsync( file, connectionFactory, token, true ).ConfigureAwait(false);
       }
 
       // so we have an old folder id and a new folder id
       var sql = $"UPDATE {TableFiles} SET name=@name1, folderid=@folderid1 WHERE name=@name2 and folderid=@folderid2";
-      using (var cmd = CreateDbCommand(sql, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sql))
       {
         try
         {
@@ -108,7 +108,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             // we could not rename it, this could be because of an error
             // or because the old path simply does not exist.
             // in that case we can try and simply add the new path.
-            if (!await InsertFilesAsync( new []{file}, transaction, token).ConfigureAwait(false))
+            if (!await InsertFilesAsync( new []{file}, connectionFactory, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue renaming the file: {file.FullName} to persister");
               return -1;
@@ -135,27 +135,27 @@ namespace myoddweb.desktopsearch.service.Persisters
       // in either cases, we can now return the id of this newly added file.
       // we won't ask the function to insert a new file as we _just_ renamed it.
       // so it has to exist...
-      var fileId = await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
+      var fileId = await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
       if (-1 == fileId)
       {
         return -1;
       }
 
       // touch that file as changed
-      await TouchFileAsync(fileId, UpdateType.Changed, transaction, token).ConfigureAwait(false);
+      await TouchFileAsync(fileId, UpdateType.Changed, connectionFactory, token).ConfigureAwait(false);
 
       // return the new file id
       return fileId;
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteFileAsync(FileInfo file, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> DeleteFileAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      return await DeleteFilesAsync(new[] { file }, transaction, token).ConfigureAwait(false);
+      return await DeleteFilesAsync(new[] { file }, connectionFactory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteFilesAsync(IReadOnlyList<FileInfo> files, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> DeleteFilesAsync(IReadOnlyList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!files.Any())
@@ -163,13 +163,13 @@ namespace myoddweb.desktopsearch.service.Persisters
         return true;
       }
 
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       var sqlDelete = $"DELETE FROM {TableFiles} WHERE folderid=@folderid and name=@name";
-      using (var cmd = CreateDbCommand(sqlDelete, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sqlDelete))
       {
         var pFolderId = cmd.CreateParameter();
         pFolderId.DbType = DbType.Int64;
@@ -188,7 +188,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             // get the folder id, no need to create it.
-            var folderId = await GetDirectoryIdAsync(file.Directory, transaction, token, false).ConfigureAwait(false);
+            var folderId = await GetDirectoryIdAsync(file.Directory, connectionFactory, token, false).ConfigureAwait(false);
             if (-1 == folderId)
             {
               _logger.Warning($"Could not delete file: {file.FullName}, could not locate the parent folder?");
@@ -196,7 +196,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // get the file ids
-            var fileId = await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
+            var fileId = await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
 
             // if we have no ids... then no point in going further
             if (fileId == -1 )
@@ -206,7 +206,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // touch that file as changed.
-            await TouchFilesAsync(new []{fileId}, UpdateType.Deleted, transaction, token).ConfigureAwait(false);
+            await TouchFilesAsync(new []{fileId}, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
 
             // then we can delete this file.
             cmd.Parameters["@folderid"].Value = folderId;
@@ -235,15 +235,15 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteFilesAsync(DirectoryInfo directory, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> DeleteFilesAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       // get the folder id, we do not want to create the folder.
-      var folderId = await GetDirectoryIdAsync(directory, transaction, token, false).ConfigureAwait(false);
+      var folderId = await GetDirectoryIdAsync(directory, connectionFactory, token, false).ConfigureAwait(false);
       if (folderId == -1)
       {
         // there was no error.
@@ -251,27 +251,27 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // delete this by folder id.
-      return await DeleteFilesAsync(folderId, transaction, token).ConfigureAwait(false);
+      return await DeleteFilesAsync(folderId, connectionFactory, token).ConfigureAwait(false);
     }
     
     /// <inheritdoc />
-    public async Task<bool> DeleteFilesAsync(long folderId, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> DeleteFilesAsync(long folderId, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       // get the files for that folder so we can fag them as touched.
-      var fileIds = await GetFileIdsAsync(folderId, transaction, token).ConfigureAwait(false);
+      var fileIds = await GetFileIdsAsync(folderId, connectionFactory, token).ConfigureAwait(false);
       if (fileIds.Any())
       {
         // touch that folder as changed
-        await TouchFilesAsync(fileIds, UpdateType.Deleted, transaction, token).ConfigureAwait(false);
+        await TouchFilesAsync(fileIds, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
       }
       
       var sql = $"DELETE FROM {TableFiles} WHERE folderid=@folderid";
-      using (var cmd = CreateDbCommand(sql, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sql))
       {
         try
         {
@@ -309,23 +309,23 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> FileExistsAsync(FileInfo file, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> FileExistsAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      return (await GetFileIdAsync(file, transaction, token, false ).ConfigureAwait(false) != -1);
+      return (await GetFileIdAsync(file, connectionFactory, token, false ).ConfigureAwait(false) != -1);
     }
 
     /// <inheritdoc />
-    public async Task<List<FileInfo>> GetFilesAsync(long directoryId, IDbTransaction transaction,
+    public async Task<List<FileInfo>> GetFilesAsync(long directoryId, IConnectionFactory connectionFactory,
       CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction),
+        throw new ArgumentNullException(nameof(connectionFactory),
           "You have to be within a tansaction when calling this function.");
       }
 
       // look for the directory
-      var directory = await GetDirectoryAsync(directoryId, transaction, token).ConfigureAwait(false);
+      var directory = await GetDirectoryAsync(directoryId, connectionFactory, token).ConfigureAwait(false);
       if (null == directory)
       {
         // with no directory, there is nothing we can do.
@@ -333,14 +333,14 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // then pass the two values we have
-      return await GetFilesAsync(directoryId, directory, transaction, token).ConfigureAwait(false);
+      return await GetFilesAsync(directoryId, directory, connectionFactory, token).ConfigureAwait(false);
     }
 
-    private async Task<List<FileInfo>> GetFilesAsync(long directoryId, DirectoryInfo directory, IDbTransaction transaction, CancellationToken token)
+    private async Task<List<FileInfo>> GetFilesAsync(long directoryId, DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       if (null == directory)
@@ -354,7 +354,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         // we want to get the latest updated folders.
         var sql = $"SELECT name FROM {TableFiles} WHERE folderid=@id";
-        using (var cmd = CreateDbCommand(sql, transaction))
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pId = cmd.CreateParameter();
           pId.DbType = DbType.Int64;
@@ -391,11 +391,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<FileInfo> GetFileAsync(long fileId, IDbTransaction transaction, CancellationToken token)
+    public async Task<FileInfo> GetFileAsync(long fileId, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       // the pending updates
@@ -404,7 +404,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         // we want to get the latest updated folders.
         var sql = $"SELECT folderid, name FROM {TableFiles} WHERE id=@id";
-        using (var cmd = CreateDbCommand(sql, transaction))
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pId = cmd.CreateParameter();
           pId.DbType = DbType.Int64;
@@ -417,7 +417,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           if (reader.Read())
           {
             // get the directory
-            var directory = await GetDirectoryAsync((long) reader["folderid"], transaction, token)
+            var directory = await GetDirectoryAsync((long) reader["folderid"], connectionFactory, token)
               .ConfigureAwait(false);
 
             // sanity check
@@ -455,10 +455,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Given a list of files, re-create the ones that we need to insert.
     /// </summary>
     /// <param name="files"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> InsertFilesAsync(IReadOnlyList<FileInfo> files, IDbTransaction transaction, CancellationToken token)
+    private async Task<bool> InsertFilesAsync(IReadOnlyList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!files.Any())
@@ -467,10 +467,10 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // get the next id.
-      var nextId = await GetNextFileIdAsync(transaction, token).ConfigureAwait(false);
+      var nextId = await GetNextFileIdAsync(connectionFactory, token).ConfigureAwait(false);
 
       var sqlInsert = $"INSERT INTO {TableFiles} (id, folderid, name) VALUES (@id, @folderid, @name)";
-      using (var cmd = CreateDbCommand(sqlInsert, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var pId = cmd.CreateParameter();
         pId.DbType = DbType.Int64;
@@ -494,7 +494,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             // Get the folder for this file and insert it, if need be.
-            var folderId = await GetDirectoryIdAsync(file.Directory, transaction, token, true).ConfigureAwait(false);
+            var folderId = await GetDirectoryIdAsync(file.Directory, connectionFactory, token, true).ConfigureAwait(false);
             if (-1 == folderId)
             {
               _logger.Error($"I was unable to insert {file.FullName} as I could not locate and insert the directory!");
@@ -511,7 +511,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // touch that folder as created
-            await TouchFileAsync(nextId, UpdateType.Created, transaction, token).ConfigureAwait(false);
+            await TouchFileAsync(nextId, UpdateType.Created, connectionFactory, token).ConfigureAwait(false);
 
             // we can now move on to the next folder id.
             ++nextId;
@@ -534,10 +534,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Given a list of directories, re-create the ones that we need to insert.
     /// </summary>
     /// <param name="files"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<FileInfo>> RebuildFilesListAsync(IEnumerable<FileInfo> files, IDbTransaction transaction, CancellationToken token)
+    private async Task<List<FileInfo>> RebuildFilesListAsync(IEnumerable<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {
@@ -548,8 +548,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         var actualFiles = new List<FileInfo>();
 
         // we first look for it, and, if we find it then there is nothing to do.
-        var sqlGetRowId = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid AND name=@name";
-        using (var cmd = CreateDbCommand(sqlGetRowId, transaction))
+        var sql = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid AND name=@name";
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pFolderId = cmd.CreateParameter();
           pFolderId.DbType = DbType.Int64;
@@ -572,7 +572,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // Get the folder for this file and insert it, if need be.
-            var folderId = await GetDirectoryIdAsync(file.Directory, transaction, token, true).ConfigureAwait(false);
+            var folderId = await GetDirectoryIdAsync(file.Directory, connectionFactory, token, true).ConfigureAwait(false);
             if (-1 == folderId)
             {
               _logger.Error($"I was unable to insert {file.FullName} as I could not locate and insert the directory!");
@@ -603,16 +603,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Get the next row ID we can use.
     /// </summary>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> GetNextFileIdAsync(IDbTransaction transaction, CancellationToken token )
+    private async Task<long> GetNextFileIdAsync(IConnectionFactory connectionFactory, CancellationToken token )
     {
       try
       {
         // we first look for it, and, if we find it then there is nothing to do.
-        var sqlNextRowId = $"SELECT max(id) from {TableFiles};";
-        using (var cmd = CreateDbCommand(sqlNextRowId, transaction))
+        var sql = $"SELECT max(id) from {TableFiles};";
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
 
@@ -639,16 +639,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Get the id of a file or -1.
     /// </summary>
     /// <param name="file"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    private async Task<long> GetFileIdAsync(FileInfo file, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    private async Task<long> GetFileIdAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
     {
       try
       {
         // get the folder id
-        var folderid = await GetDirectoryIdAsync(file.Directory, transaction, token, false).ConfigureAwait(false);
+        var folderid = await GetDirectoryIdAsync(file.Directory, connectionFactory, token, false).ConfigureAwait(false);
         if (-1 == folderid)
         {
           if (!createIfNotFound)
@@ -657,13 +657,13 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // add the file, if we get an error now, there is nothing we can do about it.
-          if (!await InsertFilesAsync( new []{file}, transaction, token).ConfigureAwait(false))
+          if (!await InsertFilesAsync( new []{file}, connectionFactory, token).ConfigureAwait(false))
           {
             return -1;
           }
 
           // try and look for it
-          folderid = await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
+          folderid = await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
           if (-1 == folderid)
           {
             // we cannot get the folder that we just add!
@@ -674,7 +674,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
         // we first look for it, and, if we find it then there is nothing to do.
         var sql = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid and name=@name";
-        using (var cmd = CreateDbCommand(sql, transaction))
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pFolderId = cmd.CreateParameter();
           pFolderId.DbType = DbType.Int64;
@@ -698,13 +698,13 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // try and add the folder, if that does not work, then we cannot go further.
-            if (!await InsertFilesAsync(new []{file}, transaction, token).ConfigureAwait(false))
+            if (!await InsertFilesAsync(new []{file}, connectionFactory, token).ConfigureAwait(false))
             {
               return -1;
             }
 
             // try one more time to look for it .. and if we do not find it, then just return
-            return await GetFileIdAsync(file, transaction, token, false).ConfigureAwait(false);
+            return await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
           }
 
           // get out if needed.
@@ -725,16 +725,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Get the id of all the files that 'belong' to a folder.
     /// </summary>
     /// <param name="folderId"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<long>> GetFileIdsAsync(long folderId, IDbTransaction transaction, CancellationToken token)
+    private async Task<List<long>> GetFileIdsAsync(long folderId, IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {
         // we first look for it, and, if we find it then there is nothing to do.
         var sql = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid";
-        using (var cmd = CreateDbCommand(sql, transaction))
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var fileIds = new List<long>();
           var pFolderId = cmd.CreateParameter();

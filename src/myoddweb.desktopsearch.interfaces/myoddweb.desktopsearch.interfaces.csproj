@@ -56,6 +56,7 @@
     <Compile Include="IO\Words.cs" />
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Logging\LogLevel.cs" />
+    <Compile Include="Persisters\IConnectionFactory.cs" />
     <Compile Include="Persisters\IFilesWords.cs" />
     <Compile Include="Persisters\IParts.cs" />
     <Compile Include="Persisters\IWords.cs" />

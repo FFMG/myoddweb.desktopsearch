@@ -12,31 +12,31 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
   internal partial class SqlitePersister
   {
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdatePartsAsync(IReadOnlyCollection<string> parts, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdatePartsAsync(IReadOnlyCollection<string> parts, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction),
+        throw new ArgumentNullException(nameof(connectionFactory),
           "You have to be within a tansaction when calling this function.");
       }
 
       // rebuild the list of directory with only those that need to be inserted.
       await InsertPartsAsync(
-        await RebuildPartsListAsync(parts, transaction, token).ConfigureAwait(false),
-        transaction, token).ConfigureAwait(false);
+        await RebuildPartsListAsync(parts, connectionFactory, token).ConfigureAwait(false),
+        connectionFactory, token).ConfigureAwait(false);
       return true;
     }
 
@@ -45,10 +45,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Insert parts and return the id of the added parts.
     /// </summary>
     /// <param name="parts"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<long>> InsertPartsAsync(IReadOnlyCollection<string> parts, IDbTransaction transaction, CancellationToken token)
+    private async Task<List<long>> InsertPartsAsync(IReadOnlyCollection<string> parts, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (!parts.Any())
       {
@@ -59,13 +59,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       var partIds = new List<long>(parts.Count);
 
       // get the next valid id.
-      var nextId = await GetNextPartIdAsync(transaction, token).ConfigureAwait(false);
+      var nextId = await GetNextPartIdAsync(connectionFactory, token).ConfigureAwait(false);
 
       try
       {
         // whatever is now left is to be inserted
         var sqlInsert = $"INSERT INTO {TableParts} (id, part) VALUES (@id, @part)";
-        using (var cmdInsert = CreateDbCommand(sqlInsert, transaction))
+        using (var cmdInsert = connectionFactory.CreateCommand(sqlInsert))
         {
           var pId = cmdInsert.CreateParameter();
           pId.DbType = DbType.Int64;
@@ -114,10 +114,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Given a list of directories, re-create the ones that we need to insert.
     /// </summary>
     /// <param name="parts"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<string[]> RebuildPartsListAsync(IReadOnlyCollection<string> parts, IDbTransaction transaction, CancellationToken token)
+    private async Task<string[]> RebuildPartsListAsync(IReadOnlyCollection<string> parts, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (!parts.Any())
       {
@@ -131,7 +131,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
         // first look for what we have and insert what we do not have.
         var sql = $"SELECT id FROM {TableParts} WHERE part = @part";
-        using (var cmd = CreateDbCommand(sql, transaction))
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pSPart = cmd.CreateParameter();
           pSPart.DbType = DbType.String;
@@ -172,11 +172,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Get the id number of all the parts.
     /// </summary>
     /// <param name="parts"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    private async Task<List<long>> GetPartIdsAsync(IReadOnlyCollection<string> parts, IDbTransaction transaction, CancellationToken token, bool createIfNotFound)
+    private async Task<List<long>> GetPartIdsAsync(IReadOnlyCollection<string> parts, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
     { 
       // the ids of all the parts, (added or otherwise).
       var partIds = new List<long>(parts.Count);
@@ -194,7 +194,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
         // first look for what we have and insert what we do not have.
         var sqlSelect = $"SELECT id FROM {TableParts} WHERE part = @part";
-        using (var cmdSelect = CreateDbCommand(sqlSelect, transaction))
+        using (var cmdSelect = connectionFactory.CreateCommand(sqlSelect))
         {
           var pSPart = cmdSelect.CreateParameter();
           pSPart.DbType = DbType.String;
@@ -229,7 +229,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
         
         // then add the ids of the remaining parts.
-        partIds.AddRange( await InsertPartsAsync( partsToAdd.ToArray(), transaction, token ).ConfigureAwait(false));
+        partIds.AddRange( await InsertPartsAsync( partsToAdd.ToArray(), connectionFactory, token ).ConfigureAwait(false));
 
         // return everything we found.
         return partIds;
@@ -244,16 +244,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Get the next row ID we can use.
     /// </summary>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> GetNextPartIdAsync(IDbTransaction transaction, CancellationToken token)
+    private async Task<long> GetNextPartIdAsync(IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {
         // we first look for it, and, if we find it then there is nothing to do.
-        var sqlNextRowId = $"SELECT max(id) from {TableParts};";
-        using (var cmd = CreateDbCommand(sqlNextRowId, transaction))
+        var sql = $"SELECT max(id) from {TableParts};";
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
 

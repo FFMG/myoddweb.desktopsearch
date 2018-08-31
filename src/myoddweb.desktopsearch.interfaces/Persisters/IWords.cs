@@ -12,9 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
-using System.Collections.Generic;
-using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -27,18 +24,18 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// Add or update a single word.
     /// </summary>
     /// <param name="word"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateWordAsync(Word word, IDbTransaction transaction, CancellationToken token);
+    Task<bool> AddOrUpdateWordAsync(Word word, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Add or update multiple word.
     /// </summary>
     /// <param name="words"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateWordsAsync(Words words, IDbTransaction transaction, CancellationToken token);
+    Task<bool> AddOrUpdateWordsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token);
   }
 }

@@ -34,7 +34,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The current transaction.
     /// </summary>
-    private IDbTransaction _currentTransaction;
+    private IConnectionFactory _currentTransaction;
 
     public DirectoriesSystemEventsParser( IPersister persister, IDirectory directory, int eventsParserMs, ILogger logger) :
       base( directory, eventsParserMs, logger)

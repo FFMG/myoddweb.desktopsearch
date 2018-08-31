@@ -12,7 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Data;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,38 +21,32 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IPersister : IConfig, IFolders, IFolderUpdates, IFiles, IFileUpdates, IWords, IFilesWords, IParts, IWordsParts
   {
     /// <summary>
-    /// Create a command with a transaction.
-    /// </summary>
-    /// <param name="sql"></param>
-    /// <param name="transaction"></param>
-    /// <returns></returns>
-    DbCommand CreateDbCommand(string sql, IDbTransaction transaction);
-
-    /// <summary>
     /// Get a database transaction.
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IDbTransaction> BeginWrite( CancellationToken token );
+    Task<IConnectionFactory> BeginWrite( CancellationToken token );
 
     /// <summary>
     /// Get a database readonly transaction.
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IDbTransaction> BeginRead(CancellationToken token);
+    Task<IConnectionFactory> BeginRead(CancellationToken token);
 
     /// <summary>
     /// Rollback the current transaction.
     /// </summary>
+    /// <paramref name="connectionFactory"/>
     /// <returns></returns>
-    bool Rollback(IDbTransaction transaction);
+    bool Rollback(IConnectionFactory connectionFactory);
 
     /// <summary>
     /// Commit the current transaction.
     /// </summary>
+    /// <paramref name="connectionFactory"/>
     /// <returns></returns>
-    bool Commit(IDbTransaction transaction);
+    bool Commit(IConnectionFactory connectionFactory);
 
     /// <summary>
     /// Start the database work.

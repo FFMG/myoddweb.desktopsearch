@@ -19,35 +19,36 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
   internal partial class SqlitePersister 
   {
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordToFileAsync(Word word, long fileId, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateWordToFileAsync(Word word, long fileId, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      return await AddOrUpdateWordsToFileAsync(new Words( word ), fileId, transaction, token ).ConfigureAwait(false);
+      return await AddOrUpdateWordsToFileAsync(new Words( word ), fileId, connectionFactory, token ).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordsToFileAsync(Words words, long fileId, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> AddOrUpdateWordsToFileAsync(Words words, long fileId, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       // get all the word ids, insert them into the word table if needed.
       // we will then add those words to the this file id.
-      var wordids = await GetWordIdsAsync(words, transaction, token, true).ConfigureAwait(false);
+      var wordids = await GetWordIdsAsync(words, connectionFactory, token, true).ConfigureAwait(false);
 
       // get all the current word ids already in that files.
-      var currentIds = await GetWordIdsForFile(fileId, transaction, token).ConfigureAwait(false);
+      var currentIds = await GetWordIdsForFile(fileId, connectionFactory, token).ConfigureAwait(false);
 
       // all the ids returned are the ones in the file id.
       // if that file has any other words then they need to be removed.
-      if (!await RemoveWordIdsThatShouldNotBeInFile(fileId, wordids, currentIds, transaction, token).ConfigureAwait(false))
+      if (!await RemoveWordIdsThatShouldNotBeInFile(fileId, wordids, currentIds, connectionFactory, token).ConfigureAwait(false))
       {
         return false;
       }
@@ -62,7 +63,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
 
         var sql = $"INSERT INTO {TableFilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
-        using (var cmd = CreateDbCommand(sql, transaction))
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           // create the parameters for inserting.
           var pWId = cmd.CreateParameter();
@@ -104,12 +105,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteFileFromFilesAndWordsAsync(long fileId, IDbTransaction transaction, CancellationToken token)
+    public async Task<bool> DeleteFileFromFilesAndWordsAsync(long fileId, IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {
         var sqlDelete = $"DELETE FROM {TableFilesWords} WHERE fileid=@fileid";
-        using (var cmd = CreateDbCommand(sqlDelete, transaction))
+        using (var cmd = connectionFactory.CreateCommand(sqlDelete))
         {
           var pFId = cmd.CreateParameter();
           pFId.DbType = DbType.Int64;
@@ -151,15 +152,15 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="fileId"></param>
     /// <param name="expectedWordIds">The ids we want to add</param>
     /// <param name="currentWordIds"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> RemoveWordIdsThatShouldNotBeInFile(long fileId, IReadOnlyCollection<long> expectedWordIds, IEnumerable<long> currentWordIds, IDbTransaction transaction, CancellationToken token)
+    private async Task<bool> RemoveWordIdsThatShouldNotBeInFile(long fileId, IReadOnlyCollection<long> expectedWordIds, IEnumerable<long> currentWordIds, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // if we have nothing in the list of ids we want then we want to remove everything.
       if (!expectedWordIds.Any())
       {
-        return await DeleteFileFromFilesAndWordsAsync(fileId, transaction, token).ConfigureAwait(false);
+        return await DeleteFileFromFilesAndWordsAsync(fileId, connectionFactory, token).ConfigureAwait(false);
       }
 
       // then remove all the ids that are in our _current_ list of words
@@ -178,7 +179,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         // whatever word ids are left we need to remove them.
         var sqlDelete = $"DELETE FROM {TableFilesWords} WHERE wordid=@wordid and fileid=@fileid";
-        using (var cmd = CreateDbCommand(sqlDelete, transaction))
+        using (var cmd = connectionFactory.CreateCommand(sqlDelete))
         {
           var pWId = cmd.CreateParameter();
           pWId.DbType = DbType.Int64;
@@ -224,16 +225,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Get all the woord ids for a given file.
     /// </summary>
     /// <param name="fileId"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<HashSet<long>> GetWordIdsForFile( long fileId, IDbTransaction transaction, CancellationToken token)
+    private async Task<HashSet<long>> GetWordIdsForFile( long fileId, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // first we get the ids that are in the 
       try
       {
         var sqlSelect = $"SELECT wordid FROM {TableFilesWords} WHERE fileid=@fileid";
-        using (var cmd = CreateDbCommand(sqlSelect, transaction))
+        using (var cmd = connectionFactory.CreateCommand(sqlSelect))
         {
           // and the prameters for selecting.
           var pFId = cmd.CreateParameter();

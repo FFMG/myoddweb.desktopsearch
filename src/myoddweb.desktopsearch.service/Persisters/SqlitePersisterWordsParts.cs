@@ -4,21 +4,22 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
   internal partial class SqlitePersister
   {
     /// <inheritdoc />
-    public async Task AddOrUpdateWordParts(long wordId, HashSet<long> partIds, IDbTransaction transaction, CancellationToken token)
+    public async Task AddOrUpdateWordParts(long wordId, HashSet<long> partIds, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == transaction)
+      if (null == connectionFactory)
       {
-        throw new ArgumentNullException(nameof(transaction), "You have to be within a tansaction when calling this function.");
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
       // first we need to get the part ids for this word.
-      var currentIds = await GetWordParts(wordId, transaction, token).ConfigureAwait(false);
+      var currentIds = await GetWordParts(wordId, connectionFactory, token).ConfigureAwait(false);
 
       // remove the ones that are in the current list but not in the new one
       // and add the words that are in the new list but not in the old one.
@@ -32,10 +33,10 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // try and insert the ids directly
-        await InsertWordParts( wordId, idsToAdd, transaction, token).ConfigureAwait( false );
+        await InsertWordParts( wordId, idsToAdd, connectionFactory, token).ConfigureAwait( false );
 
         // and try and remove the ids directly
-        await DeleteWordParts( wordId, idsToRemove, transaction, token ).ConfigureAwait(false);
+        await DeleteWordParts( wordId, idsToRemove, connectionFactory, token ).ConfigureAwait(false);
       }
       catch (OperationCanceledException)
       {
@@ -55,10 +56,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     /// <param name="wordId"></param>
     /// <param name="partIds"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task DeleteWordParts(long wordId, HashSet<long> partIds, IDbTransaction transaction, CancellationToken token)
+    private async Task DeleteWordParts(long wordId, HashSet<long> partIds, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // we might not have anything to do
       if (!partIds.Any())
@@ -68,7 +69,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // the query to insert a new word
       var sqlInsert = $"DELETE FROM {TableWordsParts} WHERE wordid=@wordid AND partid=@partid";
-      using (var cmd = CreateDbCommand(sqlInsert, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var ppId = cmd.CreateParameter();
         ppId.DbType = DbType.Int64;
@@ -101,10 +102,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     /// <param name="wordId"></param>
     /// <param name="partIds"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task InsertWordParts(long wordId, IReadOnlyCollection<long> partIds, IDbTransaction transaction, CancellationToken token)
+    private async Task InsertWordParts(long wordId, IReadOnlyCollection<long> partIds, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // we might not have anything to do
       if (!partIds.Any())
@@ -114,7 +115,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // the query to insert a new word
       var sqlInsert = $"INSERT INTO {TableWordsParts} (wordid, partid) VALUES (@wordid, @partid)";
-      using (var cmd = CreateDbCommand(sqlInsert, transaction))
+      using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var ppId = cmd.CreateParameter();
         ppId.DbType = DbType.Int64;
@@ -146,15 +147,15 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Get all the part ids for the given word.
     /// </summary>
     /// <param name="wordId"></param>
-    /// <param name="transaction"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
-    private async Task<HashSet<long>> GetWordParts(long wordId, IDbTransaction transaction, CancellationToken token)
+    private async Task<HashSet<long>> GetWordParts(long wordId, IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {
         // the query to insert a new word
         var sql = $"SELECT partid FROM {TableWordsParts} WHERE wordid = @wordid";
-        using (var cmd = CreateDbCommand(sql, transaction))
+        using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pId = cmd.CreateParameter();
           pId.DbType = DbType.Int64;
