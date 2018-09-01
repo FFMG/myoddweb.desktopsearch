@@ -56,39 +56,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly ILogger _logger;
 
     /// <summary>
-    /// The connection string to use
-    /// </summary>
-    private string _connectionString;
-
-    /// <summary>
     /// The database source.
     /// </summary>
     private readonly string _source;
     #endregion
-
-    /// <summary>
-    /// Get the connection string
-    /// </summary>
-    private string ConnectionString
-    {
-      get
-      {
-        if (_connectionString != null)
-        {
-          return _connectionString;
-        }
-
-        //  try and create the connection string
-        if ( null == _transactionSpinner)
-        {
-          throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
-        }
-        _connectionString = $"Data Source={_source};Version=3;Pooling=True;Max Pool Size=100;";
-
-        // the created connection string
-        return _connectionString;
-      }
-    }
 
     public SqlitePersister(ILogger logger, string source, int maxNumCharacters)
     {
@@ -134,13 +105,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     private IConnectionFactory ConnectionFactory( bool isReadOnly )
     {
-      var connection = new SQLiteConnection(ConnectionString);
-      connection.Open();
       if (isReadOnly)
       {
-        return new SqliteReadOnlyConnectionFactory(connection);
+        return new SqliteReadOnlyConnectionFactory(_source);
       } 
-      return new SqliteReadWriteConnectionFactory( connection );
+      return new SqliteReadWriteConnectionFactory( _source );
     }
     #endregion
 

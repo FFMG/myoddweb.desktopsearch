@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
+using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
 
@@ -22,8 +23,8 @@ namespace myoddweb.desktopsearch.service.Persisters
   {
     public override bool IsReadOnly => true;
 
-    public SqliteReadOnlyConnectionFactory(SQLiteConnection connection) : 
-      base(  connection )
+    public SqliteReadOnlyConnectionFactory( string source ) : 
+      base(  new SQLiteConnection($"Data Source={source};Version=3;Pooling=True;Max Pool Size=100;Read Only=True;") )
     {
     }
 
@@ -48,7 +49,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     protected override DbCommand OnCreateCommand(string sql)
     {
-      return new SQLiteCommand(sql, _sqLiteConnection, null);
+      return new SQLiteCommand(sql, SqLiteConnection, null);
     }
 
   }

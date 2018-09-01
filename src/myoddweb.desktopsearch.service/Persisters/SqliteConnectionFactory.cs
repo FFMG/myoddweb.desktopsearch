@@ -22,23 +22,23 @@ namespace myoddweb.desktopsearch.service.Persisters
 {
   internal abstract class SqliteConnectionFactory : IConnectionFactory
   {
-    protected SQLiteConnection _sqLiteConnection;
+    protected SQLiteConnection SqLiteConnection;
 
     public abstract bool IsReadOnly { get; }
     
-    public IDbConnection Connection => _sqLiteConnection;
+    public IDbConnection Connection => SqLiteConnection;
 
     protected SqliteConnectionFactory(SQLiteConnection connection )
     {
-      _sqLiteConnection = connection ?? throw new ArgumentNullException( nameof(connection));
+      SqLiteConnection = connection ?? throw new ArgumentNullException( nameof(connection));
     }
 
     /// <summary>
     /// Make sure that all the values are correct.
     /// </summary>
-    protected virtual void ThrowIfNotValid()
+    private void ThrowIfNotValid()
     {
-      if (_sqLiteConnection == null)
+      if (SqLiteConnection == null)
       {
         throw new Exception("The database is not open!");
       }
@@ -49,10 +49,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private void CloseAll()
     {
-      Connection.Close();
-      Connection.Dispose();
+      SqLiteConnection.Close();
+      SqLiteConnection.Dispose();
 
-      _sqLiteConnection = null;
+      SqLiteConnection = null;
 
       OnClose();
     }
@@ -61,6 +61,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     public DbCommand CreateCommand(string sql)
     {
       ThrowIfNotValid();
+      if (SqLiteConnection.State != ConnectionState.Open)
+      {
+        SqLiteConnection.Open();
+      }
       return OnCreateCommand(sql);
     }
 
@@ -68,6 +72,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     public virtual void Commit()
     {
       ThrowIfNotValid();
+      OnCommit();
       CloseAll();
     }
 
@@ -75,6 +80,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     public virtual void Rollback()
     {
       ThrowIfNotValid();
+      OnRollback();
       CloseAll();
     }
 

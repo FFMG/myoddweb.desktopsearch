@@ -12,7 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System;
 using System.Data.Common;
 using System.Data.SQLite;
 
@@ -24,46 +23,38 @@ namespace myoddweb.desktopsearch.service.Persisters
     
     public override bool IsReadOnly => false;
 
-    public SqliteReadWriteConnectionFactory(SQLiteConnection connection) :
-      base(connection)
+    public SqliteReadWriteConnectionFactory( string source ) :
+      base( new SQLiteConnection( $"Data Source={source};Version=3;Pooling=True;Max Pool Size=100;" ))
     {
-      _sqLiteTransaction = connection.BeginTransaction();
     }
-    
-    protected override void ThrowIfNotValid()
-    {
-      //  check the base first.
-      base.ThrowIfNotValid();
-
-      // If this is not readonly then we must have a transaction.
-      if (_sqLiteTransaction == null)
-      {
-        throw new Exception("The transaction is not valid.");
-      }
-    }
-
+ 
     /// <inheritdoc />
     protected override void OnCommit()
     {
-      _sqLiteTransaction.Commit();
+      _sqLiteTransaction?.Commit();
     }
 
     /// <inheritdoc />
     protected override void OnRollback()
     {
-      _sqLiteTransaction.Rollback();
+      _sqLiteTransaction?.Rollback();
     }
 
     /// <inheritdoc />
     protected override void OnClose()
     {
+      _sqLiteTransaction?.Dispose();
       _sqLiteTransaction = null;
     }
 
     /// <inheritdoc />
     protected override DbCommand OnCreateCommand(string sql)
     {
-      return new SQLiteCommand(sql, _sqLiteConnection, _sqLiteTransaction);
+      if (_sqLiteTransaction == null)
+      {
+        _sqLiteTransaction = SqLiteConnection.BeginTransaction();
+      }
+      return new SQLiteCommand(sql, SqLiteConnection, _sqLiteTransaction);
     }
   }
 }
