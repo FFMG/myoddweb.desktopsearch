@@ -242,6 +242,12 @@ namespace myoddweb.desktopsearch.processor.Processors
       // we want to remove all the files that are on record but not on file.
       var filesToRemove = helper.File.RelativeComplement(filesOnFile, filesOnRecord);
 
+      // if we have nothing to do... then get out
+      if (!filesToRemove.Any() && !filesToAdd.Any())
+      {
+        return;
+      }
+
       var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
       if (null == transaction)
       {

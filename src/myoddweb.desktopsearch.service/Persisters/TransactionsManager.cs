@@ -13,7 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -39,7 +38,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// This is the write connection factory
     /// We can only have one at a time.
     /// </summary>
-    private IConnectionFactory _transaction;
+    private IConnectionFactory _writeFactory;
 
     private readonly CreateFactory _createFactory;
     #endregion
@@ -79,13 +78,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         // wait for the transaction to no longer be null
         // outside of the lock, (so it can be freed.
-        await helper.Wait.UntilAsync(() => _transaction == null, token).ConfigureAwait(false);
+        await helper.Wait.UntilAsync(() => _writeFactory == null, token).ConfigureAwait(false);
 
         // now trans and create the transaction
         lock (_lock)
         {
           // oops... we didn't get it.
-          if (_transaction != null)
+          if (_writeFactory != null)
           {
             continue;
           }
@@ -93,8 +92,8 @@ namespace myoddweb.desktopsearch.service.Persisters
           // create the connection
           // we were able to get a null transaction
           // ... and we are inside the lock
-          _transaction = _createFactory( false );
-          return _transaction;
+          _writeFactory = _createFactory( false );
+          return _writeFactory;
         }
       }
     }
@@ -108,7 +107,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // we don't need the lock for readonly factories
       if (connectionFactory.IsReadOnly)
       {
-        FinishReadonlyTransaction(connectionFactory);
+        connectionFactory.Rollback();
         return;
       }
 
@@ -117,13 +116,13 @@ namespace myoddweb.desktopsearch.service.Persisters
         // this is not a readonly transaction
         // so if it is not our factory
         // then we have no idea where it comes from.
-        if (connectionFactory != _transaction)
+        if (connectionFactory != _writeFactory)
         {
           throw new ArgumentException("The given transaction was not created by this class");
         }
       }
 
-      if (null == _transaction)
+      if (null == _writeFactory)
       {
         return;
       }
@@ -139,16 +138,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private void RollbackInLock()
     {
-      if (null == _transaction)
+      if (null == _writeFactory)
       {
         return;
       }
 
       // roll back
-      _transaction.Rollback();
+      _writeFactory.Rollback();
 
       // done  with the transaction
-      _transaction = null;
+      _writeFactory = null;
     }
 
     /// <summary>
@@ -160,7 +159,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // we don't need the lock for readonly
       if (connectionFactory.IsReadOnly)
       {
-        FinishReadonlyTransaction(connectionFactory);
+        connectionFactory.Commit();
         return;
       }
 
@@ -168,13 +167,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         // if this is not a readonly factory
         // and this is not our factory, then we do not know where it comes from.
-        if (connectionFactory != _transaction)
+        if (connectionFactory != _writeFactory)
         {
           throw new ArgumentException("The given transaction was not created by this class");
         }
       }
 
-      if (null == _transaction)
+      if (null == _writeFactory)
       {
         return;
       }
@@ -191,24 +190,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     private void CommitInLock()
     {
       // do we actually have anything to do?
-      if (null == _transaction)
+      if (null == _writeFactory)
       {
         return;
       }
 
       // commit 
-      _transaction.Commit();
+      _writeFactory.Commit();
 
       // done  with the transaction
-      _transaction = null;
-    }
-
-    /// <summary>
-    /// Complete the readonly transaction.
-    /// </summary>
-    /// <param name="trans"></param>
-    private void FinishReadonlyTransaction(IConnectionFactory trans)
-    {
+      _writeFactory = null;
     }
   }
 }
