@@ -22,7 +22,6 @@ using System.Reflection;
 using System.ServiceProcess;
 using System.Threading;
 using myoddweb.desktopsearch.http;
-using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.parser;
 using myoddweb.desktopsearch.processor;
@@ -232,12 +231,10 @@ namespace myoddweb.desktopsearch.service
     /// </summary>
     /// <param name="logger"></param>
     /// <param name="config"></param>
-    /// <param name="token"></param>
     /// <returns></returns>
-    private static IPersister CreatePersister(interfaces.Logging.ILogger logger, interfaces.Configs.IConfig config, CancellationToken token )
+    private static IPersister CreatePersister(interfaces.Logging.ILogger logger, interfaces.Configs.IConfig config )
     {
-      var sqlData = config.Database as ConfigSqliteDatabase;
-      if( sqlData != null )
+      if( config.Database is ConfigSqliteDatabase sqlData )
       {
         return new SqlitePersister(logger, sqlData.Source, config.MaxNumCharacters );
       }
@@ -268,7 +265,7 @@ namespace myoddweb.desktopsearch.service
         var token = _cancellationTokenSource.Token;
 
         // the persister
-        var persister = CreatePersister( _logger, config, token);
+        var persister = CreatePersister( _logger, config);
 
         // the directory parser
         var directory = CreateDirectory( _logger, config );
