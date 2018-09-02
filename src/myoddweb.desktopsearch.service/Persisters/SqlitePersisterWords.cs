@@ -78,7 +78,9 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pWord);
 
           var ids = new List<long>(words.Count);
-          var wordsToAdd = new Words();
+
+          // we use a list to allow duplicates.
+          var wordsToAdd = new List<Word>();
           foreach (var word in words)
           {
             pWord.Value = word.Value;
@@ -102,7 +104,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
           
           // finally we need to add all the words that were not found.
-          ids.AddRange( await InsertWordsAsync(wordsToAdd, connectionFactory, token).ConfigureAwait(false));
+          ids.AddRange( await InsertWordsAsync( new Words( wordsToAdd.ToArray() ), connectionFactory, token).ConfigureAwait(false));
 
           // return all the ids we added, (or not).
           return ids;

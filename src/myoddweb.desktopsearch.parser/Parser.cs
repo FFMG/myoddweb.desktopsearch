@@ -498,8 +498,19 @@ namespace myoddweb.desktopsearch.parser
       // wait for the main task itself to complete.
       if (_runningTask != null && !_runningTask.IsCompleted)
       {
-        Task.WaitAll(_runningTask);
-        _runningTask = null;
+        try
+        {
+          Task.WaitAll(_runningTask);
+          _runningTask = null;
+        }
+        catch (OperationCanceledException )
+        {
+          _logger.Warning("Received cancellation request - Parser Stop.");
+        }
+        catch (Exception e)
+        {
+          _logger.Exception(e);
+        }
       }
     }
     #endregion

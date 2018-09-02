@@ -20,6 +20,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
 {
   public class Words : List<Word>
   {
+    #region Contructors
     /// <inheritdoc />
     /// <summary>
     /// Base constructor.
@@ -44,24 +45,122 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// Constructor with a list of words.
     /// </summary>
     /// <param name="words"></param>
-    public Words(Words[] words ) : base( words.Where( w => w != null ).Sum( w => w.Count) )
+    public Words(Words[] words ) : base( words?.Where( w => w != null ).Sum( w => w.Count) ?? 0 )
     {
       // Add all he words into one.
       Add(words);
     }
 
-    public Words(Word[] words) : base( words.Count )
-    {
-      // Add all he words into one.
-
-      Add(words);
-    }
-
-    public Words(IReadOnlyCollection<string> words) : base(words.Count)
+    public Words(Word[] words) : base( words?.Length ?? 0 )
     {
       // Add all he words into one.
       Add(words);
     }
+
+    public Words(IReadOnlyCollection<string> words) : base(words?.Count ?? 0)
+    {
+      // Add all he words into one.
+      Add(words);
+    }
+    #endregion
+
+    #region Public Manipulator
+    /// <summary>
+    /// Add a single word... but not if null.
+    /// </summary>
+    /// <param name="item"></param>
+    public new void Add(Word item)
+    {
+      if (null == item)
+      {
+        return;
+      }
+      base.Add(item);
+
+      // make sure that we don't have duplicates
+      Distinct();
+    }
+
+    /// <summary>
+    /// Add a single string word to our list.
+    /// </summary>
+    /// <param name="word"></param>
+    public void Add(string word)
+    {
+      if (null == word)
+      {
+        return;
+      }
+      Add(new Word(word));
+    }
+
+    /// <summary>
+    /// Join multiple list of words together.
+    /// </summary>
+    /// <param name="words"></param>
+    /// <param name="token"></param>
+    public void Add(Word[] words, CancellationToken token = default(CancellationToken))
+    {
+      var sum = words?.Length ?? Count;
+      if (sum == 0 || words == null)
+      {
+        return;
+      }
+
+      // reset the capacity
+      ResizeCapacity(sum);
+      foreach (var w in words)
+      {
+        // check if we need to get out.
+        token.ThrowIfCancellationRequested();
+
+        // ignore null or empty sets.
+        if (w == null)
+        {
+          continue;
+        }
+
+        // add this item using the base
+        // as we will call distinct() later.
+        base.Add(w);
+      }
+
+      Distinct();
+    }
+
+    /// <summary>
+    /// Join multiple list of words together.
+    /// </summary>
+    /// <param name="words"></param>
+    /// <param name="token"></param>
+    public void Add(IReadOnlyCollection<string> words, CancellationToken token = default(CancellationToken))
+    {
+      var sum = words?.Count ?? 0;
+      if (sum == 0 || words == null)
+      {
+        return;
+      }
+      // reset the capacity
+      ResizeCapacity(sum);
+      foreach (var w in words)
+      {
+        // check if we need to get out.
+        token.ThrowIfCancellationRequested();
+
+        // ignore null or empty sets.
+        if (w == null)
+        {
+          continue;
+        }
+
+        // add this item
+        Add(w);
+      }
+
+      // make suree that the list is distinct
+      Distinct();
+    }
+    #endregion
 
     #region Private Manipulators
     /// <summary>
@@ -69,21 +168,17 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// </summary>
     /// <param name="words"></param>
     /// <param name="token"></param>
-    private void AddAllowDuplicates(Words words, CancellationToken token = default(CancellationToken))
+    private void AddWordsAndAllowDuplicates(Words words, CancellationToken token = default(CancellationToken))
     {
       foreach (var word in words)
       {
         // check if we need to get out.
         token.ThrowIfCancellationRequested();
 
-        // ignore null or empty sets.
-        if (word == null)
-        {
-          continue;
-        }
-
-        // check the union
-        Add(word);
+        // add this word to the list
+        // we should have no nulls from the calling function
+        // we use the base function as we allow duplicates.
+        base.Add(word);
       }
     }
 
@@ -94,8 +189,8 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="token"></param>
     private void Add(Words[] words, CancellationToken token = default(CancellationToken))
     {
-      var sum = words.Where( w=> w != null ).Sum(w => w.Count);
-      if (sum == 0)
+      var sum = words?.Where( w=> w != null ).Sum(w => w.Count) ?? 0;
+      if (sum == 0 || words == null )
       {
         return;
       }
@@ -114,7 +209,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
         }
 
         // check the union
-        AddAllowDuplicates(w, token);
+        AddWordsAndAllowDuplicates(w, token);
       }
 
       // make it distinct
@@ -141,77 +236,5 @@ namespace myoddweb.desktopsearch.interfaces.IO
       Capacity += (newSize - (Capacity - Count));
     }
     #endregion
-
-    /// <summary>
-    /// Add a single string word to our list.
-    /// </summary>
-    /// <param name="word"></param>
-    public void Add(string word)
-    {
-      Add(new Word(word));
-    }
-
-    /// <summary>
-    /// Join multiple list of words together.
-    /// </summary>
-    /// <param name="words"></param>
-    /// <param name="token"></param>
-    public void Add(Word[] words, CancellationToken token = default(CancellationToken))
-    {
-      var sum = words.Count();
-      if (sum == 0)
-      {
-        return;
-      }
-
-      // reset the capacity
-      ResizeCapacity(sum);
-      foreach (var w in words)
-      {
-        // check if we need to get out.
-        token.ThrowIfCancellationRequested();
-
-        // ignore null or empty sets.
-        if (w == null)
-        {
-          continue;
-        }
-
-        // check the union
-        Add(w);
-      }
-
-      Distinct();
-    }
-
-    /// <summary>
-    /// Join multiple list of words together.
-    /// </summary>
-    /// <param name="words"></param>
-    /// <param name="token"></param>
-    public void Add(IReadOnlyCollection<string> words, CancellationToken token = default(CancellationToken))
-    {
-      var sum = words.Count();
-      if (sum == 0)
-      {
-        return;
-      }
-      // reset the capacity
-      ResizeCapacity(sum);
-      foreach (var w in words)
-      {
-        // check if we need to get out.
-        token.ThrowIfCancellationRequested();
-
-        // ignore null or empty sets.
-        if (w == null )
-        {
-          continue;
-        }
-
-        // check the union
-        Add(w);
-      }
-    }
   }
 }
