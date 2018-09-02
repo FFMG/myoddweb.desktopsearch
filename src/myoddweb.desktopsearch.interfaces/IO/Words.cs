@@ -44,13 +44,13 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// Constructor with a list of words.
     /// </summary>
     /// <param name="words"></param>
-    public Words(Words[] words ) : base( words.Sum( w => w.Count) )
+    public Words(Words[] words ) : base( words.Where( w => w != null ).Sum( w => w.Count) )
     {
       // Add all he words into one.
       Add(words);
     }
 
-    public Words(Word[] words) : base( words.Count() )
+    public Words(Word[] words) : base( words.Count )
     {
       // Add all he words into one.
 
@@ -94,7 +94,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="token"></param>
     private void Add(Words[] words, CancellationToken token = default(CancellationToken))
     {
-      var sum = words.Sum(w => w.Count());
+      var sum = words.Where( w=> w != null ).Sum(w => w.Count);
       if (sum == 0)
       {
         return;

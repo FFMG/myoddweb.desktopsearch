@@ -108,7 +108,24 @@ namespace myoddweb.desktopsearch.processor
       // restart the timer.
       _task = _processor.WorkAsync(_token).
         ContinueWith( 
-          task => StartProcessorTimer(Almost(task.Result < _processor.MaxUpdatesToProcess ?  QuietEventsProcessorMs : BusyEventsProcessorMs) ), _token 
+          task =>
+          {
+            if (task.IsFaulted)
+            {
+              if (task.Exception != null)
+              {
+                throw task.Exception;
+              }
+              throw new Exception("There was an exception durring EventsProcessor handling");
+            }
+            if (task.IsCanceled)
+            {
+              throw new OperationCanceledException( _token );
+            }
+            StartProcessorTimer(Almost(task.Result < _processor.MaxUpdatesToProcess
+              ? QuietEventsProcessorMs
+              : BusyEventsProcessorMs));
+          }, _token 
         );
     }
 

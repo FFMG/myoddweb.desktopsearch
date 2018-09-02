@@ -76,6 +76,16 @@ namespace myoddweb.desktopsearch.parser.text
           }
         }
       }
+      catch (OperationCanceledException )
+      {
+        logger.Warning("Received cancellation request - Text parser");
+        throw;
+      }
+      catch (IOException)
+      {
+        logger.Error($"IO error trying to read the file, {file.FullName}, might be locked/protected.");
+        return null;
+      }
       catch (OutOfMemoryException)
       {
         logger.Error($"Out of Memory: reading file, {file.FullName}");
