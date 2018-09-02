@@ -57,12 +57,12 @@ namespace myoddweb.desktopsearch.processor
       _timers = new List<ProcessorTimer>();
       for( var i = 0; i < config.ConcurrentDirectoriesProcessor; ++i)
       {
-        _timers.Add( new ProcessorTimer(new Folders(persister, logger, directory), config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
+        _timers.Add( new ProcessorTimer(new Folders(persister, logger, directory), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
       }
 
       for (var i = 0; i < config.ConcurrentFilesProcessor; ++i)
       {
-        _timers.Add( new ProcessorTimer(new Files( config.UpdatesPerFilesEvent, fileParsers, persister, logger), config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
+        _timers.Add( new ProcessorTimer(new Files( config.UpdatesPerFilesEvent, fileParsers, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
       }
     }
 

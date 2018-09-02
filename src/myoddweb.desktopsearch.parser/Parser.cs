@@ -14,7 +14,6 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -448,7 +447,7 @@ namespace myoddweb.desktopsearch.parser
     {
       if (_runningTask != null && !_runningTask.IsCompleted)
       {
-        Task.WaitAll(_runningTask);
+        helper.Wait.WaitAll(_runningTask, _logger, token );
         _runningTask = null;
       }
       _runningTask = WorkAsync(token);
@@ -498,19 +497,8 @@ namespace myoddweb.desktopsearch.parser
       // wait for the main task itself to complete.
       if (_runningTask != null && !_runningTask.IsCompleted)
       {
-        try
-        {
-          Task.WaitAll(_runningTask);
-          _runningTask = null;
-        }
-        catch (OperationCanceledException )
-        {
-          _logger.Warning("Received cancellation request - Parser Stop.");
-        }
-        catch (Exception e)
-        {
-          _logger.Exception(e);
-        }
+        helper.Wait.WaitAll(_runningTask, _logger);
+        _runningTask = null;
       }
     }
     #endregion

@@ -13,8 +13,11 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.helper
 {
@@ -30,6 +33,83 @@ namespace myoddweb.desktopsearch.helper
     private Wait()
     {
 
+    }
+
+    public static async Task<T[]> WhenAll<T>(IReadOnlyCollection<Task<T>> tasks, ILogger logger, CancellationToken token = default(CancellationToken))
+    {
+      var task = Task.WhenAll<T>(tasks.ToArray());
+      T[] results = null;
+      try
+      {
+        results = await task.ConfigureAwait(false);
+      }
+      catch
+      {
+        // ignore the error as we will get it from task
+      }
+
+      if (task.Exception != null)
+      {
+        LogAggregateException(task.Exception, logger, token);
+      }
+
+      return results;
+    }
+
+    public static void WaitAll(Task task, ILogger logger, CancellationToken token = default(CancellationToken))
+    {
+      WaitAll(new List<Task> {task}, logger, token);
+    }
+
+    public static void WaitAll(IReadOnlyCollection<Task> tasks, ILogger logger, CancellationToken token = default(CancellationToken) )
+    {
+      try
+      {
+        Task.WaitAll(tasks.ToArray());
+      }
+      catch (AggregateException ae)
+      {
+        LogAggregateException(ae, logger, token );
+      }
+      catch (Exception e)
+      {
+        logger.Exception(e);
+      }
+    }
+
+    /// <summary>
+    /// Log an agregate exception
+    /// </summary>
+    /// <param name="ae"></param>
+    /// <param name="logger"></param>
+    /// <param name="token"></param>
+    internal static void LogAggregateException(AggregateException ae, ILogger logger, CancellationToken token )
+    {
+      ae.Handle(e =>
+      {
+        switch (e)
+        {
+          case OperationCanceledException oc when oc.CancellationToken == token:
+            // just log the message.
+            logger.Warning("Received cancellation request - Waiting for task to complete.");
+
+            // we handled it, no error to log, it was just a cancellation request.
+            return true;
+
+          case TaskCanceledException tc when tc.CancellationToken == token:
+            // just log the message.
+            logger.Warning("Received cancellation request - Waiting for task to complete.");
+
+            // we handled it, no error to log, it was just a cancellation request.
+            return true;
+        }
+
+        // otherwise just log it.
+        logger.Exception(e);
+
+        // we handled it.
+        return true;
+      });
     }
 
     /// <summary>

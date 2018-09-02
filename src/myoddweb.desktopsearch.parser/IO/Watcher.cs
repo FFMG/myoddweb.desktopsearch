@@ -372,7 +372,7 @@ namespace myoddweb.desktopsearch.parser.IO
             // Log that we are stopping the tasks.
             Logger.Verbose($"Waiting for {_tasks.Count} tasks to complete in the Watcher.");
 
-            Task.WaitAll(_tasks.ToArray(), _token);
+            helper.Wait.WaitAll(_tasks, Logger, _token);
 
             // done 
             Logger.Verbose("Done.");

@@ -14,7 +14,6 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -246,7 +245,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
 
       // wait for all the parsers to do their work
-      var totalWords = await Task.WhenAll( tasks.ToArray() ).ConfigureAwait(false);
+      var totalWords = await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
 
       // merge them all into one.
       return new CompletedPendingFileUpdate(pendingFileUpdate, new Words(totalWords));

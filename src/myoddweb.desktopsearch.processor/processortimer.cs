@@ -16,6 +16,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.processor
 {
@@ -54,9 +55,14 @@ namespace myoddweb.desktopsearch.processor
     /// this is the amount of time between processing we want to wai.t
     /// </summary>
     private int BusyEventsProcessorMs { get; }
+
+    /// <summary>
+    /// The logger.
+    /// </summary>
+    private readonly ILogger _logger;
     #endregion
 
-    public ProcessorTimer(IProcessor processor, int quietEventsProcessorMs, int busyEventsProcessorMs)
+    public ProcessorTimer(IProcessor processor, ILogger logger, int quietEventsProcessorMs, int busyEventsProcessorMs)
     {
       QuietEventsProcessorMs = quietEventsProcessorMs;
       BusyEventsProcessorMs = busyEventsProcessorMs;
@@ -73,6 +79,7 @@ namespace myoddweb.desktopsearch.processor
         throw new ArgumentException($"The busy event processor timer cannot be more than the quiet event processor timer ({QuietEventsProcessorMs} < {BusyEventsProcessorMs})");
       }
       _processor = processor ?? throw new ArgumentNullException(nameof(processor));
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     #region Events Process Timer
@@ -110,18 +117,21 @@ namespace myoddweb.desktopsearch.processor
         ContinueWith( 
           task =>
           {
-            if (task.IsFaulted)
-            {
-              if (task.Exception != null)
-              {
-                throw task.Exception;
-              }
-              throw new Exception("There was an exception durring EventsProcessor handling");
-            }
+            // if the operation was cancelled, no point going further.
             if (task.IsCanceled)
             {
-              throw new OperationCanceledException( _token );
+              _logger.Warning("Received cancellation request - Processor timer.");
+              throw new OperationCanceledException(_token);
             }
+
+            // if it was faulted, just log the error.
+            // and restart the timer again.
+            if (task.IsFaulted)
+            {
+              _logger.Exception(task.Exception ?? 
+                                new Exception("There was an exception durring EventsProcessor handling"));
+            }
+
             StartProcessorTimer(Almost(task.Result < _processor.MaxUpdatesToProcess
               ? QuietEventsProcessorMs
               : BusyEventsProcessorMs));

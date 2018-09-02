@@ -471,7 +471,7 @@ namespace myoddweb.desktopsearch.parser.IO
             Logger.Verbose($"Waiting for {_tasks.Count} tasks to complete in the File System Events Timer.");
 
             // then wait...
-            Task.WaitAll(_tasks.ToArray(), _token);
+            helper.Wait.WaitAll(_tasks, Logger, _token);
 
             // done 
             Logger.Verbose("Done.");

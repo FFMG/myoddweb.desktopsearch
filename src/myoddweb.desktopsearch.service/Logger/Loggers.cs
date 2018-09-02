@@ -73,6 +73,18 @@ namespace myoddweb.desktopsearch.service.Logger
     /// <inheritdoc />
     public void Exception(Exception ex)
     {
+      if (ex is AggregateException ae )
+      {
+        ae.Handle( e => 
+        {
+          //  handle it
+          Exception( e );
+
+          // we handled it.
+          return true;
+        });
+        return;
+      }
       while (true)
       {
         Error(ex.ToString());

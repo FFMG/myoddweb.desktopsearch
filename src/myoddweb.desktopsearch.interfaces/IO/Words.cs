@@ -222,8 +222,13 @@ namespace myoddweb.desktopsearch.interfaces.IO
     private void Distinct()
     {
       var distinct = this.Distinct(new WordEqualityComparer()).ToArray();
+      if (distinct.Length == Count)
+      {
+        // nothing changed ... it is already distinct.
+        return;
+      }
       Clear();
-      Capacity = distinct.Count();
+      Capacity = distinct.Length;
       AddRange( distinct );
     }
     
