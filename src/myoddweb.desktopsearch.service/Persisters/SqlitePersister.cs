@@ -107,9 +107,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       if (isReadOnly)
       {
-        return new SqliteReadOnlyConnectionFactory(_source);
+        return new SqliteReadOnlyConnectionFactory(_source, _logger);
       } 
-      return new SqliteReadWriteConnectionFactory( _source );
+      return new SqliteReadWriteConnectionFactory( _source, _logger);
     }
     #endregion
 

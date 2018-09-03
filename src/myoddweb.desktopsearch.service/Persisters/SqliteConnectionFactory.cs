@@ -16,6 +16,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 using Exception = System.Exception;
 
@@ -38,12 +39,19 @@ namespace myoddweb.desktopsearch.service.Persisters
     public IDbConnection Connection => SqLiteConnection;
 
     /// <summary>
+    /// Our logger.
+    /// </summary>
+    private readonly ILogger _logger;
+
+    /// <summary>
     /// Derived classes need to pass an active connection.
     /// </summary>
     /// <param name="connection"></param>
-    protected SqliteConnectionFactory(SQLiteConnection connection )
+    /// <param name="logger"></param>
+    protected SqliteConnectionFactory(SQLiteConnection connection, ILogger logger )
     {
       SqLiteConnection = connection ?? throw new ArgumentNullException( nameof(connection));
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -62,15 +70,32 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private void CloseAll()
     {
+      try
+      {
+        // the database is about to close allow the derived
+        // classes to perform ppre closing
+        OnClosed();
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+      }
+
       // close the connection.
       SqLiteConnection.Close();
       SqLiteConnection.Dispose();
-
       SqLiteConnection = null;
 
-      // the database is closed allow the derived
-      // classes to perform post closing
-      OnClosed();
+      try
+      {
+        // the database is closed allow the derived
+        // classes to perform post closing
+        OnClosed();
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+      }
     }
 
     /// <inheritdoc />
@@ -116,6 +141,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// The database is now closed, the derived classes can do some final cleanup.
     /// </summary>
     protected abstract void OnClosed();
+
+    /// <summary>
+    /// The database is about to close.
+    /// </summary>
+    protected abstract void OnClose();
 
     /// <summary>
     /// Create a command

@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Data.Common;
 using System.Data.SQLite;
+using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
@@ -23,8 +24,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     
     public override bool IsReadOnly => false;
 
-    public SqliteReadWriteConnectionFactory( string source ) :
-      base( new SQLiteConnection( $"Data Source={source};Version=3;Pooling=True;Max Pool Size=100;" ))
+    public SqliteReadWriteConnectionFactory( string source, ILogger logger) :
+      base( new SQLiteConnection( $"Data Source={source};Version=3;Pooling=True;Max Pool Size=100;" ), logger)
     {
     }
  
@@ -42,6 +43,12 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     /// <inheritdoc />
     protected override void OnClosed()
+    {
+      //  we do nothing
+    }
+
+    /// <inheritdoc />
+    protected override void OnClose()
     {
       // the database is closed, all we can do now is dispose of the transaction.
       _sqLiteTransaction?.Dispose();
