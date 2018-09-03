@@ -17,17 +17,30 @@ using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using Exception = System.Exception;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
+  /// <summary>
+  /// Connection factory to manage the SQLite connections.
+  /// </summary>
   internal abstract class SqliteConnectionFactory : IConnectionFactory
   {
+    /// <summary>
+    /// The current SQLite connection.
+    /// </summary>
     protected SQLiteConnection SqLiteConnection;
 
+    /// <inheritdoc />
     public abstract bool IsReadOnly { get; }
-    
+
+    /// <inheritdoc />
     public IDbConnection Connection => SqLiteConnection;
 
+    /// <summary>
+    /// Derived classes need to pass an active connection.
+    /// </summary>
+    /// <param name="connection"></param>
     protected SqliteConnectionFactory(SQLiteConnection connection )
     {
       SqLiteConnection = connection ?? throw new ArgumentNullException( nameof(connection));
@@ -49,12 +62,15 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private void CloseAll()
     {
+      // close the connection.
       SqLiteConnection.Close();
       SqLiteConnection.Dispose();
 
       SqLiteConnection = null;
 
-      OnClose();
+      // the database is closed allow the derived
+      // classes to perform post closing
+      OnClosed();
     }
 
     /// <inheritdoc />
@@ -72,24 +88,52 @@ namespace myoddweb.desktopsearch.service.Persisters
     public virtual void Commit()
     {
       ThrowIfNotValid();
-      OnCommit();
-      CloseAll();
+      try
+      {
+        OnCommit();
+      }
+      finally 
+      {
+        CloseAll();
+      }
     }
 
     /// <inheritdoc />
     public virtual void Rollback()
     {
       ThrowIfNotValid();
-      OnRollback();
-      CloseAll();
+      try
+      {
+        OnRollback();
+      }
+      finally
+      {
+        CloseAll();
+      }
     }
 
-    protected abstract void OnClose();
+    /// <summary>
+    /// The database is now closed, the derived classes can do some final cleanup.
+    /// </summary>
+    protected abstract void OnClosed();
 
+    /// <summary>
+    /// Create a command
+    /// </summary>
+    /// <param name="sql"></param>
+    /// <returns></returns>
     protected abstract DbCommand OnCreateCommand(string sql);
 
+    /// <summary>
+    /// Derived classes can now roll back the transaction
+    /// We will close the connection afterward.
+    /// </summary>
     protected abstract void OnRollback();
 
+    /// <summary>
+    /// Derived classes can now commit the transaction
+    /// We will close the connection afterward.
+    /// </summary>
     protected abstract void OnCommit();
   }
 }

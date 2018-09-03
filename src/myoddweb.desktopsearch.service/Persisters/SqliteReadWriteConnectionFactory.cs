@@ -41,8 +41,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    protected override void OnClose()
+    protected override void OnClosed()
     {
+      // the database is closed, all we can do now is dispose of the transaction.
       _sqLiteTransaction?.Dispose();
       _sqLiteTransaction = null;
     }

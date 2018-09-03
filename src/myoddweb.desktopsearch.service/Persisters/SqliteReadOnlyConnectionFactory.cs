@@ -39,7 +39,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    protected override void OnClose()
+    protected override void OnClosed()
     {
       //  we do nothing
     }

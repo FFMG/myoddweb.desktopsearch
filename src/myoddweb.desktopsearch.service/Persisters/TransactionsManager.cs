@@ -143,11 +143,18 @@ namespace myoddweb.desktopsearch.service.Persisters
         return;
       }
 
-      // roll back
-      _writeFactory.Rollback();
+      try
+      {
+        // try and roll back
+        _writeFactory.Rollback();
 
-      // done  with the transaction
-      _writeFactory = null;
+      }
+      finally 
+      {
+        // whatever happens, we are done with the transaction
+        // it is up to the factory to catch/handle any issues.
+        _writeFactory = null;
+      }
     }
 
     /// <summary>
@@ -195,11 +202,17 @@ namespace myoddweb.desktopsearch.service.Persisters
         return;
       }
 
-      // commit 
-      _writeFactory.Commit();
-
-      // done  with the transaction
-      _writeFactory = null;
+      try
+      {
+        // try and commit 
+        _writeFactory.Commit();
+      }
+      finally 
+      {
+        // whatever happens, we are done with the transaction
+        // it is up to the factory to catch/handle any issues.
+        _writeFactory = null;
+      }
     }
   }
 }
