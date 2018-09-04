@@ -13,8 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Data;
-using System.Data.Common;
 using System.Data.SQLite;
 using System.IO;
 using System.Threading;
@@ -230,7 +228,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         using (var command = connectionFactory.CreateCommand(sql))
         {
-          await ExecuteNonQueryAsync(command, CancellationToken.None).ConfigureAwait(false);
+          await connectionFactory.ExecuteWriteAsync(command, CancellationToken.None).ConfigureAwait(false);
         }
         return true;
       }
@@ -241,145 +239,6 @@ namespace myoddweb.desktopsearch.service.Persisters
 
         // did not work.
         return false;
-      }
-    }
-    #endregion
-
-    #region Fix DBCommand Cancellation issues
-    /// <summary>
-    /// Create a cancelled task
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
-    private static Task<T> CreatedTaskWithCancellation<T>()
-    {
-      var completion = new TaskCompletionSource<T>();
-      completion.SetCanceled();
-      return completion.Task;
-    }
-
-    private static Task<T> CreatedTaskWithException<T>(Exception ex)
-    {
-      var completion = new TaskCompletionSource<T>();
-      completion.SetException(ex);
-      return completion.Task;
-    }
-
-    /// <summary>
-    /// Try and cancel the current command.
-    /// </summary>
-    /// <param name="command"></param>
-    private static void CancelIgnoreFailure(IDbCommand command)
-    {
-      try
-      {
-        command.Cancel();
-      }
-      catch (Exception)
-      {
-        // ignored
-      }
-    }
-
-    /// <summary>
-    /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
-    /// @see https://github.com/dotnet/corefx/commit/297fcc33db4e65287455f6575684f24975688b53
-    /// </summary>
-    /// <param name="command"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    protected static Task<object> ExecuteScalarAsync(DbCommand command, CancellationToken cancellationToken)
-    {
-      if (cancellationToken.IsCancellationRequested)
-      {
-        return CreatedTaskWithCancellation<object>();
-      }
-
-      var register = new CancellationTokenRegistration();
-      if (cancellationToken.CanBeCanceled)
-      {
-        register = cancellationToken.Register(() => CancelIgnoreFailure(command));
-      }
-
-      try
-      {
-        return Task.FromResult(command.ExecuteScalar());
-      }
-      catch (Exception e )
-      {
-        return CreatedTaskWithException<object>(e);
-      }
-      finally
-      {
-        register.Dispose();
-      }
-    }
-
-    /// <summary>
-    /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
-    /// @see https://github.com/dotnet/corefx/commit/297fcc33db4e65287455f6575684f24975688b53
-    /// </summary>
-    /// <param name="command"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    protected static Task<DbDataReader> ExecuteReaderAsync(DbCommand command, CancellationToken cancellationToken)
-    {
-      if (cancellationToken.IsCancellationRequested)
-      {
-        return CreatedTaskWithCancellation<DbDataReader>();
-      }
-
-      var register = new CancellationTokenRegistration();
-      if (cancellationToken.CanBeCanceled)
-      {
-        register = cancellationToken.Register(() => CancelIgnoreFailure(command));
-      }
-
-      try
-      {
-        return Task.FromResult(command.ExecuteReader());
-      }
-      catch (Exception e)
-      {
-        return CreatedTaskWithException<DbDataReader>(e);
-      }
-      finally
-      {
-        register.Dispose();
-      }
-    }
-
-    /// <summary>
-    /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
-    /// @see https://github.com/dotnet/corefx/commit/297fcc33db4e65287455f6575684f24975688b53
-    /// </summary>
-    /// <param name="command"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns>The return value is the number of rows affected by the command</returns>
-    protected static Task<int> ExecuteNonQueryAsync(DbCommand command, CancellationToken cancellationToken)
-    {
-      if (cancellationToken.IsCancellationRequested)
-      {
-        return CreatedTaskWithCancellation<int>();
-      }
-
-      var register = new CancellationTokenRegistration();
-      if (cancellationToken.CanBeCanceled)
-      {
-        register = cancellationToken.Register( () => CancelIgnoreFailure(command) );
-      }
-
-      try
-      {
-        return Task.FromResult(command.ExecuteNonQuery());
-      }
-      catch (Exception e)
-      {
-        return CreatedTaskWithException<int>(e);
-      }
-      finally
-      {
-        register.Dispose();
       }
     }
     #endregion

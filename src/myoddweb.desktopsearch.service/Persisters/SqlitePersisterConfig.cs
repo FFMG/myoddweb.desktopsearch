@@ -35,7 +35,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
         pName.Value = name;
 
-        var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+        var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
         if (null == value || value == DBNull.Value)
         {
           return defaultValue;
@@ -73,7 +73,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         pName.Value = name;
         pValue.Value = stringValue;
 
-        return 0 != await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false);
+        return 0 != await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false);
       }
     }
 

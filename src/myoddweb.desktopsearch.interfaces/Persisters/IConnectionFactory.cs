@@ -12,10 +12,10 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
-using System;
 using System.Data;
 using System.Data.Common;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
@@ -37,6 +37,34 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="sql"></param>
     /// <returns></returns>
     DbCommand CreateCommand( string sql );
+
+    /// <summary>
+    /// Execute a write command, open the db connection if needed.
+    /// </summary>
+    /// <param name="command"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task<int> ExecuteWriteAsync(IDbCommand command, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Execute a read command.
+    /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
+    /// @see https://github.com/dotnet/corefx/commit/297fcc33db4e65287455f6575684f24975688b53
+    /// </summary>
+    /// <param name="command"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task<IDataReader> ExecuteReadAsync(IDbCommand command, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Executes the query, and returns the first column of the first row in the result set returned by the query. Additional columns or rows are ignored.
+    /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
+    /// @see https://github.com/dotnet/corefx/commit/297fcc33db4e65287455f6575684f24975688b53
+    /// </summary>
+    /// <param name="command"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task<object> ExecuteReadOneAsync(IDbCommand command, CancellationToken cancellationToken);
 
     /// <summary>
     /// Commit a transaction, (and close the transaction)

@@ -340,7 +340,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sql = $"SELECT name FROM sqlite_master WHERE type='table' AND name='{name}';";
       using (var command = connectionFactory.CreateCommand(sql))
       {
-        var reader = command.ExecuteReader();
+        var reader = connectionFactory.ExecuteReadAsync( command, default(CancellationToken)).Result;
         try
         {
           while (reader.Read())

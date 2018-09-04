@@ -16,6 +16,8 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
+using System.Threading;
+using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 using myoddweb.desktopsearch.service.Configs;
@@ -39,12 +41,17 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           return _connection;
         }
-        var connectionString  = $"Data Source={_config.Source};Version=3;PRAGMA journal_mode=WAL;Pooling=True;Max Pool Size=100;";
+        var connectionString  = $"Data Source={_config.Source};Version=3;Pooling=True;Max Pool Size=100;";
         if (IsReadOnly)
         {
           connectionString += "Read Only=True;";
         }
         _connection = new SQLiteConnection( connectionString);
+
+        // we now have a connection, if we want to support Write-Ahead Logging then we do it now.
+        // @see https://www.sqlite.org/wal.html
+        // we call a read function ... so no transactions are created... yet.
+        ExecuteReadOneAsync(CreateCommand("PRAGMA journal_mode=WAL;"), default(CancellationToken)).Wait();
         return _connection;
       }
     }
@@ -92,6 +99,19 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
+    #region Open/Close
+    /// <summary>
+    /// Open the database if needed.
+    /// </summary>
+    private void OpenIfNeeded()
+    {
+      if (SqLiteConnection.State == ConnectionState.Open)
+      {
+        return;
+      }
+      SqLiteConnection.Open();
+    }
+
     /// <summary>
     /// Close the connection and get rid of the transaction
     /// </summary>
@@ -124,16 +144,179 @@ namespace myoddweb.desktopsearch.service.Persisters
         _logger.Exception(e);
       }
     }
+    #endregion 
+
+    #region Fix DBCommand Cancellation issues
+    /// <summary>
+    /// Create a cancelled task
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    private static Task<T> CreatedTaskWithCancellation<T>()
+    {
+      var completion = new TaskCompletionSource<T>();
+      completion.SetCanceled();
+      return completion.Task;
+    }
+
+    private static Task<T> CreatedTaskWithException<T>(Exception ex)
+    {
+      var completion = new TaskCompletionSource<T>();
+      completion.SetException(ex);
+      return completion.Task;
+    }
+
+    /// <summary>
+    /// Try and cancel the current command.
+    /// </summary>
+    /// <param name="command"></param>
+    private static void CancelIgnoreFailure(IDbCommand command)
+    {
+      try
+      {
+        command.Cancel();
+      }
+      catch (Exception)
+      {
+        // ignored
+      }
+    }
+
+    /// <summary>
+    /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
+    /// @see https://github.com/dotnet/corefx/commit/297fcc33db4e65287455f6575684f24975688b53
+    /// </summary>
+    /// <param name="command"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns>The return value is the number of rows affected by the command</returns>
+    private static Task<int> ExecuteNonQueryAsync(IDbCommand command, CancellationToken cancellationToken)
+    {
+      if (cancellationToken.IsCancellationRequested)
+      {
+        return CreatedTaskWithCancellation<int>();
+      }
+
+      var register = new CancellationTokenRegistration();
+      if (cancellationToken.CanBeCanceled)
+      {
+        register = cancellationToken.Register(() => CancelIgnoreFailure(command));
+      }
+
+      try
+      {
+        return Task.FromResult(command.ExecuteNonQuery());
+      }
+      catch (Exception e)
+      {
+        return CreatedTaskWithException<int>(e);
+      }
+      finally
+      {
+        register.Dispose();
+      }
+    }
+
+    /// <summary>
+    /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
+    /// @see https://github.com/dotnet/corefx/commit/297fcc33db4e65287455f6575684f24975688b53
+    /// </summary>
+    /// <param name="command"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    private static Task<IDataReader> ExecuteReaderAsync(IDbCommand command, CancellationToken cancellationToken)
+    {
+      if (cancellationToken.IsCancellationRequested)
+      {
+        return CreatedTaskWithCancellation<IDataReader>();
+      }
+
+      var register = new CancellationTokenRegistration();
+      if (cancellationToken.CanBeCanceled)
+      {
+        register = cancellationToken.Register(() => CancelIgnoreFailure(command));
+      }
+
+      try
+      {
+        return Task.FromResult(command.ExecuteReader());
+      }
+      catch (Exception e)
+      {
+        return CreatedTaskWithException<IDataReader>(e);
+      }
+      finally
+      {
+        register.Dispose();
+      }
+    }
+
+    /// <summary>
+    /// @see https://github.com/Microsoft/referencesource/blob/master/System.Data/System/Data/Common/DBCommand.cs
+    /// @see https://github.com/dotnet/corefx/commit/297fcc33db4e65287455f6575684f24975688b53
+    /// </summary>
+    /// <param name="command"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    protected static Task<object> ExecuteScalarAsync(IDbCommand command, CancellationToken cancellationToken)
+    {
+      if (cancellationToken.IsCancellationRequested)
+      {
+        return CreatedTaskWithCancellation<object>();
+      }
+
+      var register = new CancellationTokenRegistration();
+      if (cancellationToken.CanBeCanceled)
+      {
+        register = cancellationToken.Register(() => CancelIgnoreFailure(command));
+      }
+
+      try
+      {
+        return Task.FromResult(command.ExecuteScalar());
+      }
+      catch (Exception e)
+      {
+        return CreatedTaskWithException<object>(e);
+      }
+      finally
+      {
+        register.Dispose();
+      }
+    }
+    #endregion
 
     /// <inheritdoc />
     public DbCommand CreateCommand(string sql)
     {
       ThrowIfNotValid();
-      if (SqLiteConnection.State != ConnectionState.Open)
-      {
-        SqLiteConnection.Open();
-      }
       return OnCreateCommand(sql);
+    }
+
+    /// <inheritdoc />
+    public async Task<int> ExecuteWriteAsync(IDbCommand command, CancellationToken cancellationToken)
+    {
+      ThrowIfNotValid();
+      OpenIfNeeded();
+      PepareForWrite();
+      return await ExecuteNonQueryAsync(command, cancellationToken).ConfigureAwait( false );
+    }
+
+    /// <inheritdoc />
+    public async Task<IDataReader> ExecuteReadAsync(IDbCommand command, CancellationToken cancellationToken)
+    {
+      ThrowIfNotValid();
+      OpenIfNeeded();
+      PepareForRead();
+      return await ExecuteReaderAsync(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<object> ExecuteReadOneAsync(IDbCommand command, CancellationToken cancellationToken)
+    {
+      ThrowIfNotValid();
+      OpenIfNeeded();
+      PepareForRead();
+      return await ExecuteScalarAsync(command, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -164,6 +347,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
+    #region Abstract Functions
     /// <summary>
     /// The database is now closed, the derived classes can do some final cleanup.
     /// </summary>
@@ -192,5 +376,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// We will close the connection afterward.
     /// </summary>
     protected abstract void OnCommit();
+
+    /// <summary>
+    /// Give derived classes a chance to get ready for a read
+    /// </summary>
+    protected abstract void PepareForRead();
+
+    /// <summary>
+    /// Give derived classes a chance to get ready for a write
+    /// </summary>
+    protected abstract void PepareForWrite();
+    #endregion
   }
 }

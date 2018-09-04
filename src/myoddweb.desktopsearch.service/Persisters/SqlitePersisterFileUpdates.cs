@@ -105,7 +105,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             pId.Value = fileId;
             pType.Value = (long) type;
             pTicks.Value = DateTime.UtcNow.Ticks;
-            if (0 == await ExecuteNonQueryAsync( cmd, token).ConfigureAwait(false))
+            if (0 == await connectionFactory.ExecuteWriteAsync( cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding file the file update: {fileId} to persister");
               return false;
@@ -181,7 +181,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             cmd.Parameters["@id"].Value = fileId;
 
             // this could return 0 if the row has already been processed
-            await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false);
+            await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false);
           }
         }
         catch (OperationCanceledException)
@@ -218,7 +218,7 @@ namespace myoddweb.desktopsearch.service.Persisters
                  $"WHERE f.id = fu.fileid and fo.id = f.folderid ORDER BY fu.ticks DESC LIMIT {limit}";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
-          var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
+          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
           while (reader.Read())
           {
             // get out if needed.
@@ -241,7 +241,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           sql = $"SELECT fileid, type FROM {TableFileUpdates} WHERE type={(int)UpdateType.Deleted} ORDER BY ticks DESC LIMIT {limit - pendingUpdates.Count}";
           using (var cmd = connectionFactory.CreateCommand(sql))
           {
-            var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
+            var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
             while (reader.Read())
             {
               // get out if needed.

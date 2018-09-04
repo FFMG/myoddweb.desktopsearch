@@ -84,7 +84,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           foreach (var word in words)
           {
             pWord.Value = word.Value;
-            var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+            var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
             if (null != value && value != DBNull.Value)
             {
               // get the path id.
@@ -165,7 +165,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             pId.Value = nextId;
             pWord.Value = word.Value;
-            if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding word: {word.Value} to persister");
               continue;
@@ -230,7 +230,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             // the words are case sensitive
             pWord.Value = word.Value;
-            if (null != await ExecuteScalarAsync(cmd, token).ConfigureAwait(false))
+            if (null != await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false))
             {
               continue;
             }
@@ -268,7 +268,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           // get out if needed.
           token.ThrowIfCancellationRequested();
 
-          var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
 
           // does not exist ...
           if (null == value || value == DBNull.Value)

@@ -74,7 +74,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           // try and replace path1 with path2
           pPath1.Value = directory.FullName.ToLowerInvariant();
           pPath2.Value = oldDirectory.FullName.ToLowerInvariant();
-          if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+          if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
           {
             // we could not rename it, this could be because of an error
             // or because the old path simply does not exist.
@@ -158,7 +158,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             // then do the actual delete.
             pPath.Value = directory.FullName.ToLowerInvariant();
-            if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Warning($"Could not delete folder: {directory.FullName}, does it still exist?");
             }
@@ -212,7 +212,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters["@id"].Value = directoryId;
 
           // get the path
-          var path = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+          var path = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
           if (null == path || path == DBNull.Value)
           {
             return null;
@@ -241,7 +241,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sql = $"SELECT max(id) from {TableFolders};";
       using (var cmd = connectionFactory.CreateCommand(sql))
       {
-        var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+        var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
         if (null == value || value == DBNull.Value)
         {
           return 0;
@@ -307,7 +307,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         foreach (var directory in directories)
         {
           pPath.Value = directory.FullName.ToLowerInvariant();
-          var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
           if (null != value && value != DBNull.Value)
           {
             // get the path id.
@@ -377,7 +377,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             pId.Value = nextId;
             pPath.Value = directory.FullName.ToLowerInvariant();
-            if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding folder: {directory.FullName} to persister");
               continue;
@@ -445,7 +445,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             cmd.Parameters["@path"].Value = directory.FullName.ToLowerInvariant();
-            if (null != await ExecuteScalarAsync(cmd, token).ConfigureAwait(false))
+            if (null != await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false))
             {
               continue;
             }

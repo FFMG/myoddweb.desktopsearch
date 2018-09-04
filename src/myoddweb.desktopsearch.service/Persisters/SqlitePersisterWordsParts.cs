@@ -89,7 +89,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           ppId.Value = part;
 
-          if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+          if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
           {
             _logger.Error($"There was an issue deleting part from word: {part}/{wordId} to persister");
           }
@@ -135,7 +135,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           ppId.Value = part;
 
-          if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+          if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
           {
             _logger.Error($"There was an issue adding part to word: {part}/{wordId} to persister");
           }
@@ -166,7 +166,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           // set the folder id.
           pId.Value = wordId;
-          var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
+          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
           while (reader.Read())
           {
             // get out if needed.

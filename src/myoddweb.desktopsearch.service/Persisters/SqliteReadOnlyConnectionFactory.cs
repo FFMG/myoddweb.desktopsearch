@@ -12,6 +12,8 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using System.Data.Common;
 using System.Data.SQLite;
 using myoddweb.desktopsearch.interfaces.Logging;
@@ -53,10 +55,22 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
+    protected override void PepareForRead()
+    {
+      //  nothing to do.
+    }
+
+    /// <inheritdoc />
+    protected override void PepareForWrite()
+    {
+      // we cannot write anything ... 
+      throw new InvalidOperationException( "This is a read only operation!");
+    }
+
+    /// <inheritdoc />
     protected override DbCommand OnCreateCommand(string sql)
     {
       return new SQLiteCommand(sql, SqLiteConnection, null);
     }
-
   }
 }

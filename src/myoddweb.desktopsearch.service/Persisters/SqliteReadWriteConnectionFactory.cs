@@ -57,12 +57,23 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    protected override DbCommand OnCreateCommand(string sql)
+    protected override void PepareForRead()
+    {
+      //  nothing to do.
+    }
+
+    /// <inheritdoc />
+    protected override void PepareForWrite()
     {
       if (_sqLiteTransaction == null)
       {
         _sqLiteTransaction = SqLiteConnection.BeginTransaction();
       }
+    }
+
+    /// <inheritdoc />
+    protected override DbCommand OnCreateCommand(string sql)
+    {
       return new SQLiteCommand(sql, SqLiteConnection, _sqLiteTransaction);
     }
   }

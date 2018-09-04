@@ -154,7 +154,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
         }
 
         // add this item
-        base.Add(new Word(w)));
+        base.Add(new Word(w));
       }
 
       // make suree that the list is distinct

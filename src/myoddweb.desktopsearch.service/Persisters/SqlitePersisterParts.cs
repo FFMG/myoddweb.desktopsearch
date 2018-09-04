@@ -82,7 +82,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             pId.Value = nextId;
             pIPart.Value = part;
 
-            if (0 == await ExecuteNonQueryAsync(cmdInsert, token).ConfigureAwait(false))
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding part: {part} to persister");
               continue;
@@ -145,7 +145,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             pSPart.Value = part;
 
-            var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+            var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
             if (null != value && value != DBNull.Value)
             {
               // this part already exists, no need to go further.
@@ -208,7 +208,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             pSPart.Value = part;
 
-            var value = await ExecuteScalarAsync(cmdSelect, token).ConfigureAwait(false);
+            var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
             if (null != value && value != DBNull.Value)
             {
               partIds.Add((long) value);
@@ -255,7 +255,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var sql = $"SELECT max(id) from {TableParts};";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
-          var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
 
           // get out if needed.
           token.ThrowIfCancellationRequested();

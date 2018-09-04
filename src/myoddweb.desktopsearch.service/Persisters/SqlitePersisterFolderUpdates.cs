@@ -85,7 +85,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             pId.Value = folderId;
             pType.Value = (long) type;
             pTicks.Value = DateTime.UtcNow.Ticks;
-            if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
             {
               // not sure why we did not throw here...
               _logger.Error($"There was an issue adding folder the folder update: {folderId} to persister");
@@ -155,7 +155,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             pId.Value = folderId;
 
             // this could return 0 if the row has already been processed
-            await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false);
+            await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false);
           }
         }
         catch (OperationCanceledException)
@@ -191,7 +191,7 @@ namespace myoddweb.desktopsearch.service.Persisters
                   $"ORDER BY fu.ticks DESC LIMIT { limit}";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
-          var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
+          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
           while (reader.Read())
           {
             // get out if needed.

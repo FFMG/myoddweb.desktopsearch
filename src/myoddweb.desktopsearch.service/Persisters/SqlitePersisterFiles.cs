@@ -103,7 +103,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters["@name2"].Value = oldFile.Name.ToLowerInvariant();
           cmd.Parameters["@folderid1"].Value = folderId;
           cmd.Parameters["@folderid2"].Value = oldFolderId;
-          if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+          if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
           {
             // we could not rename it, this could be because of an error
             // or because the old path simply does not exist.
@@ -211,7 +211,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             // then we can delete this file.
             cmd.Parameters["@folderid"].Value = folderId;
             cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
-            if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Warning($"Could not delete file: {file.FullName}, does it still exist?");
             }
@@ -284,7 +284,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters["@folderid"].Value = folderId;
 
           // delete the files.
-          var deletedFiles = await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false);
+          var deletedFiles = await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false);
 
           // and give a message...
           _logger.Verbose($"Deleted {deletedFiles} file(s) from folder id: {folderId}.");
@@ -363,7 +363,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           // set the folder id.
           pId.Value = directoryId;
-          var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
+          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
           while (reader.Read())
           {
             // get out if needed.
@@ -413,7 +413,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           // set the folder id.
           cmd.Parameters["@id"].Value = fileId;
-          var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
+          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
           if (reader.Read())
           {
             // get the directory
@@ -504,7 +504,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             pId.Value = nextId;
             pFolderId.Value = folderId;
             pName.Value = file.Name.ToLowerInvariant();
-            if (0 == await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding file: {file.FullName} to persister");
               continue;
@@ -581,7 +581,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             cmd.Parameters["@folderid"].Value = folderId;
             cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
-            if (null != await ExecuteScalarAsync(cmd, token).ConfigureAwait(false))
+            if (null != await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false))
             {
               continue;
             }
@@ -614,7 +614,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var sql = $"SELECT max(id) from {TableFiles};";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
-          var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
 
           // get out if needed.
           token.ThrowIfCancellationRequested();
@@ -688,7 +688,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           cmd.Parameters["@folderid"].Value = folderid;
           cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
-          var value = await ExecuteScalarAsync(cmd, token).ConfigureAwait(false);
+          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
           if (null == value || value == DBNull.Value)
           {
             if (!createIfNotFound)
@@ -743,7 +743,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pFolderId);
 
           cmd.Parameters["@folderid"].Value = folderId;
-          var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
+          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
           while (reader.Read())
           {
             // get out if needed.

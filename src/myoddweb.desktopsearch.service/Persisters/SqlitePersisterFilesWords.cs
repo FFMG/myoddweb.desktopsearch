@@ -82,7 +82,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           foreach (var id in wordIdsToAdd)
           {
             pWId.Value = id;
-            if (1 != await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+            if (1 != await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue inserting word : {id} for file : {fileId}");
             }
@@ -126,7 +126,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           // in fact most files are never parsed.
           // so we don't want to log a message for this.
           // if there is an error it will throw and this will be logged that way
-          await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false);
+          await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false);
         }
 
         // all good.
@@ -199,7 +199,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             // set the word id we are getting rid off.
             pWId.Value = wordId;
-            if (1 != await ExecuteNonQueryAsync(cmd, token).ConfigureAwait(false))
+            if (1 != await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Warning($"Could not delete word : {wordId} for file : {fileId}, does it still exist?");
             }
@@ -249,7 +249,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           var wordIds = new HashSet<long>();
 
           //  execute the query itself.
-          var reader = await ExecuteReaderAsync(cmd, token).ConfigureAwait(false);
+          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
           var ordinal = reader.GetOrdinal("wordid");
           while (reader.Read())
           {

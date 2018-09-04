@@ -94,7 +94,7 @@ namespace myoddweb.desktopsearch.http.Route
         pSearch.ParameterName = "@search";
         cmd.Parameters.Add(pSearch);
         pSearch.Value = search.What;
-        var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
+        var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
         while (reader.Read())
         {
           // get out if needed.
@@ -124,7 +124,7 @@ namespace myoddweb.desktopsearch.http.Route
 
       using (var cmd = connectionFactory.CreateCommand(sql))
       {
-        var reader = await cmd.ExecuteReaderAsync(token).ConfigureAwait(false);
+        var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
         if (!reader.Read())
         {
           return new StatusResponse
