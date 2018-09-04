@@ -16,8 +16,6 @@
 using System;
 using System.Data.Common;
 using System.Data.SQLite;
-using myoddweb.desktopsearch.interfaces.Logging;
-using myoddweb.desktopsearch.service.Configs;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
@@ -25,8 +23,8 @@ namespace myoddweb.desktopsearch.service.Persisters
   {
     public override bool IsReadOnly => true;
 
-    public SqliteReadOnlyConnectionFactory( ConfigSqliteDatabase config, ILogger logger) : 
-      base(  config, logger )
+    public SqliteReadOnlyConnectionFactory(SQLiteConnection connection) : 
+      base(  connection )
     {
     }
 
@@ -38,18 +36,6 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     /// <inheritdoc />
     protected override void OnRollback()
-    {
-      //  we do nothing
-    }
-
-    /// <inheritdoc />
-    protected override void OnClose()
-    {
-      //  we do nothing
-    }
-
-    /// <inheritdoc />
-    protected override void OnClosed()
     {
       //  we do nothing
     }

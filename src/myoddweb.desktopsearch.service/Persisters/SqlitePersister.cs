@@ -39,6 +39,16 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     #region Member variables
     /// <summary>
+    /// The SQlite connection
+    /// </summary>
+    private SQLiteConnection _connectionReadWrite;
+
+    /// <summary>
+    /// The SQlite connection for reading
+    /// </summary>
+    private SQLiteConnection _connectionReadOnly;
+
+    /// <summary>
     /// The maximum number of characters per words...
     /// Characters after that are ignored.
     /// </summary>
@@ -89,6 +99,16 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
       }
 
+      // the connection string
+      var connectionString = $"Data Source={_config.Source};Version=3;Pooling=True;Max Pool Size=100;";
+
+      // the readonly.
+      _connectionReadOnly = new SQLiteConnection($"{connectionString}Read Only=True;");
+      _connectionReadOnly.Open();
+
+      // the read/write
+      _connectionReadWrite = new SQLiteConnection(connectionString);
+
       // create the connection spinner and pass the function to create transactions.
       _transactionSpinner = new TransactionsManager(ConnectionFactory);
 
@@ -106,9 +126,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       if (isReadOnly)
       {
-        return new SqliteReadOnlyConnectionFactory(_config, _logger);
+        return new SqliteReadOnlyConnectionFactory( _connectionReadOnly );
       } 
-      return new SqliteReadWriteConnectionFactory( _config, _logger);
+      return new SqliteReadWriteConnectionFactory( _connectionReadWrite );
     }
     #endregion
 

@@ -18,9 +18,7 @@ using System.Data.Common;
 using System.Data.SQLite;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
-using myoddweb.desktopsearch.service.Configs;
 using Exception = System.Exception;
 
 namespace myoddweb.desktopsearch.service.Persisters
@@ -33,38 +31,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// The current SQLite connection.
     /// </summary>
-    protected SQLiteConnection SqLiteConnection
-    {
-      get
-      {
-        if (_connection != null)
-        {
-          return _connection;
-        }
-        var connectionString  = $"Data Source={_config.Source};Version=3;Pooling=True;Max Pool Size=100;";
-        if (IsReadOnly)
-        {
-          connectionString += "Read Only=True;";
-        }
-        _connection = new SQLiteConnection( connectionString);
-
-        // we now have a connection, if we want to support Write-Ahead Logging then we do it now.
-        // @see https://www.sqlite.org/wal.html
-        // we call a read function ... so no transactions are created... yet.
-        ExecuteReadOneAsync(CreateCommand("PRAGMA journal_mode=WAL;"), default(CancellationToken)).Wait();
-        return _connection;
-      }
-    }
-
-    /// <summary>
-    /// The created connection, null until created.
-    /// </summary>
-    private SQLiteConnection _connection;
-    
-    /// <summary>
-    /// The sqlite database
-    /// </summary>
-    private readonly ConfigSqliteDatabase _config;
+    protected SQLiteConnection SqLiteConnection;
 
     /// <inheritdoc />
     public abstract bool IsReadOnly { get; }
@@ -73,19 +40,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     public IDbConnection Connection => SqLiteConnection;
 
     /// <summary>
-    /// Our logger.
-    /// </summary>
-    private readonly ILogger _logger;
-
-    /// <summary>
     /// Derived classes need to pass an active connection.
     /// </summary>
-    /// <param name="config"></param>
-    /// <param name="logger"></param>
-    protected SqliteConnectionFactory(ConfigSqliteDatabase config, ILogger logger )
+    /// <param name="connection"></param>
+    protected SqliteConnectionFactory(SQLiteConnection connection )
     {
-      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-      _config = config ?? throw new ArgumentNullException(nameof(config));
+      SqLiteConnection = connection ?? throw new ArgumentNullException(nameof(connection));
     }
 
     /// <summary>
@@ -103,46 +63,18 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Open the database if needed.
     /// </summary>
-    private void OpenIfNeeded()
+    private void OpenIfNeeded( CancellationToken token )
     {
       if (SqLiteConnection.State == ConnectionState.Open)
       {
         return;
       }
       SqLiteConnection.Open();
-    }
 
-    /// <summary>
-    /// Close the connection and get rid of the transaction
-    /// </summary>
-    private void CloseAll()
-    {
-      try
-      {
-        // the database is about to close allow the derived
-        // classes to perform ppre closing
-        OnClose();
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
-      }
-
-      // close the connection.
-      _connection?.Close();
-      _connection?.Dispose();
-      _connection = null;
-
-      try
-      {
-        // the database is closed allow the derived
-        // classes to perform post closing
-        OnClosed();
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
-      }
+      // we now have a connection, if we want to support Write-Ahead Logging then we do it now.
+      // @see https://www.sqlite.org/wal.html
+      // we call a read function ... so no transactions are created... yet.
+      ExecuteReadOneAsync(CreateCommand("PRAGMA journal_mode=WAL;"), token).Wait(token);
     }
     #endregion 
 
@@ -296,7 +228,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     public async Task<int> ExecuteWriteAsync(IDbCommand command, CancellationToken cancellationToken)
     {
       ThrowIfNotValid();
-      OpenIfNeeded();
+      OpenIfNeeded(cancellationToken);
       PepareForWrite();
       return await ExecuteNonQueryAsync(command, cancellationToken).ConfigureAwait( false );
     }
@@ -305,7 +237,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     public async Task<IDataReader> ExecuteReadAsync(IDbCommand command, CancellationToken cancellationToken)
     {
       ThrowIfNotValid();
-      OpenIfNeeded();
+      OpenIfNeeded(cancellationToken);
       PepareForRead();
       return await ExecuteReaderAsync(command, cancellationToken).ConfigureAwait(false);
     }
@@ -314,7 +246,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     public async Task<object> ExecuteReadOneAsync(IDbCommand command, CancellationToken cancellationToken)
     {
       ThrowIfNotValid();
-      OpenIfNeeded();
+      OpenIfNeeded( cancellationToken );
       PepareForRead();
       return await ExecuteScalarAsync(command, cancellationToken).ConfigureAwait(false);
     }
@@ -323,41 +255,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     public virtual void Commit()
     {
       ThrowIfNotValid();
-      try
-      {
-        OnCommit();
-      }
-      finally 
-      {
-        CloseAll();
-      }
+      OnCommit();
     }
 
     /// <inheritdoc />
     public virtual void Rollback()
     {
       ThrowIfNotValid();
-      try
-      {
-        OnRollback();
-      }
-      finally
-      {
-        CloseAll();
-      }
+      OnRollback();
     }
 
     #region Abstract Functions
-    /// <summary>
-    /// The database is now closed, the derived classes can do some final cleanup.
-    /// </summary>
-    protected abstract void OnClosed();
-
-    /// <summary>
-    /// The database is about to close.
-    /// </summary>
-    protected abstract void OnClose();
-
     /// <summary>
     /// Create a command
     /// </summary>
