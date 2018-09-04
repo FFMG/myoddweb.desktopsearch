@@ -18,6 +18,7 @@ using System.Data.Common;
 using System.Data.SQLite;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using myoddweb.desktopsearch.service.Configs;
 using Exception = System.Exception;
 
 namespace myoddweb.desktopsearch.service.Persisters
@@ -30,7 +31,33 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// The current SQLite connection.
     /// </summary>
-    protected SQLiteConnection SqLiteConnection;
+    protected SQLiteConnection SqLiteConnection
+    {
+      get
+      {
+        if (_connection != null)
+        {
+          return _connection;
+        }
+        var connectionString  = $"Data Source={_config.Source};Version=3;PRAGMA journal_mode=WAL;Pooling=True;Max Pool Size=100;";
+        if (IsReadOnly)
+        {
+          connectionString += "Read Only=True;";
+        }
+        _connection = new SQLiteConnection( connectionString);
+        return _connection;
+      }
+    }
+
+    /// <summary>
+    /// The created connection, null until created.
+    /// </summary>
+    private SQLiteConnection _connection;
+    
+    /// <summary>
+    /// The sqlite database
+    /// </summary>
+    private readonly ConfigSqliteDatabase _config;
 
     /// <inheritdoc />
     public abstract bool IsReadOnly { get; }
@@ -46,12 +73,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Derived classes need to pass an active connection.
     /// </summary>
-    /// <param name="connection"></param>
+    /// <param name="config"></param>
     /// <param name="logger"></param>
-    protected SqliteConnectionFactory(SQLiteConnection connection, ILogger logger )
+    protected SqliteConnectionFactory(ConfigSqliteDatabase config, ILogger logger )
     {
-      SqLiteConnection = connection ?? throw new ArgumentNullException( nameof(connection));
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+      _config = config ?? throw new ArgumentNullException(nameof(config));
     }
 
     /// <summary>
@@ -82,9 +109,9 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // close the connection.
-      SqLiteConnection.Close();
-      SqLiteConnection.Dispose();
-      SqLiteConnection = null;
+      _connection?.Close();
+      _connection?.Dispose();
+      _connection = null;
 
       try
       {

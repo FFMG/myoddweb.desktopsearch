@@ -21,6 +21,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using myoddweb.desktopsearch.service.Configs;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
@@ -58,16 +59,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// The database source.
     /// </summary>
-    private readonly string _source;
+    private readonly ConfigSqliteDatabase _config;
     #endregion
 
-    public SqlitePersister(ILogger logger, string source, int maxNumCharacters)
+    public SqlitePersister(ILogger logger, ConfigSqliteDatabase config, int maxNumCharacters)
     {
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-      // the source
-      _source = source ?? throw new ArgumentNullException(nameof(source));
+      // the configuration
+      _config = config ?? throw new ArgumentNullException(nameof(config));
 
       // the number of characters.
       _maxNumCharacters = maxNumCharacters;
@@ -77,11 +78,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     public void Start( CancellationToken token )
     {
       // check that the file does exists.
-      if (!File.Exists(_source))
+      if (!File.Exists(_config.Source))
       {
         try
         {
-          SQLiteConnection.CreateFile(_source);
+          SQLiteConnection.CreateFile(_config.Source);
         }
         catch (Exception ex)
         {
@@ -107,9 +108,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       if (isReadOnly)
       {
-        return new SqliteReadOnlyConnectionFactory(_source, _logger);
+        return new SqliteReadOnlyConnectionFactory(_config, _logger);
       } 
-      return new SqliteReadWriteConnectionFactory( _source, _logger);
+      return new SqliteReadWriteConnectionFactory( _config, _logger);
     }
     #endregion
 

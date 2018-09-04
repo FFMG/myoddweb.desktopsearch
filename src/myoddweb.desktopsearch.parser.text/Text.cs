@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -59,7 +60,7 @@ namespace myoddweb.desktopsearch.parser.text
     /// <inheritdoc />
     public async Task<Words> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
     {
-      var textWord = new Words();
+      var textWord = new List<string>();
       try
       {
         using (var sr = new StreamReader(file.FullName))
@@ -71,8 +72,8 @@ namespace myoddweb.desktopsearch.parser.text
             token.ThrowIfCancellationRequested();
 
             // split the line into words.
-            var words = _reg.Matches(line).OfType<Match>().Select(m => new Word( m.Groups[0].Value )).ToArray();
-            textWord.Add(words, token);
+            var words = _reg.Matches(line).OfType<Match>().Select(m => m.Groups[0].Value).ToArray();
+            textWord.AddRange(words);
           }
         }
       }
@@ -96,7 +97,7 @@ namespace myoddweb.desktopsearch.parser.text
         logger.Exception(ex);
         return null;
       }
-      return textWord;
+      return new Words(textWord);
     }
   }
 }
