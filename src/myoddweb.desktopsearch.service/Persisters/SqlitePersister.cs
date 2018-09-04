@@ -39,11 +39,6 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     #region Member variables
     /// <summary>
-    /// The SQlite connection
-    /// </summary>
-    private SQLiteConnection _connectionReadWrite;
-
-    /// <summary>
     /// The SQlite connection for reading
     /// </summary>
     private SQLiteConnection _connectionReadOnly;
@@ -106,9 +101,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       _connectionReadOnly = new SQLiteConnection($"{connectionString}Read Only=True;");
       _connectionReadOnly.Open();
 
-      // the read/write
-      _connectionReadWrite = new SQLiteConnection(connectionString);
-
       // create the connection spinner and pass the function to create transactions.
       _transactionSpinner = new TransactionsManager(ConnectionFactory);
 
@@ -128,7 +120,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return new SqliteReadOnlyConnectionFactory( _connectionReadOnly );
       } 
-      return new SqliteReadWriteConnectionFactory( _connectionReadWrite );
+      return new SqliteReadWriteConnectionFactory( _config );
     }
     #endregion
 

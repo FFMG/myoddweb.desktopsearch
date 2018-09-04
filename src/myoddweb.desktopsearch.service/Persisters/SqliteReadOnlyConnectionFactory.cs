@@ -29,6 +29,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
+    protected override void OnOpened()
+    {
+      //  we do nothing
+    }
+
+    /// <inheritdoc />
     protected override void OnCommit()
     {
       //  we do nothing

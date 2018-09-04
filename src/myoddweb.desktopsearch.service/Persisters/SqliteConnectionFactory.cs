@@ -69,12 +69,11 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return;
       }
+      // open it
       SqLiteConnection.Open();
 
-      // we now have a connection, if we want to support Write-Ahead Logging then we do it now.
-      // @see https://www.sqlite.org/wal.html
-      // we call a read function ... so no transactions are created... yet.
-      ExecuteReadOneAsync(CreateCommand("PRAGMA journal_mode=WAL;"), token).Wait(token);
+      // it is now open.
+      OnOpened();
     }
     #endregion 
 
@@ -284,6 +283,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// We will close the connection afterward.
     /// </summary>
     protected abstract void OnCommit();
+
+    /// <summary>
+    /// We just opened the database.
+    /// </summary>
+    protected abstract void OnOpened();
 
     /// <summary>
     /// Give derived classes a chance to get ready for a read
