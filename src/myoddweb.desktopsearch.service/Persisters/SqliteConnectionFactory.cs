@@ -101,7 +101,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         // the database is about to close allow the derived
         // classes to perform ppre closing
-        OnClosed();
+        OnClose();
       }
       catch (Exception e)
       {
