@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.http.Models;
@@ -155,23 +156,29 @@ namespace myoddweb.desktopsearch.http.Route
       // we want the stopwatch to include the getting of the transaction as well.
       var stopwatch = new Stopwatch();
       stopwatch.Start();
-
+      var log = new StringBuilder();
       var token = CancellationToken.None;
       var transaction = await Persister.BeginRead(token).ConfigureAwait(false);
+
+      log.AppendLine( $"  > Got transaction       Time Elapsed: {stopwatch.Elapsed:g}");
       try
       {
         // search the words.
         var words = await GetWords(search, transaction, token).ConfigureAwait(false);
+        log.AppendLine($"  > Got Words              Time Elapsed: {stopwatch.Elapsed:g}");
 
         // get the percent complete
         var status = await GetStatus(transaction, token).ConfigureAwait(false);
+        log.AppendLine($"  > Got Status             Time Elapsed: {stopwatch.Elapsed:g}");
 
         // we are done here.
         Persister.Commit(transaction);
+        log.AppendLine($"  > Committed              Time Elapsed: {stopwatch.Elapsed:g}");
 
         // log it.
         stopwatch.Stop();
-        Logger.Information( $"Completed search for '{search.What}' found {words.Count} result(s) (Time Elapsed: {stopwatch.Elapsed:g})");
+        log.Append($"Completed search for '{search.What}' found {words.Count} result(s) (Time Elapsed: {stopwatch.Elapsed:g})");
+        Logger.Information( log.ToString());
 
         // we can now build the response model.
         return new SearchResponse
