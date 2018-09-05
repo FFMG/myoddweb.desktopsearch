@@ -132,9 +132,10 @@ namespace myoddweb.desktopsearch.processor
                                 new Exception("There was an exception durring EventsProcessor handling"));
             }
 
-            StartProcessorTimer(Almost(task.Result < _processor.MaxUpdatesToProcess
-              ? QuietEventsProcessorMs
-              : BusyEventsProcessorMs));
+            StartProcessorTimer(
+              task.IsFaulted ? 
+                Almost(QuietEventsProcessorMs)
+              Almost(task.Result < _processor.MaxUpdatesToProcess ? QuietEventsProcessorMs : BusyEventsProcessorMs));
           }, _token 
         );
     }
