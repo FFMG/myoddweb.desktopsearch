@@ -187,7 +187,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we want to get the latest updated folders.
-        var sql = $"SELECT fu.folderid as folderid, fu.type as type, f.path FROM {TableFolderUpdates} fu, {TableFolders} f WHERE f.id=fu.folderid "+
+        var sql = $"SELECT fu.folderid as folderid, fu.type as type, f.path as path FROM {TableFolderUpdates} fu, {TableFolders} f WHERE f.id=fu.folderid "+
                   $"ORDER BY fu.ticks DESC LIMIT { limit}";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
@@ -219,7 +219,6 @@ namespace myoddweb.desktopsearch.service.Persisters
             ));
           }
         }
-
       }
       catch (OperationCanceledException)
       {

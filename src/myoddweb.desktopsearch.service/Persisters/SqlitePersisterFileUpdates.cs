@@ -224,11 +224,23 @@ namespace myoddweb.desktopsearch.service.Persisters
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
+            // the file id
+            var fileid = (long)reader["fileid"];
+
+            // the update type
+            var type = (UpdateType)(long)reader["type"];
+
+            // the folder path
+            var path = (string) reader["path"];
+
+            // the file name
+            var name = (string) reader["name"];
+
             // add this update
             pendingUpdates.Add(new PendingFileUpdate(
-              (long) reader["fileid"],
-              new FileInfo( Path.Combine((string)reader["path"], (string)reader["name"])),
-              (UpdateType) (long) reader["type"]
+              fileid,
+              new FileInfo( Path.Combine(path, name)),
+              type
             ));
           }
         }
@@ -238,7 +250,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         // if the files is deleted... they do not exist anymore.
         if (pendingUpdates.Count < limit)
         {
-          sql = $"SELECT fileid, type FROM {TableFileUpdates} WHERE type={(int)UpdateType.Deleted} ORDER BY ticks DESC LIMIT {limit - pendingUpdates.Count}";
+          sql = $"SELECT fileid FROM {TableFileUpdates} WHERE type={(int)UpdateType.Deleted} ORDER BY ticks DESC LIMIT {limit - pendingUpdates.Count}";
           using (var cmd = connectionFactory.CreateCommand(sql))
           {
             var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
@@ -247,9 +259,12 @@ namespace myoddweb.desktopsearch.service.Persisters
               // get out if needed.
               token.ThrowIfCancellationRequested();
 
+              // the file id
+              var fileid = (long)reader["fileid"];
+
               // add this update
               pendingUpdates.Add(new PendingFileUpdate(
-                (long)reader["fileid"],
+                fileid,
                 null,
                 UpdateType.Deleted
               ));
