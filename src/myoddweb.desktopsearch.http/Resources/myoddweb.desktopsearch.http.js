@@ -92,7 +92,7 @@ function myoddweb() {
         );
       });
 
-      var pct = (((objs.Status.Files - objs.Status.PendingUpdates) / objs.Status.Files)*100).toFixed(4) + '%';
+      var pct = (objs.Status.Files === 0 ? "0" : (((objs.Status.Files - objs.Status.PendingUpdates) / objs.Status.Files)*100).toFixed(4)) + "%";
       var ms = mow._msToTime(objs.ElapsedMilliseconds);
       $(SEARCH_RESULT_CONTAINER).append(
         "<div class='live-search-result-element'>" +
