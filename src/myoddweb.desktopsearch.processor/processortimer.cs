@@ -190,16 +190,14 @@ namespace myoddweb.desktopsearch.processor
         // Stop the timers
         StopProcessorTimer();
 
-        // and wait for the task to complete.
-        _task?.Wait( _token );
-      }
-      catch (OperationCanceledException e)
-      {
-        if (e.CancellationToken != _token)
+        if (_task != null)
         {
-          // not my item.
-          throw;
+          helper.Wait.WaitAll(_task, _logger, _token);
         }
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
       }
     }
   }

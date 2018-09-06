@@ -37,7 +37,7 @@ namespace myoddweb.desktopsearch.helper
 
     public static async Task<T[]> WhenAll<T>(IReadOnlyCollection<Task<T>> tasks, ILogger logger, CancellationToken token = default(CancellationToken))
     {
-      var task = Task.WhenAll<T>(tasks.ToArray());
+      var task = Task.WhenAll(tasks.ToArray());
       T[] results = null;
       try
       {
@@ -58,7 +58,7 @@ namespace myoddweb.desktopsearch.helper
 
     public static void WaitAll(Task task, ILogger logger, CancellationToken token = default(CancellationToken))
     {
-      WaitAll(new List<Task> {task}, logger, token);
+      WaitAll(new []{task}, logger, token);
     }
 
     public static void WaitAll(IReadOnlyCollection<Task> tasks, ILogger logger, CancellationToken token = default(CancellationToken) )
