@@ -12,46 +12,45 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IPersister : IConfig, IFolders, IFolderUpdates, IFiles, IFileUpdates, IWords, IFilesWords, IParts, IWordsParts, ICounts
+  public interface ICounts
   {
     /// <summary>
-    /// Get a database transaction.
+    /// Get the pending update count.
     /// </summary>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IConnectionFactory> BeginWrite( CancellationToken token );
+    Task<long> GetPendingUpdatesCountAsync( IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
-    /// Get a database readonly transaction.
+    /// Get the pending update count.
     /// </summary>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IConnectionFactory> BeginRead(CancellationToken token);
+    Task<long> GetFilesCountAsync(IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
-    /// Rollback the current transaction.
+    /// Update the number of pending updates
     /// </summary>
-    /// <paramref name="connectionFactory"/>
-    /// <returns></returns>
-    bool Rollback(IConnectionFactory connectionFactory);
-
-    /// <summary>
-    /// Commit the current transaction.
-    /// </summary>
-    /// <paramref name="connectionFactory"/>
-    /// <returns></returns>
-    bool Commit(IConnectionFactory connectionFactory);
-
-    /// <summary>
-    /// Start the database work.
-    /// </summary>
+    /// <param name="addOrRemove"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
-    void Start(CancellationToken token);
+    /// <returns></returns>
+    Task<bool> UpdatePendingUpdatesCountAsync( long addOrRemove, IConnectionFactory connectionFactory, CancellationToken token);
+
+    /// <summary>
+    /// Update the number of files
+    /// </summary>
+    /// <param name="addOrRemove"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> UpdateFilesCountAsync(long addOrRemove, IConnectionFactory connectionFactory, CancellationToken token);
   }
 }

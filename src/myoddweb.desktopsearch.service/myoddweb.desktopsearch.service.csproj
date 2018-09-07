@@ -86,6 +86,7 @@
     <Compile Include="Persisters\SqliteConnectionFactory.cs" />
     <Compile Include="Persisters\SqlitePersister.cs" />
     <Compile Include="Persisters\SqlitePersisterConfig.cs" />
+    <Compile Include="Persisters\SqlitePersisterCount.cs" />
     <Compile Include="Persisters\SqlitePersisterFilesWords.cs" />
     <Compile Include="Persisters\SqlitePersisterParts.cs" />
     <Compile Include="Persisters\SqlitePersisterWords.cs" />

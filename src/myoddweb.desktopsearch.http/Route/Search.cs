@@ -112,8 +112,9 @@ namespace myoddweb.desktopsearch.http.Route
       return words;
     }
 
-    private async Task<StatusResponse> GetStatus(IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<StatusResponse> GetStatus(ICounts persister, CancellationToken token)
     {
+      /*
       const string sql = @"SELECT  (
         SELECT COUNT(*)
         FROM   FileUpdates
@@ -137,13 +138,14 @@ namespace myoddweb.desktopsearch.http.Route
 
         // get out if needed.
         token.ThrowIfCancellationRequested();
-
-        return new StatusResponse
-        {
-          PendingUpdates = (long)reader["PendingUpdates"],
-          Files = (long)reader["Files"]
-        };
       }
+      */
+      var connectionFactory = await Persister.BeginRead(token).ConfigureAwait(false);
+      return new StatusResponse
+      {
+        PendingUpdates = await persister.GetPendingUpdatesCountAsync( connectionFactory, token ).ConfigureAwait(false),
+        Files = await persister.GetFilesCountAsync(connectionFactory, token).ConfigureAwait(false)
+      };
     }
 
     /// <summary>
@@ -168,7 +170,7 @@ namespace myoddweb.desktopsearch.http.Route
         log.AppendLine($"  > Got Words              Time Elapsed: {stopwatch.Elapsed:g}");
 
         // get the percent complete
-        var status = await GetStatus(transaction, token).ConfigureAwait(false);
+        var status = await GetStatus(Persister, token).ConfigureAwait(false);
         log.AppendLine($"  > Got Status             Time Elapsed: {stopwatch.Elapsed:g}");
 
         // we are done here.

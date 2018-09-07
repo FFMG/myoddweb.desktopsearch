@@ -168,6 +168,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
+      long deletedCount = 0;
       var sqlDelete = $"DELETE FROM {TableFiles} WHERE folderid=@folderid and name=@name";
       using (var cmd = connectionFactory.CreateCommand(sqlDelete))
       {
@@ -209,11 +210,16 @@ namespace myoddweb.desktopsearch.service.Persisters
             await TouchFilesAsync(new []{fileId}, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
 
             // then we can delete this file.
-            cmd.Parameters["@folderid"].Value = folderId;
-            cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
+            pFolderId.Value = folderId;
+            pName.Value = file.Name.ToLowerInvariant();
             if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
             {
               _logger.Warning($"Could not delete file: {file.FullName}, does it still exist?");
+            }
+            else
+            {
+              // it was deleted
+              ++deletedCount;
             }
           }
           catch (OperationCanceledException)
@@ -229,6 +235,9 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
         }
       }
+
+      // update the files count.
+      await UpdateFilesCountAsync( -1* deletedCount, connectionFactory, token).ConfigureAwait(false);
 
       // we are done.
       return true;
@@ -268,8 +277,11 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         // touch that folder as changed
         await TouchFilesAsync(fileIds, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
+
+        // we are about to delete those files.
+        await UpdateFilesCountAsync(fileIds.Count, connectionFactory, token).ConfigureAwait(false);
       }
-      
+
       var sql = $"DELETE FROM {TableFiles} WHERE folderid=@folderid";
       using (var cmd = connectionFactory.CreateCommand(sql))
       {
@@ -469,6 +481,9 @@ namespace myoddweb.desktopsearch.service.Persisters
       // get the next id.
       var nextId = await GetNextFileIdAsync(connectionFactory, token).ConfigureAwait(false);
 
+      // what we actually inserted
+      var insertedCount = 0;
+
       var sqlInsert = $"INSERT INTO {TableFiles} (id, folderid, name) VALUES (@id, @folderid, @name)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
@@ -513,6 +528,8 @@ namespace myoddweb.desktopsearch.service.Persisters
             // touch that folder as created
             await TouchFileAsync(nextId, UpdateType.Created, connectionFactory, token).ConfigureAwait(false);
 
+            ++insertedCount;
+
             // we can now move on to the next folder id.
             ++nextId;
           }
@@ -527,6 +544,10 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
         }
       }
+
+      // we are about to delete those files.
+      await UpdateFilesCountAsync(insertedCount, connectionFactory, token).ConfigureAwait(false);
+
       return true;
     }
 

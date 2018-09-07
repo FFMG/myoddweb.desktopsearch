@@ -420,8 +420,7 @@ namespace myoddweb.desktopsearch.parser
         }
 
         // all the folders have been processed.
-        await _persister.MarkDirectoriesProcessedAsync(directoriesAndFiles.Keys.ToList(), transaction, token)
-          .ConfigureAwait(false);
+        await _persister.MarkDirectoriesProcessedAsync(directoriesAndFiles.Keys.ToList(), transaction, token).ConfigureAwait(false);
 
         // all done
         _persister.Commit(transaction);

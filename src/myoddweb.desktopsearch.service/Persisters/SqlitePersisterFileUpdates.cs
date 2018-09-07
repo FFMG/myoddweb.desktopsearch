@@ -77,6 +77,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
 
+      var insertCount = 0;
       var sqlInsert = $"INSERT INTO {TableFileUpdates} (fileid, type, ticks) VALUES (@id, @type, @ticks)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
@@ -110,6 +111,7 @@ namespace myoddweb.desktopsearch.service.Persisters
               _logger.Error($"There was an issue adding file the file update: {fileId} to persister");
               return false;
             }
+            ++insertCount;
           }
         }
         catch (OperationCanceledException)
@@ -123,6 +125,9 @@ namespace myoddweb.desktopsearch.service.Persisters
           return false;
         }
       }
+
+      // update the pending files count.
+      await UpdatePendingUpdatesCountAsync(insertCount, connectionFactory, token).ConfigureAwait(false);
       return true;
     }
 
@@ -162,6 +167,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
+      var deletedCount = 0;
       var sqlDelete = $"DELETE FROM {TableFileUpdates} WHERE fileid = @id";
       using (var cmd = connectionFactory.CreateCommand(sqlDelete))
       {
@@ -181,7 +187,13 @@ namespace myoddweb.desktopsearch.service.Persisters
             cmd.Parameters["@id"].Value = fileId;
 
             // this could return 0 if the row has already been processed
-            await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false);
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+            {
+              continue;
+            }
+
+            // it was deleted
+            ++deletedCount;
           }
         }
         catch (OperationCanceledException)
@@ -195,6 +207,9 @@ namespace myoddweb.desktopsearch.service.Persisters
           return false;
         }
       }
+
+      // update the pending files count.
+      await UpdatePendingUpdatesCountAsync(-1 * deletedCount, connectionFactory, token).ConfigureAwait(false);
 
       // return if this cancelled or not
       return true;

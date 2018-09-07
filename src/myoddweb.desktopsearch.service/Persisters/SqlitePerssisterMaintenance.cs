@@ -13,7 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -77,6 +76,12 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // the words parts table
       if (!await CreateWordsPartsAsync(connectionFactory).ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // the words parts table
+      if (!await CreateCountsAsync(connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -188,6 +193,31 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return false;
       }
+      return true;
+    }
+
+    /// <summary>
+    /// Create the counts table.
+    /// </summary>
+    /// <param name="connectionFactory"></param>
+    /// <returns></returns>
+    private async Task<bool> CreateCountsAsync(IConnectionFactory connectionFactory)
+    {
+      if (!await
+        ExecuteNonQueryAsync($"CREATE TABLE {TableCounts} (type integer, count integer)", connectionFactory)
+          .ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{TableCounts}_wordid ON {TableCounts}(type);", connectionFactory).ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // done 
       return true;
     }
 
