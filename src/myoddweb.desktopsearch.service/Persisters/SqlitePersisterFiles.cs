@@ -237,7 +237,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // update the files count.
-      await UpdateFilesCountAsync( -1* deletedCount, connectionFactory, token).ConfigureAwait(false);
+      await Counts.UpdateFilesCountAsync( -1* deletedCount, connectionFactory, token).ConfigureAwait(false);
 
       // we are done.
       return true;
@@ -279,7 +279,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         await TouchFilesAsync(fileIds, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
 
         // we are about to delete those files.
-        await UpdateFilesCountAsync(fileIds.Count, connectionFactory, token).ConfigureAwait(false);
+        await Counts.UpdateFilesCountAsync(fileIds.Count, connectionFactory, token).ConfigureAwait(false);
       }
 
       var sql = $"DELETE FROM {TableFiles} WHERE folderid=@folderid";
@@ -501,6 +501,9 @@ namespace myoddweb.desktopsearch.service.Persisters
         pName.DbType = DbType.String;
         pName.ParameterName = "@name";
         cmd.Parameters.Add(pName);
+
+        var idsToTouch = new List<long>();
+
         foreach (var file in files)
         {
           try
@@ -525,9 +528,10 @@ namespace myoddweb.desktopsearch.service.Persisters
               continue;
             }
 
-            // touch that folder as created
-            await TouchFileAsync(nextId, UpdateType.Created, connectionFactory, token).ConfigureAwait(false);
+            // we will need to touch this id.
+            idsToTouch.Add(nextId);
 
+            // this item was inserted
             ++insertedCount;
 
             // we can now move on to the next folder id.
@@ -543,10 +547,13 @@ namespace myoddweb.desktopsearch.service.Persisters
             _logger.Exception(ex);
           }
         }
+
+        // we can then touch all the updated items
+        await TouchFilesAsync(idsToTouch, UpdateType.Created, connectionFactory, token).ConfigureAwait(false);
       }
 
       // we are about to delete those files.
-      await UpdateFilesCountAsync(insertedCount, connectionFactory, token).ConfigureAwait(false);
+      await Counts.UpdateFilesCountAsync(insertedCount, connectionFactory, token).ConfigureAwait(false);
 
       return true;
     }

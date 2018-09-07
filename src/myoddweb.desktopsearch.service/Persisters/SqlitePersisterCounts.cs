@@ -12,16 +12,16 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister
+  internal class SqlitePersisterCounts : ICounts
   {
     private enum Type
     {
@@ -39,26 +39,49 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private long? _filesCount;
 
-    /// <inheritdoc />
-    public async Task<long> GetPendingUpdatesCountAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    /// <summary>
+    /// The counts table name
+    /// </summary>
+    private string TableCounts { get; }
+
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    public SqlitePersisterCounts(string tableName, ILogger logger )
     {
-      if (null == _pendingUpdatesCount && connectionFactory.IsReadOnly )
-      {
-        return 0;
-      }
-      await InitialiserCountersAsync(connectionFactory, token).ConfigureAwait(false);
-      return (long)_pendingUpdatesCount;
+      // save the table name
+      TableCounts = tableName;
+
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <inheritdoc />
-    public async Task<long> GetFilesCountAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task Initialise(IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == _filesCount && connectionFactory.IsReadOnly)
-      {
-        return 0;
-      }
       await InitialiserCountersAsync(connectionFactory, token).ConfigureAwait(false);
-      return (long)_filesCount;
+    }
+
+    /// <inheritdoc />
+    public Task<long> GetPendingUpdatesCountAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      if (null == _pendingUpdatesCount )
+      {
+        throw new InvalidOperationException( "The counters have not been initialised!");
+      }
+      return Task.FromResult( (long)_pendingUpdatesCount );
+    }
+
+    /// <inheritdoc />
+    public Task<long> GetFilesCountAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      if (null == _filesCount)
+      {
+        throw new InvalidOperationException("The counters have not been initialised!");
+      }
+      return Task.FromResult((long)_filesCount);
     }
 
     /// <inheritdoc />
@@ -215,16 +238,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Initialize a single count.
     /// </summary>
     /// <param name="type"></param>
-    /// <param name="cmd"></param>
+    /// <param name="cmdSelect"></param>
     /// <param name="param"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> InitialiserCountersAsync(Type type, IDbCommand cmd, IDbDataParameter param, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<long> InitialiserCountersAsync(Type type, IDbCommand cmdSelect, IDbDataParameter param, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // run the select query
       param.Value = (long)type;
-      var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
+      var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
       if (null != value && value != DBNull.Value)
       {
         // the values does not exist
@@ -256,7 +279,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           pType.Value = (long)type;
           pCount.Value = count;
-          if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+          if (0 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
           {
             _logger.Error($"There was an issue adding count {type.ToString()} to persister");
             return 0;

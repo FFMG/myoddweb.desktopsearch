@@ -86,7 +86,7 @@
     <Compile Include="Persisters\SqliteConnectionFactory.cs" />
     <Compile Include="Persisters\SqlitePersister.cs" />
     <Compile Include="Persisters\SqlitePersisterConfig.cs" />
-    <Compile Include="Persisters\SqlitePersisterCount.cs" />
+    <Compile Include="Persisters\SqlitePersisterCounts.cs" />
     <Compile Include="Persisters\SqlitePersisterFilesWords.cs" />
     <Compile Include="Persisters\SqlitePersisterParts.cs" />
     <Compile Include="Persisters\SqlitePersisterWords.cs" />
@@ -95,7 +95,7 @@
     <Compile Include="Persisters\SqlitePersisterFolder.cs" />
     <Compile Include="Persisters\SqlitePersisterFolderUpdates.cs" />
     <Compile Include="Persisters\SqlitePersisterWordsParts.cs" />
-    <Compile Include="Persisters\SqlitePerssisterMaintenance.cs" />
+    <Compile Include="Persisters\SqlitePersisterMaintenance.cs" />
     <Compile Include="Persisters\SqliteReadOnlyConnectionFactory.cs" />
     <Compile Include="Persisters\SqliteReadWriteConnectionFactory.cs" />
     <Compile Include="Persisters\TransactionsManager.cs" />

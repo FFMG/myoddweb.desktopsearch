@@ -170,7 +170,7 @@ namespace myoddweb.desktopsearch.http.Route
         log.AppendLine($"  > Got Words              Time Elapsed: {stopwatch.Elapsed:g}");
 
         // get the percent complete
-        var status = await GetStatus(Persister, token).ConfigureAwait(false);
+        var status = await GetStatus(Persister.Counts, token).ConfigureAwait(false);
         log.AppendLine($"  > Got Status             Time Elapsed: {stopwatch.Elapsed:g}");
 
         // we are done here.

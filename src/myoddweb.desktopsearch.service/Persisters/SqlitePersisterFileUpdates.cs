@@ -127,7 +127,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // update the pending files count.
-      await UpdatePendingUpdatesCountAsync(insertCount, connectionFactory, token).ConfigureAwait(false);
+      await Counts.UpdatePendingUpdatesCountAsync(insertCount, connectionFactory, token).ConfigureAwait(false);
       return true;
     }
 
@@ -184,7 +184,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             // set the folder id.
-            cmd.Parameters["@id"].Value = fileId;
+            pId.Value = fileId;
 
             // this could return 0 if the row has already been processed
             if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
@@ -209,7 +209,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // update the pending files count.
-      await UpdatePendingUpdatesCountAsync(-1 * deletedCount, connectionFactory, token).ConfigureAwait(false);
+      await Counts.UpdatePendingUpdatesCountAsync(-1 * deletedCount, connectionFactory, token).ConfigureAwait(false);
 
       // return if this cancelled or not
       return true;

@@ -66,6 +66,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly ConfigSqliteDatabase _config;
     #endregion
 
+    /// <inheritdoc />
+    public ICounts Counts { get; }
+
     public SqlitePersister(ILogger logger, ConfigSqliteDatabase config, int maxNumCharacters)
     {
       // save the logger
@@ -76,6 +79,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // the number of characters.
       _maxNumCharacters = maxNumCharacters;
+
+      // create the counters
+      Counts = new SqlitePersisterCounts( TableCounts, _logger );
     }
 
     /// <inheritdoc />
@@ -105,8 +111,28 @@ namespace myoddweb.desktopsearch.service.Persisters
       // create the connection spinner and pass the function to create transactions.
       _transactionSpinner = new TransactionsManager(ConnectionFactory);
 
-      // update the db if need be.
-      Update(token).Wait( token );
+      // initiialise everything
+      Initialise(token).Wait(token);
+    }
+
+    private async Task Initialise(CancellationToken token)
+    {
+      var connectionFactory = await BeginWrite(token).ConfigureAwait(false);
+      try
+      {
+        // update the db if need be.
+        Update(connectionFactory, token).Wait(token);
+
+        // init the counters.
+        Counts.Initialise(connectionFactory, token).Wait(token);
+        Commit( connectionFactory );
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        Rollback(connectionFactory);
+        throw;
+      }
     }
 
     #region TransactionSpiner functions

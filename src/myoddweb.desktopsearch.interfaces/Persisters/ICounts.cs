@@ -20,6 +20,13 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface ICounts
   {
     /// <summary>
+    /// Start the counter.
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// </summary>
+    Task Initialise(IConnectionFactory connectionFactory, CancellationToken token);
+
+    /// <summary>
     /// Get the pending update count.
     /// </summary>
     /// <param name="connectionFactory"></param>

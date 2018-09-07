@@ -12,7 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -212,7 +211,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableCounts}_wordid ON {TableCounts}(type);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{TableCounts}_type ON {TableCounts}(type);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -386,33 +385,14 @@ namespace myoddweb.desktopsearch.service.Persisters
       return false;
     }
 
-    protected async Task Update(CancellationToken token)
+    protected async Task Update(IConnectionFactory connectionFactory, CancellationToken token)
     {
       // if the config table does not exis, then we have to asume it is brand new.
-      var transaction = await BeginWrite(token).ConfigureAwait(false);
-      try
+      if (TableExists(TableConfig, connectionFactory))
       {
-        if (!TableExists(TableConfig, transaction ))
-        {
-          if (!await CreateDatabase(transaction).ConfigureAwait(false))
-          {
-            Rollback(transaction);
-          }
-          else
-          {
-            Commit(transaction);
-          }
-        }
-        else
-        {
-          Commit(transaction);
-        }
+        return;
       }
-      catch (Exception e)
-      {
-        Rollback(transaction);
-        _logger.Exception(e);
-      }
+      await CreateDatabase(connectionFactory).ConfigureAwait(false);
     }
   }
 }
