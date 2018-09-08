@@ -117,26 +117,15 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     private async Task InitialiserCountersAsync(IConnectionFactory connectionFactory, CancellationToken token)
     {
-      // do we ahve anything to do?
-      if (null != _pendingUpdatesCount)
-      {
-        return;
-      }
+      // firt initialise
+      await InitialiserCountersAsync(Type.PendingUpdate, connectionFactory, token).ConfigureAwait(false);
+      await InitialiserCountersAsync(Type.File, connectionFactory, token).ConfigureAwait(false);
 
-      var sql = $"SELECT count FROM {TableCounts} WHERE type=@type";
-      using (var cmd = connectionFactory.CreateCommand(sql))
-      {
-        var pType = cmd.CreateParameter();
-        pType.DbType = DbType.Int64;
-        pType.ParameterName = "@type";
-        cmd.Parameters.Add(pType);
+      // get the pending updates
+      _pendingUpdatesCount = await GetCountValue(Type.PendingUpdate, connectionFactory, token).ConfigureAwait(false);
 
-        // get the pending updates
-        _pendingUpdatesCount = await InitialiserCountersAsync(Type.PendingUpdate, cmd, pType, connectionFactory, token).ConfigureAwait(false);
-
-        // and get the files count.
-        _filesCount = await InitialiserCountersAsync(Type.File, cmd, pType, connectionFactory, token).ConfigureAwait(false);
-      }
+      // and get the files count.
+      _filesCount = await GetCountValue(Type.File, connectionFactory, token).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -149,9 +138,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     private async Task<bool> UpdateCountDirectAsync(Type type, long addOrRemove, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      // make sure that the values exist
-      await InitialiserCountersAsync(connectionFactory, token).ConfigureAwait(false);
-
       if (0 == addOrRemove)
       {
         //  tada!
@@ -191,13 +177,55 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <summary>
+    /// Get a value from the database.
+    /// </summary>
+    /// <param name="type"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<long?> GetCountValue(Type type, IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      try
+      {
+        var sql = $"SELECT count FROM {TableCounts} WHERE type=@type";
+        using (var cmd = connectionFactory.CreateCommand(sql))
+        {
+          var pType = cmd.CreateParameter();
+          pType.DbType = DbType.Int64;
+          pType.ParameterName = "@type";
+          cmd.Parameters.Add(pType);
+
+          // run the select query
+          pType.Value = (long) type;
+          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
+          if (null == value || value == DBNull.Value)
+          {
+            return null;
+          }
+
+          return (long) value;
+        }
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Getting count value.");
+        throw;
+      }
+      catch (Exception ex)
+      {
+        _logger.Exception(ex);
+        throw;
+      }
+    }
+
+    /// <summary>
     /// Query the db to get a count value
     /// </summary>
     /// <param name="type"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> GetCountDirectAsync(Type type, IConnectionFactory connectionFactory,CancellationToken token)
+    private async Task<long> GetActualCountAsync(Type type, IConnectionFactory connectionFactory,CancellationToken token)
     {
       string sql;
       switch (type)
@@ -238,39 +266,51 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Initialize a single count.
     /// </summary>
     /// <param name="type"></param>
-    /// <param name="cmdSelect"></param>
-    /// <param name="param"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> InitialiserCountersAsync(Type type, IDbCommand cmdSelect, IDbDataParameter param, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task InitialiserCountersAsync(Type type, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      // run the select query
-      param.Value = (long)type;
-      var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
-      if (null != value && value != DBNull.Value)
+      // do we have a value in the database?
+      var current = await GetCountValue(type, connectionFactory, token).ConfigureAwait(false);
+      if ( null != current )
       {
-        // the values does not exist
-        // so we will add it here.
-        return (long) value;
+        // the value exists already ... so we want to update.
+        await UpdateCountersAsync(type, connectionFactory, token).ConfigureAwait(false);
+        return;
       }
 
-      var count = await GetCountDirectAsync(type, connectionFactory, token).ConfigureAwait(false);
+      // insert the value for that type.
+      await InsertCountersAsync(type, connectionFactory, token).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Update the value for the given type.
+    /// We will not check if the value already exists!
+    /// </summary>
+    /// <param name="type"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task UpdateCountersAsync(Type type, IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      // get the vale we will be updating
+      var count = await GetActualCountAsync(type, connectionFactory, token).ConfigureAwait(false);
 
       // the value does not exist, we have to get it.
-      var sql = $"INSERT INTO {TableCounts} (type, count) VALUES (@type, @count)";
+      var sql = $"UPDATE {TableCounts} SET count=@count WHERE type=@type";
 
-      using (var cmdInsert = connectionFactory.CreateCommand(sql))
+      using (var cmd = connectionFactory.CreateCommand(sql))
       {
-        var pType = cmdInsert.CreateParameter();
+        var pType = cmd.CreateParameter();
         pType.DbType = DbType.Int64;
         pType.ParameterName = "@type";
-        cmdInsert.Parameters.Add(pType);
+        cmd.Parameters.Add(pType);
 
-        var pCount = cmdInsert.CreateParameter();
+        var pCount = cmd.CreateParameter();
         pCount.DbType = DbType.Int64;
         pCount.ParameterName = "@count";
-        cmdInsert.Parameters.Add(pCount);
+        cmd.Parameters.Add(pCount);
 
         try
         {
@@ -279,14 +319,63 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           pType.Value = (long)type;
           pCount.Value = count;
-          if (0 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
+          if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+          {
+            _logger.Error($"There was an issue updating the count {type.ToString()} to persister");
+          }
+        }
+        catch (OperationCanceledException)
+        {
+          _logger.Warning("Received cancellation request - Update counter");
+          throw;
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
+          throw;
+        }
+      }
+    }
+
+    /// <summary>
+    /// Insert the value for the given type.
+    /// We will not check if the value already exists!
+    /// </summary>
+    /// <param name="type"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task InsertCountersAsync(Type type, IConnectionFactory connectionFactory, CancellationToken token)
+    { 
+      // get the vale we will be inserting
+      var count = await GetActualCountAsync(type, connectionFactory, token).ConfigureAwait(false);
+
+      // the value does not exist, we have to get it.
+      var sql = $"INSERT INTO {TableCounts} (type, count) VALUES (@type, @count)";
+
+      using (var cmd = connectionFactory.CreateCommand(sql))
+      {
+        var pType = cmd.CreateParameter();
+        pType.DbType = DbType.Int64;
+        pType.ParameterName = "@type";
+        cmd.Parameters.Add(pType);
+
+        var pCount = cmd.CreateParameter();
+        pCount.DbType = DbType.Int64;
+        pCount.ParameterName = "@count";
+        cmd.Parameters.Add(pCount);
+
+        try
+        {
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
+          pType.Value = (long)type;
+          pCount.Value = count;
+          if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
           {
             _logger.Error($"There was an issue adding count {type.ToString()} to persister");
-            return 0;
           }
-
-          // all done, return whatever we did.
-          return count;
         }
         catch (OperationCanceledException)
         {
