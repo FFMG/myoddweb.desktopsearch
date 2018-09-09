@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -226,8 +227,6 @@ namespace myoddweb.desktopsearch.parser
     /// <returns></returns>
     private async Task<bool> PersistDirectories(FileSystemInfo parent, IEnumerable<DirectoryInfo> directories, CancellationToken token)
     {
-      _logger.Verbose($"Finishing directory parsing: {parent.FullName}");
-
       // start the stopwatch
       var stopwatch = new Stopwatch();
       stopwatch.Start();
@@ -285,6 +284,12 @@ namespace myoddweb.desktopsearch.parser
       // commit the transaction one last time
       // if we have not done it already.
       _persister.Commit(transaction);
+
+      var sb = new StringBuilder();
+      sb.AppendLine($"Finishing directory parsing: {parent.FullName}");
+      sb.AppendLine($"  Created: {createdDirectories.Count} directories");
+      sb.Append    ($"  Changed: {changedDirectories.Count} directories");
+      _logger.Verbose(sb.ToString());
 
       // update the changed directorues
       await PersistChangedDirectories(changedDirectories, token).ConfigureAwait(false);
