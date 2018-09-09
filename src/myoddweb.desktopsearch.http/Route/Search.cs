@@ -162,7 +162,7 @@ namespace myoddweb.desktopsearch.http.Route
       var token = CancellationToken.None;
       var transaction = await Persister.BeginRead(token).ConfigureAwait(false);
 
-      log.AppendLine( $"  > Got transaction       Time Elapsed: {stopwatch.Elapsed:g}");
+      log.AppendLine( $"  > Got transaction        Time Elapsed: {stopwatch.Elapsed:g}");
       try
       {
         // search the words.

@@ -113,30 +113,20 @@ namespace myoddweb.desktopsearch.parser
         var stopwatch = new Stopwatch();
         stopwatch.Start();
 
-        var totalDirectories = 0;
+        // all the tasks
+        var tasks = new List<Task<long>>();
+
         foreach (var path in paths)
         {
           // get out if needed.
           token.ThrowIfCancellationRequested();
 
-          // get all the directories.
-          var directories = await _directory.ParseDirectoriesAsync(path, token).ConfigureAwait(false);
-          if (directories == null)
-          {
-            continue;
-          }
-
-          // process all the files.
-          if (!await PersistDirectories(path, directories, token).ConfigureAwait(false))
-          {
-            stopwatch.Stop();
-            _logger.Warning($"Parsing was cancelled (Time Elapsed: {stopwatch.Elapsed:g})");
-            return false;
-          }
-
-          // get the number of directories parsed.
-          totalDirectories += directories.Count;
+          // parse that one directory
+          tasks.Add( ParseDirectoriesAsync( path, token ) );
         }
+
+        // wait for everything to complete
+        var totalDirectories = await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
 
         // only now, that everything is done
         // we can set the last time we checked flag
@@ -144,7 +134,7 @@ namespace myoddweb.desktopsearch.parser
 
         // stop the watch and log how many items we found.
         stopwatch.Stop();
-        _logger.Information($"Parsed {totalDirectories} directories (Time Elapsed: {stopwatch.Elapsed:g})");
+        _logger.Information($"Parsed {totalDirectories.Sum()} directories (Time Elapsed: {stopwatch.Elapsed:g})");
         return true;
       }
       catch (OperationCanceledException)
@@ -157,6 +147,31 @@ namespace myoddweb.desktopsearch.parser
         _logger.Exception(e);
         return false;
       }
+    }
+
+    /// <summary>
+    /// Parse this path and sub directories.
+    /// </summary>
+    /// <param name="path"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<long> ParseDirectoriesAsync(DirectoryInfo path, CancellationToken token)
+    {
+      // get all the directories.
+      var directories = await _directory.ParseDirectoriesAsync(path, token).ConfigureAwait(false);
+      if (directories == null)
+      {
+        return 0;
+      }
+
+      // process all the files.
+      if (!await PersistDirectories(path, directories, token).ConfigureAwait(false))
+      {
+        return 0;
+      }
+
+      // get the number of directories parsed.
+      return directories.Count;
     }
 
 
