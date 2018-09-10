@@ -435,7 +435,7 @@ namespace myoddweb.desktopsearch.parser
           if (files != null)
           {
             // add the files...
-            await _persister.AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false);
+            await _persister.Files.AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false);
           }
         }
 

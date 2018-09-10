@@ -98,6 +98,7 @@
     <Compile Include="Persisters\SqlitePersisterMaintenance.cs" />
     <Compile Include="Persisters\SqliteReadOnlyConnectionFactory.cs" />
     <Compile Include="Persisters\SqliteReadWriteConnectionFactory.cs" />
+    <Compile Include="Persisters\Tables.cs" />
     <Compile Include="Persisters\TransactionsManager.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

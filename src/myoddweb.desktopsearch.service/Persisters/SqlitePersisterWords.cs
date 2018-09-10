@@ -33,11 +33,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly int _maxNumCharacters;
 
     /// <summary>
-    /// The counts table name
-    /// </summary>
-    private string TableWords { get; }
-
-    /// <summary>
     /// The parts interface
     /// </summary>
     private readonly IParts _parts;
@@ -52,13 +47,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private readonly ILogger _logger;
 
-    public SqlitePersisterWords( IParts parts, IWordsParts wordsParts, int maxNumCharacters, string tableName, ILogger logger)
+    public SqlitePersisterWords( IParts parts, IWordsParts wordsParts, int maxNumCharacters, ILogger logger)
     {
       // the number of characters.
       _maxNumCharacters = maxNumCharacters;
-
-      // save the table name
-      TableWords = tableName;
 
       // the words parts interfaces
       _parts = parts ?? throw new ArgumentNullException(nameof(parts));
@@ -102,7 +94,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         // we do not check for the token as the underlying functions will throw if needed. 
         // look for the word, add it if needed.
-        var sql = $"SELECT id FROM {TableWords} WHERE word=@word";
+        var sql = $"SELECT id FROM {Tables.Words} WHERE word=@word";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pWord = cmd.CreateParameter();
@@ -176,7 +168,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // get the next id.
       var nextId = await GetNextWordIdAsync(connectionFactory, token).ConfigureAwait(false);
 
-      var sqlInsert = $"INSERT INTO {TableWords} (id, word) VALUES (@id, @word)";
+      var sqlInsert = $"INSERT INTO {Tables.Words} (id, word) VALUES (@id, @word)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var pId = cmd.CreateParameter();
@@ -249,7 +241,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var actualWords = new List<string>(words.Count);
 
         // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT id FROM {TableWords} WHERE word=@word";
+        var sql = $"SELECT id FROM {Tables.Words} WHERE word=@word";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pWord = cmd.CreateParameter();
@@ -295,7 +287,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT max(id) from {TableWords};";
+        var sql = $"SELECT max(id) from {Tables.Words};";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           // get out if needed.

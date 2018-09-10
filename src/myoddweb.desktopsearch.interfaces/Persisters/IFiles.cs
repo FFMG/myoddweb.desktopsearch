@@ -22,6 +22,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IFiles
   {
     /// <summary>
+    /// Files update manager
+    /// </summary>
+    IFileUpdates FileUpdates { get; }
+
+    /// <summary>
     /// Add or update a file to a folder.
     /// </summary>
     /// <param name="file"></param>

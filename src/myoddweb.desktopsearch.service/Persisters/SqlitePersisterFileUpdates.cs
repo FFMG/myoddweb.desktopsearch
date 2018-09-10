@@ -56,13 +56,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private readonly ICounts _counts;
 
-    public SqlitePersisterFileUpdates(IFiles files, ICounts counts, string tableFiles, string tableFolders, string tableFileUpdates, ILogger logger)
+    public SqlitePersisterFileUpdates(IFiles files, ICounts counts, ILogger logger)
     {
-      // save the table names
-      TableFolders = tableFolders;
-      TableFiles = tableFiles;
-      TableFileUpdates = tableFileUpdates;
-
       //  the files interface.
       _files = files ?? throw new ArgumentNullException(nameof(files));
 

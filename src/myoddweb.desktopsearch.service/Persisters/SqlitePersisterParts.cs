@@ -26,20 +26,12 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlitePersisterParts : IParts
   {
     /// <summary>
-    /// The counts table name
-    /// </summary>
-    private string TableParts { get; }
-
-    /// <summary>
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
 
-    public SqlitePersisterParts(string tableName, ILogger logger)
+    public SqlitePersisterParts(ILogger logger)
     {
-      // save the table name
-      TableParts = tableName;
-
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -62,7 +54,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var partsToAdd = new List<string>(parts.Count);
 
         // first look for what we have and insert what we do not have.
-        var sqlSelect = $"SELECT id FROM {TableParts} WHERE part = @part";
+        var sqlSelect = $"SELECT id FROM {Tables.Parts} WHERE part = @part";
         using (var cmdSelect = connectionFactory.CreateCommand(sqlSelect))
         {
           var pSPart = cmdSelect.CreateParameter();
@@ -150,7 +142,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // whatever is now left is to be inserted
-        var sqlInsert = $"INSERT INTO {TableParts} (id, part) VALUES (@id, @part)";
+        var sqlInsert = $"INSERT INTO {Tables.Parts} (id, part) VALUES (@id, @part)";
         using (var cmdInsert = connectionFactory.CreateCommand(sqlInsert))
         {
           var pId = cmdInsert.CreateParameter();
@@ -216,7 +208,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var actualParts = new List<string>(parts.Count);
 
         // first look for what we have and insert what we do not have.
-        var sql = $"SELECT id FROM {TableParts} WHERE part = @part";
+        var sql = $"SELECT id FROM {Tables.Parts} WHERE part = @part";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pSPart = cmd.CreateParameter();
@@ -265,7 +257,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT max(id) from {TableParts};";
+        var sql = $"SELECT max(id) from {Tables.Parts};";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);

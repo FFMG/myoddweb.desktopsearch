@@ -95,7 +95,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateWordsAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableWords} (id integer PRIMARY KEY, word TEXT UNIQUE)", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.Words} (id integer PRIMARY KEY, word TEXT UNIQUE)", connectionFactory)
           .ConfigureAwait(false))
       {
         return false;
@@ -115,7 +115,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateFilesWordsAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableFilesWords} (wordid integer, fileid integer)", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.FilesWords} (wordid integer, fileid integer)", connectionFactory)
           .ConfigureAwait(false))
       {
         return false;
@@ -124,14 +124,14 @@ namespace myoddweb.desktopsearch.service.Persisters
       // there can only be one word and one id.
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{TableFilesWords}_wordid_fileid ON {TableFilesWords}(wordid, fileid);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{Tables.FilesWords}_wordid_fileid ON {Tables.FilesWords}(wordid, fileid);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
 
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFilesWords}_fileid ON {TableFilesWords}(fileid);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.FilesWords}_fileid ON {Tables.FilesWords}(fileid);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -141,7 +141,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateFilesAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableFiles} (id integer PRIMARY KEY, folderid integer, name varchar(260))", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.Files} (id integer PRIMARY KEY, folderid integer, name varchar(260))", connectionFactory)
           .ConfigureAwait(false))
       {
         return false;
@@ -149,14 +149,14 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFiles}_folderid_name ON {TableFiles}(folderid, name);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.Files}_folderid_name ON {Tables.Files}(folderid, name);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
 
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFiles}_folderid ON {TableFiles}(folderid);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.Files}_folderid ON {Tables.Files}(folderid);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -171,7 +171,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateFoldersUpdateAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableFolderUpdates} (folderid integer, type integer, ticks integer)", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.FolderUpdates} (folderid integer, type integer, ticks integer)", connectionFactory)
           .ConfigureAwait(false))
       {
         return false;
@@ -180,7 +180,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // index to get the last 'x' updated folders.
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolderUpdates}_ticks ON {TableFolderUpdates}(ticks);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.FolderUpdates}_ticks ON {Tables.FolderUpdates}(ticks);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -188,7 +188,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the folderid index so we can add/remove folders once processed.
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolderUpdates}_folderid ON {TableFolderUpdates}(folderid);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.FolderUpdates}_folderid ON {Tables.FolderUpdates}(folderid);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -203,7 +203,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateCountsAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableCounts} (type integer, count integer)", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.Counts} (type integer, count integer)", connectionFactory)
           .ConfigureAwait(false))
       {
         return false;
@@ -211,7 +211,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{TableCounts}_type ON {TableCounts}(type);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{Tables.Counts}_type ON {Tables.Counts}(type);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -228,7 +228,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateWordsPartsAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableWordsParts} (wordid integer, partid integer)", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.WordsParts} (wordid integer, partid integer)", connectionFactory)
           .ConfigureAwait(false))
       {
         return false;
@@ -238,7 +238,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the part is not unique
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableWordsParts}_partid ON {TableWordsParts}(partid);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.WordsParts}_partid ON {Tables.WordsParts}(partid);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -247,7 +247,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the word id is not unique
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableWordsParts}_wordid ON {TableWordsParts}(wordid);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.WordsParts}_wordid ON {Tables.WordsParts}(wordid);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -255,7 +255,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // we need to be able to remove word + parts together, and they have to be unique.
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{TableWordsParts}_wordid_partid ON {TableWordsParts}(wordid, partid);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{Tables.WordsParts}_wordid_partid ON {Tables.WordsParts}(wordid, partid);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -271,7 +271,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreatePartsAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableParts} (id integer PRIMARY KEY, part TEXT UNIQUE)", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.Parts} (id integer PRIMARY KEY, part TEXT UNIQUE)", connectionFactory)
           .ConfigureAwait(false))
       {
         return false;
@@ -291,7 +291,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateFilesUpdateAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableFileUpdates} (fileid integer, type integer, ticks integer)", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.FileUpdates} (fileid integer, type integer, ticks integer)", connectionFactory)
           .ConfigureAwait(false))
       {
         return false;
@@ -300,7 +300,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // index to get the last 'x' updated files.
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFileUpdates}_ticks ON {TableFileUpdates}(ticks);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.FileUpdates}_ticks ON {Tables.FileUpdates}(ticks);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -308,7 +308,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the files index so we can add/remove files once processed.
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFileUpdates}_fileid ON {TableFileUpdates}(fileid);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.FileUpdates}_fileid ON {Tables.FileUpdates}(fileid);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -323,7 +323,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateFoldersAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableFolders} (id integer PRIMARY KEY, path varchar(260))", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.Folders} (id integer PRIMARY KEY, path varchar(260))", connectionFactory)
           .ConfigureAwait(false))
       {
         return false;
@@ -331,7 +331,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       if ( 
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{TableFolders}_path ON {TableFolders}(path);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.Folders}_path ON {Tables.Folders}(path);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -347,7 +347,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateConfigAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {TableConfig} (name varchar(20) PRIMARY KEY, value varchar(255))", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.Config} (name varchar(20) PRIMARY KEY, value varchar(255))", connectionFactory)
           .ConfigureAwait(false))
       {
         return false;
@@ -388,7 +388,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     protected async Task Update(IConnectionFactory connectionFactory, CancellationToken token)
     {
       // if the config table does not exis, then we have to asume it is brand new.
-      if (TableExists(TableConfig, connectionFactory))
+      if (TableExists(Tables.Config, connectionFactory))
       {
         return;
       }

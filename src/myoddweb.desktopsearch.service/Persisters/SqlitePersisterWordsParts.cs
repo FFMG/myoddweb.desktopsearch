@@ -12,20 +12,12 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlitePersisterWordsParts : IWordsParts
   {
     /// <summary>
-    /// The counts table name
-    /// </summary>
-    private string TableWordsParts { get; }
-
-    /// <summary>
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
 
-    public SqlitePersisterWordsParts(string tableName, ILogger logger)
+    public SqlitePersisterWordsParts(ILogger logger)
     {
-      // save the table name
-      TableWordsParts = tableName;
-
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -88,7 +80,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // the query to insert a new word
-      var sqlInsert = $"DELETE FROM {TableWordsParts} WHERE wordid=@wordid AND partid=@partid";
+      var sqlInsert = $"DELETE FROM {Tables.WordsParts} WHERE wordid=@wordid AND partid=@partid";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var ppId = cmd.CreateParameter();
@@ -134,7 +126,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // the query to insert a new word
-      var sqlInsert = $"INSERT INTO {TableWordsParts} (wordid, partid) VALUES (@wordid, @partid)";
+      var sqlInsert = $"INSERT INTO {Tables.WordsParts} (wordid, partid) VALUES (@wordid, @partid)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var ppId = cmd.CreateParameter();
@@ -174,7 +166,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // the query to insert a new word
-        var sql = $"SELECT partid FROM {TableWordsParts} WHERE wordid = @wordid";
+        var sql = $"SELECT partid FROM {Tables.WordsParts} WHERE wordid = @wordid";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pId = cmd.CreateParameter();

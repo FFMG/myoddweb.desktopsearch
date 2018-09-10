@@ -27,6 +27,9 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal partial class SqlitePersister 
   {
     /// <inheritdoc />
+    public IFolderUpdates FolderUpdates { get; }
+
+    /// <inheritdoc />
     public async Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token)
     {
       return await AddOrUpdateDirectoriesAsync(new [] {directory}, connectionFactory, token ).ConfigureAwait(false);
@@ -58,7 +61,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       try
       {
-        var sql = $"UPDATE {TableFolders} SET path=@path1 WHERE path=@path2";
+        var sql = $"UPDATE {Tables.Folders} SET path=@path1 WHERE path=@path2";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pPath1 = cmd.CreateParameter();
@@ -138,7 +141,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
-      var sqlDelete = $"DELETE FROM {TableFolders} WHERE path=@path";
+      var sqlDelete = $"DELETE FROM {Tables.Folders} WHERE path=@path";
       using (var cmd = connectionFactory.CreateCommand(sqlDelete))
       {
         var pPath = cmd.CreateParameter();
@@ -154,7 +157,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             // try and delete files given directory info.
-            await DeleteFilesAsync(directory, connectionFactory, token).ConfigureAwait(false);
+            await Files.DeleteFilesAsync(directory, connectionFactory, token).ConfigureAwait(false);
 
             // then do the actual delete.
             pPath.Value = directory.FullName.ToLowerInvariant();
@@ -200,7 +203,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we want to get the latest updated folders.
-        var sql = $"SELECT path FROM {TableFolders} WHERE id = @id";
+        var sql = $"SELECT path FROM {Tables.Folders} WHERE id = @id";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pId = cmd.CreateParameter();
@@ -248,7 +251,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var directoriesToAdd = new List<DirectoryInfo>();
 
       // we first look for it, and, if we find it then there is nothing to do.
-      var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
+      var sql = $"SELECT id FROM {Tables.Folders} WHERE path=@path";
       using (var cmd = connectionFactory.CreateCommand(sql))
       {
         var pPath = cmd.CreateParameter();
@@ -287,6 +290,17 @@ namespace myoddweb.desktopsearch.service.Persisters
       return ids;
     }
 
+    /// <inheritdoc />
+    public async Task<long> GetDirectoryIdAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
+    {
+      if (null == directory)
+      {
+        throw new ArgumentNullException(nameof(directory), "The given directory is null");
+      }
+      var ids = await GetDirectoriesIdAsync(new List<DirectoryInfo> { directory }, connectionFactory, token, createIfNotFound).ConfigureAwait(false);
+      return ids.Any() ? ids.First() : -1;
+    }
+    
     #region private functions
     /// <summary>
     /// Get the next row ID we can use.
@@ -297,7 +311,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<long> GetNextDirectoryIdAsync(IConnectionFactory connectionFactory, CancellationToken token)
     {
       // we first look for it, and, if we find it then there is nothing to do.
-      var sql = $"SELECT max(id) from {TableFolders};";
+      var sql = $"SELECT max(id) from {Tables.Folders};";
       using (var cmd = connectionFactory.CreateCommand(sql))
       {
         var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
@@ -309,24 +323,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         // we could not find this path ... so just add it.
         return ((long) value) + 1;
       }
-    }
-
-    /// <summary>
-    /// Get the id of a folder or -1.
-    /// </summary>
-    /// <param name="directory"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <param name="createIfNotFound"></param>
-    /// <returns></returns>
-    private async Task<long> GetDirectoryIdAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
-    {
-      if (null == directory)
-      {
-        throw new ArgumentNullException(nameof(directory), "The given directory is null");
-      }
-      var ids = await GetDirectoriesIdAsync(new List<DirectoryInfo> { directory}, connectionFactory, token, createIfNotFound ).ConfigureAwait(false);
-      return ids.Any() ? ids.First() : -1;
     }
 
     /// <summary>
@@ -350,7 +346,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // get the next id.
       var nextId = await GetNextDirectoryIdAsync(connectionFactory, token).ConfigureAwait(false);
 
-      var sqlInsert = $"INSERT INTO {TableFolders} (id, path) VALUES (@id, @path)";
+      var sqlInsert = $"INSERT INTO {Tables.Folders} (id, path) VALUES (@id, @path)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var pId = cmd.CreateParameter();
@@ -420,7 +416,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var actualDirectories = new List<DirectoryInfo>();
 
         // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
+        var sql = $"SELECT id FROM {Tables.Folders} WHERE path=@path";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pPath = cmd.CreateParameter();

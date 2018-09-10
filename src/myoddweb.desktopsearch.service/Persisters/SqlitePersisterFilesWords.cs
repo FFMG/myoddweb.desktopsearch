@@ -27,11 +27,6 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlitePersisterFilesWords : IFilesWords
   {
     /// <summary>
-    /// The counts table name
-    /// </summary>
-    private string TableFilesWords { get; }
-
-    /// <summary>
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
@@ -41,11 +36,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private readonly IWords _words;
 
-    public SqlitePersisterFilesWords( IWords words, string tableName, ILogger logger)
+    public SqlitePersisterFilesWords( IWords words, ILogger logger)
     {
-      // save the table name
-      TableFilesWords = tableName;
-
       _words = words ?? throw new ArgumentNullException(nameof(words));
 
       // save the logger
@@ -89,7 +81,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           return true;
         }
 
-        var sql = $"INSERT INTO {TableFilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
+        var sql = $"INSERT INTO {Tables.FilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           // create the parameters for inserting.
@@ -136,7 +128,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
-        var sqlDelete = $"DELETE FROM {TableFilesWords} WHERE fileid=@fileid";
+        var sqlDelete = $"DELETE FROM {Tables.FilesWords} WHERE fileid=@fileid";
         using (var cmd = connectionFactory.CreateCommand(sqlDelete))
         {
           var pFId = cmd.CreateParameter();
@@ -204,7 +196,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // whatever word ids are left we need to remove them.
-        var sqlDelete = $"DELETE FROM {TableFilesWords} WHERE wordid=@wordid and fileid=@fileid";
+        var sqlDelete = $"DELETE FROM {Tables.FilesWords} WHERE wordid=@wordid and fileid=@fileid";
         using (var cmd = connectionFactory.CreateCommand(sqlDelete))
         {
           var pWId = cmd.CreateParameter();
@@ -259,7 +251,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // first we get the ids that are in the 
       try
       {
-        var sqlSelect = $"SELECT wordid FROM {TableFilesWords} WHERE fileid=@fileid";
+        var sqlSelect = $"SELECT wordid FROM {Tables.FilesWords} WHERE fileid=@fileid";
         using (var cmd = connectionFactory.CreateCommand(sqlSelect))
         {
           // and the prameters for selecting.

@@ -25,19 +25,6 @@ namespace myoddweb.desktopsearch.service.Persisters
 {
   internal partial class SqlitePersister : IPersister
   {
-    #region Table names
-    private const string TableConfig = "Config";
-    private const string TableFolders = "Folders";
-    private const string TableFolderUpdates = "FolderUpdates";
-    private const string TableFiles = "Files";
-    private const string TableFileUpdates = "FileUpdates";
-    private const string TableWords = "Words";
-    private const string TableFilesWords = "FilesWords";
-    private const string TableParts = "Parts";
-    private const string TableWordsParts = "WordsParts";
-    private const string TableCounts = "Counts";
-    #endregion
-
     #region Private Member variables
     /// <summary>
     /// The SQlite connection for reading
@@ -80,10 +67,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     public IFilesWords FilesWords { get; }
 
     /// <inheritdoc />
-    public IFileUpdates FileUpdates { get; }
-
-    /// <inheritdoc />
-    public IFolderUpdates FolderUpdates { get; }
+    public IFiles Files { get; }
     #endregion
 
     public SqlitePersister(ILogger logger, ConfigSqliteDatabase config, int maxNumCharacters)
@@ -95,26 +79,27 @@ namespace myoddweb.desktopsearch.service.Persisters
       _config = config ?? throw new ArgumentNullException(nameof(config));
 
       // create the configuration table.
-      Config = new SqlitePersisterConfig(TableConfig);
+      Config = new SqlitePersisterConfig();
 
       // file words.
-      FilesWords = new SqlitePersisterFilesWords( Words, TableFilesWords, logger);
+      FilesWords = new SqlitePersisterFilesWords( Words, logger);
 
       // create the counters
-      Counts = new SqlitePersisterCounts( TableCounts, logger);
+      Counts = new SqlitePersisterCounts( logger);
 
       // create the parts interface.
-      Parts = new SqlitePersisterParts(TableParts, logger);
+      Parts = new SqlitePersisterParts(logger);
 
       // word parts
-      WordsParts = new SqlitePersisterWordsParts(TableWordsParts, logger);
+      WordsParts = new SqlitePersisterWordsParts(logger);
 
       // create the words
-      Words = new SqlitePersisterWords(Parts, WordsParts, maxNumCharacters, TableWords, logger);
+      Words = new SqlitePersisterWords(Parts, WordsParts, maxNumCharacters, logger);
 
-      // create the files/folders update 
-      FileUpdates = new SqlitePersisterFileUpdates( this, Counts, TableFiles, TableFolders, TableFileUpdates, logger);
-      FolderUpdates = new SqlitePersisterFolderUpdates(this, this, TableFolders, TableFolderUpdates, logger);
+      // create the files.
+      Files = new SqlitePersisterFiles(this, Counts, logger);
+
+      FolderUpdates = new SqlitePersisterFolderUpdates(Files, this, logger);
     }
 
     /// <inheritdoc />

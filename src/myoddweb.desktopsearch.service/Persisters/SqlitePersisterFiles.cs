@@ -20,12 +20,48 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.IO;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister 
+  internal class SqlitePersisterFiles : IFiles
   {
+    #region Member Variables
+    /// <summary>
+    /// The folders interface
+    /// </summary>
+    private readonly IFolders _folders;
+
+    /// <summary>
+    /// The counter manager
+    /// </summary>
+    private readonly ICounts _counts;
+    
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+    #endregion
+
+    /// <inheritdoc />
+    public IFileUpdates FileUpdates { get; }
+
+    public SqlitePersisterFiles(IFolders folders, ICounts counts, ILogger logger)
+    {
+      //  the files interface.
+      _folders = folders ?? throw new ArgumentNullException(nameof(folders));
+
+      // the counter
+      _counts = counts ?? throw new ArgumentNullException(nameof(counts));
+
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      // we can now create the 
+      FileUpdates = new SqlitePersisterFileUpdates(this, counts, logger);
+    }
+
     /// <inheritdoc />
     public async Task<bool> AddOrUpdateFileAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token)
     {
@@ -54,7 +90,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
       // this is the new folder, we might as well create it if it does not exit.
-      var folderId = await GetDirectoryIdAsync(file.Directory, connectionFactory, token, true).ConfigureAwait(false);
+      var folderId = await _folders.GetDirectoryIdAsync(file.Directory, connectionFactory, token, true).ConfigureAwait(false);
       if (-1 == folderId)
       {
         // we cannot create the parent folder id
@@ -63,7 +99,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // get the old folder.
-      var oldFolderId = await GetDirectoryIdAsync(oldFile.Directory, connectionFactory, token, true).ConfigureAwait(false);
+      var oldFolderId = await _folders.GetDirectoryIdAsync(oldFile.Directory, connectionFactory, token, true).ConfigureAwait(false);
       if (-1 == oldFolderId)
       {
         // this cannot be a renaming, as the parent dirctory does not exist.
@@ -73,7 +109,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // so we have an old folder id and a new folder id
-      var sql = $"UPDATE {TableFiles} SET name=@name1, folderid=@folderid1 WHERE name=@name2 and folderid=@folderid2";
+      var sql = $"UPDATE {Tables.Files} SET name=@name1, folderid=@folderid1 WHERE name=@name2 and folderid=@folderid2";
       using (var cmd = connectionFactory.CreateCommand(sql))
       {
         try
@@ -169,7 +205,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       long deletedCount = 0;
-      var sqlDelete = $"DELETE FROM {TableFiles} WHERE folderid=@folderid and name=@name";
+      var sqlDelete = $"DELETE FROM {Tables.Files} WHERE folderid=@folderid and name=@name";
       using (var cmd = connectionFactory.CreateCommand(sqlDelete))
       {
         var pFolderId = cmd.CreateParameter();
@@ -189,7 +225,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             // get the folder id, no need to create it.
-            var folderId = await GetDirectoryIdAsync(file.Directory, connectionFactory, token, false).ConfigureAwait(false);
+            var folderId = await _folders.GetDirectoryIdAsync(file.Directory, connectionFactory, token, false).ConfigureAwait(false);
             if (-1 == folderId)
             {
               _logger.Warning($"Could not delete file: {file.FullName}, could not locate the parent folder?");
@@ -237,7 +273,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // update the files count.
-      await Counts.UpdateFilesCountAsync( -1* deletedCount, connectionFactory, token).ConfigureAwait(false);
+      await _counts.UpdateFilesCountAsync( -1* deletedCount, connectionFactory, token).ConfigureAwait(false);
 
       // we are done.
       return true;
@@ -252,7 +288,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // get the folder id, we do not want to create the folder.
-      var folderId = await GetDirectoryIdAsync(directory, connectionFactory, token, false).ConfigureAwait(false);
+      var folderId = await _folders.GetDirectoryIdAsync(directory, connectionFactory, token, false).ConfigureAwait(false);
       if (folderId == -1)
       {
         // there was no error.
@@ -279,10 +315,10 @@ namespace myoddweb.desktopsearch.service.Persisters
         await FileUpdates.TouchFilesAsync(fileIds, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
 
         // we are about to delete those files.
-        await Counts.UpdateFilesCountAsync(fileIds.Count, connectionFactory, token).ConfigureAwait(false);
+        await _counts.UpdateFilesCountAsync(fileIds.Count, connectionFactory, token).ConfigureAwait(false);
       }
 
-      var sql = $"DELETE FROM {TableFiles} WHERE folderid=@folderid";
+      var sql = $"DELETE FROM {Tables.Files} WHERE folderid=@folderid";
       using (var cmd = connectionFactory.CreateCommand(sql))
       {
         try
@@ -337,7 +373,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // look for the directory
-      var directory = await GetDirectoryAsync(directoryId, connectionFactory, token).ConfigureAwait(false);
+      var directory = await _folders.GetDirectoryAsync(directoryId, connectionFactory, token).ConfigureAwait(false);
       if (null == directory)
       {
         // with no directory, there is nothing we can do.
@@ -354,7 +390,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // get the folder id
-        var folderid = await GetDirectoryIdAsync(file.Directory, connectionFactory, token, false).ConfigureAwait(false);
+        var folderid = await _folders.GetDirectoryIdAsync(file.Directory, connectionFactory, token, false).ConfigureAwait(false);
         if (-1 == folderid)
         {
           if (!createIfNotFound)
@@ -379,7 +415,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
 
         // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid and name=@name";
+        var sql = $"SELECT id FROM {Tables.Files} WHERE folderid=@folderid and name=@name";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pFolderId = cmd.CreateParameter();
@@ -440,7 +476,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we want to get the latest updated folders.
-        var sql = $"SELECT folderid, name FROM {TableFiles} WHERE id=@id";
+        var sql = $"SELECT folderid, name FROM {Tables.Files} WHERE id=@id";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pId = cmd.CreateParameter();
@@ -454,7 +490,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           if (reader.Read())
           {
             // get the directory
-            var directory = await GetDirectoryAsync((long) reader["folderid"], connectionFactory, token)
+            var directory = await _folders.GetDirectoryAsync((long) reader["folderid"], connectionFactory, token)
               .ConfigureAwait(false);
 
             // sanity check
@@ -506,7 +542,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we want to get the latest updated folders.
-        var sql = $"SELECT name FROM {TableFiles} WHERE folderid=@id";
+        var sql = $"SELECT name FROM {Tables.Files} WHERE folderid=@id";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pId = cmd.CreateParameter();
@@ -564,7 +600,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // what we actually inserted
       var insertedCount = 0;
 
-      var sqlInsert = $"INSERT INTO {TableFiles} (id, folderid, name) VALUES (@id, @folderid, @name)";
+      var sqlInsert = $"INSERT INTO {Tables.Files} (id, folderid, name) VALUES (@id, @folderid, @name)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var pId = cmd.CreateParameter();
@@ -592,7 +628,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             // Get the folder for this file and insert it, if need be.
-            var folderId = await GetDirectoryIdAsync(file.Directory, connectionFactory, token, true).ConfigureAwait(false);
+            var folderId = await _folders.GetDirectoryIdAsync(file.Directory, connectionFactory, token, true).ConfigureAwait(false);
             if (-1 == folderId)
             {
               _logger.Error($"I was unable to insert {file.FullName} as I could not locate and insert the directory!");
@@ -633,7 +669,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // we are about to delete those files.
-      await Counts.UpdateFilesCountAsync(insertedCount, connectionFactory, token).ConfigureAwait(false);
+      await _counts.UpdateFilesCountAsync(insertedCount, connectionFactory, token).ConfigureAwait(false);
 
       return true;
     }
@@ -656,7 +692,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var actualFiles = new List<FileInfo>();
 
         // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid AND name=@name";
+        var sql = $"SELECT id FROM {Tables.Files} WHERE folderid=@folderid AND name=@name";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pFolderId = cmd.CreateParameter();
@@ -680,7 +716,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // Get the folder for this file and insert it, if need be.
-            var folderId = await GetDirectoryIdAsync(file.Directory, connectionFactory, token, true).ConfigureAwait(false);
+            var folderId = await _folders.GetDirectoryIdAsync(file.Directory, connectionFactory, token, true).ConfigureAwait(false);
             if (-1 == folderId)
             {
               _logger.Error($"I was unable to insert {file.FullName} as I could not locate and insert the directory!");
@@ -719,7 +755,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT max(id) from {TableFiles};";
+        var sql = $"SELECT max(id) from {Tables.Files};";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
@@ -755,7 +791,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid";
+        var sql = $"SELECT id FROM {Tables.Files} WHERE folderid=@folderid";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var fileIds = new List<long>();

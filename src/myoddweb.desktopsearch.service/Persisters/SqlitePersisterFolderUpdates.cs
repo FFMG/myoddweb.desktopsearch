@@ -27,16 +27,6 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlitePersisterFolderUpdates : IFolderUpdates
   {
     /// <summary>
-    /// The files update table
-    /// </summary>
-    private string TableFolderUpdates { get; }
-
-    /// <summary>
-    /// The folders table.
-    /// </summary>
-    private string TableFolders { get; }
-
-    /// <summary>
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
@@ -51,12 +41,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private readonly IFiles _files;
 
-    public SqlitePersisterFolderUpdates(IFiles files, IFolders folders, string tableFolders, string tableFolderUpdates, ILogger logger)
+    public SqlitePersisterFolderUpdates(IFiles files, IFolders folders, ILogger logger)
     {
-      // the table names.
-      TableFolderUpdates = tableFolderUpdates;
-      TableFolders = tableFolders;
-
       //  the files interface.
       _folders = folders ?? throw new ArgumentNullException(nameof(folders));
 
@@ -101,7 +87,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
 
-      var sqlInsert = $"INSERT INTO {TableFolderUpdates} (folderid, type, ticks) VALUES (@id, @type, @ticks)";
+      var sqlInsert = $"INSERT INTO {Tables.FolderUpdates} (folderid, type, ticks) VALUES (@id, @type, @ticks)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var pId = cmd.CreateParameter();
@@ -178,7 +164,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
-      var sqlDelete = $"DELETE FROM {TableFolderUpdates} WHERE folderid = @id";
+      var sqlDelete = $"DELETE FROM {Tables.FolderUpdates} WHERE folderid = @id";
       using (var cmd = connectionFactory.CreateCommand(sqlDelete))
       {
         try
@@ -229,7 +215,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we want to get the latest updated folders.
-        var sql = $"SELECT fu.folderid as folderid, fu.type as type, f.path as path FROM {TableFolderUpdates} fu, {TableFolders} f WHERE f.id=fu.folderid "+
+        var sql = $"SELECT fu.folderid as folderid, fu.type as type, f.path as path FROM {Tables.FolderUpdates} fu, {Tables.Folders} f WHERE f.id=fu.folderid "+
                   $"ORDER BY fu.ticks DESC LIMIT { limit}";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
