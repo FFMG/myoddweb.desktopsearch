@@ -81,11 +81,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       // create the configuration table.
       Config = new SqlitePersisterConfig();
 
-      // file words.
-      FilesWords = new SqlitePersisterFilesWords( Words, logger);
-
       // create the counters
-      Counts = new SqlitePersisterCounts( logger);
+      Counts = new SqlitePersisterCounts(logger);
 
       // create the parts interface.
       Parts = new SqlitePersisterParts(logger);
@@ -95,6 +92,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // create the words
       Words = new SqlitePersisterWords(Parts, WordsParts, maxNumCharacters, logger);
+
+      // file words.
+      FilesWords = new SqlitePersisterFilesWords( Words, logger);
 
       // create the files / Folders.
       Folders = new SqlitePersisterFolders( Counts, logger );
