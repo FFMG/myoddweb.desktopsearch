@@ -116,7 +116,7 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"Directory: {e.FullName} (Created)");
 
       // just add the directory.
-      await _persister.AddOrUpdateDirectoryAsync(directory, _currentTransaction, token).ConfigureAwait(false);
+      await _persister.Folders.AddOrUpdateDirectoryAsync(directory, _currentTransaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -138,10 +138,10 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"File: {e.FullName} (Deleted)");
 
       // do we have the directory on record?
-      if (await _persister.DirectoryExistsAsync(directory, _currentTransaction, token).ConfigureAwait(false))
+      if (await _persister.Folders.DirectoryExistsAsync(directory, _currentTransaction, token).ConfigureAwait(false))
       {
         // just delete the directory.
-        await _persister.DeleteDirectoryAsync(directory, _currentTransaction, token).ConfigureAwait(false);
+        await _persister.Folders.DeleteDirectoryAsync(directory, _currentTransaction, token).ConfigureAwait(false);
       }
     }
 
@@ -155,7 +155,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // we know the directory changed ... but does it even exist on our record?
-      if (!await _persister.DirectoryExistsAsync(directory, _currentTransaction, token).ConfigureAwait(false))
+      if (!await _persister.Folders.DirectoryExistsAsync(directory, _currentTransaction, token).ConfigureAwait(false))
       {
         for (;;)
         {
@@ -163,7 +163,7 @@ namespace myoddweb.desktopsearch.parser.IO
           Logger.Verbose($"Directory: {e.FullName} (Changed - But not on file)");
 
           // just add the directory.
-          await _persister.AddOrUpdateDirectoryAsync(directory, _currentTransaction, token).ConfigureAwait(false);
+          await _persister.Folders.AddOrUpdateDirectoryAsync(directory, _currentTransaction, token).ConfigureAwait(false);
 
           // get the parent directory ... if there is one.
           directory = directory.Parent;
@@ -173,7 +173,7 @@ namespace myoddweb.desktopsearch.parser.IO
           }
 
           // if the new directory exists then we do not need to worry any further.
-          if (await _persister.DirectoryExistsAsync(directory, _currentTransaction, token).ConfigureAwait(false))
+          if (await _persister.Folders.DirectoryExistsAsync(directory, _currentTransaction, token).ConfigureAwait(false))
           {
             break;
           }
@@ -185,7 +185,7 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"Directory: {e.FullName} (Changed)");
 
       // then make sure to touch the folder accordingly
-      await _persister.FolderUpdates.TouchDirectoriesAsync( new []{directory}, UpdateType.Changed, _currentTransaction, token).ConfigureAwait(false);
+      await _persister.Folders.FolderUpdates.TouchDirectoriesAsync( new []{directory}, UpdateType.Changed, _currentTransaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -214,7 +214,7 @@ namespace myoddweb.desktopsearch.parser.IO
         }
 
         // just add the new directly.
-        if (!await _persister.AddOrUpdateDirectoryAsync(directory, _currentTransaction, token).ConfigureAwait(false))
+        if (!await _persister.Folders.AddOrUpdateDirectoryAsync(directory, _currentTransaction, token).ConfigureAwait(false))
         {
           Logger.Error($"Unable to add directory {e.FullName} during rename.");
         }
@@ -227,7 +227,7 @@ namespace myoddweb.desktopsearch.parser.IO
       if (!CanProcessDirectory(directory))
       {
         // delete the old folder only, in case it did exist.
-        if (!await _persister.DeleteDirectoryAsync(oldDirectory, _currentTransaction, token).ConfigureAwait(false))
+        if (!await _persister.Folders.DeleteDirectoryAsync(oldDirectory, _currentTransaction, token).ConfigureAwait(false))
         {
           Logger.Error($"Unable to remove old file {e.OldFullName} durring rename");
         }
@@ -242,10 +242,10 @@ namespace myoddweb.desktopsearch.parser.IO
       //
       // if we do not have the old directory on record then it is not a rename
       // but rather is is a new one.
-      if (!await _persister.DirectoryExistsAsync(oldDirectory, _currentTransaction, token).ConfigureAwait(false))
+      if (!await _persister.Folders.DirectoryExistsAsync(oldDirectory, _currentTransaction, token).ConfigureAwait(false))
       {
         // just add the new directly.
-        if (!await _persister.AddOrUpdateDirectoryAsync( directory, _currentTransaction, token).ConfigureAwait(false))
+        if (!await _persister.Folders.AddOrUpdateDirectoryAsync( directory, _currentTransaction, token).ConfigureAwait(false))
         {
           Logger.Error($"Unable to add directory {e.FullName} during rename.");
         }
@@ -255,7 +255,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // we have the old name on record so we can try and rename it.
       // if we ever have an issue, it could be because we are trying to rename to
       // something that already exists.
-      if (-1 == await _persister.RenameOrAddDirectoryAsync( directory, oldDirectory, _currentTransaction, token).ConfigureAwait(false))
+      if (-1 == await _persister.Folders.RenameOrAddDirectoryAsync( directory, oldDirectory, _currentTransaction, token).ConfigureAwait(false))
       {
         Logger.Error($"Unable to rename directory {e.OldFullName} > {e.FullName}");
       }

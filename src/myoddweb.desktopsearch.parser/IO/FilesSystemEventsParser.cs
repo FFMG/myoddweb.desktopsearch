@@ -123,7 +123,7 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"File: {e.FullName} (Created)");
 
       // just add the file.
-      await _persister.Files.AddOrUpdateFileAsync( file, _currentTransaction, token).ConfigureAwait(false);
+      await _persister.Folders.Files.AddOrUpdateFileAsync( file, _currentTransaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -145,10 +145,10 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"File: {e.FullName} (Deleted)");
 
       // do we have the file on record?
-      if (await _persister.Files.FileExistsAsync(file, _currentTransaction, token).ConfigureAwait(false))
+      if (await _persister.Folders.Files.FileExistsAsync(file, _currentTransaction, token).ConfigureAwait(false))
       {
         // just delete the folder.
-        await _persister.Files.DeleteFileAsync(file, _currentTransaction, token).ConfigureAwait(false);
+        await _persister.Folders.Files.DeleteFileAsync(file, _currentTransaction, token).ConfigureAwait(false);
       }
     }
 
@@ -162,13 +162,13 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // we know the file changed ... but does it even exist on our record?
-      if (!await _persister.Files.FileExistsAsync(file, _currentTransaction, token).ConfigureAwait(false))
+      if (!await _persister.Folders.Files.FileExistsAsync(file, _currentTransaction, token).ConfigureAwait(false))
       {
         // add the file
         Logger.Verbose($"File: {e.FullName} (Changed - But not on file)");
 
         // just add the file.
-        await _persister.Files.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false);
+        await _persister.Folders.Files.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false);
         return;
       }
 
@@ -177,7 +177,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
 
       // then make sure to touch the folder accordingly
-      await _persister.Files.FileUpdates.TouchFileAsync(file, UpdateType.Changed, _currentTransaction, token).ConfigureAwait(false);
+      await _persister.Folders.Files.FileUpdates.TouchFileAsync(file, UpdateType.Changed, _currentTransaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -206,7 +206,7 @@ namespace myoddweb.desktopsearch.parser.IO
         }
 
         // just add the new directly.
-        if (!await _persister.Files.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false))
+        if (!await _persister.Folders.Files.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false))
         {
           Logger.Error( $"Unable to add file {e.FullName} during rename.");
         }
@@ -226,13 +226,13 @@ namespace myoddweb.desktopsearch.parser.IO
         }
 
         // if the old file does not exist on record ... then there is nothing more for us to do .
-        if (!await _persister.Files.FileExistsAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
+        if (!await _persister.Folders.Files.FileExistsAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
         {
           return;
         }
 
         // delete the old folder only, in case it did exist.
-        if (!await _persister.Files.DeleteFileAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
+        if (!await _persister.Folders.Files.DeleteFileAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
         {
           Logger.Error( $"Unable to remove old file {e.OldFullName} durring rename");
         }
@@ -247,10 +247,10 @@ namespace myoddweb.desktopsearch.parser.IO
       //
       // if we do not have the old file on record then it is not a rename
       // but rather is is a new one.
-      if (!await _persister.Files.FileExistsAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
+      if (!await _persister.Folders.Files.FileExistsAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
       {
         // just add the new directly.
-        if (!await _persister.Files.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false))
+        if (!await _persister.Folders.Files.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false))
         {
           Logger.Error($"Unable to add file {e.FullName} during rename.");
         }
@@ -260,7 +260,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // we have the old name on record so we can try and rename it.
       // if we ever have an issue, it could be because we are trying to rename to
       // something that already exists.
-      if (-1 == await _persister.Files.RenameOrAddFileAsync(file, oldFile, _currentTransaction, token).ConfigureAwait(false))
+      if (-1 == await _persister.Folders.Files.RenameOrAddFileAsync(file, oldFile, _currentTransaction, token).ConfigureAwait(false))
       {
         Logger.Error( $"Unable to rename file {e.OldFullName} > {e.FullName}");
       }

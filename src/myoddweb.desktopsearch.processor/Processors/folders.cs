@@ -161,7 +161,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       try
       {
         // and add them to the persiser
-        if (await _persister.Files.AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false))
+        if (await _persister.Folders.Files.AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false))
         {
           // log what we just did
           _logger.Verbose($"Found {files.Count} file(s) in the new directory: {directory.FullName}.");
@@ -198,7 +198,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       try
       {
         // using the foler id is the fastest.
-        await _persister.Files.DeleteFilesAsync(pendingUpdate.FolderId, transaction, token);
+        await _persister.Folders.Files.DeleteFilesAsync(pendingUpdate.FolderId, transaction, token);
 
         // we are done
         _persister.Commit(transaction);
@@ -259,13 +259,13 @@ namespace myoddweb.desktopsearch.processor.Processors
         // We know that the helper functions never return anything null...
         if (filesToRemove.Any())
         {
-          await _persister.Files.DeleteFilesAsync(filesToRemove, transaction, token).ConfigureAwait(false);
+          await _persister.Folders.Files.DeleteFilesAsync(filesToRemove, transaction, token).ConfigureAwait(false);
         }
 
         // anything to add?
         if (filesToAdd.Any())
         {
-          await _persister.Files.AddOrUpdateFilesAsync(filesToAdd, transaction, token).ConfigureAwait(false);
+          await _persister.Folders.Files.AddOrUpdateFilesAsync(filesToAdd, transaction, token).ConfigureAwait(false);
         }
 
         // we are done
@@ -296,7 +296,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       try
       {
-        var pendingUpdates = await _persister.FolderUpdates.GetPendingFolderUpdatesAsync(MaxUpdatesToProcess, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _persister.Folders.FolderUpdates.GetPendingFolderUpdatesAsync(MaxUpdatesToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending folder updates.");
@@ -318,7 +318,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         // if anything goes wrong _after_ that we will try and 'touch' it again.
         // by doing it that way around we ensure that we never keep the transaction.
         // and we don't run the risk of someone else trying to process this again.
-        await _persister.FolderUpdates.MarkDirectoryProcessedAsync(pendingUpdate.FolderId, transaction, token).ConfigureAwait(false);
+        await _persister.Folders.FolderUpdates.MarkDirectoryProcessedAsync(pendingUpdate.FolderId, transaction, token).ConfigureAwait(false);
 
         // we are done here.
         _persister.Commit(transaction);
@@ -351,7 +351,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       try
       {
         // touch this directory again.
-        await _persister.FolderUpdates.TouchDirectoriesAsync( new []{ folderId }, type, transaction, token).ConfigureAwait(false);
+        await _persister.Folders.FolderUpdates.TouchDirectoriesAsync( new []{ folderId }, type, transaction, token).ConfigureAwait(false);
 
         // we are done
         _persister.Commit(transaction);

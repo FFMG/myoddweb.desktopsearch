@@ -405,7 +405,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         foreach (var pendingFileUpdate in pendingFileUpdates)
         {
           // mark it as persisted.
-          await _persister.Files.FileUpdates.TouchFileAsync(pendingFileUpdate.FileId, pendingFileUpdate.PendingUpdateType, transaction, token).ConfigureAwait(false);
+          await _persister.Folders.Files.FileUpdates.TouchFileAsync(pendingFileUpdate.FileId, pendingFileUpdate.PendingUpdateType, transaction, token).ConfigureAwait(false);
         }
 
         // we are done
@@ -434,7 +434,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        var pendingUpdates = await _persister.Files.FileUpdates.GetPendingFileUpdatesAsync(MaxUpdatesToProcess, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _persister.Folders.Files.FileUpdates.GetPendingFileUpdatesAsync(MaxUpdatesToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending file updates.");
@@ -455,7 +455,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         // if anything goes wrong _after_ that we will try and 'touch' it again.
         // by doing it that way around we ensure that we never keep the transaction.
         // and we don't run the risk of someone else trying to process this again.
-        await _persister.Files.FileUpdates.MarkFilesProcessedAsync(pendingUpdates.Select( p => p.FileId), transaction, token).ConfigureAwait(false);
+        await _persister.Folders.Files.FileUpdates.MarkFilesProcessedAsync(pendingUpdates.Select( p => p.FileId), transaction, token).ConfigureAwait(false);
 
         // we are done with this list.
         _persister.Commit(transaction);

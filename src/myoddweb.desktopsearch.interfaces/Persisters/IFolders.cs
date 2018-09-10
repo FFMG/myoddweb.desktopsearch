@@ -22,6 +22,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IFolders
   {
     /// <summary>
+    /// The files interface
+    /// </summary>
+    IFiles Files { get; }
+
+    /// <summary>
     /// The folders update manager.
     /// </summary>
     IFolderUpdates FolderUpdates { get; }

@@ -20,14 +20,35 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.IO;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister 
+  internal class SqlitePersisterFolders : IFolders
   {
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
     /// <inheritdoc />
     public IFolderUpdates FolderUpdates { get; }
+
+    /// <inheritdoc />
+    public IFiles Files { get; }
+
+    public SqlitePersisterFolders(ICounts counts, ILogger logger)
+    {
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      // the files ... in our folders
+      Files = new SqlitePersisterFiles(this, counts, logger);
+
+      // the folder updates.
+      FolderUpdates = new SqlitePersisterFolderUpdates(Files, this, logger);
+    }
 
     /// <inheritdoc />
     public async Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token)

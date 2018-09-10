@@ -27,21 +27,6 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlitePersisterFileUpdates : IFileUpdates
   {
     /// <summary>
-    /// The files table
-    /// </summary>
-    private string TableFiles { get; }
-
-    /// <summary>
-    /// The folders table.
-    /// </summary>
-    private string TableFolders { get; }
-  
-    /// <summary>
-    /// The files update table
-    /// </summary>
-    private string TableFileUpdates { get; }
-
-    /// <summary>
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
@@ -121,7 +106,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       var insertCount = 0;
-      var sqlInsert = $"INSERT INTO {TableFileUpdates} (fileid, type, ticks) VALUES (@id, @type, @ticks)";
+      var sqlInsert = $"INSERT INTO {Tables.FileUpdates} (fileid, type, ticks) VALUES (@id, @type, @ticks)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         try
@@ -211,7 +196,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       var deletedCount = 0;
-      var sqlDelete = $"DELETE FROM {TableFileUpdates} WHERE fileid = @id";
+      var sqlDelete = $"DELETE FROM {Tables.FileUpdates} WHERE fileid = @id";
       using (var cmd = connectionFactory.CreateCommand(sqlDelete))
       {
         try
@@ -272,7 +257,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         // we want to get the latest updated folders.
         var sql = "SELECT fu.fileid as fileid, fu.type as type, f.name as name, fo.path FROM "+
-                 $"{TableFileUpdates} fu, {TableFiles} f, {TableFolders} fo "+
+                 $"{Tables.FileUpdates} fu, {Tables.Files} f, {Tables.Folders} fo "+
                  $"WHERE f.id = fu.fileid and fo.id = f.folderid ORDER BY fu.ticks DESC LIMIT {limit}";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
@@ -308,7 +293,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         // if the files is deleted... they do not exist anymore.
         if (pendingUpdates.Count < limit)
         {
-          sql = $"SELECT fileid FROM {TableFileUpdates} WHERE type={(int)UpdateType.Deleted} ORDER BY ticks DESC LIMIT {limit - pendingUpdates.Count}";
+          sql = $"SELECT fileid FROM {Tables.FileUpdates} WHERE type={(int)UpdateType.Deleted} ORDER BY ticks DESC LIMIT {limit - pendingUpdates.Count}";
           using (var cmd = connectionFactory.CreateCommand(sql))
           {
             var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);

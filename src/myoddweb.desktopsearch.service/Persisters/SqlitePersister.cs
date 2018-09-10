@@ -65,9 +65,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     /// <inheritdoc />
     public IFilesWords FilesWords { get; }
-
+    
     /// <inheritdoc />
-    public IFiles Files { get; }
+    public IFolders Folders { get; }
     #endregion
 
     public SqlitePersister(ILogger logger, ConfigSqliteDatabase config, int maxNumCharacters)
@@ -96,10 +96,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       // create the words
       Words = new SqlitePersisterWords(Parts, WordsParts, maxNumCharacters, logger);
 
-      // create the files.
-      Files = new SqlitePersisterFiles(this, Counts, logger);
-
-      FolderUpdates = new SqlitePersisterFolderUpdates(Files, this, logger);
+      // create the files / Folders.
+      Folders = new SqlitePersisterFolders( Counts, logger );
     }
 
     /// <inheritdoc />
