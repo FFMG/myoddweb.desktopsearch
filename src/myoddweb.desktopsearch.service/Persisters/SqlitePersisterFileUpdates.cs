@@ -19,12 +19,60 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister
+  internal class SqlitePersisterFileUpdates : IFileUpdates
   {
+    /// <summary>
+    /// The files table
+    /// </summary>
+    private string TableFiles { get; }
+
+    /// <summary>
+    /// The folders table.
+    /// </summary>
+    private string TableFolders { get; }
+  
+    /// <summary>
+    /// The counts table name
+    /// </summary>
+    private string TableFileUpdates { get; }
+
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    /// <summary>
+    /// The files interface.
+    /// </summary>
+    private readonly IFiles _files;
+
+    /// <summary>
+    /// The counters
+    /// </summary>
+    private readonly ICounts _counts;
+
+    public SqlitePersisterFileUpdates(IFiles files, ICounts counts, string tableFiles, string tableFolders, string tableFileUpdates, ILogger logger)
+    {
+      // save the table names
+      TableFolders = tableFolders;
+      TableFiles = tableFiles;
+      TableFileUpdates = tableFileUpdates;
+
+      //  the files interface.
+      _files = files ?? throw new ArgumentNullException(nameof(files));
+
+      // the counter interface
+      _counts = counts ?? throw new ArgumentNullException(nameof(counts));
+
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
     /// <inheritdoc />
     public async Task<bool> TouchFileAsync(FileInfo file, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token)
     {
@@ -34,7 +82,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           "You have to be within a tansaction when calling this function.");
       }
 
-      var fileId = await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
+      var fileId = await _files.GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
       if (-1 == fileId)
       {
         return true;
@@ -127,7 +175,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // update the pending files count.
-      await Counts.UpdatePendingUpdatesCountAsync(insertCount, connectionFactory, token).ConfigureAwait(false);
+      await _counts.UpdatePendingUpdatesCountAsync(insertCount, connectionFactory, token).ConfigureAwait(false);
       return true;
     }
 
@@ -140,7 +188,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // look for the files id
-      var fileId = await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
+      var fileId = await _files.GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
 
       // did we find it?
       if (fileId == -1)
@@ -209,7 +257,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // update the pending files count.
-      await Counts.UpdatePendingUpdatesCountAsync(-1 * deletedCount, connectionFactory, token).ConfigureAwait(false);
+      await _counts.UpdatePendingUpdatesCountAsync(-1 * deletedCount, connectionFactory, token).ConfigureAwait(false);
 
       // return if this cancelled or not
       return true;

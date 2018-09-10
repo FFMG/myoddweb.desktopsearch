@@ -142,7 +142,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // touch that file as changed
-      await TouchFileAsync(fileId, UpdateType.Changed, connectionFactory, token).ConfigureAwait(false);
+      await FileUpdates.TouchFileAsync(fileId, UpdateType.Changed, connectionFactory, token).ConfigureAwait(false);
 
       // return the new file id
       return fileId;
@@ -207,7 +207,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // touch that file as changed.
-            await TouchFilesAsync(new []{fileId}, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
+            await FileUpdates.TouchFilesAsync(new []{fileId}, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
 
             // then we can delete this file.
             pFolderId.Value = folderId;
@@ -276,7 +276,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       if (fileIds.Any())
       {
         // touch that folder as changed
-        await TouchFilesAsync(fileIds, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
+        await FileUpdates.TouchFilesAsync(fileIds, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
 
         // we are about to delete those files.
         await Counts.UpdateFilesCountAsync(fileIds.Count, connectionFactory, token).ConfigureAwait(false);
@@ -348,56 +348,81 @@ namespace myoddweb.desktopsearch.service.Persisters
       return await GetFilesAsync(directoryId, directory, connectionFactory, token).ConfigureAwait(false);
     }
 
-    private async Task<List<FileInfo>> GetFilesAsync(long directoryId, DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token)
+    /// <inheritdoc />
+    public async Task<long> GetFileIdAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
     {
-      if (null == connectionFactory)
-      {
-        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
-      }
-
-      if (null == directory)
-      {
-        throw new ArgumentNullException(nameof(directory), "The directory passed to us cannot be empty.");
-      }
-
-      // the pending updates
-      var fileInfos = new List<FileInfo>();
       try
       {
-        // we want to get the latest updated folders.
-        var sql = $"SELECT name FROM {TableFiles} WHERE folderid=@id";
-        using (var cmd = connectionFactory.CreateCommand(sql))
+        // get the folder id
+        var folderid = await GetDirectoryIdAsync(file.Directory, connectionFactory, token, false).ConfigureAwait(false);
+        if (-1 == folderid)
         {
-          var pId = cmd.CreateParameter();
-          pId.DbType = DbType.Int64;
-          pId.ParameterName = "@id";
-          cmd.Parameters.Add(pId);
-
-          // set the folder id.
-          pId.Value = directoryId;
-          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
-          while (reader.Read())
+          if (!createIfNotFound)
           {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            // add this update
-            fileInfos.Add(new FileInfo(
-              Path.Combine(directory.FullName, (string) reader["name"])));
+            return -1;
           }
 
-          // return whatever we found
-          return fileInfos;
+          // add the file, if we get an error now, there is nothing we can do about it.
+          if (!await InsertFilesAsync(new[] { file }, connectionFactory, token).ConfigureAwait(false))
+          {
+            return -1;
+          }
+
+          // try and look for it
+          folderid = await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
+          if (-1 == folderid)
+          {
+            // we cannot get the folder that we just add!
+            _logger.Error($"I could not find the folder that I _just_ added! (path: {file.FullName}).");
+            return -1;
+          }
+        }
+
+        // we first look for it, and, if we find it then there is nothing to do.
+        var sql = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid and name=@name";
+        using (var cmd = connectionFactory.CreateCommand(sql))
+        {
+          var pFolderId = cmd.CreateParameter();
+          pFolderId.DbType = DbType.Int64;
+          pFolderId.ParameterName = "@folderid";
+          cmd.Parameters.Add(pFolderId);
+
+          var pName = cmd.CreateParameter();
+          pName.DbType = DbType.String;
+          pName.ParameterName = "@name";
+          cmd.Parameters.Add(pName);
+
+          cmd.Parameters["@folderid"].Value = folderid;
+          cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
+          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
+          if (null == value || value == DBNull.Value)
+          {
+            if (!createIfNotFound)
+            {
+              // we could not find it and we do not wish to go further.
+              return -1;
+            }
+
+            // try and add the folder, if that does not work, then we cannot go further.
+            if (!await InsertFilesAsync(new[] { file }, connectionFactory, token).ConfigureAwait(false))
+            {
+              return -1;
+            }
+
+            // try one more time to look for it .. and if we do not find it, then just return
+            return await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
+          }
+
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
+          // get the path id.
+          return (long)value;
         }
       }
       catch (OperationCanceledException)
       {
-        _logger.Warning("Received cancellation request - Get files by folder id");
-        throw;
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
+        _logger.Warning("Received cancellation request - Get single file id.");
         throw;
       }
     }
@@ -461,6 +486,61 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // return whatever we found
       return file;
+    }
+    
+    #region private functions
+    private async Task<List<FileInfo>> GetFilesAsync(long directoryId, DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      if (null == connectionFactory)
+      {
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
+      }
+
+      if (null == directory)
+      {
+        throw new ArgumentNullException(nameof(directory), "The directory passed to us cannot be empty.");
+      }
+
+      // the pending updates
+      var fileInfos = new List<FileInfo>();
+      try
+      {
+        // we want to get the latest updated folders.
+        var sql = $"SELECT name FROM {TableFiles} WHERE folderid=@id";
+        using (var cmd = connectionFactory.CreateCommand(sql))
+        {
+          var pId = cmd.CreateParameter();
+          pId.DbType = DbType.Int64;
+          pId.ParameterName = "@id";
+          cmd.Parameters.Add(pId);
+
+          // set the folder id.
+          pId.Value = directoryId;
+          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
+          while (reader.Read())
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            // add this update
+            fileInfos.Add(new FileInfo(
+              Path.Combine(directory.FullName, (string)reader["name"])));
+          }
+
+          // return whatever we found
+          return fileInfos;
+        }
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Get files by folder id");
+        throw;
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        throw;
+      }
     }
 
     /// <summary>
@@ -549,7 +629,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
 
         // we can then touch all the updated items
-        await TouchFilesAsync(idsToTouch, UpdateType.Created, connectionFactory, token).ConfigureAwait(false);
+        await FileUpdates.TouchFilesAsync(idsToTouch, UpdateType.Created, connectionFactory, token).ConfigureAwait(false);
       }
 
       // we are about to delete those files.
@@ -664,92 +744,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <summary>
-    /// Get the id of a file or -1.
-    /// </summary>
-    /// <param name="file"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <param name="createIfNotFound"></param>
-    /// <returns></returns>
-    private async Task<long> GetFileIdAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
-    {
-      try
-      {
-        // get the folder id
-        var folderid = await GetDirectoryIdAsync(file.Directory, connectionFactory, token, false).ConfigureAwait(false);
-        if (-1 == folderid)
-        {
-          if (!createIfNotFound)
-          {
-            return -1;
-          }
-
-          // add the file, if we get an error now, there is nothing we can do about it.
-          if (!await InsertFilesAsync( new []{file}, connectionFactory, token).ConfigureAwait(false))
-          {
-            return -1;
-          }
-
-          // try and look for it
-          folderid = await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
-          if (-1 == folderid)
-          {
-            // we cannot get the folder that we just add!
-            _logger.Error($"I could not find the folder that I _just_ added! (path: {file.FullName}).");
-            return -1;
-          }
-        }
-
-        // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT id FROM {TableFiles} WHERE folderid=@folderid and name=@name";
-        using (var cmd = connectionFactory.CreateCommand(sql))
-        {
-          var pFolderId = cmd.CreateParameter();
-          pFolderId.DbType = DbType.Int64;
-          pFolderId.ParameterName = "@folderid";
-          cmd.Parameters.Add(pFolderId);
-
-          var pName = cmd.CreateParameter();
-          pName.DbType = DbType.String;
-          pName.ParameterName = "@name";
-          cmd.Parameters.Add(pName);
-
-          cmd.Parameters["@folderid"].Value = folderid;
-          cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
-          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
-          if (null == value || value == DBNull.Value)
-          {
-            if (!createIfNotFound)
-            {
-              // we could not find it and we do not wish to go further.
-              return -1;
-            }
-
-            // try and add the folder, if that does not work, then we cannot go further.
-            if (!await InsertFilesAsync(new []{file}, connectionFactory, token).ConfigureAwait(false))
-            {
-              return -1;
-            }
-
-            // try one more time to look for it .. and if we do not find it, then just return
-            return await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
-          }
-
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-
-          // get the path id.
-          return (long) value;
-        }
-      }
-      catch (OperationCanceledException)
-      {
-        _logger.Warning("Received cancellation request - Get single file id.");
-        throw;
-      }
-    }
-
-    /// <summary>
     /// Get the id of all the files that 'belong' to a folder.
     /// </summary>
     /// <param name="folderId"></param>
@@ -796,5 +790,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw;
       }
     }
+    #endregion
   }
 }

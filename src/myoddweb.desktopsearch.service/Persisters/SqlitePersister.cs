@@ -75,6 +75,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     /// <inheritdoc />
     public IFilesWords FilesWords { get; }
+
+    /// <inheritdoc />
+    public IFileUpdates FileUpdates { get; }
     #endregion
 
     public SqlitePersister(ILogger logger, ConfigSqliteDatabase config, int maxNumCharacters)
@@ -94,10 +97,14 @@ namespace myoddweb.desktopsearch.service.Persisters
       // create the parts interface.
       Parts = new SqlitePersisterParts(TableParts, _logger);
 
+      // word parts
       WordsParts = new SqlitePersisterWordsParts(TableWordsParts, _logger);
 
       // create the words
       Words = new SqlitePersisterWords(Parts, WordsParts, maxNumCharacters, TableWords, _logger);
+
+      // create the files update 
+      FileUpdates = new SqlitePersisterFileUpdates( this, Counts, TableFiles, TableFolders, TableFileUpdates, _logger);
     }
 
     /// <inheritdoc />

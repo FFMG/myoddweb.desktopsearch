@@ -177,7 +177,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
 
       // then make sure to touch the folder accordingly
-      await _persister.TouchFileAsync(file, UpdateType.Changed, _currentTransaction, token).ConfigureAwait(false);
+      await _persister.FileUpdates.TouchFileAsync(file, UpdateType.Changed, _currentTransaction, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
