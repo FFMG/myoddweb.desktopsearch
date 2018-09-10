@@ -359,22 +359,22 @@ namespace myoddweb.desktopsearch.processor.Processors
           // there should be nothing to delete.
           if (words != null)
           {
-            await _persister.AddOrUpdateWordsToFileAsync(words, fileId, connectionFactory, token).ConfigureAwait(false);
+            await _persister.FilesWords.AddOrUpdateWordsToFileAsync(words, fileId, connectionFactory, token).ConfigureAwait(false);
           }
           break;
 
         case UpdateType.Deleted:
           // we deleted the file, so remove the words.
-          await _persister.DeleteFileFromFilesAndWordsAsync(fileId, connectionFactory, token).ConfigureAwait(false);
+          await _persister.FilesWords.DeleteFileFromFilesAndWordsAsync(fileId, connectionFactory, token).ConfigureAwait(false);
           break;
 
         case UpdateType.Changed:
           //  we changed the file, so we have to delete the old words
           // as well as add the new ones.
-          await _persister.DeleteFileFromFilesAndWordsAsync(fileId, connectionFactory, token).ConfigureAwait(false);
+          await _persister.FilesWords.DeleteFileFromFilesAndWordsAsync(fileId, connectionFactory, token).ConfigureAwait(false);
           if (words != null)
           {
-            await _persister.AddOrUpdateWordsToFileAsync(words, fileId, connectionFactory, token).ConfigureAwait(false);
+            await _persister.FilesWords.AddOrUpdateWordsToFileAsync(words, fileId, connectionFactory, token).ConfigureAwait(false);
           }
           break;
 

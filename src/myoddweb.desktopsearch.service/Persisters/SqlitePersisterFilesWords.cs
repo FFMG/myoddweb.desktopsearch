@@ -19,12 +19,39 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister 
+  internal class SqlitePersisterFilesWords : IFilesWords
   {
+    /// <summary>
+    /// The counts table name
+    /// </summary>
+    private string TableFilesWords { get; }
+
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    /// <summary>
+    /// The words interface
+    /// </summary>
+    private readonly IWords _words;
+
+    public SqlitePersisterFilesWords( IWords words, string tableName, ILogger logger)
+    {
+      // save the table name
+      TableFilesWords = tableName;
+
+      _words = words ?? throw new ArgumentNullException(nameof(words));
+
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
     /// <inheritdoc />
     public async Task<bool> AddOrUpdateWordToFileAsync(Word word, long fileId, IConnectionFactory connectionFactory, CancellationToken token)
     {
@@ -41,7 +68,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // get all the word ids, insert them into the word table if needed.
       // we will then add those words to the this file id.
-      var wordids = await GetWordIdsAsync(words, connectionFactory, token, true).ConfigureAwait(false);
+      var wordids = await _words.GetWordIdsAsync(words, connectionFactory, token, true).ConfigureAwait(false);
 
       // get all the current word ids already in that files.
       var currentIds = await GetWordIdsForFile(fileId, connectionFactory, token).ConfigureAwait(false);
@@ -145,81 +172,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     #region Private word functions
-    /// <summary>
-    /// Get the id of a list of words we match the words to ids
-    ///   [word1] => [id1]
-    ///   [word2] => [id2]
-    /// </summary>
-    /// <param name="words"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <param name="createIfNotFound"></param>
-    /// <returns></returns>
-    private async Task<List<long>> GetWordIdsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
-    {
-      // do we have anything to even look for?
-      if (words.Count == 0)
-      {
-        return new List<long>();
-      }
-
-      try
-      {
-        // we do not check for the token as the underlying functions will throw if needed. 
-        // look for the word, add it if needed.
-        var sql = $"SELECT id FROM {TableWords} WHERE word=@word";
-        using (var cmd = connectionFactory.CreateCommand(sql))
-        {
-          var pWord = cmd.CreateParameter();
-          pWord.DbType = DbType.String;
-          pWord.ParameterName = "@word";
-          cmd.Parameters.Add(pWord);
-
-          var ids = new List<long>(words.Count);
-
-          // we use a list to allow duplicates.
-          var wordsToAdd = new List<Word>();
-          foreach (var word in words)
-          {
-            pWord.Value = word.Value;
-            var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
-            if (null != value && value != DBNull.Value)
-            {
-              // get the path id.
-              ids.Add((long)value);
-              continue;
-            }
-
-            if (!createIfNotFound)
-            {
-              // we could not find it and we do not wish to go further.
-              ids.Add(-1);
-              continue;
-            }
-
-            // add this word to our list
-            wordsToAdd.Add(word);
-          }
-
-          // finally we need to add all the words that were not found.
-          ids.AddRange(await Words.AddOrUpdateWordsAsync(new Words(wordsToAdd.ToArray()), connectionFactory, token).ConfigureAwait(false));
-
-          // return all the ids we added, (or not).
-          return ids;
-        }
-      }
-      catch (OperationCanceledException)
-      {
-        _logger.Warning("Received cancellation request - Get multiple word ids.");
-        throw;
-      }
-      catch (Exception ex)
-      {
-        _logger.Exception(ex);
-        throw;
-      }
-    }
-
     /// <summary>
     /// Remove the ids that were in the words list but are not anymore.
     /// </summary>

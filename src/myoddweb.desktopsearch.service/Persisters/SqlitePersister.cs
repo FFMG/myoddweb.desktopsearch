@@ -72,6 +72,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     /// <inheritdoc />
     public IWordsParts WordsParts { get; }
+
+    /// <inheritdoc />
+    public IFilesWords FilesWords { get; }
     #endregion
 
     public SqlitePersister(ILogger logger, ConfigSqliteDatabase config, int maxNumCharacters)
@@ -81,6 +84,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // the configuration
       _config = config ?? throw new ArgumentNullException(nameof(config));
+
+      // file words.
+      FilesWords = new SqlitePersisterFilesWords( Words, TableFilesWords, _logger);
 
       // create the counters
       Counts = new SqlitePersisterCounts( TableCounts, _logger );

@@ -39,5 +39,17 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<IList<long>> AddOrUpdateWordsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token);
+
+    /// <summary>
+    /// Get the id of a list of words we match the words to ids
+    ///   [word1] => [id1]
+    ///   [word2] => [id2]
+    /// </summary>
+    /// <param name="words"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <param name="createIfNotFound"></param>
+    /// <returns></returns>
+    Task<List<long>> GetWordIdsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound);
   }
 }
