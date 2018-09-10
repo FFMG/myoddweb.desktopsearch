@@ -18,12 +18,32 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister
+  internal class SqlitePersisterParts : IParts
   {
+    /// <summary>
+    /// The counts table name
+    /// </summary>
+    private string TableParts { get; }
+
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    public SqlitePersisterParts(string tableName, ILogger logger)
+    {
+      // save the table name
+      TableParts = tableName;
+
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
     /// <inheritdoc />
     public async Task<HashSet<long>> GetPartIdsAsync(IReadOnlyCollection<string> parts, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
     {

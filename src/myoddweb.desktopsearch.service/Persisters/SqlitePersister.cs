@@ -38,7 +38,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private const string TableCounts = "Counts";
     #endregion
 
-    #region Member variables
+    #region Private Member variables
     /// <summary>
     /// The SQlite connection for reading
     /// </summary>
@@ -60,12 +60,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly ConfigSqliteDatabase _config;
     #endregion
 
+    #region Public properties
     /// <inheritdoc />
     public ICounts Counts { get; }
 
     /// <inheritdoc />
     public IWords Words { get; }
-    
+
+    /// <inheritdoc />
+    public IParts Parts { get; }
+    #endregion
+
     public SqlitePersister(ILogger logger, ConfigSqliteDatabase config, int maxNumCharacters)
     {
       // save the logger
@@ -77,8 +82,11 @@ namespace myoddweb.desktopsearch.service.Persisters
       // create the counters
       Counts = new SqlitePersisterCounts( TableCounts, _logger );
 
+      // create the parts interface.
+      Parts = new SqlitePersisterParts(TableParts, _logger);
+
       // create the words
-      Words = new SqlitePersisterWords(this, this, maxNumCharacters, TableWords, _logger);
+      Words = new SqlitePersisterWords(Parts, this, maxNumCharacters, TableWords, _logger);
     }
 
     /// <inheritdoc />
