@@ -19,12 +19,54 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister
+  internal class SqlitePersisterFolderUpdates : IFolderUpdates
   {
+    /// <summary>
+    /// The files update table
+    /// </summary>
+    private string TableFolderUpdates { get; }
+
+    /// <summary>
+    /// The folders table.
+    /// </summary>
+    private string TableFolders { get; }
+
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    /// <summary>
+    /// The folders interface
+    /// </summary>
+    private readonly IFolders _folders;
+
+    /// <summary>
+    /// The files interface.
+    /// </summary>
+    private readonly IFiles _files;
+
+    public SqlitePersisterFolderUpdates(IFiles files, IFolders folders, string tableFolders, string tableFolderUpdates, ILogger logger)
+    {
+      // the table names.
+      TableFolderUpdates = tableFolderUpdates;
+      TableFolders = tableFolders;
+
+      //  the files interface.
+      _folders = folders ?? throw new ArgumentNullException(nameof(folders));
+
+      //  the files interface.
+      _files = files ?? throw new ArgumentNullException(nameof(files));
+
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
     /// <inheritdoc />
     public async Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<DirectoryInfo> directories, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token)
     {
@@ -44,7 +86,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         return true;
       }
 
-      var folderIds = await GetDirectoriesIdAsync(directories, connectionFactory, token, false).ConfigureAwait(false);
+      var folderIds = await _folders.GetDirectoriesIdAsync(directories, connectionFactory, token, false).ConfigureAwait(false);
 
       // we can now process all the folders.
       return await TouchDirectoriesAsync(folderIds, type, connectionFactory, token).ConfigureAwait(false);
@@ -111,7 +153,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<bool> MarkDirectoriesProcessedAsync( IReadOnlyCollection<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      var folderIds = await GetDirectoriesIdAsync(directories, connectionFactory, token, false).ConfigureAwait(false);
+      var folderIds = await _folders.GetDirectoriesIdAsync(directories, connectionFactory, token, false).ConfigureAwait(false);
 
       // we can now use the folder id to flag this as done.
       return await MarkDirectoriesProcessedAsync(folderIds, connectionFactory, token).ConfigureAwait(false);
@@ -208,7 +250,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             // Get the files currently on record this can be null if we have nothing.
             // if the folder was just created we are not going to bother getting more data.
-            var filesOnRecord = type == UpdateType.Created ? new List<FileInfo>() : await GetFilesAsync(folderId, directory, connectionFactory, token).ConfigureAwait(false);
+            var filesOnRecord = type == UpdateType.Created ? new List<FileInfo>() : await _files.GetFilesAsync(folderId, connectionFactory, token).ConfigureAwait(false);
 
             // add this update
             pendingUpdates.Add(new PendingFolderUpdate(

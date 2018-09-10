@@ -370,7 +370,7 @@ namespace myoddweb.desktopsearch.parser
       try
       {
         // the file has changed.
-        await _persister.TouchDirectoriesAsync(directories, UpdateType.Changed, transaction, token).ConfigureAwait(false);
+        await _persister.FolderUpdates.TouchDirectoriesAsync(directories, UpdateType.Changed, transaction, token).ConfigureAwait(false);
 
         // all done
         _persister.Commit(transaction);
@@ -440,7 +440,7 @@ namespace myoddweb.desktopsearch.parser
         }
 
         // all the folders have been processed.
-        await _persister.MarkDirectoriesProcessedAsync(directoriesAndFiles.Keys.ToList(), transaction, token).ConfigureAwait(false);
+        await _persister.FolderUpdates.MarkDirectoriesProcessedAsync(directoriesAndFiles.Keys.ToList(), transaction, token).ConfigureAwait(false);
 
         // all done
         _persister.Commit(transaction);

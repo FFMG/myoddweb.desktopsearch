@@ -97,7 +97,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           var folderId = await GetDirectoryIdAsync(directory, connectionFactory, token, false).ConfigureAwait(false);
 
           // touch that folder as changed
-          await TouchDirectoriesAsync(new []{folderId}, UpdateType.Changed, connectionFactory, token).ConfigureAwait(false);
+          await FolderUpdates.TouchDirectoriesAsync(new []{folderId}, UpdateType.Changed, connectionFactory, token).ConfigureAwait(false);
 
           // get out if needed.
           token.ThrowIfCancellationRequested();
@@ -165,7 +165,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // touch all the folders as deleted.
-          await TouchDirectoriesAsync(directories, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
+          await FolderUpdates.TouchDirectoriesAsync(directories, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
 
           // we are done.
           return true;
@@ -229,6 +229,65 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
+    /// <inheritdoc />
+    public async Task<List<long>> GetDirectoriesIdAsync(IReadOnlyCollection<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
+    {
+      if (null == directories)
+      {
+        throw new ArgumentNullException(nameof(directories), "The given directory list is null");
+      }
+
+      if (!directories.Any())
+      {
+        return new List<long>();
+      }
+
+      // the list of ids.
+      var ids = new List<long>(directories.Count);
+
+      var directoriesToAdd = new List<DirectoryInfo>();
+
+      // we first look for it, and, if we find it then there is nothing to do.
+      var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
+      using (var cmd = connectionFactory.CreateCommand(sql))
+      {
+        var pPath = cmd.CreateParameter();
+        pPath.DbType = DbType.String;
+        pPath.ParameterName = "@path";
+        cmd.Parameters.Add(pPath);
+
+        foreach (var directory in directories)
+        {
+          pPath.Value = directory.FullName.ToLowerInvariant();
+          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
+          if (null != value && value != DBNull.Value)
+          {
+            // get the path id.
+            ids.Add((long)value);
+            continue;
+          }
+
+          if (!createIfNotFound)
+          {
+            // we could not find it and we do not wish to go further.
+            ids.Add(-1);
+            continue;
+          }
+
+          // we will add this
+          directoriesToAdd.Add(directory);
+        }
+      }
+
+      // we will then try and add all the folsers in our list
+      // and return whatever we found.
+      ids.AddRange(await InsertDirectoriesAsync(directoriesToAdd, connectionFactory, token).ConfigureAwait(false));
+
+      // we are done
+      return ids;
+    }
+
+    #region private functions
     /// <summary>
     /// Get the next row ID we can use.
     /// </summary>
@@ -268,71 +327,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       var ids = await GetDirectoriesIdAsync(new List<DirectoryInfo> { directory}, connectionFactory, token, createIfNotFound ).ConfigureAwait(false);
       return ids.Any() ? ids.First() : -1;
-    }
-
-    /// <summary>
-    /// Get the id of a list of directories
-    /// </summary>
-    /// <param name="directories"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <param name="createIfNotFound"></param>
-    /// <returns></returns>
-    private async Task<List<long>> GetDirectoriesIdAsync(IReadOnlyCollection<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
-    { 
-      if (null == directories)
-      {
-        throw new ArgumentNullException(nameof(directories), "The given directory list is null");
-      }
-
-      if (!directories.Any())
-      {
-        return new List<long>();
-      }
-
-      // the list of ids.
-      var ids = new List<long>( directories.Count );
-
-      var directoriesToAdd = new List<DirectoryInfo>();
-
-      // we first look for it, and, if we find it then there is nothing to do.
-      var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
-      using (var cmd = connectionFactory.CreateCommand(sql))
-      {
-        var pPath = cmd.CreateParameter();
-        pPath.DbType = DbType.String;
-        pPath.ParameterName = "@path";
-        cmd.Parameters.Add(pPath);
-
-        foreach (var directory in directories)
-        {
-          pPath.Value = directory.FullName.ToLowerInvariant();
-          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
-          if (null != value && value != DBNull.Value)
-          {
-            // get the path id.
-            ids.Add((long) value);
-            continue;
-          }
-
-          if (!createIfNotFound)
-          {
-            // we could not find it and we do not wish to go further.
-            ids.Add(-1);
-            continue;
-          }
-
-          // we will add this
-          directoriesToAdd.Add(directory);
-        }
-      }
-
-      // we will then try and add all the folsers in our list
-      // and return whatever we found.
-      ids.AddRange(await InsertDirectoriesAsync(directoriesToAdd, connectionFactory, token).ConfigureAwait(false) );
-
-      // we are done
-      return ids;
     }
 
     /// <summary>
@@ -402,7 +396,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // then we can touch all the folders we created.
-      await TouchDirectoriesAsync(ids, UpdateType.Created, connectionFactory, token).ConfigureAwait(false);
+      await FolderUpdates.TouchDirectoriesAsync(ids, UpdateType.Created, connectionFactory, token).ConfigureAwait(false);
 
       // return all the ids that we added.
       return ids;
@@ -462,5 +456,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw;
       }
     }
+    #endregion
   }
 }

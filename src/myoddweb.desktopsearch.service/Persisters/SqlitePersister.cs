@@ -78,6 +78,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     /// <inheritdoc />
     public IFileUpdates FileUpdates { get; }
+
+    /// <inheritdoc />
+    public IFolderUpdates FolderUpdates { get; }
     #endregion
 
     public SqlitePersister(ILogger logger, ConfigSqliteDatabase config, int maxNumCharacters)
@@ -89,22 +92,23 @@ namespace myoddweb.desktopsearch.service.Persisters
       _config = config ?? throw new ArgumentNullException(nameof(config));
 
       // file words.
-      FilesWords = new SqlitePersisterFilesWords( Words, TableFilesWords, _logger);
+      FilesWords = new SqlitePersisterFilesWords( Words, TableFilesWords, logger);
 
       // create the counters
-      Counts = new SqlitePersisterCounts( TableCounts, _logger );
+      Counts = new SqlitePersisterCounts( TableCounts, logger);
 
       // create the parts interface.
-      Parts = new SqlitePersisterParts(TableParts, _logger);
+      Parts = new SqlitePersisterParts(TableParts, logger);
 
       // word parts
-      WordsParts = new SqlitePersisterWordsParts(TableWordsParts, _logger);
+      WordsParts = new SqlitePersisterWordsParts(TableWordsParts, logger);
 
       // create the words
-      Words = new SqlitePersisterWords(Parts, WordsParts, maxNumCharacters, TableWords, _logger);
+      Words = new SqlitePersisterWords(Parts, WordsParts, maxNumCharacters, TableWords, logger);
 
-      // create the files update 
-      FileUpdates = new SqlitePersisterFileUpdates( this, Counts, TableFiles, TableFolders, TableFileUpdates, _logger);
+      // create the files/folders update 
+      FileUpdates = new SqlitePersisterFileUpdates( this, Counts, TableFiles, TableFolders, TableFileUpdates, logger);
+      FolderUpdates = new SqlitePersisterFolderUpdates(this, this, TableFolders, TableFolderUpdates, logger);
     }
 
     /// <inheritdoc />

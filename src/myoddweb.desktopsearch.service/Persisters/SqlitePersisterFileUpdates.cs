@@ -37,7 +37,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private string TableFolders { get; }
   
     /// <summary>
-    /// The counts table name
+    /// The files update table
     /// </summary>
     private string TableFileUpdates { get; }
 

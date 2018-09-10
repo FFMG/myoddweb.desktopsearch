@@ -296,7 +296,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       try
       {
-        var pendingUpdates = await _persister.GetPendingFolderUpdatesAsync(MaxUpdatesToProcess, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _persister.FolderUpdates.GetPendingFolderUpdatesAsync(MaxUpdatesToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending folder updates.");
@@ -318,7 +318,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         // if anything goes wrong _after_ that we will try and 'touch' it again.
         // by doing it that way around we ensure that we never keep the transaction.
         // and we don't run the risk of someone else trying to process this again.
-        await _persister.MarkDirectoryProcessedAsync(pendingUpdate.FolderId, transaction, token).ConfigureAwait(false);
+        await _persister.FolderUpdates.MarkDirectoryProcessedAsync(pendingUpdate.FolderId, transaction, token).ConfigureAwait(false);
 
         // we are done here.
         _persister.Commit(transaction);
@@ -351,7 +351,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       try
       {
         // touch this directory again.
-        await _persister.TouchDirectoriesAsync( new []{ folderId }, type, transaction, token).ConfigureAwait(false);
+        await _persister.FolderUpdates.TouchDirectoriesAsync( new []{ folderId }, type, transaction, token).ConfigureAwait(false);
 
         // we are done
         _persister.Commit(transaction);
