@@ -17,8 +17,13 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IPersister : IConfig, IFolders, IFiles
+  public interface IPersister : IFolders, IFiles
   {
+    /// <summary>
+    /// Configuration
+    /// </summary>
+    IConfig Config { get; }
+
     /// <summary>
     /// The various counters.
     /// </summary>

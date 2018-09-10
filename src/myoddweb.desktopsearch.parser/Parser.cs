@@ -191,7 +191,7 @@ namespace myoddweb.desktopsearch.parser
       try
       {
         // finally we can set the last time we checked the entire data tree.
-        var lastAccessTimeUtc = await _persister.GetConfigValueAsync("LastAccessTimeUtc", DateTime.MinValue, transaction, token).ConfigureAwait(false);
+        var lastAccessTimeUtc = await _persister.Config.GetConfigValueAsync("LastAccessTimeUtc", DateTime.MinValue, transaction, token).ConfigureAwait(false);
 
         // we can commit our code.
         _persister.Commit(transaction);
@@ -221,7 +221,7 @@ namespace myoddweb.desktopsearch.parser
       try
       {
         // finally we can set the last time we checked the entire data tree.
-        await _persister.SetConfigValueAsync("LastAccessTimeUtc", DateTime.UtcNow, transaction, token).ConfigureAwait(false);
+        await _persister.Config.SetConfigValueAsync("LastAccessTimeUtc", DateTime.UtcNow, transaction, token).ConfigureAwait(false);
 
         // we can commit our code.
         _persister.Commit(transaction);

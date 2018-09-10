@@ -20,8 +20,18 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister
+  internal class SqlitePersisterConfig : IConfig
   {
+    /// <summary>
+    /// The table name.
+    /// </summary>
+    private string TableConfig { get; }
+
+    public SqlitePersisterConfig(string tableName)
+    {
+      TableConfig = tableName;
+    }
+
     /// <inheritdoc />
     public async Task<T> GetConfigValueAsync<T>(string name, T defaultValue, IConnectionFactory connectionFactory, CancellationToken token)
     {

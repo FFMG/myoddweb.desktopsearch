@@ -62,6 +62,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     #region Public properties
     /// <inheritdoc />
+    public IConfig Config { get; }
+
+    /// <inheritdoc />
     public ICounts Counts { get; }
 
     /// <inheritdoc />
@@ -90,6 +93,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // the configuration
       _config = config ?? throw new ArgumentNullException(nameof(config));
+
+      // create the configuration table.
+      Config = new SqlitePersisterConfig(TableConfig);
 
       // file words.
       FilesWords = new SqlitePersisterFilesWords( Words, TableFilesWords, logger);
