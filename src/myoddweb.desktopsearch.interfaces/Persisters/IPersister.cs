@@ -17,12 +17,17 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IPersister : IConfig, IFolders, IFolderUpdates, IFiles, IFileUpdates, IWords, IFilesWords, IParts, IWordsParts
+  public interface IPersister : IConfig, IFolders, IFolderUpdates, IFiles, IFileUpdates, IFilesWords, IParts, IWordsParts
   {
     /// <summary>
     /// The various counters.
     /// </summary>
     ICounts Counts { get; }
+
+    /// <summary>
+    /// The words persister
+    /// </summary>
+    IWords Words { get; }
 
     /// <summary>
     /// Get a database transaction.

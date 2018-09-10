@@ -45,12 +45,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     private SQLiteConnection _connectionReadOnly;
 
     /// <summary>
-    /// The maximum number of characters per words...
-    /// Characters after that are ignored.
-    /// </summary>
-    private readonly int _maxNumCharacters;
-
-    /// <summary>
     /// The transactions manager.
     /// </summary>
     private TransactionsManager _transactionSpinner;
@@ -69,6 +63,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public ICounts Counts { get; }
 
+    /// <inheritdoc />
+    public IWords Words { get; }
+    
     public SqlitePersister(ILogger logger, ConfigSqliteDatabase config, int maxNumCharacters)
     {
       // save the logger
@@ -77,11 +74,11 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the configuration
       _config = config ?? throw new ArgumentNullException(nameof(config));
 
-      // the number of characters.
-      _maxNumCharacters = maxNumCharacters;
-
       // create the counters
       Counts = new SqlitePersisterCounts( TableCounts, _logger );
+
+      // create the words
+      Words = new SqlitePersisterWords(this, this, maxNumCharacters, TableWords, _logger);
     }
 
     /// <inheritdoc />

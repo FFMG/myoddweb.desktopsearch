@@ -19,20 +19,64 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister 
+  internal class SqlitePersisterWords : IWords
   {
-    /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordAsync(Word word, IConnectionFactory connectionFactory, CancellationToken token)
+    /// <summary>
+    /// The maximum number of characters per words...
+    /// Characters after that are ignored.
+    /// </summary>
+    private readonly int _maxNumCharacters;
+
+    /// <summary>
+    /// The counts table name
+    /// </summary>
+    private string TableWords { get; }
+
+    /// <summary>
+    /// The parts interface
+    /// </summary>
+    private readonly IParts _parts;
+
+    /// <summary>
+    /// The words parts interface
+    /// </summary>
+    private readonly IWordsParts _wordsParts;
+
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    public SqlitePersisterWords( IParts parts, IWordsParts wordsParts, int maxNumCharacters, string tableName, ILogger logger)
     {
-      return await AddOrUpdateWordsAsync( new Words(word), connectionFactory, token ).ConfigureAwait(false);
+      // the number of characters.
+      _maxNumCharacters = maxNumCharacters;
+
+      // save the table name
+      TableWords = tableName;
+
+      // the words parts interfaces
+      _parts = parts ?? throw new ArgumentNullException(nameof(parts));
+      _wordsParts = wordsParts ?? throw new ArgumentNullException(nameof(wordsParts));
+
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<long> AddOrUpdateWordAsync(Word word, IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      var ids = await AddOrUpdateWordsAsync( new Words(word), connectionFactory, token ).ConfigureAwait(false);
+      return ids.Any() ? ids.First() : -1;
+    }
+
+    /// <inheritdoc />
+    public async Task<IList<long>> AddOrUpdateWordsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
       {
@@ -40,88 +84,12 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // rebuild the list of directory with only those that need to be inserted.
-      await InsertWordsAsync(
+      return await InsertWordsAsync(
         await RebuildWordsListAsync(words, connectionFactory, token).ConfigureAwait(false),
         connectionFactory, token).ConfigureAwait(false);
-      return true;
     }
 
     #region Private word functions
-    /// <summary>
-    /// Get the id of a list of words we match the words to ids
-    ///   [word1] => [id1]
-    ///   [word2] => [id2]
-    /// </summary>
-    /// <param name="words"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <param name="createIfNotFound"></param>
-    /// <returns></returns>
-    private async Task<List<long>> GetWordIdsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
-    {
-      // do we have anything to even look for?
-      if (words.Count == 0)
-      {
-        return new List<long>();
-      }
-
-      try
-      {
-        // we do not check for the token as the underlying functions will throw if needed. 
-        // look for the word, add it if needed.
-        var sql = $"SELECT id FROM {TableWords} WHERE word=@word";
-        using (var cmd = connectionFactory.CreateCommand(sql))
-        {
-          var pWord = cmd.CreateParameter();
-          pWord.DbType = DbType.String;
-          pWord.ParameterName = "@word";
-          cmd.Parameters.Add(pWord);
-
-          var ids = new List<long>(words.Count);
-
-          // we use a list to allow duplicates.
-          var wordsToAdd = new List<Word>();
-          foreach (var word in words)
-          {
-            pWord.Value = word.Value;
-            var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
-            if (null != value && value != DBNull.Value)
-            {
-              // get the path id.
-              ids.Add((long) value);
-              continue;
-            }
-
-            if (!createIfNotFound)
-            {
-              // we could not find it and we do not wish to go further.
-              ids.Add(-1);
-              continue;
-            }
-
-            // add this word to our list
-            wordsToAdd.Add(word);
-          }
-          
-          // finally we need to add all the words that were not found.
-          ids.AddRange( await InsertWordsAsync( new Words( wordsToAdd.ToArray() ), connectionFactory, token).ConfigureAwait(false));
-
-          // return all the ids we added, (or not).
-          return ids;
-        }
-      }
-      catch (OperationCanceledException)
-      {
-        _logger.Warning("Received cancellation request - Get multiple word ids.");
-        throw;
-      }
-      catch (Exception ex)
-      {
-        _logger.Exception(ex);
-        throw;
-      }
-    }
-
     /// <summary>
     /// Given a list of words, re-create the ones that we need to insert.
     /// </summary>
@@ -172,11 +140,11 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // we now can add the parts
-            var partIds = await GetPartIdsAsync(word.Parts( _maxNumCharacters ), connectionFactory, token, true ).ConfigureAwait(false);
+            var partIds = await _parts.GetPartIdsAsync(word.Parts( _maxNumCharacters ), connectionFactory, token, true ).ConfigureAwait(false);
 
             // marry the word id, (that we just added).
             // with the partIds, (that we just added).
-            await InsertWordParts(nextId, partIds, connectionFactory, token).ConfigureAwait(false);
+            await _wordsParts.AddOrUpdateWordParts(nextId, partIds, connectionFactory, token).ConfigureAwait(false);
 
             // we added this id.
             ids.Add( nextId );
