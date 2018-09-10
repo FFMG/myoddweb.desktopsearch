@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IPersister : IConfig, IFolders, IFolderUpdates, IFiles, IFileUpdates, IFilesWords, IWordsParts
+  public interface IPersister : IConfig, IFolders, IFolderUpdates, IFiles, IFileUpdates, IFilesWords
   {
     /// <summary>
     /// The various counters.
@@ -33,6 +33,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// Manages string parts.
     /// </summary>
     IParts Parts { get; }
+
+    /// <summary>
+    /// The parts manager for a word.
+    /// </summary>
+    IWordsParts WordsParts { get; }
 
     /// <summary>
     /// Get a database transaction.
