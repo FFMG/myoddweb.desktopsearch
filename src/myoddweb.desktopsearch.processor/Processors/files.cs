@@ -411,7 +411,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception)
+      catch
       {
         _persister.Rollback(transaction);
         throw;
@@ -461,7 +461,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         _persister.Commit(transaction);
         return pendingUpdates;
       }
-      catch (Exception)
+      catch
       {
         _persister.Rollback(transaction);
         throw;

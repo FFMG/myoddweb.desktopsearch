@@ -174,7 +174,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception)
+      catch
       {
         _persister.Rollback(transaction);
         throw;
@@ -203,7 +203,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception)
+      catch
       {
         _persister.Rollback(transaction);
         throw;
@@ -271,7 +271,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception)
+      catch
       {
         _persister.Rollback(transaction);
         throw;
@@ -326,7 +326,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         // return null if we cancelled.
         return pendingUpdates.FirstOrDefault();
       }
-      catch (Exception)
+      catch
       {
         _persister.Rollback(transaction);
         return null;
@@ -356,7 +356,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception)
+      catch
       {
         _persister.Rollback(transaction);
         throw;

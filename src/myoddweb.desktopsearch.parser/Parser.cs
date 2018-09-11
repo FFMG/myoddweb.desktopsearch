@@ -377,6 +377,7 @@ namespace myoddweb.desktopsearch.parser
       }
       catch (OperationCanceledException)
       {
+        _persister.Rollback(transaction);
         _logger.Warning("Received cancellation request - parsing changed directories parsing");
         throw;
       }
@@ -447,6 +448,7 @@ namespace myoddweb.desktopsearch.parser
       }
       catch (OperationCanceledException)
       {
+        _persister.Rollback(transaction);
         _logger.Warning("Received cancellation request - parsing created directories parsing");
         throw;
       }
