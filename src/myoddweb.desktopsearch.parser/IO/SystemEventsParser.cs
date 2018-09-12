@@ -21,6 +21,7 @@ using System.Threading.Tasks;
 using System.Timers;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.parser.IO
 {
@@ -81,9 +82,14 @@ namespace myoddweb.desktopsearch.parser.IO
     /// How often we will be remobing compledted tasks.
     /// </summary>
     private readonly int _eventsTimeOutInMs;
+
+    /// <summary>
+    /// The folder persister that will allow us to add/remove folders.
+    /// </summary>
+    private IPersister Persister { get; }
     #endregion
 
-    protected SystemEventsParser(IDirectory directory, int eventsParserMs, ILogger logger)
+    protected SystemEventsParser( IPersister persister, IDirectory directory, int eventsParserMs, ILogger logger)
     {
       // the directories handler
       Directory = directory ?? throw new ArgumentNullException(nameof(directory));
@@ -96,6 +102,9 @@ namespace myoddweb.desktopsearch.parser.IO
 
       // save the logger
       Logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      // save the database
+      Persister = persister ?? throw new ArgumentNullException(nameof(persister));
     }
 
     #region Events Process Timer
@@ -259,20 +268,19 @@ namespace myoddweb.desktopsearch.parser.IO
     #endregion
 
     #region Process events
+
     /// <summary>
     /// This function is called when processing a list of file events.
     /// It should be non-blocking.
     /// </summary>
     /// <param name="events"></param>
+    /// <param name="token"></param>
     private async Task ProcessEventsAsync(IEnumerable<IFileSystemEvent> events, CancellationToken token)
     {
-      // assume errors...
-      var hadErrors = true;
+      // we are starting to process events.
+      var factory = await Persister.BeginWrite(token).ConfigureAwait(false);
       try
       {
-        // we are starting to process events.
-        ProcessEventsStart(token);
-
         // try and do everything at once.
         foreach (var e in events)
         {
@@ -281,38 +289,31 @@ namespace myoddweb.desktopsearch.parser.IO
             break;
           }
 
-          await ProcessEventAsync(e).ConfigureAwait(false);
+          await ProcessEventAsync(factory, e).ConfigureAwait(false);
         }
-
-        // if we are here, then we had no errors
-        hadErrors = false;
+        Persister.Commit(factory);
       }
       catch ( OperationCanceledException )
       {
         // we cancelled so we need to rollback
-        hadErrors = true;
+        Persister.Rollback(factory);
       }
       catch (Exception e)
       {
-        // we had an error
-        hadErrors = true;
+        Persister.Rollback(factory);
 
         // log it
         Logger.Exception(e);
-      }
-      finally
-      {
-        // end the work and log if we had any errors.
-        ProcessEventsEnd(hadErrors);
       }
     }
 
     /// <summary>
     /// Try and process a created file event.
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessCreatedAsync(IFileSystemEvent e)
+    private async Task TryProcessCreatedAsync(IConnectionFactory factory, IFileSystemEvent e)
     {
       try
       {
@@ -321,7 +322,7 @@ namespace myoddweb.desktopsearch.parser.IO
           return;
         }
 
-        await ProcessCreatedAsync(e, _token).ConfigureAwait(false);
+        await ProcessCreatedAsync(factory, e, _token).ConfigureAwait(false);
       }
       catch
       {
@@ -335,9 +336,10 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// Try and process a deleted file event.
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessDeletedAsync(IFileSystemEvent e)
+    private async Task TryProcessDeletedAsync(IConnectionFactory factory, IFileSystemEvent e)
     {
       try
       {
@@ -346,7 +348,7 @@ namespace myoddweb.desktopsearch.parser.IO
           return;
         }
 
-        await ProcessDeletedAsync(e, _token).ConfigureAwait(false);
+        await ProcessDeletedAsync(factory, e, _token).ConfigureAwait(false);
       }
       catch
       {
@@ -360,9 +362,10 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// Try and process a changed file event.
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessChangedAsync(IFileSystemEvent e)
+    private async Task TryProcessChangedAsync(IConnectionFactory factory, IFileSystemEvent e)
     {
       try
       {
@@ -371,7 +374,7 @@ namespace myoddweb.desktopsearch.parser.IO
           return;
         }
 
-        await ProcessChangedAsync(e, _token).ConfigureAwait(false);
+        await ProcessChangedAsync(factory, e, _token).ConfigureAwait(false);
       }
       catch
       {
@@ -385,9 +388,10 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// Try and process a changed file event.
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessRenamedAsync(IFileSystemEvent e)
+    private async Task TryProcessRenamedAsync(IConnectionFactory factory, IFileSystemEvent e)
     {
       try
       {
@@ -397,7 +401,7 @@ namespace myoddweb.desktopsearch.parser.IO
         }
 
         // we have both a new and old name...
-        await ProcessRenamedAsync(e, _token).ConfigureAwait(false);
+        await ProcessRenamedAsync(factory, e, _token).ConfigureAwait(false);
       }
       catch
       {
@@ -409,21 +413,22 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// Process a single event.
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task ProcessEventAsync(IFileSystemEvent e)
+    private async Task ProcessEventAsync( IConnectionFactory factory, IFileSystemEvent e)
     {
       // try process as created.
-      await TryProcessCreatedAsync(e).ConfigureAwait(false);
+      await TryProcessCreatedAsync(factory, e).ConfigureAwait(false);
 
       // try process as deleted.
-      await TryProcessDeletedAsync(e).ConfigureAwait(false);
+      await TryProcessDeletedAsync(factory, e).ConfigureAwait(false);
 
       // try process as changed.
-      await TryProcessChangedAsync(e).ConfigureAwait(false);
+      await TryProcessChangedAsync(factory, e).ConfigureAwait(false);
 
       // process as a renamed event
-      await TryProcessRenamedAsync(e).ConfigureAwait(false);
+      await TryProcessRenamedAsync(factory, e).ConfigureAwait(false);
     }
     #endregion
 
@@ -526,44 +531,38 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     #region Abstract Process events
-    /// <summary>
-    /// We are starting to process events
-    /// </summary>
-    protected abstract void ProcessEventsStart(CancellationToken token);
-
-    /// <summary>
-    /// We finished processing events.
-    /// </summary>
-    /// <param name="hadErrors">Was there any errors?</param>
-    protected abstract void ProcessEventsEnd(bool hadErrors);
 
     /// <summary>
     /// Process a created event
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessCreatedAsync(IFileSystemEvent fileSystemEvent, CancellationToken token);
+    protected abstract Task ProcessCreatedAsync(IConnectionFactory factory, IFileSystemEvent fileSystemEvent, CancellationToken token);
 
     /// <summary>
     /// Process a deleted event
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessDeletedAsync(IFileSystemEvent fileSystemEvent, CancellationToken token);
+    protected abstract Task ProcessDeletedAsync(IConnectionFactory factory, IFileSystemEvent fileSystemEvent, CancellationToken token);
 
     /// <summary>
     /// Process a created event
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessChangedAsync(IFileSystemEvent fileSystemEvent, CancellationToken token);
+    protected abstract Task ProcessChangedAsync(IConnectionFactory factory, IFileSystemEvent fileSystemEvent, CancellationToken token);
 
     /// <summary>
     /// Process a renamed event
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessRenamedAsync(IFileSystemEvent fileSystemEvent, CancellationToken token);
+    protected abstract Task ProcessRenamedAsync(IConnectionFactory factory, IFileSystemEvent fileSystemEvent, CancellationToken token);
     #endregion
   }
 }
