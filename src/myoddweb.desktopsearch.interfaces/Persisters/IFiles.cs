@@ -22,6 +22,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IFiles
   {
     /// <summary>
+    /// Files update manager
+    /// </summary>
+    IFileUpdates FileUpdates { get; }
+
+    /// <summary>
     /// Add or update a file to a folder.
     /// </summary>
     /// <param name="file"></param>
@@ -111,5 +116,15 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<FileInfo> GetFileAsync(long fileId, IConnectionFactory connectionFactory, CancellationToken token);
+
+    /// <summary>
+    /// Get the id of a file or -1.
+    /// </summary>
+    /// <param name="file"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <param name="createIfNotFound"></param>
+    /// <returns></returns>
+    Task<long> GetFileIdAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound);
   }
 }

@@ -18,12 +18,90 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister
+  internal class SqlitePersisterParts : IParts
   {
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    public SqlitePersisterParts(ILogger logger)
+    {
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    /// <inheritdoc />
+    public async Task<HashSet<long>> GetPartIdsAsync(IReadOnlyCollection<string> parts, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
+    {
+      // the ids of all the parts, (added or otherwise).
+      var partIds = new List<long>(parts.Count);
+
+      // if we have not words... then move on.
+      if (!parts.Any())
+      {
+        return new HashSet<long>(partIds);
+      }
+
+      try
+      {
+        // the parts we actually need to add.
+        var partsToAdd = new List<string>(parts.Count);
+
+        // first look for what we have and insert what we do not have.
+        var sqlSelect = $"SELECT id FROM {Tables.Parts} WHERE part = @part";
+        using (var cmdSelect = connectionFactory.CreateCommand(sqlSelect))
+        {
+          var pSPart = cmdSelect.CreateParameter();
+          pSPart.DbType = DbType.String;
+          pSPart.ParameterName = "@part";
+          cmdSelect.Parameters.Add(pSPart);
+
+          foreach (var part in parts)
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            pSPart.Value = part;
+
+            var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
+            if (null != value && value != DBNull.Value)
+            {
+              partIds.Add((long)value);
+              continue;
+            }
+
+            if (!createIfNotFound)
+            {
+              // we could not find it and we do not wish to go further.
+              partIds.Add(-1);
+              continue;
+            }
+
+            // we could not locate this part
+            // so it will need to be added.
+            partsToAdd.Add(part);
+          }
+        }
+
+        // then add the ids of the remaining parts.
+        partIds.AddRange(await InsertPartsAsync(partsToAdd.ToArray(), connectionFactory, token).ConfigureAwait(false));
+
+        // return everything we found.
+        return new HashSet<long>(partIds);
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Get Next valid Part id");
+        throw;
+      }
+    }
+
     /// <inheritdoc />
     public async Task<bool> AddOrUpdatePartsAsync(IReadOnlyCollection<string> parts, IConnectionFactory connectionFactory, CancellationToken token)
     {
@@ -64,7 +142,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // whatever is now left is to be inserted
-        var sqlInsert = $"INSERT INTO {TableParts} (id, part) VALUES (@id, @part)";
+        var sqlInsert = $"INSERT INTO {Tables.Parts} (id, part) VALUES (@id, @part)";
         using (var cmdInsert = connectionFactory.CreateCommand(sqlInsert))
         {
           var pId = cmdInsert.CreateParameter();
@@ -130,7 +208,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var actualParts = new List<string>(parts.Count);
 
         // first look for what we have and insert what we do not have.
-        var sql = $"SELECT id FROM {TableParts} WHERE part = @part";
+        var sql = $"SELECT id FROM {Tables.Parts} WHERE part = @part";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pSPart = cmd.CreateParameter();
@@ -169,79 +247,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <summary>
-    /// Get the id number of all the parts.
-    /// </summary>
-    /// <param name="parts"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <param name="createIfNotFound"></param>
-    /// <returns></returns>
-    private async Task<List<long>> GetPartIdsAsync(IReadOnlyCollection<string> parts, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
-    { 
-      // the ids of all the parts, (added or otherwise).
-      var partIds = new List<long>(parts.Count);
-
-      // if we have not words... then move on.
-      if (!parts.Any())
-      {
-        return partIds;
-      }
-
-      try
-      {
-        // the parts we actually need to add.
-        var partsToAdd = new List<string>(parts.Count);
-
-        // first look for what we have and insert what we do not have.
-        var sqlSelect = $"SELECT id FROM {TableParts} WHERE part = @part";
-        using (var cmdSelect = connectionFactory.CreateCommand(sqlSelect))
-        {
-          var pSPart = cmdSelect.CreateParameter();
-          pSPart.DbType = DbType.String;
-          pSPart.ParameterName = "@part";
-          cmdSelect.Parameters.Add(pSPart);
-
-          foreach (var part in parts)
-          {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            pSPart.Value = part;
-
-            var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
-            if (null != value && value != DBNull.Value)
-            {
-              partIds.Add((long) value);
-              continue;
-            }
-
-            if (!createIfNotFound)
-            {
-              // we could not find it and we do not wish to go further.
-              partIds.Add(-1);
-              continue;
-            }
-
-            // we could not locate this part
-            // so it will need to be added.
-            partsToAdd.Add(part);
-          }
-        }
-        
-        // then add the ids of the remaining parts.
-        partIds.AddRange( await InsertPartsAsync( partsToAdd.ToArray(), connectionFactory, token ).ConfigureAwait(false));
-
-        // return everything we found.
-        return partIds;
-      }
-      catch (OperationCanceledException)
-      {
-        _logger.Warning("Received cancellation request - Get Next valid Part id");
-        throw;
-      }
-    }
-
-    /// <summary>
     /// Get the next row ID we can use.
     /// </summary>
     /// <param name="connectionFactory"></param>
@@ -252,7 +257,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT max(id) from {TableParts};";
+        var sql = $"SELECT max(id) from {Tables.Parts};";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);

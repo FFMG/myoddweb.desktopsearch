@@ -19,12 +19,40 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister
+  internal class SqlitePersisterFolderUpdates : IFolderUpdates
   {
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    /// <summary>
+    /// The folders interface
+    /// </summary>
+    private readonly IFolders _folders;
+
+    /// <summary>
+    /// The files interface.
+    /// </summary>
+    private readonly IFiles _files;
+
+    public SqlitePersisterFolderUpdates(IFiles files, IFolders folders, ILogger logger)
+    {
+      //  the files interface.
+      _folders = folders ?? throw new ArgumentNullException(nameof(folders));
+
+      //  the files interface.
+      _files = files ?? throw new ArgumentNullException(nameof(files));
+
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
     /// <inheritdoc />
     public async Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<DirectoryInfo> directories, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token)
     {
@@ -44,7 +72,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         return true;
       }
 
-      var folderIds = await GetDirectoriesIdAsync(directories, connectionFactory, token, false).ConfigureAwait(false);
+      var folderIds = await _folders.GetDirectoriesIdAsync(directories, connectionFactory, token, false).ConfigureAwait(false);
 
       // we can now process all the folders.
       return await TouchDirectoriesAsync(folderIds, type, connectionFactory, token).ConfigureAwait(false);
@@ -59,7 +87,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
 
-      var sqlInsert = $"INSERT INTO {TableFolderUpdates} (folderid, type, ticks) VALUES (@id, @type, @ticks)";
+      var sqlInsert = $"INSERT INTO {Tables.FolderUpdates} (folderid, type, ticks) VALUES (@id, @type, @ticks)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var pId = cmd.CreateParameter();
@@ -111,7 +139,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<bool> MarkDirectoriesProcessedAsync( IReadOnlyCollection<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      var folderIds = await GetDirectoriesIdAsync(directories, connectionFactory, token, false).ConfigureAwait(false);
+      var folderIds = await _folders.GetDirectoriesIdAsync(directories, connectionFactory, token, false).ConfigureAwait(false);
 
       // we can now use the folder id to flag this as done.
       return await MarkDirectoriesProcessedAsync(folderIds, connectionFactory, token).ConfigureAwait(false);
@@ -136,7 +164,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
-      var sqlDelete = $"DELETE FROM {TableFolderUpdates} WHERE folderid = @id";
+      var sqlDelete = $"DELETE FROM {Tables.FolderUpdates} WHERE folderid = @id";
       using (var cmd = connectionFactory.CreateCommand(sqlDelete))
       {
         try
@@ -187,7 +215,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we want to get the latest updated folders.
-        var sql = $"SELECT fu.folderid as folderid, fu.type as type, f.path as path FROM {TableFolderUpdates} fu, {TableFolders} f WHERE f.id=fu.folderid "+
+        var sql = $"SELECT fu.folderid as folderid, fu.type as type, f.path as path FROM {Tables.FolderUpdates} fu, {Tables.Folders} f WHERE f.id=fu.folderid "+
                   $"ORDER BY fu.ticks DESC LIMIT { limit}";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
@@ -208,7 +236,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             // Get the files currently on record this can be null if we have nothing.
             // if the folder was just created we are not going to bother getting more data.
-            var filesOnRecord = type == UpdateType.Created ? new List<FileInfo>() : await GetFilesAsync(folderId, directory, connectionFactory, token).ConfigureAwait(false);
+            var filesOnRecord = type == UpdateType.Created ? new List<FileInfo>() : await _files.GetFilesAsync(folderId, connectionFactory, token).ConfigureAwait(false);
 
             // add this update
             pendingUpdates.Add(new PendingFolderUpdate(

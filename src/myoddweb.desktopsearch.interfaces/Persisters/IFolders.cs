@@ -22,6 +22,16 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IFolders
   {
     /// <summary>
+    /// The files interface
+    /// </summary>
+    IFiles Files { get; }
+
+    /// <summary>
+    /// The folders update manager.
+    /// </summary>
+    IFolderUpdates FolderUpdates { get; }
+
+    /// <summary>
     /// rename or add an existing folder.
     /// </summary>
     /// <param name="directory"></param>
@@ -84,5 +94,25 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<DirectoryInfo> GetDirectoryAsync(long directoryId, IConnectionFactory connectionFactory, CancellationToken token);
+
+    /// <summary>
+    /// Get the id of a list of directories
+    /// </summary>
+    /// <param name="directories"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <param name="createIfNotFound"></param>
+    /// <returns></returns>
+    Task<List<long>> GetDirectoriesIdAsync(IReadOnlyCollection<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound);
+
+    /// <summary>
+    /// Get the id of a folder or -1.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <param name="createIfNotFound"></param>
+    /// <returns></returns>
+    Task<long> GetDirectoryIdAsync(DirectoryInfo directory, IConnectionFactory connectionFactory,CancellationToken token, bool createIfNotFound);
   }
 }

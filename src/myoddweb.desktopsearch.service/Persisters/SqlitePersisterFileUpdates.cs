@@ -19,12 +19,40 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister
+  internal class SqlitePersisterFileUpdates : IFileUpdates
   {
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    /// <summary>
+    /// The files interface.
+    /// </summary>
+    private readonly IFiles _files;
+
+    /// <summary>
+    /// The counters
+    /// </summary>
+    private readonly ICounts _counts;
+
+    public SqlitePersisterFileUpdates(IFiles files, ICounts counts, ILogger logger)
+    {
+      //  the files interface.
+      _files = files ?? throw new ArgumentNullException(nameof(files));
+
+      // the counter interface
+      _counts = counts ?? throw new ArgumentNullException(nameof(counts));
+
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
     /// <inheritdoc />
     public async Task<bool> TouchFileAsync(FileInfo file, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token)
     {
@@ -34,7 +62,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           "You have to be within a tansaction when calling this function.");
       }
 
-      var fileId = await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
+      var fileId = await _files.GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
       if (-1 == fileId)
       {
         return true;
@@ -78,7 +106,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       var insertCount = 0;
-      var sqlInsert = $"INSERT INTO {TableFileUpdates} (fileid, type, ticks) VALUES (@id, @type, @ticks)";
+      var sqlInsert = $"INSERT INTO {Tables.FileUpdates} (fileid, type, ticks) VALUES (@id, @type, @ticks)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         try
@@ -127,7 +155,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // update the pending files count.
-      await Counts.UpdatePendingUpdatesCountAsync(insertCount, connectionFactory, token).ConfigureAwait(false);
+      await _counts.UpdatePendingUpdatesCountAsync(insertCount, connectionFactory, token).ConfigureAwait(false);
       return true;
     }
 
@@ -140,7 +168,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // look for the files id
-      var fileId = await GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
+      var fileId = await _files.GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
 
       // did we find it?
       if (fileId == -1)
@@ -168,7 +196,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       var deletedCount = 0;
-      var sqlDelete = $"DELETE FROM {TableFileUpdates} WHERE fileid = @id";
+      var sqlDelete = $"DELETE FROM {Tables.FileUpdates} WHERE fileid = @id";
       using (var cmd = connectionFactory.CreateCommand(sqlDelete))
       {
         try
@@ -209,7 +237,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // update the pending files count.
-      await Counts.UpdatePendingUpdatesCountAsync(-1 * deletedCount, connectionFactory, token).ConfigureAwait(false);
+      await _counts.UpdatePendingUpdatesCountAsync(-1 * deletedCount, connectionFactory, token).ConfigureAwait(false);
 
       // return if this cancelled or not
       return true;
@@ -229,7 +257,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         // we want to get the latest updated folders.
         var sql = "SELECT fu.fileid as fileid, fu.type as type, f.name as name, fo.path FROM "+
-                 $"{TableFileUpdates} fu, {TableFiles} f, {TableFolders} fo "+
+                 $"{Tables.FileUpdates} fu, {Tables.Files} f, {Tables.Folders} fo "+
                  $"WHERE f.id = fu.fileid and fo.id = f.folderid ORDER BY fu.ticks DESC LIMIT {limit}";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
@@ -265,7 +293,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         // if the files is deleted... they do not exist anymore.
         if (pendingUpdates.Count < limit)
         {
-          sql = $"SELECT fileid FROM {TableFileUpdates} WHERE type={(int)UpdateType.Deleted} ORDER BY ticks DESC LIMIT {limit - pendingUpdates.Count}";
+          sql = $"SELECT fileid FROM {Tables.FileUpdates} WHERE type={(int)UpdateType.Deleted} ORDER BY ticks DESC LIMIT {limit - pendingUpdates.Count}";
           using (var cmd = connectionFactory.CreateCommand(sql))
           {
             var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);

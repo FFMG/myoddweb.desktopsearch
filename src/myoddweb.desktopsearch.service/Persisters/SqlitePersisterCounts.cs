@@ -40,20 +40,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     private long? _filesCount;
 
     /// <summary>
-    /// The counts table name
-    /// </summary>
-    private string TableCounts { get; }
-
-    /// <summary>
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
 
-    public SqlitePersisterCounts(string tableName, ILogger logger )
+    public SqlitePersisterCounts(ILogger logger )
     {
-      // save the table name
-      TableCounts = tableName;
-
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -144,7 +136,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         return true;
       }
 
-      var sql = $"UPDATE {TableCounts} SET count=count+@count WHERE type=@type";
+      var sql = $"UPDATE {Tables.Counts} SET count=count+@count WHERE type=@type";
 
       using (var cmd = connectionFactory.CreateCommand(sql))
       {
@@ -187,7 +179,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
-        var sql = $"SELECT count FROM {TableCounts} WHERE type=@type";
+        var sql = $"SELECT count FROM {Tables.Counts} WHERE type=@type";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pType = cmd.CreateParameter();
@@ -298,7 +290,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var count = await GetActualCountAsync(type, connectionFactory, token).ConfigureAwait(false);
 
       // the value does not exist, we have to get it.
-      var sql = $"UPDATE {TableCounts} SET count=@count WHERE type=@type";
+      var sql = $"UPDATE {Tables.Counts} SET count=@count WHERE type=@type";
 
       using (var cmd = connectionFactory.CreateCommand(sql))
       {
@@ -351,7 +343,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var count = await GetActualCountAsync(type, connectionFactory, token).ConfigureAwait(false);
 
       // the value does not exist, we have to get it.
-      var sql = $"INSERT INTO {TableCounts} (type, count) VALUES (@type, @count)";
+      var sql = $"INSERT INTO {Tables.Counts} (type, count) VALUES (@type, @count)";
 
       using (var cmd = connectionFactory.CreateCommand(sql))
       {

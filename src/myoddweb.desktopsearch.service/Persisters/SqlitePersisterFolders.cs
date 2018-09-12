@@ -20,12 +20,36 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.IO;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister 
+  internal class SqlitePersisterFolders : IFolders
   {
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    /// <inheritdoc />
+    public IFolderUpdates FolderUpdates { get; }
+
+    /// <inheritdoc />
+    public IFiles Files { get; }
+
+    public SqlitePersisterFolders(ICounts counts, ILogger logger)
+    {
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      // the files ... in our folders
+      Files = new SqlitePersisterFiles(this, counts, logger);
+
+      // the folder updates.
+      FolderUpdates = new SqlitePersisterFolderUpdates(Files, this, logger);
+    }
+
     /// <inheritdoc />
     public async Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token)
     {
@@ -58,7 +82,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       try
       {
-        var sql = $"UPDATE {TableFolders} SET path=@path1 WHERE path=@path2";
+        var sql = $"UPDATE {Tables.Folders} SET path=@path1 WHERE path=@path2";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pPath1 = cmd.CreateParameter();
@@ -97,7 +121,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           var folderId = await GetDirectoryIdAsync(directory, connectionFactory, token, false).ConfigureAwait(false);
 
           // touch that folder as changed
-          await TouchDirectoriesAsync(new []{folderId}, UpdateType.Changed, connectionFactory, token).ConfigureAwait(false);
+          await FolderUpdates.TouchDirectoriesAsync(new []{folderId}, UpdateType.Changed, connectionFactory, token).ConfigureAwait(false);
 
           // get out if needed.
           token.ThrowIfCancellationRequested();
@@ -138,7 +162,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
-      var sqlDelete = $"DELETE FROM {TableFolders} WHERE path=@path";
+      var sqlDelete = $"DELETE FROM {Tables.Folders} WHERE path=@path";
       using (var cmd = connectionFactory.CreateCommand(sqlDelete))
       {
         var pPath = cmd.CreateParameter();
@@ -154,7 +178,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             // try and delete files given directory info.
-            await DeleteFilesAsync(directory, connectionFactory, token).ConfigureAwait(false);
+            await Files.DeleteFilesAsync(directory, connectionFactory, token).ConfigureAwait(false);
 
             // then do the actual delete.
             pPath.Value = directory.FullName.ToLowerInvariant();
@@ -165,7 +189,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // touch all the folders as deleted.
-          await TouchDirectoriesAsync(directories, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
+          await FolderUpdates.TouchDirectoriesAsync(directories, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
 
           // we are done.
           return true;
@@ -200,7 +224,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // we want to get the latest updated folders.
-        var sql = $"SELECT path FROM {TableFolders} WHERE id = @id";
+        var sql = $"SELECT path FROM {Tables.Folders} WHERE id = @id";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pId = cmd.CreateParameter();
@@ -229,57 +253,9 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
-    /// <summary>
-    /// Get the next row ID we can use.
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<long> GetNextDirectoryIdAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    /// <inheritdoc />
+    public async Task<List<long>> GetDirectoriesIdAsync(IReadOnlyCollection<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
     {
-      // we first look for it, and, if we find it then there is nothing to do.
-      var sql = $"SELECT max(id) from {TableFolders};";
-      using (var cmd = connectionFactory.CreateCommand(sql))
-      {
-        var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
-        if (null == value || value == DBNull.Value)
-        {
-          return 0;
-        }
-
-        // we could not find this path ... so just add it.
-        return ((long) value) + 1;
-      }
-    }
-
-    /// <summary>
-    /// Get the id of a folder or -1.
-    /// </summary>
-    /// <param name="directory"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <param name="createIfNotFound"></param>
-    /// <returns></returns>
-    private async Task<long> GetDirectoryIdAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
-    {
-      if (null == directory)
-      {
-        throw new ArgumentNullException(nameof(directory), "The given directory is null");
-      }
-      var ids = await GetDirectoriesIdAsync(new List<DirectoryInfo> { directory}, connectionFactory, token, createIfNotFound ).ConfigureAwait(false);
-      return ids.Any() ? ids.First() : -1;
-    }
-
-    /// <summary>
-    /// Get the id of a list of directories
-    /// </summary>
-    /// <param name="directories"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <param name="createIfNotFound"></param>
-    /// <returns></returns>
-    private async Task<List<long>> GetDirectoriesIdAsync(IReadOnlyCollection<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
-    { 
       if (null == directories)
       {
         throw new ArgumentNullException(nameof(directories), "The given directory list is null");
@@ -291,12 +267,12 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // the list of ids.
-      var ids = new List<long>( directories.Count );
+      var ids = new List<long>(directories.Count);
 
       var directoriesToAdd = new List<DirectoryInfo>();
 
       // we first look for it, and, if we find it then there is nothing to do.
-      var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
+      var sql = $"SELECT id FROM {Tables.Folders} WHERE path=@path";
       using (var cmd = connectionFactory.CreateCommand(sql))
       {
         var pPath = cmd.CreateParameter();
@@ -311,7 +287,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           if (null != value && value != DBNull.Value)
           {
             // get the path id.
-            ids.Add((long) value);
+            ids.Add((long)value);
             continue;
           }
 
@@ -329,10 +305,45 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // we will then try and add all the folsers in our list
       // and return whatever we found.
-      ids.AddRange(await InsertDirectoriesAsync(directoriesToAdd, connectionFactory, token).ConfigureAwait(false) );
+      ids.AddRange(await InsertDirectoriesAsync(directoriesToAdd, connectionFactory, token).ConfigureAwait(false));
 
       // we are done
       return ids;
+    }
+
+    /// <inheritdoc />
+    public async Task<long> GetDirectoryIdAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
+    {
+      if (null == directory)
+      {
+        throw new ArgumentNullException(nameof(directory), "The given directory is null");
+      }
+      var ids = await GetDirectoriesIdAsync(new List<DirectoryInfo> { directory }, connectionFactory, token, createIfNotFound).ConfigureAwait(false);
+      return ids.Any() ? ids.First() : -1;
+    }
+    
+    #region private functions
+    /// <summary>
+    /// Get the next row ID we can use.
+    /// </summary>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<long> GetNextDirectoryIdAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      // we first look for it, and, if we find it then there is nothing to do.
+      var sql = $"SELECT max(id) from {Tables.Folders};";
+      using (var cmd = connectionFactory.CreateCommand(sql))
+      {
+        var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
+        if (null == value || value == DBNull.Value)
+        {
+          return 0;
+        }
+
+        // we could not find this path ... so just add it.
+        return ((long) value) + 1;
+      }
     }
 
     /// <summary>
@@ -356,7 +367,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // get the next id.
       var nextId = await GetNextDirectoryIdAsync(connectionFactory, token).ConfigureAwait(false);
 
-      var sqlInsert = $"INSERT INTO {TableFolders} (id, path) VALUES (@id, @path)";
+      var sqlInsert = $"INSERT INTO {Tables.Folders} (id, path) VALUES (@id, @path)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var pId = cmd.CreateParameter();
@@ -402,7 +413,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // then we can touch all the folders we created.
-      await TouchDirectoriesAsync(ids, UpdateType.Created, connectionFactory, token).ConfigureAwait(false);
+      await FolderUpdates.TouchDirectoriesAsync(ids, UpdateType.Created, connectionFactory, token).ConfigureAwait(false);
 
       // return all the ids that we added.
       return ids;
@@ -426,7 +437,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         var actualDirectories = new List<DirectoryInfo>();
 
         // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT id FROM {TableFolders} WHERE path=@path";
+        var sql = $"SELECT id FROM {Tables.Folders} WHERE path=@path";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pPath = cmd.CreateParameter();
@@ -462,5 +473,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw;
       }
     }
+    #endregion
   }
 }

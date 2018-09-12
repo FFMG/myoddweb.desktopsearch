@@ -25,30 +25,11 @@ namespace myoddweb.desktopsearch.service.Persisters
 {
   internal partial class SqlitePersister : IPersister
   {
-    #region Table names
-    private const string TableConfig = "Config";
-    private const string TableFolders = "Folders";
-    private const string TableFolderUpdates = "FolderUpdates";
-    private const string TableFiles = "Files";
-    private const string TableFileUpdates = "FileUpdates";
-    private const string TableWords = "Words";
-    private const string TableFilesWords = "FilesWords";
-    private const string TableParts = "Parts";
-    private const string TableWordsParts = "WordsParts";
-    private const string TableCounts = "Counts";
-    #endregion
-
-    #region Member variables
+    #region Private Member variables
     /// <summary>
     /// The SQlite connection for reading
     /// </summary>
     private SQLiteConnection _connectionReadOnly;
-
-    /// <summary>
-    /// The maximum number of characters per words...
-    /// Characters after that are ignored.
-    /// </summary>
-    private readonly int _maxNumCharacters;
 
     /// <summary>
     /// The transactions manager.
@@ -66,8 +47,28 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly ConfigSqliteDatabase _config;
     #endregion
 
+    #region Public properties
+    /// <inheritdoc />
+    public IConfig Config { get; }
+
     /// <inheritdoc />
     public ICounts Counts { get; }
+
+    /// <inheritdoc />
+    public IWords Words { get; }
+
+    /// <inheritdoc />
+    public IParts Parts { get; }
+
+    /// <inheritdoc />
+    public IWordsParts WordsParts { get; }
+
+    /// <inheritdoc />
+    public IFilesWords FilesWords { get; }
+    
+    /// <inheritdoc />
+    public IFolders Folders { get; }
+    #endregion
 
     public SqlitePersister(ILogger logger, ConfigSqliteDatabase config, int maxNumCharacters)
     {
@@ -77,11 +78,26 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the configuration
       _config = config ?? throw new ArgumentNullException(nameof(config));
 
-      // the number of characters.
-      _maxNumCharacters = maxNumCharacters;
+      // create the configuration table.
+      Config = new SqlitePersisterConfig();
 
       // create the counters
-      Counts = new SqlitePersisterCounts( TableCounts, _logger );
+      Counts = new SqlitePersisterCounts(logger);
+
+      // create the parts interface.
+      Parts = new SqlitePersisterParts(logger);
+
+      // word parts
+      WordsParts = new SqlitePersisterWordsParts(logger);
+
+      // create the words
+      Words = new SqlitePersisterWords(Parts, WordsParts, maxNumCharacters, logger);
+
+      // file words.
+      FilesWords = new SqlitePersisterFilesWords( Words, logger);
+
+      // create the files / Folders.
+      Folders = new SqlitePersisterFolders( Counts, logger );
     }
 
     /// <inheritdoc />

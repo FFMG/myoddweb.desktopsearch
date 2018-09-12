@@ -20,12 +20,16 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister
+  internal class SqlitePersisterConfig : IConfig
   {
+    public SqlitePersisterConfig()
+    {
+    }
+
     /// <inheritdoc />
     public async Task<T> GetConfigValueAsync<T>(string name, T defaultValue, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      var sql = $"SELECT value FROM {TableConfig} WHERE name=@name";
+      var sql = $"SELECT value FROM {Tables.Config} WHERE name=@name";
       using (var cmd = connectionFactory.CreateCommand(sql))
       {
         var pName = cmd.CreateParameter();
@@ -54,8 +58,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       var stringValue = ConfigTypeToString(value);
       var current = await GetConfigValueAsync<object>(name, null, connectionFactory, token ).ConfigureAwait(false);
       var sql = null == current ? 
-        $"INSERT INTO {TableConfig} (name, value) values (@name, @value)" : 
-        $"UPDATE {TableConfig} SET value=@value WHERE name=@name";
+        $"INSERT INTO {Tables.Config} (name, value) values (@name, @value)" : 
+        $"UPDATE {Tables.Config} SET value=@value WHERE name=@name";
 
       // do it now.
       using (var cmd = connectionFactory.CreateCommand(sql))

@@ -92,12 +92,13 @@
     <Compile Include="Persisters\SqlitePersisterWords.cs" />
     <Compile Include="Persisters\SqlitePersisterFiles.cs" />
     <Compile Include="Persisters\SqlitePersisterFileUpdates.cs" />
-    <Compile Include="Persisters\SqlitePersisterFolder.cs" />
+    <Compile Include="Persisters\SqlitePersisterFolders.cs" />
     <Compile Include="Persisters\SqlitePersisterFolderUpdates.cs" />
     <Compile Include="Persisters\SqlitePersisterWordsParts.cs" />
     <Compile Include="Persisters\SqlitePersisterMaintenance.cs" />
     <Compile Include="Persisters\SqliteReadOnlyConnectionFactory.cs" />
     <Compile Include="Persisters\SqliteReadWriteConnectionFactory.cs" />
+    <Compile Include="Persisters\Tables.cs" />
     <Compile Include="Persisters\TransactionsManager.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

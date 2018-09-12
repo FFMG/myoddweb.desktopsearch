@@ -17,12 +17,42 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IPersister : IConfig, IFolders, IFolderUpdates, IFiles, IFileUpdates, IWords, IFilesWords, IParts, IWordsParts
+  public interface IPersister
   {
+    /// <summary>
+    /// Configuration
+    /// </summary>
+    IConfig Config { get; }
+
     /// <summary>
     /// The various counters.
     /// </summary>
     ICounts Counts { get; }
+
+    /// <summary>
+    /// The words persister
+    /// </summary>
+    IWords Words { get; }
+
+    /// <summary>
+    /// Manages string parts.
+    /// </summary>
+    IParts Parts { get; }
+
+    /// <summary>
+    /// The words in a file.
+    /// </summary>
+    IFilesWords FilesWords { get; }
+
+    /// <summary>
+    /// The folders interface
+    /// </summary>
+    IFolders Folders { get; }
+
+    /// <summary>
+    /// The parts manager for a word.
+    /// </summary>
+    IWordsParts WordsParts { get; }
 
     /// <summary>
     /// Get a database transaction.

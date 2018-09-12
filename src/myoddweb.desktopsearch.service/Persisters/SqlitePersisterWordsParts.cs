@@ -4,12 +4,24 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister
+  internal class SqlitePersisterWordsParts : IWordsParts
   {
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    public SqlitePersisterWordsParts(ILogger logger)
+    {
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
     /// <inheritdoc />
     public async Task AddOrUpdateWordParts(long wordId, HashSet<long> partIds, IConnectionFactory connectionFactory, CancellationToken token)
     {
@@ -68,7 +80,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // the query to insert a new word
-      var sqlInsert = $"DELETE FROM {TableWordsParts} WHERE wordid=@wordid AND partid=@partid";
+      var sqlInsert = $"DELETE FROM {Tables.WordsParts} WHERE wordid=@wordid AND partid=@partid";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var ppId = cmd.CreateParameter();
@@ -114,7 +126,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // the query to insert a new word
-      var sqlInsert = $"INSERT INTO {TableWordsParts} (wordid, partid) VALUES (@wordid, @partid)";
+      var sqlInsert = $"INSERT INTO {Tables.WordsParts} (wordid, partid) VALUES (@wordid, @partid)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsert))
       {
         var ppId = cmd.CreateParameter();
@@ -154,7 +166,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // the query to insert a new word
-        var sql = $"SELECT partid FROM {TableWordsParts} WHERE wordid = @wordid";
+        var sql = $"SELECT partid FROM {Tables.WordsParts} WHERE wordid = @wordid";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pId = cmd.CreateParameter();

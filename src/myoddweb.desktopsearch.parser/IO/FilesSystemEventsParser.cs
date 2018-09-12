@@ -12,8 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System;
-using System.Data;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,19 +25,19 @@ namespace myoddweb.desktopsearch.parser.IO
   internal class FilesSystemEventsParser : SystemEventsParser
   {
     /// <summary>
-    /// The folder persister that will allow us to add/remove folders.
+    /// The folders interface.
     /// </summary>
-    private readonly IPersister _persister;
+    private IFiles Files { get; }
 
-    /// <summary>
-    /// The current transaction.
-    /// </summary>
-    private IConnectionFactory _currentTransaction;
-
-    public FilesSystemEventsParser( IPersister persister, IDirectory directory, int eventsParserMs, ILogger logger) : 
-      base( directory, eventsParserMs, logger)
+    public FilesSystemEventsParser( IPersister persister, IDirectory directory, int eventsParserMs, ILogger logger) :
+      this(persister.Folders.Files, persister, directory, eventsParserMs, logger)
     {
-      _persister = persister ?? throw new ArgumentNullException(nameof(persister));
+    }
+
+    public FilesSystemEventsParser(IFiles files, IPersister persister, IDirectory directory, int eventsParserMs, ILogger logger) :
+      base(persister, directory, eventsParserMs, logger)
+    {
+      Files = files;
     }
 
     #region Process File events
@@ -69,49 +67,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
     #region Abstract Process events
     /// <inheritdoc />
-    protected override void ProcessEventsStart(CancellationToken token)
-    {
-      if (_currentTransaction != null)
-      {
-        Logger.Warning("Trying to start an event processing when the previous one does not seem to have ended.");
-        return;
-      }
-      _currentTransaction = _persister.BeginWrite(token).Result;
-    }
-
-    /// <inheritdoc />
-    protected override void ProcessEventsEnd(bool hadErrors)
-    {
-      if (_currentTransaction == null)
-      {
-        Logger.Warning("Trying to complete an event processing when it does not seem to have been started.");
-        return;
-      }
-
-      try
-      {
-        if (hadErrors)
-        {
-          _persister.Rollback(_currentTransaction);
-        }
-        else
-        {
-          _persister.Commit(_currentTransaction);
-        }
-      }
-      catch (Exception e)
-      {
-        Logger.Exception(e);
-        throw;
-      }
-      finally
-      {
-        _currentTransaction = null;
-      }
-    }
-
-    /// <inheritdoc />
-    protected override async Task ProcessCreatedAsync(IFileSystemEvent e, CancellationToken token)
+    protected override async Task ProcessCreatedAsync(IConnectionFactory factory, IFileSystemEvent e, CancellationToken token)
     {
       var file = e.File;
       if (!CanProcessFile(file))
@@ -123,11 +79,11 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"File: {e.FullName} (Created)");
 
       // just add the file.
-      await _persister.AddOrUpdateFileAsync( file, _currentTransaction, token).ConfigureAwait(false);
+      await Files.AddOrUpdateFileAsync( file, factory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessDeletedAsync(IFileSystemEvent e, CancellationToken token)
+    protected override async Task ProcessDeletedAsync(IConnectionFactory factory, IFileSystemEvent e, CancellationToken token)
     {
       var file = e.File;
       if (null == file)
@@ -145,15 +101,15 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"File: {e.FullName} (Deleted)");
 
       // do we have the file on record?
-      if (await _persister.FileExistsAsync(file, _currentTransaction, token).ConfigureAwait(false))
+      if (await Files.FileExistsAsync(file, factory, token).ConfigureAwait(false))
       {
         // just delete the folder.
-        await _persister.DeleteFileAsync(file, _currentTransaction, token).ConfigureAwait(false);
+        await Files.DeleteFileAsync(file, factory, token).ConfigureAwait(false);
       }
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessChangedAsync(IFileSystemEvent e, CancellationToken token)
+    protected override async Task ProcessChangedAsync(IConnectionFactory factory, IFileSystemEvent e, CancellationToken token)
     {
       var file = e.File;
       if (!CanProcessFile(file))
@@ -162,13 +118,13 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // we know the file changed ... but does it even exist on our record?
-      if (!await _persister.FileExistsAsync(file, _currentTransaction, token).ConfigureAwait(false))
+      if (!await Files.FileExistsAsync(file, factory, token).ConfigureAwait(false))
       {
         // add the file
         Logger.Verbose($"File: {e.FullName} (Changed - But not on file)");
 
         // just add the file.
-        await _persister.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false);
+        await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false);
         return;
       }
 
@@ -177,11 +133,11 @@ namespace myoddweb.desktopsearch.parser.IO
 
 
       // then make sure to touch the folder accordingly
-      await _persister.TouchFileAsync(file, UpdateType.Changed, _currentTransaction, token).ConfigureAwait(false);
+      await Files.FileUpdates.TouchFileAsync(file, UpdateType.Changed, factory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessRenamedAsync(IFileSystemEvent e, CancellationToken token)
+    protected override async Task ProcessRenamedAsync(IConnectionFactory factory, IFileSystemEvent e, CancellationToken token)
     {
       // get the new name as well as the one one
       // either of those could be null
@@ -206,7 +162,7 @@ namespace myoddweb.desktopsearch.parser.IO
         }
 
         // just add the new directly.
-        if (!await _persister.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false))
+        if (!await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false))
         {
           Logger.Error( $"Unable to add file {e.FullName} during rename.");
         }
@@ -226,13 +182,13 @@ namespace myoddweb.desktopsearch.parser.IO
         }
 
         // if the old file does not exist on record ... then there is nothing more for us to do .
-        if (!await _persister.FileExistsAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
+        if (!await Files.FileExistsAsync(oldFile, factory, token).ConfigureAwait(false))
         {
           return;
         }
 
         // delete the old folder only, in case it did exist.
-        if (!await _persister.DeleteFileAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
+        if (!await Files.DeleteFileAsync(oldFile, factory, token).ConfigureAwait(false))
         {
           Logger.Error( $"Unable to remove old file {e.OldFullName} durring rename");
         }
@@ -247,10 +203,10 @@ namespace myoddweb.desktopsearch.parser.IO
       //
       // if we do not have the old file on record then it is not a rename
       // but rather is is a new one.
-      if (!await _persister.FileExistsAsync(oldFile, _currentTransaction, token).ConfigureAwait(false))
+      if (!await Files.FileExistsAsync(oldFile, factory, token).ConfigureAwait(false))
       {
         // just add the new directly.
-        if (!await _persister.AddOrUpdateFileAsync(file, _currentTransaction, token).ConfigureAwait(false))
+        if (!await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false))
         {
           Logger.Error($"Unable to add file {e.FullName} during rename.");
         }
@@ -260,7 +216,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // we have the old name on record so we can try and rename it.
       // if we ever have an issue, it could be because we are trying to rename to
       // something that already exists.
-      if (-1 == await _persister.RenameOrAddFileAsync(file, oldFile, _currentTransaction, token).ConfigureAwait(false))
+      if (-1 == await Files.RenameOrAddFileAsync(file, oldFile, factory, token).ConfigureAwait(false))
       {
         Logger.Error( $"Unable to rename file {e.OldFullName} > {e.FullName}");
       }

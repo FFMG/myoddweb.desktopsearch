@@ -19,12 +19,31 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal partial class SqlitePersister 
+  internal class SqlitePersisterFilesWords : IFilesWords
   {
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    /// <summary>
+    /// The words interface
+    /// </summary>
+    private readonly IWords _words;
+
+    public SqlitePersisterFilesWords( IWords words, ILogger logger)
+    {
+      _words = words ?? throw new ArgumentNullException(nameof(words));
+
+      // save the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
     /// <inheritdoc />
     public async Task<bool> AddOrUpdateWordToFileAsync(Word word, long fileId, IConnectionFactory connectionFactory, CancellationToken token)
     {
@@ -41,7 +60,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // get all the word ids, insert them into the word table if needed.
       // we will then add those words to the this file id.
-      var wordids = await GetWordIdsAsync(words, connectionFactory, token, true).ConfigureAwait(false);
+      var wordids = await _words.GetWordIdsAsync(words, connectionFactory, token, true).ConfigureAwait(false);
 
       // get all the current word ids already in that files.
       var currentIds = await GetWordIdsForFile(fileId, connectionFactory, token).ConfigureAwait(false);
@@ -62,7 +81,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           return true;
         }
 
-        var sql = $"INSERT INTO {TableFilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
+        var sql = $"INSERT INTO {Tables.FilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           // create the parameters for inserting.
@@ -109,7 +128,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
-        var sqlDelete = $"DELETE FROM {TableFilesWords} WHERE fileid=@fileid";
+        var sqlDelete = $"DELETE FROM {Tables.FilesWords} WHERE fileid=@fileid";
         using (var cmd = connectionFactory.CreateCommand(sqlDelete))
         {
           var pFId = cmd.CreateParameter();
@@ -145,7 +164,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     #region Private word functions
-
     /// <summary>
     /// Remove the ids that were in the words list but are not anymore.
     /// </summary>
@@ -178,7 +196,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // whatever word ids are left we need to remove them.
-        var sqlDelete = $"DELETE FROM {TableFilesWords} WHERE wordid=@wordid and fileid=@fileid";
+        var sqlDelete = $"DELETE FROM {Tables.FilesWords} WHERE wordid=@wordid and fileid=@fileid";
         using (var cmd = connectionFactory.CreateCommand(sqlDelete))
         {
           var pWId = cmd.CreateParameter();
@@ -233,7 +251,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // first we get the ids that are in the 
       try
       {
-        var sqlSelect = $"SELECT wordid FROM {TableFilesWords} WHERE fileid=@fileid";
+        var sqlSelect = $"SELECT wordid FROM {Tables.FilesWords} WHERE fileid=@fileid";
         using (var cmd = connectionFactory.CreateCommand(sqlSelect))
         {
           // and the prameters for selecting.

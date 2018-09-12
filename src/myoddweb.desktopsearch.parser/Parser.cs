@@ -191,7 +191,7 @@ namespace myoddweb.desktopsearch.parser
       try
       {
         // finally we can set the last time we checked the entire data tree.
-        var lastAccessTimeUtc = await _persister.GetConfigValueAsync("LastAccessTimeUtc", DateTime.MinValue, transaction, token).ConfigureAwait(false);
+        var lastAccessTimeUtc = await _persister.Config.GetConfigValueAsync("LastAccessTimeUtc", DateTime.MinValue, transaction, token).ConfigureAwait(false);
 
         // we can commit our code.
         _persister.Commit(transaction);
@@ -221,7 +221,7 @@ namespace myoddweb.desktopsearch.parser
       try
       {
         // finally we can set the last time we checked the entire data tree.
-        await _persister.SetConfigValueAsync("LastAccessTimeUtc", DateTime.UtcNow, transaction, token).ConfigureAwait(false);
+        await _persister.Config.SetConfigValueAsync("LastAccessTimeUtc", DateTime.UtcNow, transaction, token).ConfigureAwait(false);
 
         // we can commit our code.
         _persister.Commit(transaction);
@@ -332,7 +332,7 @@ namespace myoddweb.desktopsearch.parser
     {
       // if the directory exist... and it was flaged as newer than the last time
       // we checked the directory, then all we need to do is touch it.
-      if (await _persister.DirectoryExistsAsync(directory, connectionFactory, token).ConfigureAwait(false))
+      if (await _persister.Folders.DirectoryExistsAsync(directory, connectionFactory, token).ConfigureAwait(false))
       {
         if (directory.LastAccessTimeUtc < lastAccessTimeUtc)
         {
@@ -370,13 +370,14 @@ namespace myoddweb.desktopsearch.parser
       try
       {
         // the file has changed.
-        await _persister.TouchDirectoriesAsync(directories, UpdateType.Changed, transaction, token).ConfigureAwait(false);
+        await _persister.Folders.FolderUpdates.TouchDirectoriesAsync(directories, UpdateType.Changed, transaction, token).ConfigureAwait(false);
 
         // all done
         _persister.Commit(transaction);
       }
       catch (OperationCanceledException)
       {
+        _persister.Rollback(transaction);
         _logger.Warning("Received cancellation request - parsing changed directories parsing");
         throw;
       }
@@ -425,7 +426,7 @@ namespace myoddweb.desktopsearch.parser
         // we can now process everything in on single go.
 
         // do all the directories at once.
-        await _persister.AddOrUpdateDirectoriesAsync(directoriesAndFiles.Keys.ToList(), transaction, token)
+        await _persister.Folders.AddOrUpdateDirectoriesAsync(directoriesAndFiles.Keys.ToList(), transaction, token)
           .ConfigureAwait(false);
 
         // then do the files.
@@ -435,18 +436,19 @@ namespace myoddweb.desktopsearch.parser
           if (files != null)
           {
             // add the files...
-            await _persister.AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false);
+            await _persister.Folders.Files.AddOrUpdateFilesAsync(files, transaction, token).ConfigureAwait(false);
           }
         }
 
         // all the folders have been processed.
-        await _persister.MarkDirectoriesProcessedAsync(directoriesAndFiles.Keys.ToList(), transaction, token).ConfigureAwait(false);
+        await _persister.Folders.FolderUpdates.MarkDirectoriesProcessedAsync(directoriesAndFiles.Keys.ToList(), transaction, token).ConfigureAwait(false);
 
         // all done
         _persister.Commit(transaction);
       }
       catch (OperationCanceledException)
       {
+        _persister.Rollback(transaction);
         _logger.Warning("Received cancellation request - parsing created directories parsing");
         throw;
       }

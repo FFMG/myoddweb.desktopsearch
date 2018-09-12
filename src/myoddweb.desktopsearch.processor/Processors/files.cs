@@ -359,22 +359,22 @@ namespace myoddweb.desktopsearch.processor.Processors
           // there should be nothing to delete.
           if (words != null)
           {
-            await _persister.AddOrUpdateWordsToFileAsync(words, fileId, connectionFactory, token).ConfigureAwait(false);
+            await _persister.FilesWords.AddOrUpdateWordsToFileAsync(words, fileId, connectionFactory, token).ConfigureAwait(false);
           }
           break;
 
         case UpdateType.Deleted:
           // we deleted the file, so remove the words.
-          await _persister.DeleteFileFromFilesAndWordsAsync(fileId, connectionFactory, token).ConfigureAwait(false);
+          await _persister.FilesWords.DeleteFileFromFilesAndWordsAsync(fileId, connectionFactory, token).ConfigureAwait(false);
           break;
 
         case UpdateType.Changed:
           //  we changed the file, so we have to delete the old words
           // as well as add the new ones.
-          await _persister.DeleteFileFromFilesAndWordsAsync(fileId, connectionFactory, token).ConfigureAwait(false);
+          await _persister.FilesWords.DeleteFileFromFilesAndWordsAsync(fileId, connectionFactory, token).ConfigureAwait(false);
           if (words != null)
           {
-            await _persister.AddOrUpdateWordsToFileAsync(words, fileId, connectionFactory, token).ConfigureAwait(false);
+            await _persister.FilesWords.AddOrUpdateWordsToFileAsync(words, fileId, connectionFactory, token).ConfigureAwait(false);
           }
           break;
 
@@ -405,13 +405,13 @@ namespace myoddweb.desktopsearch.processor.Processors
         foreach (var pendingFileUpdate in pendingFileUpdates)
         {
           // mark it as persisted.
-          await _persister.TouchFileAsync(pendingFileUpdate.FileId, pendingFileUpdate.PendingUpdateType, transaction, token).ConfigureAwait(false);
+          await _persister.Folders.Files.FileUpdates.TouchFileAsync(pendingFileUpdate.FileId, pendingFileUpdate.PendingUpdateType, transaction, token).ConfigureAwait(false);
         }
 
         // we are done
         _persister.Commit(transaction);
       }
-      catch (Exception)
+      catch
       {
         _persister.Rollback(transaction);
         throw;
@@ -434,7 +434,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        var pendingUpdates = await _persister.GetPendingFileUpdatesAsync(MaxUpdatesToProcess, transaction, token).ConfigureAwait(false);
+        var pendingUpdates = await _persister.Folders.Files.FileUpdates.GetPendingFileUpdatesAsync(MaxUpdatesToProcess, transaction, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending file updates.");
@@ -455,13 +455,13 @@ namespace myoddweb.desktopsearch.processor.Processors
         // if anything goes wrong _after_ that we will try and 'touch' it again.
         // by doing it that way around we ensure that we never keep the transaction.
         // and we don't run the risk of someone else trying to process this again.
-        await _persister.MarkFilesProcessedAsync(pendingUpdates.Select( p => p.FileId), transaction, token).ConfigureAwait(false);
+        await _persister.Folders.Files.FileUpdates.MarkFilesProcessedAsync(pendingUpdates.Select( p => p.FileId), transaction, token).ConfigureAwait(false);
 
         // we are done with this list.
         _persister.Commit(transaction);
         return pendingUpdates;
       }
-      catch (Exception)
+      catch
       {
         _persister.Rollback(transaction);
         throw;
