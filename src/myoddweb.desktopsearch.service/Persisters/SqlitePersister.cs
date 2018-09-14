@@ -58,9 +58,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     public IWords Words { get; }
 
     /// <inheritdoc />
-    public IParts Parts { get; }
-
-    /// <inheritdoc />
     public IWordsParts WordsParts { get; }
 
     /// <inheritdoc />
@@ -84,14 +81,11 @@ namespace myoddweb.desktopsearch.service.Persisters
       // create the counters
       Counts = new SqlitePersisterCounts(logger);
 
-      // create the parts interface.
-      Parts = new SqlitePersisterParts(logger);
-
       // word parts
       WordsParts = new SqlitePersisterWordsParts(logger);
 
       // create the words
-      Words = new SqlitePersisterWords(Parts, WordsParts, maxNumCharacters, logger);
+      Words = new SqlitePersisterWords( WordsParts, maxNumCharacters, logger);
 
       // file words.
       FilesWords = new SqlitePersisterFilesWords( Words, logger);

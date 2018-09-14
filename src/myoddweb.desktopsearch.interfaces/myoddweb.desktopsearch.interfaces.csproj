@@ -59,7 +59,6 @@
     <Compile Include="Persisters\IConnectionFactory.cs" />
     <Compile Include="Persisters\ICounts.cs" />
     <Compile Include="Persisters\IFilesWords.cs" />
-    <Compile Include="Persisters\IParts.cs" />
     <Compile Include="Persisters\IWords.cs" />
     <Compile Include="Persisters\IWordsParts.cs" />
     <Compile Include="Persisters\PendingFileUpdate.cs" />
