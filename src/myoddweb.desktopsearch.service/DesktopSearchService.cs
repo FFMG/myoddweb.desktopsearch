@@ -236,7 +236,7 @@ namespace myoddweb.desktopsearch.service
     {
       if( config.Database is ConfigSqliteDatabase sqlData )
       {
-        return new SqlitePersister(logger, sqlData, config.MaxNumCharacters );
+        return new SqlitePersister(logger, sqlData, config.MaxNumCharactersPerWords, config.MaxNumCharactersPerParts );
       }
 
       throw new ArgumentException("Unknown Database type.");

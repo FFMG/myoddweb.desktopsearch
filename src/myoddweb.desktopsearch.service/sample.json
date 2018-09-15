@@ -1,5 +1,6 @@
 ﻿{
-  "MaxNumCharacters": 25,
+  "MaxNumCharactersPerWords": 255,
+  "MaxNumCharactersPerParts": 25,
 
   "WebServer": {
     "Port": 9501

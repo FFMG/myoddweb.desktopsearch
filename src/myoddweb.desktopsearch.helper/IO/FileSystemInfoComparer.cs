@@ -38,6 +38,7 @@ namespace myoddweb.desktopsearch.helper.IO
     private static Regex Rgx { get; } = new Regex("\\\\{2,}");
     #endregion
 
+    /// <inheritdoc />
     /// <summary>
     /// Check if 2 file items are equal.
     /// </summary>
@@ -77,7 +78,12 @@ namespace myoddweb.desktopsearch.helper.IO
       // if we compare case we might run the risk of local
       // characters not returning proper values, (a good example is turkish characters).
       var l = xx.Length;
-      for (var i = 0; i < l; ++i)
+
+      // just about everything seems to math...
+      // we can try and compare strings now.
+      // and hope that there is no funny characters that make then
+      // almost equal...
+      for (var i = l - 1; i >= 0; --i)
       {
         // if either of them is a backslash and either of them is not equal
         // then we know that they cannot be the same.
@@ -85,18 +91,17 @@ namespace myoddweb.desktopsearch.helper.IO
         {
           return false;
         }
+        if (char.ToUpperInvariant(xx[i]) != char.ToUpperInvariant(yy[i]))
+        {
+          return false;
+        }      
       }
-
-      // just about everything seems to math...
-      // we can try and compare strings now.
-      // and hope that there is no funny characters that make then
-      // almost equal...
-      return string.Equals(xx, yy, StringComparison.OrdinalIgnoreCase);
+      return true;
     }
 
     public int GetHashCode(T obj)
     {
-      return FullName(obj).GetHashCode();
+      return StringComparer.OrdinalIgnoreCase.GetHashCode(FullName(obj));
     }
 
     /// <summary>

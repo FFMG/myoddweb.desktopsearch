@@ -143,10 +143,17 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     #region Member variable
     /// <summary>
-    /// The maximum number of characters per words...
-    /// Characters after that are ignored.
+    /// The maximum number of characters per words parts...
+    /// This is not the max word lenght, but the part lenght
+    /// The user cannot enter anything longer in a seatch box.
+    /// So search queries longer than that... are ignored.
     /// </summary>
-    private readonly int _maxNumCharacters;
+    private readonly int _maxNumCharactersPerParts;
+
+    /// <summary>
+    /// The maximum word size, words that are longer ... are ignored.
+    /// </summary>
+    private readonly int _maxNumCharactersPerWords;
 
     /// <summary>
     /// The words parts interface
@@ -159,10 +166,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly ILogger _logger;
     #endregion
 
-    public SqlitePersisterWords( IWordsParts wordsParts, int maxNumCharacters, ILogger logger)
+    public SqlitePersisterWords( IWordsParts wordsParts, int maxNumCharactersPerWords, int maxNumCharactersPerParts, ILogger logger)
     {
-      // the number of characters.
-      _maxNumCharacters = maxNumCharacters;
+      // the number of characters per parts.
+      _maxNumCharactersPerParts = maxNumCharactersPerParts;
+
+      // the maximum word len
+      _maxNumCharactersPerWords = maxNumCharactersPerWords;
 
       // the words parts interfaces
       _wordsParts = wordsParts ?? throw new ArgumentNullException(nameof(wordsParts));
@@ -295,6 +305,12 @@ namespace myoddweb.desktopsearch.service.Persisters
                 // get out if needed.
                 token.ThrowIfCancellationRequested();
 
+                // the word is crazy long, so we are ignoring it...
+                if (word.Value.Length > _maxNumCharactersPerWords)
+                {
+                  continue;
+                }
+
                 // the word we want to insert.
                 if (!await InsertWordAsync(word, nextId, cmdInsertWord, cmdSelectPart, cmdInsertPart, connectionFactory,
                   token).ConfigureAwait(false))
@@ -374,7 +390,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       CancellationToken token)
     {
       // get the parts.
-      var parts = word.Parts(_maxNumCharacters);
+      var parts = word.Parts(_maxNumCharactersPerParts);
 
       // the ids of all the parts, (added or otherwise).
       var partIds = new List<long>(parts.Count);
