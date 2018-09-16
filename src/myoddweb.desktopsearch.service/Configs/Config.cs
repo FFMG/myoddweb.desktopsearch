@@ -28,9 +28,14 @@ namespace myoddweb.desktopsearch.service.Configs
   internal class Config : IConfig
   {
     /// <inheritdoc />
+    [DefaultValue(255)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public int MaxNumCharactersPerWords { get; protected set; }
+
+    /// <inheritdoc />
     [DefaultValue(25)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public int MaxNumCharacters { get; protected set; }
+    public int MaxNumCharactersPerParts { get; protected set; }
 
     /// <inheritdoc />
     [JsonProperty(Required = Required.Always)]
@@ -84,7 +89,8 @@ namespace myoddweb.desktopsearch.service.Configs
     /// <summary>
     /// By using this constructor here we allowing JSon to convert from ConfigPaths > IPaths
     /// </summary>
-    /// <param name="maxNumCharacters"></param>
+    /// <param name="maxNumCharactersPerWords"></param>
+    /// <param name="maxNumCharactersPerParts"></param>
     /// <param name="paths"></param>
     /// <param name="timers"></param>
     /// <param name="processors"></param>
@@ -92,7 +98,8 @@ namespace myoddweb.desktopsearch.service.Configs
     /// <param name="database"></param>
     /// <param name="loggers"></param>
     public Config(
-      int maxNumCharacters,
+      int maxNumCharactersPerWords,
+      int maxNumCharactersPerParts,
       ConfigPaths paths, 
       ConfigTimers timers, 
       ConfigProcessor processors, 
@@ -107,11 +114,17 @@ namespace myoddweb.desktopsearch.service.Configs
       WebServer = webserver;
       Database = database;
 
-      if (maxNumCharacters <= 0)
+      if (maxNumCharactersPerWords <= 0)
       {
-        throw new ArgumentException("The max number number of characters cannot be -ve or zero");
+        throw new ArgumentException("The max number number of characters per words cannot be -ve or zero");
       }
-      MaxNumCharacters = maxNumCharacters;
+      MaxNumCharactersPerWords = maxNumCharactersPerWords;
+
+      if (maxNumCharactersPerParts <= 0)
+      {
+        throw new ArgumentException("The max number number of characters per parts cannot be -ve or zero");
+      }
+      MaxNumCharactersPerParts = maxNumCharactersPerParts;
     }
 
     /// <summary>

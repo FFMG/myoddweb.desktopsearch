@@ -251,14 +251,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return false;
       }
-
-      // we need to be able to remove word + parts together, and they have to be unique.
-      if (
-        !await
-          ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{Tables.WordsParts}_wordid_partid ON {Tables.WordsParts}(wordid, partid);", connectionFactory).ConfigureAwait(false))
-      {
-        return false;
-      }
       return true;
     }
 

@@ -35,11 +35,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     IWords Words { get; }
 
     /// <summary>
-    /// Manages string parts.
-    /// </summary>
-    IParts Parts { get; }
-
-    /// <summary>
     /// The words in a file.
     /// </summary>
     IFilesWords FilesWords { get; }

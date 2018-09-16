@@ -49,9 +49,17 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     IDatabase Database { get; }
 
     /// <summary>
-    /// The maximum number of characters we will concider when processing a word.
-    /// The word is still saved... but we just don't keep parts longer than this number.
+    /// The maximum word length
+    /// So if the max len is 3 and the word is hello
+    /// The word is ignored.
     /// </summary>
-    int MaxNumCharacters { get; }
+    int MaxNumCharactersPerWords { get; }
+
+    /// <summary>
+    /// The longest number of characters per part
+    /// If the word is 'hello' but the parts cannot be more than 3
+    /// Then the searchable words are 'hel', 'ell', 'llo' ... only 3 letters.
+    /// </summary>
+    int MaxNumCharactersPerParts { get; }
   }
 }

@@ -12,6 +12,9 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
+using System.Collections.Generic;
 using System.IO;
 using myoddweb.desktopsearch.helper.IO;
 using NUnit.Framework;
@@ -47,6 +50,7 @@ namespace myoddweb.desktopsearch.parser.test
         fic.Equals(new FileInfo(lhs), new FileInfo(rhs)));
     }
 
+    [Test]
     public void CheckNullAreEqual()
     {
       var fic = new FileInfoComparer();
@@ -54,11 +58,90 @@ namespace myoddweb.desktopsearch.parser.test
         fic.Equals(null, null));
     }
 
+    [Test]
     public void CheckNonNullAreEqual()
     {
       var fic = new FileInfoComparer();
       Assert.IsFalse(
         fic.Equals(null, new FileInfo("c:\\dir\\file.txt")));
+    }
+
+    [Test]
+    public void DictionaryKeys()
+    {
+      const string name = "c:\\test.txt";
+
+      var fic = new FileInfoComparer();
+      var dict = new Dictionary<FileInfo, object>(fic);
+      var info = new FileInfo(name);
+      dict[info] = null;
+      Assert.IsTrue(dict.ContainsKey(info));
+      Assert.IsTrue(dict.ContainsKey(new FileInfo(name)));
+    }
+
+    [Test]
+    public void DictionaryKeysUpperCase()
+    {
+      const string name = "c:\\test.txt";
+      var nameU = name.ToUpper();
+
+      var fic = new FileInfoComparer();
+      var dict = new Dictionary<FileInfo, object>( fic );
+      var info = new FileInfo( name );
+      dict[info] = null;
+      Assert.IsTrue(dict.ContainsKey(info));
+      Assert.IsTrue(dict.ContainsKey(new FileInfo(name)));
+      Assert.IsTrue(dict.ContainsKey(new FileInfo(nameU)));
+    }
+
+    [TestCase("C:\\\\tESt.txt")]
+    [TestCase("c:\\\\test.TXT")]
+    [TestCase("c:\\/test.txt")]
+    [TestCase("c://test.txt")]
+    [TestCase("c:/test.txt")]
+    public void DictionaryKeysVariousCases( string given)
+    {
+      const string name = "c:\\test.txt";
+
+      var fic = new FileInfoComparer();
+      var dict = new Dictionary<FileInfo, object>(fic);
+      var info = new FileInfo(name);
+      dict[info] = null;
+      Assert.IsTrue(dict.ContainsKey(info));
+      Assert.IsTrue(dict.ContainsKey(new FileInfo(given)));
+    }
+
+    [Test]
+    public void FulleNameCannotBeNull()
+    {
+      Assert.Throws<ArgumentNullException>(() => FileInfoComparer.FullName(null));
+    }
+
+    [TestCase("\\\\blah\\test.txt", "\\\\blah\\test.txt")]  //  network
+    [TestCase("c:\\test.txt", "c:\\test.txt")]
+    [TestCase("c:/test.txt", "c:\\test.txt")]
+    [TestCase("c:\\\\\\test.txt", "c:\\test.txt")]
+    [TestCase("c:/\\/test.txt", "c:\\test.txt")]
+    public void FullName(string given, string expected)
+    {
+      Assert.AreEqual( expected, FileInfoComparer.FullName( new FileInfo(given)));
+    }
+
+    [TestCase("c:\\test.txt", "c:\\test.txt")]
+    [TestCase("c:\\TEST.txt", "c:\\TEST.txt")]
+    [TestCase("c:\\tESt.txt", "c:\\tESt.txt")]
+    public void FullNameCaseAreKept(string given, string expected)
+    {
+      Assert.AreEqual(expected, FileInfoComparer.FullName(new FileInfo(given)));
+    }
+
+    [Test]
+    public void HashCodeCaseInsensitive()
+    {
+      const string name = "c:\\hello\\world\\blah.txt";
+      var fic = new FileInfoComparer();
+      var expected = fic.GetHashCode(new FileInfo(name));
+      Assert.AreEqual(expected, fic.GetHashCode(new FileInfo(name.ToUpper())));
     }
   }
 }

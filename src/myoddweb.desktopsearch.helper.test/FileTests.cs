@@ -734,5 +734,70 @@ namespace myoddweb.desktopsearch.parser.test
         File.IsExtension(new FileInfo(file), ext)
       );
     }
+
+    [Test]
+    public void LargeRelativeComplementWithNoMatch()
+    {
+      const int count = 10000;
+      var fisA = new List<FileInfo>(count);
+      for( var i = 0; i < count; ++i )
+      {
+        fisA.Add( new FileInfo( $"c:\\{Guid.NewGuid()}.txt"));
+      }
+
+      // B has everything in A
+      var fisB = new List<FileInfo>(fisA);
+      var fisC = File.RelativeComplement(fisA, fisB);
+
+      // everything in A is in B ... so nothing is in C
+      Assert.AreEqual(0, fisC.Count);
+    }
+
+    [Test]
+    public void LargeRelativeComplementWithOneMatch()
+    {
+      const int count = 10000;
+      var fisA = new List<FileInfo>(count);
+      for (var i = 0; i < count; ++i)
+      {
+        fisA.Add(new FileInfo($"c:\\{Guid.NewGuid()}.txt"));
+      }
+
+      // B has everything in A and one extra
+      var extra = new FileInfo($"c:\\{Guid.NewGuid()}.txt");
+      var fisB = new List<FileInfo>(fisA)
+      {
+        extra
+      };
+
+      // 
+      var fisC = File.RelativeComplement(fisA, fisB);
+
+      // Return the list of elements that are in B but not in A
+      // in other words ... just 'extra'
+      Assert.AreEqual(1, fisC.Count);
+      Assert.IsTrue(File.Equals(fisC[0], extra));
+    }
+
+    [Test]
+    public void LargeRelativeComplemenAllMatch()
+    {
+      const int count = 10000;
+      // A has nothing in it at all.
+      var fisA = new List<FileInfo>();
+
+      var fisB = new List<FileInfo>(count);
+      for (var i = 0; i < count; ++i)
+      {
+        fisB.Add(new FileInfo($"c:\\{Guid.NewGuid()}.txt"));
+      }
+
+      // Return the list of elements that are in B but not in A
+      // in other words ... everything.
+      var fisC = File.RelativeComplement(fisA, fisB);
+
+      // everything in A is in B ... so nothing is in C
+      Assert.AreEqual(count, fisC.Count);
+    }
   }
 }

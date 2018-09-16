@@ -174,7 +174,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           pId.ParameterName = "@wordid";
           cmd.Parameters.Add(pId);
 
-          var partIds = new HashSet<long>();
+          var partIds = new List<long>();
 
           // set the folder id.
           pId.Value = wordId;
@@ -185,11 +185,11 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             // add this part
-            partIds.Add((long) reader["partid"]);
+            partIds.Add(reader.GetInt64(0));
           }
 
           // ad we are done.
-          return partIds;
+          return new HashSet<long>(partIds);
         }
       }
       catch (OperationCanceledException)

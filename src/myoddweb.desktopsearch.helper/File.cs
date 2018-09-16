@@ -479,18 +479,23 @@ namespace myoddweb.desktopsearch.helper
       // B = {3,4,5}
       // RC = {5}
       var fc = new FileInfoComparer();
-      var fisRelativeComplement = new List<FileInfo>( fisB.Count );
+      var fisRelativeComplement = new HashSet<FileInfo>( fc );
+
+      // convert to a hashSet, it is a lot faster than a List<>.Contains( ... ) ...
+      // even if all we are doing is converting it back to a lis.t
+      var dicA = new HashSet<FileInfo>( fisA, fc );
       foreach (var fi in fisB)
       {
-        if ( fisA.Contains(fi, fc))
+        if (dicA.Contains(fi))
         {
           continue;
         }
         fisRelativeComplement.Add(fi);
       }
 
-      // return the relatibe complements.
-      return fisRelativeComplement.Distinct(fc).ToList();
+      // convert it to a list
+      // we know it is Distinct as it is a HashSet<>()
+      return fisRelativeComplement.ToList();
     }
 
     /// <summary>

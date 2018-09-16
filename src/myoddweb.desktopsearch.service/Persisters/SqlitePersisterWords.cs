@@ -26,16 +26,134 @@ namespace myoddweb.desktopsearch.service.Persisters
 {
   internal class SqlitePersisterWords : IWords
   {
+    #region Command classes
+    internal class Command : IDisposable
+    {
+      public IDbCommand Cmd { get; protected set; }
+
+      protected Command()
+      {
+      }
+
+      public void Dispose()
+      {
+        Cmd?.Dispose();
+      }
+    }
+
+    internal class SelectPartCommand : Command
+    {
+      public IDataParameter Part { get; }
+
+      public SelectPartCommand(IConnectionFactory factory)
+      {
+        var sqlSelect = $"SELECT id FROM {Tables.Parts} WHERE part = @part";
+        Cmd = factory.CreateCommand(sqlSelect);
+
+        Part = Cmd.CreateParameter();
+        Part.DbType = DbType.String;
+        Part.ParameterName = "@part";
+        Cmd.Parameters.Add(Part);
+      }
+    }
+    
+    internal class InsertWordCommand : Command
+    {
+      public IDataParameter Id { get; }
+
+      public IDataParameter Word { get; }
+
+      public InsertWordCommand(IConnectionFactory factory)
+      {
+        var sqlInsertWord = $"INSERT INTO {Tables.Words} (id, word) VALUES (@id, @word)";
+        Cmd = factory.CreateCommand(sqlInsertWord);
+
+        Id = Cmd.CreateParameter();
+        Id.DbType = DbType.Int64;
+        Id.ParameterName = "@id";
+        Cmd.Parameters.Add(Id);
+
+        Word = Cmd.CreateParameter();
+        Word.DbType = DbType.String;
+        Word.ParameterName = "@word";
+        Cmd.Parameters.Add(Word);
+      }
+    }
+
+    internal class InsertPartCommand : Command
+    {
+      public IDataParameter Id { get; }
+
+      public IDataParameter Part { get; }
+
+      public long NextId { get; set; }
+
+      public InsertPartCommand(IConnectionFactory factory, long nextId )
+      {
+        var sqlInsertPart = $"INSERT INTO {Tables.Parts} (id, part) VALUES (@id, @part)";
+        Cmd = factory.CreateCommand(sqlInsertPart);
+
+        Id = Cmd.CreateParameter();
+        Id.DbType = DbType.Int64;
+        Id.ParameterName = "@id";
+        Cmd.Parameters.Add(Id);
+
+        Part = Cmd.CreateParameter();
+        Part.DbType = DbType.String;
+        Part.ParameterName = "@part";
+        Cmd.Parameters.Add(Part);
+
+        NextId = nextId;
+      }
+    }
+    #endregion 
+
+    #region Commands creator
     /// <summary>
-    /// The maximum number of characters per words...
-    /// Characters after that are ignored.
+    /// Create the command to insert a word in the database.
     /// </summary>
-    private readonly int _maxNumCharacters;
+    /// <param name="connectionFactory"></param>
+    /// <returns></returns>
+    private static InsertWordCommand CreateInsertWordCommand(IConnectionFactory connectionFactory)
+    {
+      return new InsertWordCommand(connectionFactory);
+    }
 
     /// <summary>
-    /// The parts interface
+    /// Create the command to insert a word in the database.
     /// </summary>
-    private readonly IParts _parts;
+    /// <param name="connectionFactory"></param>
+    /// <returns></returns>
+    private static SelectPartCommand CreateSelectPartIdCommand(IConnectionFactory connectionFactory)
+    {
+      return new SelectPartCommand(connectionFactory);
+    }
+
+    /// <summary>
+    /// Create the command to insert a word in the database.
+    /// </summary>
+    /// <param name="connectionFactory"></param>
+    /// <param name="nextId"></param>
+    /// <returns></returns>
+    private static InsertPartCommand CreateInsertPartCommand(IConnectionFactory connectionFactory, long nextId)
+    {
+      return new InsertPartCommand(connectionFactory, nextId );
+    }
+    #endregion
+
+    #region Member variable
+    /// <summary>
+    /// The maximum number of characters per words parts...
+    /// This is not the max word lenght, but the part lenght
+    /// The user cannot enter anything longer in a seatch box.
+    /// So search queries longer than that... are ignored.
+    /// </summary>
+    private readonly int _maxNumCharactersPerParts;
+
+    /// <summary>
+    /// The maximum word size, words that are longer ... are ignored.
+    /// </summary>
+    private readonly int _maxNumCharactersPerWords;
 
     /// <summary>
     /// The words parts interface
@@ -46,14 +164,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
+    #endregion
 
-    public SqlitePersisterWords( IParts parts, IWordsParts wordsParts, int maxNumCharacters, ILogger logger)
+    public SqlitePersisterWords( IWordsParts wordsParts, int maxNumCharactersPerWords, int maxNumCharactersPerParts, ILogger logger)
     {
-      // the number of characters.
-      _maxNumCharacters = maxNumCharacters;
+      // the number of characters per parts.
+      _maxNumCharactersPerParts = maxNumCharactersPerParts;
+
+      // the maximum word len
+      _maxNumCharactersPerWords = maxNumCharactersPerWords;
 
       // the words parts interfaces
-      _parts = parts ?? throw new ArgumentNullException(nameof(parts));
       _wordsParts = wordsParts ?? throw new ArgumentNullException(nameof(wordsParts));
 
       // save the logger
@@ -146,6 +267,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw;
       }
     }
+    
     #region Private word functions
     /// <summary>
     /// Given a list of words, re-create the ones that we need to insert.
@@ -168,62 +290,189 @@ namespace myoddweb.desktopsearch.service.Persisters
       // get the next id.
       var nextId = await GetNextWordIdAsync(connectionFactory, token).ConfigureAwait(false);
 
-      var sqlInsert = $"INSERT INTO {Tables.Words} (id, word) VALUES (@id, @word)";
-      using (var cmd = connectionFactory.CreateCommand(sqlInsert))
+      using (var cmdInsertWord = CreateInsertWordCommand(connectionFactory))
       {
-        var pId = cmd.CreateParameter();
-        pId.DbType = DbType.Int64;
-        pId.ParameterName = "@id";
-        cmd.Parameters.Add(pId);
-
-        var pWord = cmd.CreateParameter();
-        pWord.DbType = DbType.String;
-        pWord.ParameterName = "@word";
-        cmd.Parameters.Add(pWord);
-
-        try
+        using (var cmdSelectPart = CreateSelectPartIdCommand(connectionFactory))
         {
-          foreach (var word in words)
+          // get the next valid id.
+          var nextPartId = await GetNextPartIdAsync(connectionFactory, token).ConfigureAwait(false);
+          using (var cmdInsertPart = CreateInsertPartCommand(connectionFactory, nextPartId))
           {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            pId.Value = nextId;
-            pWord.Value = word.Value;
-            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+            try
             {
-              _logger.Error($"There was an issue adding word: {word.Value} to persister");
-              continue;
+              foreach (var word in words)
+              {
+                // get out if needed.
+                token.ThrowIfCancellationRequested();
+
+                // the word is crazy long, so we are ignoring it...
+                if (word.Value.Length > _maxNumCharactersPerWords)
+                {
+                  continue;
+                }
+
+                // the word we want to insert.
+                if (!await InsertWordAsync(word, nextId, cmdInsertWord, cmdSelectPart, cmdInsertPart, connectionFactory,
+                  token).ConfigureAwait(false))
+                {
+                  continue;
+                }
+
+                // we added this id.
+                ids.Add(nextId);
+
+                // we can now move on to the next folder id.
+                ++nextId;
+              }
+
+              // all done, return whatever we did.
+              return ids;
             }
+            catch (OperationCanceledException)
+            {
+              _logger.Warning("Received cancellation request - Insert multiple words");
+              throw;
+            }
+            catch (Exception ex)
+            {
+              _logger.Exception(ex);
+              throw;
+            }
+          }// insert part
+        }// using select parts command
+      }// using insert word command
+    }
 
-            // we now can add the parts
-            var partIds = await _parts.GetPartIdsAsync(word.Parts( _maxNumCharacters ), connectionFactory, token, true ).ConfigureAwait(false);
-
-            // marry the word id, (that we just added).
-            // with the partIds, (that we just added).
-            await _wordsParts.AddOrUpdateWordParts(nextId, partIds, connectionFactory, token).ConfigureAwait(false);
-
-            // we added this id.
-            ids.Add( nextId );
-
-            // we can now move on to the next folder id.
-            ++nextId;
-          }
-
-          // all done, return whatever we did.
-          return ids;
-        }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Insert multiple words");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-          throw;
-        }
+    /// <summary>
+    /// Insert a word in the database and then insert all the parts
+    /// </summary>
+    /// <param name="word"></param>
+    /// <param name="id"></param>
+    /// <param name="cmdInsertWord"></param>
+    /// <param name="cmdSelectPart"></param>
+    /// <param name="cmdInsertPart"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> InsertWordAsync(
+      Word word, 
+      long id, 
+      InsertWordCommand cmdInsertWord, 
+      SelectPartCommand cmdSelectPart,
+      InsertPartCommand cmdInsertPart,
+      IConnectionFactory connectionFactory,
+      CancellationToken token)
+    {
+      cmdInsertWord.Id.Value = id;
+      cmdInsertWord.Word.Value = word.Value;
+      if (0 == await connectionFactory.ExecuteWriteAsync(cmdInsertWord.Cmd, token).ConfigureAwait(false))
+      {
+        _logger.Error($"There was an issue adding word: {word.Value} to persister");
+        return false;
       }
+
+      // we now can add/find the parts
+      var partIds = await GetOrInsertParts( word, cmdSelectPart, cmdInsertPart, connectionFactory, token).ConfigureAwait(false);
+
+      // marry the word id, (that we just added).
+      // with the partIds, (that we just added).
+      await _wordsParts.AddOrUpdateWordParts(id, partIds, connectionFactory, token).ConfigureAwait(false);
+
+      // all done.
+      return true;
+    }
+
+    public async Task<HashSet<long>> GetOrInsertParts(
+      Word word,
+      SelectPartCommand cmdSelectPart,
+      InsertPartCommand cmdInsertPart,
+      IConnectionFactory connectionFactory, 
+      CancellationToken token)
+    {
+      // get the parts.
+      var parts = word.Parts(_maxNumCharactersPerParts);
+
+      // the ids of all the parts, (added or otherwise).
+      var partIds = new List<long>(parts.Count);
+
+      // if we have not words... then move on.
+      if (!parts.Any())
+      {
+        return new HashSet<long>(partIds);
+      }
+
+      var cmdSelect = cmdSelectPart.Cmd;
+
+      // the parts we actually need to add.
+      var partsToAdd = new List<string>(parts.Count);
+
+      foreach (var part in parts)
+      {
+        // get out if needed.
+        token.ThrowIfCancellationRequested();
+
+        // the part we are adding
+        cmdSelectPart.Part.Value = part;
+
+        // look for that part, if it exists, add it to the list
+        // otherwird we will need to add it.
+        var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
+        if (null != value && value != DBNull.Value)
+        {
+          partIds.Add((long)value);
+          continue;
+        }
+
+        // we could not locate this part
+        // so it will need to be added.
+        partsToAdd.Add(part);
+      }
+
+      // then add the ids of the remaining parts.
+      partIds.AddRange(await InsertPartsAsync(partsToAdd.ToArray(), cmdInsertPart, connectionFactory, token).ConfigureAwait(false));
+
+      // return everything we found.
+      return new HashSet<long>(partIds);
+    }
+
+    /// <summary>
+    /// Insert parts and return the id of the added parts.
+    /// </summary>
+    /// <param name="parts"></param>
+    /// <param name="cmdInsertPart"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<List<long>> InsertPartsAsync(IReadOnlyCollection<string> parts, InsertPartCommand cmdInsertPart, IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      if (!parts.Any())
+      {
+        return new List<long>();
+      }
+
+      // the ids of all the parts inserted.
+      var partIds = new List<long>(parts.Count);
+
+      var cmdInsert = cmdInsertPart.Cmd;
+      foreach (var part in parts.Distinct())
+      {
+        cmdInsertPart.Id.Value = cmdInsertPart.NextId;
+        cmdInsertPart.Part.Value = part;
+
+        if (0 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
+        {
+          _logger.Error($"There was an issue adding part: {part} to persister");
+          continue;
+        }
+
+        // we added it, so we can add it to our list
+        partIds.Add(cmdInsertPart.NextId);
+
+        // and move on to the next id.
+        ++cmdInsertPart.NextId;
+      }
+      // return all the ids we added.
+      return partIds;
     }
 
     /// <summary>
@@ -272,6 +521,42 @@ namespace myoddweb.desktopsearch.service.Persisters
       catch (OperationCanceledException)
       {
         _logger.Warning("Received cancellation request - Building word list");
+        throw;
+      }
+    }
+
+    /// <summary>
+    /// Get the next row ID we can use.
+    /// </summary>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<long> GetNextPartIdAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      try
+      {
+        // we first look for it, and, if we find it then there is nothing to do.
+        var sql = $"SELECT max(id) from {Tables.Parts};";
+        using (var cmd = connectionFactory.CreateCommand(sql))
+        {
+          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
+
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
+          // does not exist ...
+          if (null == value || value == DBNull.Value)
+          {
+            return 0;
+          }
+
+          // this is the next counter.
+          return ((long)value) + 1;
+        }
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Get Next valid Part id");
         throw;
       }
     }
