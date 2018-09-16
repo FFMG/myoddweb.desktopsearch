@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -64,10 +65,18 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// The number of updates we want to try and do at a time.
     /// </summary>
     public int MaxUpdatesToProcess { get; }
+
+    /// <summary>
+    /// The performance counter.
+    /// </summary>
+    private readonly IPerformanceCounter _counter;
     #endregion
 
-    public Files( int updatesPerFilesEvent, List<IFileParser> parsers, IPersister persister, ILogger logger)
+    public Files(IPerformanceCounter counter, int updatesPerFilesEvent, List<IFileParser> parsers, IPersister persister, ILogger logger)
     {
+      // save the counter
+      _counter = counter ?? throw new ArgumentNullException(nameof(counter));
+
       if (updatesPerFilesEvent <= 0)
       {
         throw new ArgumentException( $"The number of files to try per events cannot be -ve or zero, ({updatesPerFilesEvent})");
@@ -87,6 +96,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <inheritdoc />
     public async Task<int> WorkAsync(CancellationToken token)
     {
+      var tsActual = DateTime.UtcNow;
       try
       {
         // then get _all_ the file updates that we want to do.
@@ -113,6 +123,10 @@ namespace myoddweb.desktopsearch.processor.Processors
         _logger.Exception(e);
         throw;
       }
+      finally
+      {
+        _counter?.IncremenFromUtcTime(tsActual);
+      }
     }
 
     /// <summary>
@@ -121,7 +135,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFileUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task ProcessFileUpdates(List<PendingFileUpdate> pendingFileUpdates, CancellationToken token)
+    private async Task ProcessFileUpdates(IReadOnlyCollection<PendingFileUpdate> pendingFileUpdates, CancellationToken token)
     {
       // now try and process the files.
       try
@@ -305,18 +319,8 @@ namespace myoddweb.desktopsearch.processor.Processors
       {
         foreach (var pendingFileUpdate in completedPendingFileUpdates)
         {
-          var tsActual = DateTime.UtcNow;
-
           // complete the update
           await CompletePendingFileUpdate(pendingFileUpdate, transaction, token).ConfigureAwait(false);
-
-          // Did this all take more than 5 seconds?
-          var tsDiff = (DateTime.UtcNow - tsActual);
-          if (tsDiff.TotalSeconds > 5)
-          {
-            _logger.Verbose(
-              $"Processing of file: {pendingFileUpdate.File.FullName} took {tsDiff:g} ({pendingFileUpdate.Words?.Count ?? 0} words)");
-          }
         }
 
         // all done

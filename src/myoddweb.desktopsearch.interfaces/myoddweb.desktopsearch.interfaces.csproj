@@ -51,6 +51,7 @@
     <Compile Include="IO\IDirectory.cs" />
     <Compile Include="IO\IFileParser.cs" />
     <Compile Include="IO\IFileSystemEvent.cs" />
+    <Compile Include="IO\IPerformanceCounter.cs" />
     <Compile Include="IO\Word.cs" />
     <Compile Include="IO\WordEqualityComparer.cs" />
     <Compile Include="IO\Words.cs" />

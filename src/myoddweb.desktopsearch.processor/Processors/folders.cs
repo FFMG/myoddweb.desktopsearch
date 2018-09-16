@@ -45,10 +45,18 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// We only process one item at a time here.
     /// </summary>
     public int MaxUpdatesToProcess => 1;
+
+    /// <summary>
+    /// The performance counter.
+    /// </summary>
+    private readonly IPerformanceCounter _counter;
     #endregion
 
-    public Folders(IPersister persister, ILogger logger, IDirectory directory)
+    public Folders(IPerformanceCounter counter, IPersister persister, ILogger logger, IDirectory directory)
     {
+      // save the counter
+      _counter = counter ?? throw new ArgumentNullException(nameof(counter));
+
       // set the persister.
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
 
@@ -62,6 +70,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <inheritdoc />
     public async Task<int> WorkAsync(CancellationToken token)
     {
+      var tsActual = DateTime.UtcNow;
       try
       {
         // then get _all_ the file updates that we want to do.
@@ -86,6 +95,10 @@ namespace myoddweb.desktopsearch.processor.Processors
       {
         _logger.Exception(e);
         throw;
+      }
+      finally
+      {
+        _counter?.IncremenFromUtcTime(tsActual);
       }
     }
 
