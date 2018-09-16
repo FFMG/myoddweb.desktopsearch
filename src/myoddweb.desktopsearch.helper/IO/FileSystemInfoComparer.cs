@@ -117,7 +117,7 @@ namespace myoddweb.desktopsearch.helper.IO
       // Cater for network drives.
       // we cannot just look for '\'  as you can type '\hello' to navidate
       // to the current directory.
-      var isNetword = input.Length > 2 && (input[0] == '\\' && input[1] == '\\');
+      var isNetworkDrive = input.Length > 2 && (input[0] == '\\' && input[1] == '\\');
 
       // simple clean up
       input = input.Replace('/', '\\').Trim();
@@ -135,7 +135,7 @@ namespace myoddweb.desktopsearch.helper.IO
 
       // if this is a network drive remember to add 
       // the leading '\' that we removed with the previous regex.
-      return isNetword ? "\\" + input : input;
+      return isNetworkDrive ? "\\" + input : input;
     }
   }
 }

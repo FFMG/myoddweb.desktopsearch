@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using myoddweb.desktopsearch.helper.IO;
@@ -108,6 +109,39 @@ namespace myoddweb.desktopsearch.parser.test
       dict[info] = null;
       Assert.IsTrue(dict.ContainsKey(info));
       Assert.IsTrue(dict.ContainsKey(new FileInfo(given)));
+    }
+
+    [Test]
+    public void FulleNameCannotBeNull()
+    {
+      Assert.Throws<ArgumentNullException>(() => FileInfoComparer.FullName(null));
+    }
+
+    [TestCase("\\\\blah\\test.txt", "\\\\blah\\test.txt")]  //  network
+    [TestCase("c:\\test.txt", "c:\\test.txt")]
+    [TestCase("c:/test.txt", "c:\\test.txt")]
+    [TestCase("c:\\\\\\test.txt", "c:\\test.txt")]
+    [TestCase("c:/\\/test.txt", "c:\\test.txt")]
+    public void FullName(string given, string expected)
+    {
+      Assert.AreEqual( expected, FileInfoComparer.FullName( new FileInfo(given)));
+    }
+
+    [TestCase("c:\\test.txt", "c:\\test.txt")]
+    [TestCase("c:\\TEST.txt", "c:\\TEST.txt")]
+    [TestCase("c:\\tESt.txt", "c:\\tESt.txt")]
+    public void FullNameCaseAreKept(string given, string expected)
+    {
+      Assert.AreEqual(expected, FileInfoComparer.FullName(new FileInfo(given)));
+    }
+
+    [Test]
+    public void HashCodeCaseInsensitive()
+    {
+      const string name = "c:\\hello\\world\\blah.txt";
+      var fic = new FileInfoComparer();
+      var expected = fic.GetHashCode(new FileInfo(name));
+      Assert.AreEqual(expected, fic.GetHashCode(new FileInfo(name.ToUpper())));
     }
   }
 }

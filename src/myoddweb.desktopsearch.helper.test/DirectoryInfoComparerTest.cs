@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using myoddweb.desktopsearch.helper.IO;
@@ -118,6 +119,41 @@ namespace myoddweb.desktopsearch.parser.test
       dict[info] = null;
       Assert.IsTrue(dict.ContainsKey(info));
       Assert.IsTrue(dict.ContainsKey(new DirectoryInfo(given)));
+    }
+
+    [Test]
+    public void FulleNameCannotBeNull()
+    {
+      Assert.Throws<ArgumentNullException>(() => DirectoryInfoComparer.FullName(null));
+    }
+
+    [TestCase("\\\\blah\\test", "\\\\blah\\test\\")]  //  network
+    [TestCase("\\\\blah\\test\\", "\\\\blah\\test\\")]  //  network
+    [TestCase("\\\\blah\\test/", "\\\\blah\\test\\")]  //  network
+    [TestCase("c:\\test", "c:\\test\\")]
+    [TestCase("c:/test", "c:\\test\\")]
+    [TestCase("c:\\\\\\test\\", "c:\\test\\")]
+    [TestCase("c:/\\/test", "c:\\test\\")]
+    public void FullName(string given, string expected)
+    {
+      Assert.AreEqual(expected, DirectoryInfoComparer.FullName(new DirectoryInfo(given)));
+    }
+
+    [TestCase("c:\\test\\blah", "c:\\test\\blah\\")]
+    [TestCase("c:\\TEST\\BLAH", "c:\\TEST\\BLAH\\")]
+    [TestCase("c:\\tESt\\", "c:\\tESt\\")]
+    public void FullNameCaseAreKept(string given, string expected)
+    {
+      Assert.AreEqual(expected, DirectoryInfoComparer.FullName(new DirectoryInfo(given)));
+    }
+
+    [Test]
+    public void HashCodeCaseInsensitive()
+    {
+      const string name = "c:\\hello\\world\\blah\\";
+      var dic = new DirectoryInfoComparer();
+      var expected = dic.GetHashCode(new DirectoryInfo(name));
+      Assert.AreEqual(expected, dic.GetHashCode(new DirectoryInfo(name.ToUpper())));
     }
   }
 }
