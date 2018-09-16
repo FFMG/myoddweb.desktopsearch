@@ -50,7 +50,7 @@
     <Compile Include="IO\FilesWatcher.cs" />
     <Compile Include="IO\Watcher.cs" />
     <Compile Include="IO\WatcherTypes.cs" />
-    <Compile Include="parser.cs" />
+    <Compile Include="Parser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

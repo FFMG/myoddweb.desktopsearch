@@ -300,17 +300,18 @@ namespace myoddweb.desktopsearch.parser
       // if we have not done it already.
       _persister.Commit(transaction);
 
-      var sb = new StringBuilder();
-      sb.AppendLine($"Finishing directory parsing: {parent.FullName}");
-      sb.AppendLine($"  Created: {createdDirectories.Count} directories");
-      sb.Append    ($"  Changed: {changedDirectories.Count} directories");
-      _logger.Verbose(sb.ToString());
-
       // update the changed directorues
       await PersistChangedDirectories(changedDirectories, token).ConfigureAwait(false);
 
       // update the changed directorues
       await PersistCreatedDirectories(createdDirectories, token).ConfigureAwait(false);
+
+      // log that we are done.
+      var sb = new StringBuilder();
+      sb.AppendLine($"Finishing directory parsing: {parent.FullName}");
+      sb.AppendLine($"  Created: {createdDirectories.Count} directories");
+      sb.Append($"  Changed: {changedDirectories.Count} directories");
+      _logger.Verbose(sb.ToString());
 
       // stop the watch and log how many items we found.
       stopwatch.Stop();
