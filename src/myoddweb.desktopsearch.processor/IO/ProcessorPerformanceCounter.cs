@@ -33,10 +33,22 @@ namespace myoddweb.desktopsearch.processor.IO
     }
 
     /// <inheritdoc/>
+    protected override void OnDispose()
+    {
+      _counter.Dispose();
+    }
+
+    /// <inheritdoc/>
     protected override void OnIncremenFromUtcTime(DateTime startTime)
     {
       var tsDiff = (DateTime.UtcNow - startTime);
       _counter?.IncrementBy(tsDiff.Ticks);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnIncrement()
+    {
+      throw new NotImplementedException();
     }
   }
 }

@@ -19,6 +19,16 @@ namespace myoddweb.desktopsearch.interfaces.IO
   public interface IPerformanceCounter
   {
     /// <summary>
+    /// Dispose of resources.
+    /// </summary>
+    void Dispose();
+
+    /// <summary>
+    /// Increment the timer once.
+    /// </summary>
+    void Increment();
+
+    /// <summary>
     /// Increment a counter from a start time 
     /// </summary>
     /// <param name="startTime"></param>

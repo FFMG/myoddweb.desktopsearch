@@ -21,7 +21,7 @@ using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.helper.IO
 {
-  public abstract class PerformanceCounter : IPerformanceCounter
+  public abstract class PerformanceCounter : IPerformanceCounter, IDisposable
   {
     /// <summary>
     /// The base performance counter, (if needed).
@@ -130,7 +130,20 @@ namespace myoddweb.desktopsearch.helper.IO
 
     }
 
+    /// <summary>
+    /// Derived class can increment the counter given a UTC start time.
+    /// </summary>
     protected abstract void OnIncremenFromUtcTime(DateTime startTime);
+
+    /// <summary>
+    /// Derived class can increment the counter.
+    /// </summary>
+    protected abstract void OnIncrement();
+
+    /// <summary>
+    /// Dispose of the code.
+    /// </summary>
+    protected abstract void OnDispose();
 
     /// <inheritdoc/>
     public void IncremenFromUtcTime(DateTime startTime)
@@ -141,6 +154,18 @@ namespace myoddweb.desktopsearch.helper.IO
 
       // we might not have a base.
       _counterBase?.Increment();
+    }
+
+    /// <inheritdoc />
+    public void Increment()
+    {
+      OnIncrement();
+    }
+
+    public void Dispose()
+    {
+      OnDispose();
+      _counterBase?.Dispose();
     }
   }
 }

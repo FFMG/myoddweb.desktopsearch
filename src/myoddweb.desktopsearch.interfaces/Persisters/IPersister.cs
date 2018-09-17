@@ -82,5 +82,10 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// </summary>
     /// <param name="token"></param>
     void Start(CancellationToken token);
+
+    /// <summary>
+    /// Stop the database work.
+    /// </summary>
+    void Stop();
   }
 }

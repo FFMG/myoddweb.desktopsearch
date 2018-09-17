@@ -94,6 +94,12 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
+    public void Stop()
+    {
+      _counter?.Dispose();
+    }
+
+    /// <inheritdoc />
     public async Task<int> WorkAsync(CancellationToken token)
     {
       var tsActual = DateTime.UtcNow;

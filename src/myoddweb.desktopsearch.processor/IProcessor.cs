@@ -29,5 +29,10 @@ namespace myoddweb.desktopsearch.processor
     /// </summary>
     /// <returns></returns>
     Task<int> WorkAsync( CancellationToken token );
+
+    /// <summary>
+    /// Stop all processing and cleanup
+    /// </summary>
+    void Stop();
   }
 }

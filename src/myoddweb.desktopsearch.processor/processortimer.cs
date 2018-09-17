@@ -194,6 +194,8 @@ namespace myoddweb.desktopsearch.processor
         {
           helper.Wait.WaitAll(_task, _logger, _token);
         }
+
+        _processor.Stop();
       }
       catch (Exception e)
       {

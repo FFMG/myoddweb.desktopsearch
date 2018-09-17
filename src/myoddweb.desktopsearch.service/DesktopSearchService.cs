@@ -85,6 +85,11 @@ namespace myoddweb.desktopsearch.service
     /// </summary>
     private HttpServer _http;
 
+    /// <summary>
+    /// The persister.
+    /// </summary>
+    private IPersister _persister;
+
     public DesktopSearchService()
     {
       InitializeComponent();
@@ -238,7 +243,7 @@ namespace myoddweb.desktopsearch.service
     {
       if( config.Database is ConfigSqliteDatabase sqlData )
       {
-        return new SqlitePersister(logger, sqlData, config.MaxNumCharactersPerWords, config.MaxNumCharactersPerParts );
+        return new SqlitePersister(config.Performance, logger, sqlData, config.MaxNumCharactersPerWords, config.MaxNumCharactersPerParts );
       }
 
       throw new ArgumentException("Unknown Database type.");
@@ -285,25 +290,25 @@ namespace myoddweb.desktopsearch.service
         var token = _cancellationTokenSource.Token;
 
         // the persister
-        var persister = CreatePersister( _logger, config);
+        _persister = CreatePersister( _logger, config);
 
         // the directory parser
         var directory = CreateDirectory( _logger, config );
 
         // and we can now create and start the parser.
-        _parser = new Parser( config, persister, _logger, directory );
+        _parser = new Parser( config, _persister, _logger, directory );
 
         // we now need to create the files parsers
         var fileParsers = CreateFileParsers<IFileParser>( config.Paths.ComponentsPaths );
 
         // create the processor
-        _processor = new Processor( fileParsers, config.Processors, persister, _logger, directory, config.Performance );
+        _processor = new Processor( fileParsers, config.Processors, _persister, _logger, directory, config.Performance );
 
         // create the http server
-        _http = new HttpServer( config.WebServer, persister, _logger);
+        _http = new HttpServer( config.WebServer, _persister, _logger);
 
         // we can now start everything 
-        persister.Start(token);
+        _persister.Start(token);
         _http.Start(token);       //  the http server
         _parser.Start(token);     //  the parser
         _processor.Start(token);  //  the processor
@@ -359,6 +364,7 @@ namespace myoddweb.desktopsearch.service
       _parser?.Stop();
       _processor?.Stop();
       _http?.Stop();
+      _persister?.Stop();
 
       _cancellationTokenSource = null;
       _parser = null;
