@@ -60,5 +60,10 @@
   "Database": {
     "Source": ".\\database.db",
     "IgnoredPaths": [ ".\\" ]
-  }
+  },
+  "Performance": {
+    "CategoryName": "myoddweb.desktopsearch",
+    "CategoryHelp": "Performance counters for myoddweb.desktopsearch",
+    "DeleteStartUp": true
+  } 
 }

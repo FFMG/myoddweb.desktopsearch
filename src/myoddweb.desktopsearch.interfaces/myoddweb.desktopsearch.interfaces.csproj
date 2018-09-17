@@ -45,6 +45,7 @@
     <Compile Include="Configs\IDatabase.cs" />
     <Compile Include="Configs\ILogger.cs" />
     <Compile Include="Configs\IPaths.cs" />
+    <Compile Include="Configs\IPerformance.cs" />
     <Compile Include="Configs\IProcessors.cs" />
     <Compile Include="Configs\ITimers.cs" />
     <Compile Include="Configs\IWebServer.cs" />

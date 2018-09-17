@@ -16,12 +16,14 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Configuration.Install;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.ServiceProcess;
 using System.Threading;
 using myoddweb.desktopsearch.http;
+using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.parser;
 using myoddweb.desktopsearch.processor;
@@ -243,6 +245,22 @@ namespace myoddweb.desktopsearch.service
     }
 
     /// <summary>
+    /// Delete the performance category if we need to.
+    /// </summary>
+    /// <param name="performance"></param>
+    private static void CreatePerformance( IPerformance performance )
+    {
+      if (!performance.DeleteStartUp)
+      {
+        return;
+      }
+      if (PerformanceCounterCategory.Exists(performance.CategoryName))
+      {
+        PerformanceCounterCategory.Delete(performance.CategoryName);
+      }
+    }
+
+    /// <summary>
     /// Start the process as a service or as a console app.
     /// </summary>
     /// <returns></returns>
@@ -255,6 +273,8 @@ namespace myoddweb.desktopsearch.service
 
         // create the config
         var config = CreateConfig();
+
+        CreatePerformance(config.Performance);
 
         // and the logger
         _logger = CreateLogger(config.Loggers );
@@ -277,7 +297,7 @@ namespace myoddweb.desktopsearch.service
         var fileParsers = CreateFileParsers<IFileParser>( config.Paths.ComponentsPaths );
 
         // create the processor
-        _processor = new Processor( fileParsers, config.Processors, persister, _logger, directory);
+        _processor = new Processor( fileParsers, config.Processors, persister, _logger, directory, config.Performance );
 
         // create the http server
         _http = new HttpServer( config.WebServer, persister, _logger);

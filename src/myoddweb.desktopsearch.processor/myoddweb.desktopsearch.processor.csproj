@@ -41,7 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="IProcessor.cs" />
-    <Compile Include="PerformanceCounter.cs" />
+    <Compile Include="IO\ProcessorPerformanceCounter.cs" />
     <Compile Include="processor.cs" />
     <Compile Include="Processors\files.cs" />
     <Compile Include="Processors\folders.cs" />
