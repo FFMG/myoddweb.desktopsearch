@@ -12,20 +12,22 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
 namespace myoddweb.desktopsearch.interfaces.IO
 {
-  public class Words : List<Word>
+  public class Words : HashSet<Word>
   {
     #region Contructors
     /// <inheritdoc />
     /// <summary>
     /// Base constructor.
     /// </summary>
-    public Words()
+    public Words() : base( new WordEqualityComparer() )
     {
     }
 
@@ -45,19 +47,19 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// Constructor with a list of words.
     /// </summary>
     /// <param name="words"></param>
-    public Words(Words[] words ) : base( words?.Where( w => w != null ).Sum( w => w.Count) ?? 0 )
+    public Words(Words[] words ) : this()
     {
       // Add all he words into one.
       Add(words);
     }
 
-    public Words(Word[] words) : base( words?.Length ?? 0 )
+    public Words(Word[] words) : this()
     {
       // Add all he words into one.
       Add(words);
     }
 
-    public Words(IReadOnlyCollection<string> words) : base(words?.Count ?? 0)
+    public Words(IReadOnlyCollection<string> words) : this()
     {
       // Add all he words into one.
       Add(words);
@@ -65,6 +67,23 @@ namespace myoddweb.desktopsearch.interfaces.IO
     #endregion
 
     #region Public Manipulator
+    public Word this[int index]
+    {
+      get
+      {
+        var i = 0;
+        foreach (var t in this)
+        {
+          if (i == index)
+          {
+            return t;
+          }
+          i++;
+        }
+        throw new IndexOutOfRangeException();
+      }
+    }
+
     /// <summary>
     /// Add a single word... but not if null.
     /// </summary>
@@ -76,9 +95,6 @@ namespace myoddweb.desktopsearch.interfaces.IO
         return;
       }
       base.Add(item);
-
-      // make sure that we don't have duplicates
-      Distinct();
     }
 
     /// <summary>
@@ -107,8 +123,6 @@ namespace myoddweb.desktopsearch.interfaces.IO
         return;
       }
 
-      // reset the capacity
-      ResizeCapacity(sum);
       foreach (var w in words)
       {
         // check if we need to get out.
@@ -124,8 +138,6 @@ namespace myoddweb.desktopsearch.interfaces.IO
         // as we will call distinct() later.
         base.Add(w);
       }
-
-      Distinct();
     }
 
     /// <summary>
@@ -140,8 +152,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
       {
         return;
       }
-      // reset the capacity
-      ResizeCapacity(sum);
+
       foreach (var w in words)
       {
         // check if we need to get out.
@@ -156,9 +167,6 @@ namespace myoddweb.desktopsearch.interfaces.IO
         // add this item
         base.Add(new Word(w));
       }
-
-      // make suree that the list is distinct
-      Distinct();
     }
     #endregion
 
@@ -194,8 +202,6 @@ namespace myoddweb.desktopsearch.interfaces.IO
       {
         return;
       }
-      // reset the capacity
-      ResizeCapacity(sum);
 
       foreach (var w in words)
       {
@@ -211,34 +217,6 @@ namespace myoddweb.desktopsearch.interfaces.IO
         // check the union
         AddWordsAndAllowDuplicates(w, token);
       }
-
-      // make it distinct
-      Distinct();
-    }
-
-    /// <summary>
-    /// Create destinct List.
-    /// </summary>
-    private void Distinct()
-    {
-      var distinct = this.Distinct(new WordEqualityComparer()).ToArray();
-      if (distinct.Length == Count)
-      {
-        // nothing changed ... it is already distinct.
-        return;
-      }
-      Clear();
-      Capacity = distinct.Length;
-      AddRange( distinct );
-    }
-    
-    /// <summary>
-    /// Reset the capacity.
-    /// </summary>
-    /// <param name="newSize"></param>
-    private void ResizeCapacity(int newSize)
-    {
-      Capacity += (newSize - (Capacity - Count));
     }
     #endregion
   }

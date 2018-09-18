@@ -41,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Collection.cs" />
+    <Compile Include="Components\FileParser.cs" />
     <Compile Include="File.cs" />
     <Compile Include="IO\DirectoryInfoComparer.cs" />
     <Compile Include="IO\FileInfoComparer.cs" />
