@@ -65,6 +65,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       // @see https://www.sqlite.org/wal.html
       // we call a read function ... so no transactions are created... yet.
       ExecuteReadOneAsync(CreateCommand("PRAGMA journal_mode=WAL;"), default(CancellationToken)).Wait();
+
+      // other little tricks to speed things up...
+      // https://www.sqlite.org/pragma.html#pragma_cache_size
+      ExecuteReadOneAsync(CreateCommand("PRAGMA cache_size = 100000;"), default(CancellationToken)).Wait();
+
+      // https://www.sqlite.org/pragma.html#pragma_temp_store
+      ExecuteReadOneAsync(CreateCommand("PRAGMA temp_store = MEMORY;"), default(CancellationToken)).Wait(); 
     }
 
     /// <inheritdoc />

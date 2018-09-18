@@ -65,7 +65,7 @@ namespace myoddweb.desktopsearch.parser.text
         var textWord = new List<string>();
         using (var sr = new StreamReader(file.FullName))
         {
-          const int maxFileLength = 1000000;
+          const long maxFileLength = 1000000;
           if ((sr.BaseStream as FileStream)?.Length <= maxFileLength)
           {
             // read everything in one go.
