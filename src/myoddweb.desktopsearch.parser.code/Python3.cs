@@ -24,11 +24,11 @@ using myoddweb.desktopsearch.interfaces.Logging;
 
 namespace myoddweb.desktopsearch.parser.code
 {
-  public class Cpp : IFileParser
+  public class Python3 : IFileParser
   {
-    public string Name => "CppParser";
+    public string Name => "Python3Parser";
 
-    public string[] Extenstions => new[] {"cpp", "c", "cc", "c++", "cxx", "h", "hh", "hpp", "hxx", "h++" };
+    public string[] Extenstions => new[] { "py" };
 
     /// <summary>
     /// The file parser
@@ -38,18 +38,15 @@ namespace myoddweb.desktopsearch.parser.code
     /// <summary>
     /// List of reserverd keywords
     /// </summary>
-    private readonly Words _keyWords = new Words( new List<string>
+    private readonly Words _keyWords = new Words(new List<string>
     {
-      "asm","else","new","this","auto","enum","operator","throw","bool","explicit","private",
-      "true","break","export","protected","try","case","extern","public","typedef","catch",
-      "false","register","typeid","char","float","reinterpret_cast","typename","class","for",
-      "return","union","const","friend","short","unsigned","const_cast","goto","signed","using",
-      "continue","if","sizeof","virtual","default","inline","static","void","delete","int",
-      "static_cast","volatile","do","long","struct","wchar_t","double","mutable","switch","while",
-      "dynamic_cast","namespace","template"
+      //  From https://github.com/python/cpython/blob/3.7/Lib/keyword.py
+      "False","None","True","and","as","assert","async","await","break","class","continue",
+      "def","del","elif","else","except","finally","for","from","global","if","import","in",
+      "is","lambda","nonlocal","not","or","pass","raise","return","try","while","with","yield"
     });
 
-    public Cpp()
+    public Python3()
     {
       // @see https://www.regular-expressions.info/unicode.html
       // But we basically split any words by ...
@@ -103,7 +100,7 @@ namespace myoddweb.desktopsearch.parser.code
     private Words StripCSharpWords(Words words)
     {
       // remove the keywords
-      words.RemoveWhere( k => _keyWords.Contains(k) );
+      words.RemoveWhere(k => _keyWords.Contains(k));
       return words;
     }
 

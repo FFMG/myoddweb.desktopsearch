@@ -35,6 +35,9 @@ namespace myoddweb.desktopsearch.parser.code
     /// </summary>
     private readonly FileParser _parser;
 
+    /// <summary>
+    /// List of reserverd keywords
+    /// </summary>
     private readonly Words _keyWords = new Words( new List<string>
     {
       "abstract","as","base","bool","break","byte","case","catch","char","checked","class","const",
@@ -46,6 +49,9 @@ namespace myoddweb.desktopsearch.parser.code
       "ushort","using","void","volatile","while"
     });
 
+    /// <summary>
+    /// List of reserverd contextual keywords
+    /// </summary>
     private readonly Words _contextual = new Words( new List<string>
     {
       "add","alias","ascending","async","await","descending","dynamic","from","get","global","group","into",
