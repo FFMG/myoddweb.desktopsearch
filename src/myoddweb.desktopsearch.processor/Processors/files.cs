@@ -121,7 +121,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFileUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task ProcessFileUpdates(List<PendingFileUpdate> pendingFileUpdates, CancellationToken token)
+    private async Task ProcessFileUpdates(IReadOnlyCollection<PendingFileUpdate> pendingFileUpdates, CancellationToken token)
     {
       // now try and process the files.
       try
