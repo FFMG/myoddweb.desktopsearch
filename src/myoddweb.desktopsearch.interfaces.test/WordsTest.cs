@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
+using System;
 using System.Collections.Generic;
 using myoddweb.desktopsearch.interfaces.IO;
 using NUnit.Framework;
@@ -75,6 +76,15 @@ namespace myoddweb.desktopsearch.interfaces.test
     }
 
     [Test]
+    public void CreateWithArrayOfWordDoesNotAllowDuplicates()
+    {
+      // word not really added.
+      var words = new Words(new[] { new Word("a"), new Word("a"), new Word("a") });
+      Assert.That(words.Count == 1);
+      Assert.AreEqual("a", words[0].Value);
+    }
+
+    [Test]
     public void CreateWithArrayOfNullWord()
     {
       var words0 = new Words(new[] { (Word)null, null });
@@ -127,6 +137,22 @@ namespace myoddweb.desktopsearch.interfaces.test
         }
       );
       Assert.That(words.Count == 3);
+    }
+
+    [Test]
+    public void CreateArrayOfWordsDoesNotAllowDuplicates()
+    {
+      var words = new Words(
+        new[]
+        {
+          new Words( new Word("a")),
+          new Words( new Word("a")),
+          new Words( new Word("a"))
+        }
+      );
+
+      Assert.That(words.Count == 1);
+      Assert.AreEqual("a", words[0].Value);
     }
 
     [Test]
@@ -375,6 +401,53 @@ namespace myoddweb.desktopsearch.interfaces.test
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
+    }
+
+    [Test]
+    public void TryingToAddTheSameWordALotStillEqualsOne()
+    {
+      var words = new Words();
+      var word = Guid.NewGuid().ToString();
+      for (var i = 0; i < 10000; ++i)
+      {
+        words.Add(word);
+      }
+
+      // should only be one.
+      Assert.That( words.Count == 1 );
+      Assert.AreEqual(word, words[0].Value);
+    }
+
+    [Test]
+    public void TryingToAddListOfTheSameWordALotStillEqualsOne()
+    {
+      var lwords = new List<string>();
+      var word = Guid.NewGuid().ToString();
+      for (var i = 0; i < 10000; ++i)
+      {
+        lwords.Add(word);
+      }
+
+      var words = new Words(lwords);
+
+      // should only be one.
+      Assert.That(words.Count == 1);
+      Assert.AreEqual(word, words[0].Value);
+    }
+
+    [Test]
+    public void WordsCreatedWithWordStillDoesNotAllowDuplicates()
+    {
+      var word = Guid.NewGuid().ToString();
+      var words = new Words( new Word(word));
+      for (var i = 0; i < 10000; ++i)
+      {
+        words.Add(new Word(word));
+      }
+
+      // should only be one.
+      Assert.That(words.Count == 1);
+      Assert.AreEqual(word, words[0].Value);
     }
   }
 }

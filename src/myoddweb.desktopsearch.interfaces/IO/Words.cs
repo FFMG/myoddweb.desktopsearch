@@ -176,25 +176,6 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// </summary>
     /// <param name="words"></param>
     /// <param name="token"></param>
-    private void AddWordsAndAllowDuplicates(Words words, CancellationToken token = default(CancellationToken))
-    {
-      foreach (var word in words)
-      {
-        // check if we need to get out.
-        token.ThrowIfCancellationRequested();
-
-        // add this word to the list
-        // we should have no nulls from the calling function
-        // we use the base function as we allow duplicates.
-        base.Add(word);
-      }
-    }
-
-    /// <summary>
-    /// Join multiple list of words together.
-    /// </summary>
-    /// <param name="words"></param>
-    /// <param name="token"></param>
     private void Add(Words[] words, CancellationToken token = default(CancellationToken))
     {
       var sum = words?.Where( w=> w != null ).Sum(w => w.Count) ?? 0;
@@ -215,7 +196,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
         }
 
         // check the union
-        AddWordsAndAllowDuplicates(w, token);
+        UnionWith( w );
       }
     }
     #endregion
