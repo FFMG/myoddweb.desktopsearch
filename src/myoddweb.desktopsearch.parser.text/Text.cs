@@ -108,6 +108,12 @@ namespace myoddweb.desktopsearch.parser.text
       }
     }
 
+    /// <summary>
+    /// Read a word from the file and move the pointer forward.
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
     private async Task<string> ReadWordAsync(TextReader stream, CancellationToken token )
     {
       string word = null;

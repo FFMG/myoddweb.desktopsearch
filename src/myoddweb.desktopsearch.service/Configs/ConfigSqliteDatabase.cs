@@ -22,6 +22,14 @@ namespace myoddweb.desktopsearch.service.Configs
   internal class ConfigSqliteDatabase : IDatabase
   {
     /// <summary>
+    /// The cache size.
+    /// https://www.sqlite.org/pragma.html#pragma_cache_size
+    /// </summary>
+    [DefaultValue(-2000)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public long CacheSize { get; protected set; }
+
+    /// <summary>
     /// The source to the database.
     /// </summary>
     [JsonProperty(Required = Required.Always)]
