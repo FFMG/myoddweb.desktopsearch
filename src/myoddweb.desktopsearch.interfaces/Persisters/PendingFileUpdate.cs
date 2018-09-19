@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System.IO;
+using myoddweb.desktopsearch.interfaces.Enums;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {

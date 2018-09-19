@@ -15,6 +15,7 @@
 
 using System;
 using System.IO;
+using myoddweb.desktopsearch.interfaces.Enums;
 using myoddweb.desktopsearch.interfaces.Logging;
 using ILogger = myoddweb.desktopsearch.interfaces.Configs.ILogger;
 

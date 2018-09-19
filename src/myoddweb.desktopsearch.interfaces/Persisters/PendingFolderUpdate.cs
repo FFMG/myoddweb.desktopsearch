@@ -15,6 +15,7 @@
 
 using System.Collections.Generic;
 using System.IO;
+using myoddweb.desktopsearch.interfaces.Enums;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
