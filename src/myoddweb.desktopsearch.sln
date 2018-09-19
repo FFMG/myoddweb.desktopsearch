@@ -24,6 +24,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Components", "Components", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.http", "myoddweb.desktopsearch.http\myoddweb.desktopsearch.http.csproj", "{F963E3F4-FCCC-42F8-8AB4-2F57A12FD372}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "myoddweb.desktopsearch.parser.code", "myoddweb.desktopsearch.parser.code\myoddweb.desktopsearch.parser.code.csproj", "{A8F6AB17-18C8-44B0-99EE-5499EA244F24}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,12 +64,17 @@ Global
 		{F963E3F4-FCCC-42F8-8AB4-2F57A12FD372}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F963E3F4-FCCC-42F8-8AB4-2F57A12FD372}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F963E3F4-FCCC-42F8-8AB4-2F57A12FD372}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8F6AB17-18C8-44B0-99EE-5499EA244F24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8F6AB17-18C8-44B0-99EE-5499EA244F24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8F6AB17-18C8-44B0-99EE-5499EA244F24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8F6AB17-18C8-44B0-99EE-5499EA244F24}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{EC7E2AC8-2BEE-4A2C-9EB8-A2E4465A9C37} = {29D4B304-D4DA-4CB5-AB5C-A8AB5A4480F6}
+		{A8F6AB17-18C8-44B0-99EE-5499EA244F24} = {29D4B304-D4DA-4CB5-AB5C-A8AB5A4480F6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F2388AF5-85F2-4074-80BF-8433C7251909}

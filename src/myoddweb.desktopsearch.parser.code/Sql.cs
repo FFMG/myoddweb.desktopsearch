@@ -19,6 +19,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.Components;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 
@@ -39,7 +40,7 @@ namespace myoddweb.desktopsearch.parser.code
     /// List of reserverd keywords
     /// This is NOT an exhaustive list of all the keywords... just the common ones.
     /// </summary>
-    private readonly Words _keyWords = new Words( new List<string>
+    private readonly IWords _keyWords = new Words( new List<string>
     {
       "ADD", "ALTER", "AND", "AS", "BIGINT", "CASE", "COALESCE", "COMMIT", "CREATE", "COLUMN", "CONSTRAINT",
       "CURSOR", "DATABASE", "DECLARE", "DELETE", "DROP", "ELSE", "EXECUTE", "EXPLAIN", "FUNCTION", "FROM",
@@ -62,7 +63,7 @@ namespace myoddweb.desktopsearch.parser.code
       _parser = new FileParser(@"[^\p{Z}\t\r\n\v\f\p{P}\p{C}\p{S}]+");
     }
 
-    public async Task<Words> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
+    public async Task<IWords> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
     {
       try
       {
@@ -100,7 +101,7 @@ namespace myoddweb.desktopsearch.parser.code
     /// </summary>
     /// <param name="words"></param>
     /// <returns></returns>
-    private Words StripCSharpWords(Words words)
+    private IWords StripCSharpWords(IWords words)
     {
       // remove the keywords
       words.RemoveWhere( MustRemove );
@@ -112,7 +113,7 @@ namespace myoddweb.desktopsearch.parser.code
     /// </summary>
     /// <param name="word">The word we are comparing.</param>
     /// <returns></returns>
-    private bool MustRemove(Word word)
+    private bool MustRemove( IWord word)
     {
       foreach (var keyWord in _keyWords)
       {

@@ -16,9 +16,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.Components;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 
@@ -38,7 +40,7 @@ namespace myoddweb.desktopsearch.parser.code
     /// <summary>
     /// List of reserverd keywords
     /// </summary>
-    private readonly Words _keyWords = new Words( new List<string>
+    private readonly IWords _keyWords = new Words( new List<string>
     {
       "abstract","as","base","bool","break","byte","case","catch","char","checked","class","const",
       "continue","decimal","default","delegate","do","double","else","enum","event","explicit","extern",
@@ -52,7 +54,7 @@ namespace myoddweb.desktopsearch.parser.code
     /// <summary>
     /// List of reserverd contextual keywords
     /// </summary>
-    private readonly Words _contextual = new Words( new List<string>
+    private readonly IWords _contextual = new Words( new List<string>
     {
       "add","alias","ascending","async","await","descending","dynamic","from","get","global","group","into",
       "join","let","orderby","partial","remove","select","set","value","var","when","where","yield"
@@ -71,7 +73,7 @@ namespace myoddweb.desktopsearch.parser.code
       _parser = new FileParser(@"[^\p{Z}\t\r\n\v\f\p{P}\p{C}\p{S}]+");
     }
 
-    public async Task<Words> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
+    public async Task<IWords> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
     {
       try
       {
@@ -109,7 +111,7 @@ namespace myoddweb.desktopsearch.parser.code
     /// </summary>
     /// <param name="words"></param>
     /// <returns></returns>
-    private Words StripCSharpWords(Words words)
+    private IWords StripCSharpWords(IWords words)
     {
       // remove the keywords
       words.RemoveWhere( k => _keyWords.Contains(k) );

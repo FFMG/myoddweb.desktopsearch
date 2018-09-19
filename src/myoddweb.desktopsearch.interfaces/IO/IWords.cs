@@ -12,6 +12,8 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using System.Collections.Generic;
 
 namespace myoddweb.desktopsearch.interfaces.IO
@@ -28,5 +30,12 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// </summary>
     /// <returns></returns>
     bool Any();
+
+    /// <summary>
+    /// Remove a word where there is a match.
+    /// </summary>
+    /// <param name="match"></param>
+    /// <returns>The number of items actually removed.</returns>
+    int RemoveWhere(Predicate<IWord> match);
   }
 }
