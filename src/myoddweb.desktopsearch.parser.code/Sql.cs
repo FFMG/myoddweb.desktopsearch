@@ -12,30 +12,46 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.Components;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 
-namespace myoddweb.desktopsearch.parser.text
+namespace myoddweb.desktopsearch.parser.code
 {
-  public class Text : IFileParser
+  public class Sql : IFileParser
   {
-    /// <inheritdoc />
-    public string Name => "TextParser";
+    public string Name => "SqlParser";
 
-    /// <inheritdoc />
-    public string[] Extenstions => new[] {"txt"};
+    public string[] Extenstions => new[] {"sql"  };
 
     /// <summary>
     /// The file parser
     /// </summary>
     private readonly FileParser _parser;
 
-    public Text()
+    /// <summary>
+    /// List of reserverd keywords
+    /// This is NOT an exhaustive list of all the keywords... just the common ones.
+    /// </summary>
+    private readonly IWords _keyWords = new Words( new List<string>
+    {
+      "ADD", "ALTER", "AND", "AS", "BIGINT", "CASE", "COALESCE", "COMMIT", "CREATE", "COLUMN", "CONSTRAINT",
+      "CURSOR", "DATABASE", "DECLARE", "DELETE", "DROP", "ELSE", "EXECUTE", "EXPLAIN", "FUNCTION", "FROM",
+      "GOTO", "GROUP", "HAVING", "IF", "IN", "INDEX", "INNER", "INSERT", "INT", "INTEGER", "INTO", "ISNULL",
+      "JOIN", "KEY", "LEFT", "LIKE", "NOT", "NULL", "NULLIF", "OPEN", "OR", "ORDER", "PRINT", "PROCEDURE",
+      "RIGHT", "ROLLBACK", "ROWCOUNT", "RETURNS", "SELECT", "SCHEMA", "TABLE", "TRAN", "TRANSACTION", "TRIGGER",
+      "TRUNCATE", "TINYINT", "UNION", "UNIQUE", "UPDATE", "VARCHAR", "VIEW", "WHEN", "WHERE", "WITH"
+    });
+
+    public Sql()
     {
       // @see https://www.regular-expressions.info/unicode.html
       // But we basically split any words by ...
@@ -61,11 +77,12 @@ namespace myoddweb.desktopsearch.parser.text
       try
       {
         const long maxFileLength = 1000000;
-        return await _parser.ParserAsync(file, maxFileLength, token ).ConfigureAwait( false );
+        var words = await _parser.ParserAsync(file, maxFileLength, token).ConfigureAwait(false);
+        return StripCSharpWords(words);
       }
-      catch (OperationCanceledException )
+      catch (OperationCanceledException)
       {
-        logger.Warning( $"Received cancellation request - {Name}");
+        logger.Warning($"Received cancellation request - {Name}");
         throw;
       }
       catch (IOException)
@@ -78,11 +95,33 @@ namespace myoddweb.desktopsearch.parser.text
         logger.Error($"Out of Memory: reading file, {file.FullName} ({Name})");
         return null;
       }
-      catch (Exception ex )
+      catch (Exception ex)
       {
         logger.Exception(ex);
         return null;
       }
+    }
+
+    /// <summary>
+    /// Remove words that are too common for the CSharp language
+    /// </summary>
+    /// <param name="words"></param>
+    /// <returns></returns>
+    private IWords StripCSharpWords(IWords words)
+    {
+      // remove the keywords
+      words?.RemoveWhere( MustRemove );
+      return words;
+    }
+
+    /// <summary>
+    /// Check if a word should be removed from the list of words.
+    /// </summary>
+    /// <param name="word">The word we are comparing.</param>
+    /// <returns></returns>
+    private bool MustRemove( IWord word)
+    {
+      return _keyWords.Any(keyWord => string.Equals(keyWord.Value, word.Value, StringComparison.OrdinalIgnoreCase));
     }
   }
 }

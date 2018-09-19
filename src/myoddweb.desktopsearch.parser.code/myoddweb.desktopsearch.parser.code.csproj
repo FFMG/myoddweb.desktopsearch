@@ -4,13 +4,15 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{3D64478E-CB04-40BF-8A18-51989856746F}</ProjectGuid>
+    <ProjectGuid>{A8F6AB17-18C8-44B0-99EE-5499EA244F24}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>myoddweb.desktopsearch.helper</RootNamespace>
-    <AssemblyName>myoddweb.desktopsearch.helper</AssemblyName>
+    <RootNamespace>myoddweb.desktopsearch.parser.code</RootNamespace>
+    <AssemblyName>myoddweb.desktopsearch.parser.code</AssemblyName>
     <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -40,23 +42,19 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Collection.cs" />
-    <Compile Include="Components\FileParser.cs" />
-    <Compile Include="File.cs" />
-    <Compile Include="IO\DirectoryInfoComparer.cs" />
-    <Compile Include="IO\FileInfoComparer.cs" />
-    <Compile Include="IO\FileSystemInfoComparer.cs" />
-    <Compile Include="IO\paths.cs" />
-    <Compile Include="IO\PerformanceCounter.cs" />
-    <Compile Include="IO\Word.cs" />
-    <Compile Include="IO\WordEqualityComparer.cs" />
-    <Compile Include="IO\Words.cs" />
+    <Compile Include="Sql.cs" />
+    <Compile Include="Cpp.cs" />
+    <Compile Include="Python3.cs" />
+    <Compile Include="CSharp.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Wait.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\myoddweb.desktopsearch.helper\myoddweb.desktopsearch.helper.csproj">
+      <Project>{3d64478e-cb04-40bf-8a18-51989856746f}</Project>
+      <Name>myoddweb.desktopsearch.helper</Name>
+    </ProjectReference>
     <ProjectReference Include="..\myoddweb.desktopsearch.interfaces\myoddweb.desktopsearch.interfaces.csproj">
-      <Project>{B1B3597E-D169-47A0-8CA8-FD543EF817D9}</Project>
+      <Project>{b1b3597e-d169-47a0-8ca8-fd543ef817d9}</Project>
       <Name>myoddweb.desktopsearch.interfaces</Name>
     </ProjectReference>
   </ItemGroup>
