@@ -49,14 +49,14 @@ namespace myoddweb.desktopsearch.parser.text
     }
 
     /// <inheritdoc />
-    public bool Supported(FileInfo file)
+    public bool Supported(FileSystemInfo file)
     {
       //  if this is a valid extension ... say yes.
       return helper.File.IsExtension(file, Extenstions);
     }
 
     /// <inheritdoc />
-    public async Task<IWords> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
+    public async Task<IWords> ParseAsync(FileSystemInfo file, ILogger logger, CancellationToken token)
     {
       try
       {

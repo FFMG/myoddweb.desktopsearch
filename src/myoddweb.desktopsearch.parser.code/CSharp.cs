@@ -73,7 +73,7 @@ namespace myoddweb.desktopsearch.parser.code
       _parser = new FileParser(@"[^\p{Z}\t\r\n\v\f\p{P}\p{C}\p{S}]+");
     }
 
-    public async Task<IWords> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
+    public async Task<IWords> ParseAsync(FileSystemInfo file, ILogger logger, CancellationToken token)
     {
       try
       {
@@ -122,7 +122,7 @@ namespace myoddweb.desktopsearch.parser.code
     }
 
     /// <inheritdoc />
-    public bool Supported(FileInfo file)
+    public bool Supported(FileSystemInfo file)
     {
       //  if this is a valid extension ... say yes.
       return helper.File.IsExtension(file, Extenstions);

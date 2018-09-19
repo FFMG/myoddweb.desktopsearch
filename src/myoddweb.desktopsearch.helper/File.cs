@@ -504,7 +504,7 @@ namespace myoddweb.desktopsearch.helper
     /// <param name="file"></param>
     /// <param name="ext"></param>
     /// <returns></returns>
-    public static bool IsExtension(FileInfo file, string ext)
+    public static bool IsExtension(FileSystemInfo file, string ext)
     {
       return IsExtension(file, new[] {ext});
     }
@@ -515,7 +515,7 @@ namespace myoddweb.desktopsearch.helper
     /// <param name="file"></param>
     /// <param name="exts"></param>
     /// <returns></returns>
-    public static bool IsExtension(FileInfo file, string[] exts)
+    public static bool IsExtension(FileSystemInfo file, string[] exts)
     {
       // get the file name
       var name = file?.Name.ToLowerInvariant() ?? throw new ArgumentNullException( nameof(file));
