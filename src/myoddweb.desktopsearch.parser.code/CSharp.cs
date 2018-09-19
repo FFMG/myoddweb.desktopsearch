@@ -12,30 +12,55 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.Components;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 
-namespace myoddweb.desktopsearch.parser.text
+namespace myoddweb.desktopsearch.parser.code
 {
-  public class Text : IFileParser
+  public class CSharp : IFileParser
   {
-    /// <inheritdoc />
-    public string Name => "TextParser";
+    public string Name => "CSharpParser";
 
-    /// <inheritdoc />
-    public string[] Extenstions => new[] {"txt"};
+    public string[] Extenstions => new[] {"cs"};
 
     /// <summary>
     /// The file parser
     /// </summary>
     private readonly FileParser _parser;
 
-    public Text()
+    /// <summary>
+    /// List of reserverd keywords
+    /// </summary>
+    private readonly IWords _keyWords = new Words( new List<string>
+    {
+      "abstract","as","base","bool","break","byte","case","catch","char","checked","class","const",
+      "continue","decimal","default","delegate","do","double","else","enum","event","explicit","extern",
+      "false","finally","fixed","float","for","foreach","goto","if","implicit","in","int","interface","internal",
+      "is","lock","long","namespace","new","null","object","operator","out","override","params","private",
+      "protected","public","readonly","ref","return","sbyte","sealed","short","sizeof","stackalloc","static",
+      "string","struct","switch","this","throw","true","try","typeof","uint","ulong","unchecked","unsafe",
+      "ushort","using","void","volatile","while"
+    });
+
+    /// <summary>
+    /// List of reserverd contextual keywords
+    /// </summary>
+    private readonly IWords _contextual = new Words( new List<string>
+    {
+      "add","alias","ascending","async","await","descending","dynamic","from","get","global","group","into",
+      "join","let","orderby","partial","remove","select","set","value","var","when","where","yield"
+    });
+
+    public CSharp()
     {
       // @see https://www.regular-expressions.info/unicode.html
       // But we basically split any words by ...
@@ -61,11 +86,12 @@ namespace myoddweb.desktopsearch.parser.text
       try
       {
         const long maxFileLength = 1000000;
-        return await _parser.ParserAsync(file, maxFileLength, token ).ConfigureAwait( false );
+        var words = await _parser.ParserAsync(file, maxFileLength, token).ConfigureAwait(false);
+        return StripCSharpWords(words);
       }
-      catch (OperationCanceledException )
+      catch (OperationCanceledException)
       {
-        logger.Warning( $"Received cancellation request - {Name}");
+        logger.Warning($"Received cancellation request - {Name}");
         throw;
       }
       catch (IOException)
@@ -78,11 +104,26 @@ namespace myoddweb.desktopsearch.parser.text
         logger.Error($"Out of Memory: reading file, {file.FullName} ({Name})");
         return null;
       }
-      catch (Exception ex )
+      catch (Exception ex)
       {
         logger.Exception(ex);
         return null;
       }
+    }
+
+    /// <summary>
+    /// Remove words that are too common for the CSharp language
+    /// </summary>
+    /// <param name="words"></param>
+    /// <returns></returns>
+    private IWords StripCSharpWords(IWords words)
+    {
+      // remove the keywords
+      words?.RemoveWhere( k => _keyWords.Contains(k) );
+
+      // remove the contextual keywords.
+      words?.RemoveWhere(k => _contextual.Contains(k));
+      return words;
     }
   }
 }

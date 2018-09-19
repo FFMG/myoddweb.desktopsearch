@@ -35,7 +35,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// Check if the given file is supported.
     /// Return true if we will parse it or not.
     /// </summary>
-    bool Supported(FileInfo file);
+    bool Supported(FileSystemInfo file);
 
     /// <summary>
     /// Parse a single file and return a list of words.
@@ -45,6 +45,6 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="logger"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IWords> ParseAsync(FileInfo file, ILogger logger, CancellationToken token);
+    Task<IWords> ParseAsync(FileSystemInfo file, ILogger logger, CancellationToken token);
   }
 }

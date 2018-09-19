@@ -12,7 +12,7 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -20,14 +20,14 @@ using myoddweb.desktopsearch.interfaces.IO;
 
 namespace myoddweb.desktopsearch.helper.IO
 {
-  public class Words : List<IWord>, IWords
+  public class Words : HashSet<IWord>, IWords
   {
     #region Contructors
     /// <inheritdoc />
     /// <summary>
     /// Base constructor.
     /// </summary>
-    public Words()
+    public Words() : base( new WordEqualityComparer() )
     {
     }
 
@@ -47,19 +47,19 @@ namespace myoddweb.desktopsearch.helper.IO
     /// Constructor with a list of words.
     /// </summary>
     /// <param name="words"></param>
-    public Words(IWords[] words ) : base( words?.Where( w => w != null ).Sum( w => w.Count) ?? 0 )
+    public Words(IWords[] words ) : this()
     {
       // Add all he words into one.
       Add(words);
     }
 
-    public Words(IWord[] words) : base( words?.Length ?? 0 )
+    public Words(IWord[] words) : this()
     {
       // Add all he words into one.
       Add(words);
     }
 
-    public Words(IReadOnlyCollection<string> words) : base(words?.Count ?? 0)
+    public Words(IReadOnlyCollection<string> words) : this()
     {
       // Add all he words into one.
       Add(words);
@@ -67,6 +67,25 @@ namespace myoddweb.desktopsearch.helper.IO
     #endregion
 
     #region Public Manipulator
+
+    public IWord this[int index]
+    {
+      get
+      {
+        var i = 0;
+        foreach (var t in this)
+        {
+          if (i == index)
+          {
+            return t;
+          }
+
+          i++;
+        }
+
+        throw new IndexOutOfRangeException();
+      }
+    }
 
     public bool Any()
     {
@@ -84,9 +103,6 @@ namespace myoddweb.desktopsearch.helper.IO
         return;
       }
       base.Add(item);
-
-      // make sure that we don't have duplicates
-      Distinct();
     }
 
     /// <summary>
@@ -115,8 +131,6 @@ namespace myoddweb.desktopsearch.helper.IO
         return;
       }
 
-      // reset the capacity
-      ResizeCapacity(sum);
       foreach (var w in words)
       {
         // check if we need to get out.
@@ -132,8 +146,6 @@ namespace myoddweb.desktopsearch.helper.IO
         // as we will call distinct() later.
         base.Add(w);
       }
-
-      Distinct();
     }
 
     /// <summary>
@@ -148,8 +160,7 @@ namespace myoddweb.desktopsearch.helper.IO
       {
         return;
       }
-      // reset the capacity
-      ResizeCapacity(sum);
+
       foreach (var w in words)
       {
         // check if we need to get out.
@@ -164,32 +175,10 @@ namespace myoddweb.desktopsearch.helper.IO
         // add this item
         base.Add(new Word(w));
       }
-
-      // make suree that the list is distinct
-      Distinct();
     }
     #endregion
 
     #region Private Manipulators
-    /// <summary>
-    /// Join multiple list of words together.
-    /// </summary>
-    /// <param name="words"></param>
-    /// <param name="token"></param>
-    private void AddWordsAndAllowDuplicates(IWords words, CancellationToken token = default(CancellationToken))
-    {
-      foreach (var word in words)
-      {
-        // check if we need to get out.
-        token.ThrowIfCancellationRequested();
-
-        // add this word to the list
-        // we should have no nulls from the calling function
-        // we use the base function as we allow duplicates.
-        base.Add(word);
-      }
-    }
-
     /// <summary>
     /// Join multiple list of words together.
     /// </summary>
@@ -202,8 +191,6 @@ namespace myoddweb.desktopsearch.helper.IO
       {
         return;
       }
-      // reset the capacity
-      ResizeCapacity(sum);
 
       foreach (var w in words)
       {
@@ -217,36 +204,8 @@ namespace myoddweb.desktopsearch.helper.IO
         }
 
         // check the union
-        AddWordsAndAllowDuplicates(w, token);
+        UnionWith( w );
       }
-
-      // make it distinct
-      Distinct();
-    }
-
-    /// <summary>
-    /// Create destinct List.
-    /// </summary>
-    private void Distinct()
-    {
-      var distinct = this.Distinct(new WordEqualityComparer()).ToArray();
-      if (distinct.Length == Count)
-      {
-        // nothing changed ... it is already distinct.
-        return;
-      }
-      Clear();
-      Capacity = distinct.Length;
-      AddRange( distinct );
-    }
-    
-    /// <summary>
-    /// Reset the capacity.
-    /// </summary>
-    /// <param name="newSize"></param>
-    private void ResizeCapacity(int newSize)
-    {
-      Capacity += (newSize - (Capacity - Count));
     }
     #endregion
   }

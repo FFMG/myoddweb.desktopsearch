@@ -71,7 +71,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// All the file parsers.
     /// </summary>
-    private readonly List<IFileParser> _parsers;
+    private readonly IList<IFileParser> _parsers;
 
     /// <inheritdoc />
     /// <summary>
@@ -80,7 +80,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     public int MaxUpdatesToProcess { get; }
     #endregion
 
-    public Files( int updatesPerFilesEvent, List<IFileParser> parsers, IPersister persister, ILogger logger)
+    public Files( int updatesPerFilesEvent, IList<IFileParser> parsers, IPersister persister, ILogger logger)
     {
       if (updatesPerFilesEvent <= 0)
       {
@@ -249,7 +249,10 @@ namespace myoddweb.desktopsearch.processor.Processors
     {
       // start allt he tasks
       var tasks = new HashSet<Task<interfaces.IO.IWords>>();
-      _parsers.ForEach(parser => { tasks.Add(ProcessFile(parser, pendingFileUpdate.File, token)); });
+      foreach (var parser in _parsers)
+      {
+        tasks.Add(ProcessFile(parser, pendingFileUpdate.File, token));
+      }
 
       // do we have any work to do?
       if (!tasks.Any())
