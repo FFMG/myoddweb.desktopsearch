@@ -29,7 +29,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<long> AddOrUpdateWordAsync(Word word, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<long> AddOrUpdateWordAsync(IWord word, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Add or update multiple word.
@@ -38,7 +38,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IList<long>> AddOrUpdateWordsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<IList<long>> AddOrUpdateWordsAsync(IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Get the id of a list of words we match the words to ids
@@ -50,6 +50,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    Task<List<long>> GetWordIdsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound);
+    Task<List<long>> GetWordIdsAsync(IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound);
   }
 }

@@ -24,7 +24,7 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal class SqlitePersisterWords : IWords
+  internal class SqlitePersisterWords : interfaces.Persisters.IWords
   {
     #region Command classes
     internal class Command : IDisposable
@@ -182,14 +182,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<long> AddOrUpdateWordAsync(Word word, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<long> AddOrUpdateWordAsync(IWord word, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      var ids = await AddOrUpdateWordsAsync( new Words(word), connectionFactory, token ).ConfigureAwait(false);
+      var ids = await AddOrUpdateWordsAsync( new helper.IO.Words(word), connectionFactory, token ).ConfigureAwait(false);
       return ids.Any() ? ids.First() : -1;
     }
 
     /// <inheritdoc />
-    public async Task<IList<long>> AddOrUpdateWordsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<IList<long>> AddOrUpdateWordsAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
       {
@@ -203,7 +203,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<List<long>> GetWordIdsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
+    public async Task<List<long>> GetWordIdsAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
     {
       // do we have anything to even look for?
       if (words.Count == 0)
@@ -226,7 +226,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           var ids = new List<long>(words.Count);
 
           // we use a list to allow duplicates.
-          var wordsToAdd = new List<Word>();
+          var wordsToAdd = new List<IWord>();
           foreach (var word in words)
           {
             pWord.Value = word.Value;
@@ -250,7 +250,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // finally we need to add all the words that were not found.
-          ids.AddRange(await AddOrUpdateWordsAsync(new Words(wordsToAdd.ToArray()), connectionFactory, token).ConfigureAwait(false));
+          ids.AddRange(await AddOrUpdateWordsAsync(new helper.IO.Words(wordsToAdd.ToArray()), connectionFactory, token).ConfigureAwait(false));
 
           // return all the ids we added, (or not).
           return ids;
@@ -276,7 +276,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<long>> InsertWordsAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<List<long>> InsertWordsAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!words.Any())
@@ -355,7 +355,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     private async Task<bool> InsertWordAsync(
-      Word word, 
+      IWord word, 
       long id, 
       InsertWordCommand cmdInsertWord, 
       SelectPartCommand cmdSelectPart,
@@ -383,7 +383,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     public async Task<HashSet<long>> GetOrInsertParts(
-      Word word,
+      IWord word,
       SelectPartCommand cmdSelectPart,
       InsertPartCommand cmdInsertPart,
       IConnectionFactory connectionFactory, 
@@ -482,7 +482,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<Words> RebuildWordsListAsync(Words words, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<interfaces.IO.IWords> RebuildWordsListAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {
@@ -516,7 +516,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
 
         //  we know that the list is unique thanks to the uniqueness above.
-        return new Words( actualWords );
+        return new helper.IO.Words( actualWords );
       }
       catch (OperationCanceledException)
       {

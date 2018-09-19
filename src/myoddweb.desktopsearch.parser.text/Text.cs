@@ -19,6 +19,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 
@@ -58,7 +59,7 @@ namespace myoddweb.desktopsearch.parser.text
     }
 
     /// <inheritdoc />
-    public async Task<Words> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
+    public async Task<IWords> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
     {
       try
       {

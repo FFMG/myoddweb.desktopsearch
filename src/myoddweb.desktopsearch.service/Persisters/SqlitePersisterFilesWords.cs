@@ -34,9 +34,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// The words interface
     /// </summary>
-    private readonly IWords _words;
+    private readonly interfaces.Persisters.IWords _words;
 
-    public SqlitePersisterFilesWords( IWords words, ILogger logger)
+    public SqlitePersisterFilesWords(interfaces.Persisters.IWords words, ILogger logger)
     {
       _words = words ?? throw new ArgumentNullException(nameof(words));
 
@@ -45,13 +45,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordToFileAsync(Word word, long fileId, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> AddOrUpdateWordToFileAsync(IWord word, long fileId, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      return await AddOrUpdateWordsToFileAsync(new Words( word ), fileId, connectionFactory, token ).ConfigureAwait(false);
+      return await AddOrUpdateWordsToFileAsync(new helper.IO.Words( word ), fileId, connectionFactory, token ).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordsToFileAsync(Words words, long fileId, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> AddOrUpdateWordsToFileAsync(interfaces.IO.IWords words, long fileId, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
       {

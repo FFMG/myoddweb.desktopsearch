@@ -12,39 +12,21 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using myoddweb.desktopsearch.interfaces.Logging;
+using System.Collections.Generic;
 
 namespace myoddweb.desktopsearch.interfaces.IO
 {
-  public interface IFileParser
+  public interface IWords : IEnumerable<IWord>
   {
     /// <summary>
-    /// The name of the parser.
+    /// The number of words
     /// </summary>
-    string Name { get; }
+    int Count { get; }
 
     /// <summary>
-    /// The list of extensions we aim to support
+    /// Do we have any values?
     /// </summary>
-    string[] Extenstions { get; }
-
-    /// <summary>
-    /// Check if the given file is supported.
-    /// Return true if we will parse it or not.
-    /// </summary>
-    bool Supported(FileInfo file);
-
-    /// <summary>
-    /// Parse a single file and return a list of words.
-    /// Return null if the file is not supported.
-    /// </summary>
-    /// <param name="file"></param>
-    /// <param name="logger"></param>
-    /// <param name="token"></param>
     /// <returns></returns>
-    Task<IWords> ParseAsync(FileInfo file, ILogger logger, CancellationToken token);
+    bool Any();
   }
 }

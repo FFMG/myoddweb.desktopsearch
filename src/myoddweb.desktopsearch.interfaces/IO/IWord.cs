@@ -12,28 +12,22 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
 using System.Collections.Generic;
 
 namespace myoddweb.desktopsearch.interfaces.IO
 {
-  public class WordEqualityComparer : IEqualityComparer<Word>
+  public interface IWord
   {
-    public bool Equals(Word x, Word y)
-    {
-      if (x == null && y == null)
-      {
-        return true;
-      }
-      if (x == null || y == null)
-      {
-        return false;
-      }
-      return x.Value == y.Value;
-    }
+    /// <summary>
+    /// The word value.
+    /// </summary>
+    string Value { get; }
 
-    public int GetHashCode(Word obj)
-    {
-      return obj.Value.GetHashCode();
-    }
+    /// <summary>
+    /// Get all the parts of our word.
+    /// <param name="maxNumMeaningfulCharacters"></param>
+    /// </summary>
+    IReadOnlyCollection<string> Parts(int maxNumMeaningfulCharacters);
   }
 }

@@ -12,13 +12,15 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using myoddweb.desktopsearch.interfaces.IO;
 
-namespace myoddweb.desktopsearch.interfaces.IO
+namespace myoddweb.desktopsearch.helper.IO
 {
-  public class Words : List<Word>
+  public class Words : List<IWord>, IWords
   {
     #region Contructors
     /// <inheritdoc />
@@ -34,7 +36,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// Constructor with a single word.
     /// </summary>
     /// <param name="word"></param>
-    public Words(Word word ) : this()
+    public Words(IWord word ) : this()
     {
       // just add this word.
       Add(word);
@@ -45,13 +47,13 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// Constructor with a list of words.
     /// </summary>
     /// <param name="words"></param>
-    public Words(Words[] words ) : base( words?.Where( w => w != null ).Sum( w => w.Count) ?? 0 )
+    public Words(IWords[] words ) : base( words?.Where( w => w != null ).Sum( w => w.Count) ?? 0 )
     {
       // Add all he words into one.
       Add(words);
     }
 
-    public Words(Word[] words) : base( words?.Length ?? 0 )
+    public Words(IWord[] words) : base( words?.Length ?? 0 )
     {
       // Add all he words into one.
       Add(words);
@@ -65,11 +67,17 @@ namespace myoddweb.desktopsearch.interfaces.IO
     #endregion
 
     #region Public Manipulator
+
+    public bool Any()
+    {
+      return Count > 0;
+    }
+
     /// <summary>
     /// Add a single word... but not if null.
     /// </summary>
     /// <param name="item"></param>
-    public new void Add(Word item)
+    public new void Add(IWord item)
     {
       if (null == item)
       {
@@ -99,7 +107,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// </summary>
     /// <param name="words"></param>
     /// <param name="token"></param>
-    public void Add(Word[] words, CancellationToken token = default(CancellationToken))
+    public void Add(IWord[] words, CancellationToken token = default(CancellationToken))
     {
       var sum = words?.Length ?? Count;
       if (sum == 0 || words == null)
@@ -168,7 +176,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// </summary>
     /// <param name="words"></param>
     /// <param name="token"></param>
-    private void AddWordsAndAllowDuplicates(Words words, CancellationToken token = default(CancellationToken))
+    private void AddWordsAndAllowDuplicates(IWords words, CancellationToken token = default(CancellationToken))
     {
       foreach (var word in words)
       {
@@ -187,7 +195,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// </summary>
     /// <param name="words"></param>
     /// <param name="token"></param>
-    private void Add(Words[] words, CancellationToken token = default(CancellationToken))
+    private void Add(IWords[] words, CancellationToken token = default(CancellationToken))
     {
       var sum = words?.Where( w=> w != null ).Sum(w => w.Count) ?? 0;
       if (sum == 0 || words == null )
