@@ -16,6 +16,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Enums;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -114,7 +115,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFolderUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task ProcessFolderUpdateAsync(PendingFolderUpdate pendingFolderUpdate, CancellationToken token)
+    private async Task ProcessFolderUpdateAsync(IPendingFolderUpdate pendingFolderUpdate, CancellationToken token)
     {
       try
       {
@@ -154,7 +155,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task WorkCreatedAsync(PendingFolderUpdate pendingUpdate, CancellationToken token)
+    public async Task WorkCreatedAsync(IPendingFolderUpdate pendingUpdate, CancellationToken token)
     {
       var directory = pendingUpdate.Directory;
       if (null == directory)
@@ -206,7 +207,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task WorkDeletedAsync(PendingFolderUpdate pendingUpdate, CancellationToken token)
+    public async Task WorkDeletedAsync(IPendingFolderUpdate pendingUpdate, CancellationToken token)
     {
       var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
       if (null == transaction)
@@ -235,7 +236,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task WorkChangedAsync(PendingFolderUpdate pendingUpdate, CancellationToken token)
+    public async Task WorkChangedAsync(IPendingFolderUpdate pendingUpdate, CancellationToken token)
     {
       // look for the directory name, if we found nothing on record
       // then we will have to go and look in the database.
@@ -304,7 +305,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<PendingFolderUpdate> GetPendingFolderUpdateAndMarkDirectoryProcessedAsync( CancellationToken token)
+    private async Task<IPendingFolderUpdate> GetPendingFolderUpdateAndMarkDirectoryProcessedAsync( CancellationToken token)
     {
       // get the transaction
       var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);

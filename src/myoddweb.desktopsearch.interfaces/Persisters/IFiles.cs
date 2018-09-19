@@ -42,7 +42,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateFilesAsync(IReadOnlyList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> AddOrUpdateFilesAsync(IList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Rename a file
@@ -70,7 +70,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFilesAsync(IReadOnlyList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> DeleteFilesAsync(IList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Delete multiple files from a directory.

@@ -18,6 +18,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.Serialization;
 using myoddweb.desktopsearch.interfaces.Configs;
+using myoddweb.desktopsearch.interfaces.Enums;
 using myoddweb.desktopsearch.interfaces.Logging;
 using Newtonsoft.Json;
 using ILogger = myoddweb.desktopsearch.interfaces.Configs.ILogger;

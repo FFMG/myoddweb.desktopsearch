@@ -19,6 +19,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Enums;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -244,7 +245,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<List<PendingFileUpdate>> GetPendingFileUpdatesAsync(long limit, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<IList<IPendingFileUpdate>> GetPendingFileUpdatesAsync(long limit, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
       {
@@ -252,7 +253,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // the pending updates
-      var pendingUpdates = new List<PendingFileUpdate>();
+      var pendingUpdates = new List<IPendingFileUpdate>();
       try
       {
         // we want to get the latest updated folders.
