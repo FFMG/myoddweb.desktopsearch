@@ -31,16 +31,28 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// The words for a completed pending update.
     /// </summary>
-    internal class CompletedPendingFileUpdate : PendingFileUpdate
+    internal class CompletedPendingFileUpdate : IPendingFileUpdate
     {
+      /// <inheritdoc />
+      public long FileId { get; }
+
+      /// <inheritdoc />
+      public FileInfo File { get; }
+
+      /// <inheritdoc />
+      public UpdateType PendingUpdateType { get; }
+
       /// <summary>
       /// The words we found for the pending updates.
       /// </summary>
       public interfaces.IO.IWords Words { get; }
 
       public CompletedPendingFileUpdate(
-        PendingFileUpdate pu, interfaces.IO.IWords words ) : base(pu)
+        IPendingFileUpdate pu, interfaces.IO.IWords words )
       {
+        FileId = pu.FileId;
+        File = pu.File;
+        PendingUpdateType = pu.PendingUpdateType;
         Words = words;
       }
     }
@@ -123,7 +135,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFileUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task ProcessFileUpdates(List<PendingFileUpdate> pendingFileUpdates, CancellationToken token)
+    private async Task ProcessFileUpdates(IList<IPendingFileUpdate> pendingFileUpdates, CancellationToken token)
     {
       // now try and process the files.
       try
@@ -178,7 +190,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task<CompletedPendingFileUpdate> WorkDeletedAsync(PendingFileUpdate pendingFileUpdate, CancellationToken token)
+    public Task<CompletedPendingFileUpdate> WorkDeletedAsync(IPendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
       // because the file was deleted from the db we must remove the words for it.
       // we could technically end up with orphan words, (words with no file ids for it)
@@ -192,7 +204,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<CompletedPendingFileUpdate> WorkCreatedAsync(PendingFileUpdate pendingFileUpdate, CancellationToken token)
+    public async Task<CompletedPendingFileUpdate> WorkCreatedAsync(IPendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
       // get the file we just created.
       var file = pendingFileUpdate.File;
@@ -212,7 +224,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<CompletedPendingFileUpdate> WorkChangedAsync(PendingFileUpdate pendingFileUpdate, CancellationToken token)
+    public async Task<CompletedPendingFileUpdate> WorkChangedAsync(IPendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
       var file = pendingFileUpdate.File;
       if (null == file)
@@ -233,7 +245,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<CompletedPendingFileUpdate> ProcessFile(PendingFileUpdate pendingFileUpdate, CancellationToken token)
+    private async Task<CompletedPendingFileUpdate> ProcessFile(IPendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
       // start allt he tasks
       var tasks = new HashSet<Task<interfaces.IO.IWords>>();
@@ -394,7 +406,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFileUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task TouchFileAsync(IEnumerable<PendingFileUpdate> pendingFileUpdates, CancellationToken token)
+    private async Task TouchFileAsync(IEnumerable<IPendingFileUpdate> pendingFileUpdates, CancellationToken token)
     {
       var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
       if (null == transaction)
@@ -425,7 +437,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<PendingFileUpdate>> GetPendingFileUpdatesAndMarkFileProcessedAsync(CancellationToken token)
+    private async Task<IList<IPendingFileUpdate>> GetPendingFileUpdatesAndMarkFileProcessedAsync(CancellationToken token)
     {
       // get the transaction
       var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);

@@ -70,7 +70,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateFilesAsync(IReadOnlyList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> AddOrUpdateFilesAsync(IList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
       {
@@ -192,7 +192,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteFilesAsync(IReadOnlyList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> DeleteFilesAsync(IList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!files.Any())

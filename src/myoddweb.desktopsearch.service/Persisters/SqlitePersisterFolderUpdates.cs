@@ -212,7 +212,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // the pending updates
-      var pendingUpdates = new List<PendingFolderUpdate>();
+      var pendingUpdates = new List<IPendingFolderUpdate>();
       try
       {
         // we want to get the latest updated folders.

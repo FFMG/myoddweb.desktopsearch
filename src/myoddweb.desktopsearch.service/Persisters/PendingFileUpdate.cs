@@ -15,10 +15,11 @@
 
 using System.IO;
 using myoddweb.desktopsearch.interfaces.Enums;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
-namespace myoddweb.desktopsearch.interfaces.Persisters
+namespace myoddweb.desktopsearch.service.Persisters
 {
-  public class PendingFileUpdate
+  public class PendingFileUpdate : IPendingFileUpdate
   {
     /// <summary>
     /// The folder id with a pending update
@@ -51,7 +52,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// Copy contructor.
     /// </summary>
     /// <param name="pu"></param>
-    public PendingFileUpdate(PendingFileUpdate pu) : this(pu.FileId, pu.File, pu.PendingUpdateType)
+    public PendingFileUpdate(IPendingFileUpdate pu) : this(pu.FileId, pu.File, pu.PendingUpdateType)
     {
     }
   }
