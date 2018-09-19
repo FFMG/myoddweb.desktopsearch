@@ -17,9 +17,11 @@ using System.Data.SQLite;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.interfaces.Logging;
+using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.Persisters;
 using myoddweb.desktopsearch.service.Configs;
+using IConfig = myoddweb.desktopsearch.interfaces.Persisters.IConfig;
+using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
@@ -40,6 +42,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
+
+    /// <summary>
+    /// The performance configuration
+    /// </summary>
+    private readonly IPerformance _performance;
 
     /// <summary>
     /// The database source.
@@ -67,10 +74,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     public IFolders Folders { get; }
     #endregion
 
-    public SqlitePersister(ILogger logger, ConfigSqliteDatabase config, int maxNumCharactersPerWords, int maxNumCharactersPerParts)
+    public SqlitePersister(IPerformance performance, ILogger logger, ConfigSqliteDatabase config, int maxNumCharactersPerWords, int maxNumCharactersPerParts)
     {
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      // performance
+      _performance = performance ?? throw new ArgumentNullException(nameof(performance));
 
       // the configuration
       _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -95,7 +105,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public void Start( CancellationToken token )
+    public void Start(CancellationToken token)
     {
       // check that the file does exists.
       if (!File.Exists(_config.Source))
@@ -119,10 +129,17 @@ namespace myoddweb.desktopsearch.service.Persisters
       _connectionReadOnly.Open();
 
       // create the connection spinner and pass the function to create transactions.
-      _transactionSpinner = new TransactionsManager(ConnectionFactory);
+      _transactionSpinner = new TransactionsManager(ConnectionFactory, _performance, _logger);
 
       // initiialise everything
       Initialise(token).Wait(token);
+    }
+
+    /// <inheritdoc />
+    public void Stop()
+    {
+      // create the connection spinner and pass the function to create transactions.
+      _transactionSpinner?.Dispose();
     }
 
     private async Task Initialise(CancellationToken token)

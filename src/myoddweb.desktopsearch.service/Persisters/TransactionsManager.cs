@@ -13,15 +13,55 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal class TransactionsManager
+  internal class TransactionPerformanceCounter : helper.IO.PerformanceCounter
+  {
+    /// <summary>
+    /// The performance counter
+    /// </summary>
+    private readonly PerformanceCounter _counter;
+
+    public TransactionPerformanceCounter(IPerformance performance, string counterName, ILogger logger)
+    {
+      // now create the counters.
+      _counter = CreatePerformanceCounter(performance, counterName, PerformanceCounterType.RateOfCountsPerSecond32, logger);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnIncremenFromUtcTime(DateTime startTime)
+    {
+      throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnIncrement()
+    {
+      _counter.Increment();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnDispose()
+    {
+      _counter.Dispose();
+    }
+  }
+
+  internal class TransactionsManager : IDisposable
   {
     #region Member variables
+
+    private readonly TransactionPerformanceCounter _counterBegin;
+    private readonly TransactionPerformanceCounter _counterCommit;
+    private readonly TransactionPerformanceCounter _counterRollback;
+
     /// <summary>
     /// The function that will create the connection every time we need one.
     /// </summary>
@@ -43,8 +83,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly CreateFactory _createFactory;
     #endregion
 
-    public TransactionsManager(CreateFactory createFactory)
+    public TransactionsManager(CreateFactory createFactory, IPerformance performance, ILogger logger )
     {
+      _counterBegin = new TransactionPerformanceCounter( performance, "Database: Begin", logger );
+      _counterCommit = new TransactionPerformanceCounter(performance, "Database: Commit", logger);
+      _counterRollback = new TransactionPerformanceCounter(performance, "Database: Rollback", logger);
+
       _createFactory = createFactory ?? throw new ArgumentNullException(nameof(createFactory));
     }
 
@@ -56,6 +100,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     public Task<IConnectionFactory> BeginRead(CancellationToken token)
     {
+      // update the counter.
+      _counterBegin.Increment();
+
       // get out if needed.
       token.ThrowIfCancellationRequested();
 
@@ -74,6 +121,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     public async Task<IConnectionFactory> BeginWrite( CancellationToken token )
     {
+      // update the counter.
+      _counterBegin.Increment();
+
       for (;;)
       {
         // wait for the transaction to no longer be null
@@ -104,6 +154,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="connectionFactory"></param>
     public void Rollback(IConnectionFactory connectionFactory)
     {
+      // update the counter.
+      _counterRollback.Increment();
+
       // we don't need the lock for readonly factories
       if (connectionFactory.IsReadOnly)
       {
@@ -163,6 +216,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="connectionFactory"></param>
     public void Commit(IConnectionFactory connectionFactory )
     {
+      // update the counter.
+      _counterCommit.Increment();
+
       // we don't need the lock for readonly
       if (connectionFactory.IsReadOnly)
       {
@@ -213,6 +269,14 @@ namespace myoddweb.desktopsearch.service.Persisters
         // it is up to the factory to catch/handle any issues.
         _writeFactory = null;
       }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+      _counterBegin?.Dispose();
+      _counterCommit?.Dispose();
+      _counterRollback?.Dispose();
     }
   }
 }

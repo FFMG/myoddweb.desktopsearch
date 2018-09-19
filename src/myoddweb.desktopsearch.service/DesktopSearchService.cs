@@ -16,12 +16,14 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Configuration.Install;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.ServiceProcess;
 using System.Threading;
 using myoddweb.desktopsearch.http;
+using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.parser;
 using myoddweb.desktopsearch.processor;
@@ -82,6 +84,11 @@ namespace myoddweb.desktopsearch.service
     /// The http server.
     /// </summary>
     private HttpServer _http;
+
+    /// <summary>
+    /// The persister.
+    /// </summary>
+    private IPersister _persister;
 
     public DesktopSearchService()
     {
@@ -236,10 +243,26 @@ namespace myoddweb.desktopsearch.service
     {
       if( config.Database is ConfigSqliteDatabase sqlData )
       {
-        return new SqlitePersister(logger, sqlData, config.MaxNumCharactersPerWords, config.MaxNumCharactersPerParts );
+        return new SqlitePersister(config.Performance, logger, sqlData, config.MaxNumCharactersPerWords, config.MaxNumCharactersPerParts );
       }
 
       throw new ArgumentException("Unknown Database type.");
+    }
+
+    /// <summary>
+    /// Delete the performance category if we need to.
+    /// </summary>
+    /// <param name="performance"></param>
+    private static void CreatePerformance( IPerformance performance )
+    {
+      if (!performance.DeleteStartUp)
+      {
+        return;
+      }
+      if (PerformanceCounterCategory.Exists(performance.CategoryName))
+      {
+        PerformanceCounterCategory.Delete(performance.CategoryName);
+      }
     }
 
     /// <summary>
@@ -256,6 +279,8 @@ namespace myoddweb.desktopsearch.service
         // create the config
         var config = CreateConfig();
 
+        CreatePerformance(config.Performance);
+
         // and the logger
         _logger = CreateLogger(config.Loggers );
 
@@ -265,25 +290,25 @@ namespace myoddweb.desktopsearch.service
         var token = _cancellationTokenSource.Token;
 
         // the persister
-        var persister = CreatePersister( _logger, config);
+        _persister = CreatePersister( _logger, config);
 
         // the directory parser
         var directory = CreateDirectory( _logger, config );
 
         // and we can now create and start the parser.
-        _parser = new Parser( config, persister, _logger, directory );
+        _parser = new Parser( config, _persister, _logger, directory );
 
         // we now need to create the files parsers
         var fileParsers = CreateFileParsers<IFileParser>( config.Paths.ComponentsPaths );
 
         // create the processor
-        _processor = new Processor( fileParsers, config.Processors, persister, _logger, directory);
+        _processor = new Processor( fileParsers, config.Processors, _persister, _logger, directory, config.Performance );
 
         // create the http server
-        _http = new HttpServer( config.WebServer, persister, _logger);
+        _http = new HttpServer( config.WebServer, _persister, _logger);
 
         // we can now start everything 
-        persister.Start(token);
+        _persister.Start(token);
         _http.Start(token);       //  the http server
         _parser.Start(token);     //  the parser
         _processor.Start(token);  //  the processor
@@ -339,6 +364,7 @@ namespace myoddweb.desktopsearch.service
       _parser?.Stop();
       _processor?.Stop();
       _http?.Stop();
+      _persister?.Stop();
 
       _cancellationTokenSource = null;
       _parser = null;

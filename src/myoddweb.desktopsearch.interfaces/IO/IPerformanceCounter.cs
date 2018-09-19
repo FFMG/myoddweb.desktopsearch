@@ -12,27 +12,26 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Threading;
-using System.Threading.Tasks;
+using System;
 
-namespace myoddweb.desktopsearch.processor
+namespace myoddweb.desktopsearch.interfaces.IO
 {
-  internal interface IProcessor
+  public interface IPerformanceCounter
   {
     /// <summary>
-    /// The maximum number of items we will process.
+    /// Dispose of resources.
     /// </summary>
-    int MaxUpdatesToProcess { get; }
+    void Dispose();
 
     /// <summary>
-    /// We are telling the processor to do some work.
+    /// Increment the timer once.
     /// </summary>
-    /// <returns></returns>
-    Task<int> WorkAsync( CancellationToken token );
+    void Increment();
 
     /// <summary>
-    /// Stop all processing and cleanup
+    /// Increment a counter from a start time 
     /// </summary>
-    void Stop();
+    /// <param name="startTime"></param>
+    void IncremenFromUtcTime(DateTime startTime );
   }
 }

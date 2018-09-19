@@ -47,6 +47,7 @@
     <Compile Include="IO\FileInfoComparer.cs" />
     <Compile Include="IO\FileSystemInfoComparer.cs" />
     <Compile Include="IO\paths.cs" />
+    <Compile Include="IO\PerformanceCounter.cs" />
     <Compile Include="IO\Word.cs" />
     <Compile Include="IO\WordEqualityComparer.cs" />
     <Compile Include="IO\Words.cs" />

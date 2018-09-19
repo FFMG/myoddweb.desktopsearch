@@ -74,6 +74,7 @@
     <Compile Include="Configs\ConfigPaths.cs" />
     <Compile Include="Configs\ConfigProcessor.cs" />
     <Compile Include="Configs\ConfigSqliteDatabase.cs" />
+    <Compile Include="Configs\ConfigPerformance.cs" />
     <Compile Include="Configs\ConfigTimers.cs" />
     <Compile Include="Configs\ConfigWebServer.cs" />
     <Compile Include="DesktopSearchService.cs">

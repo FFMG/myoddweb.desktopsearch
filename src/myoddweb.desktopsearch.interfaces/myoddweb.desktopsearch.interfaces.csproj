@@ -45,12 +45,14 @@
     <Compile Include="Configs\IDatabase.cs" />
     <Compile Include="Configs\ILogger.cs" />
     <Compile Include="Configs\IPaths.cs" />
+    <Compile Include="Configs\IPerformance.cs" />
     <Compile Include="Configs\IProcessors.cs" />
     <Compile Include="Configs\ITimers.cs" />
     <Compile Include="Configs\IWebServer.cs" />
     <Compile Include="IO\IDirectory.cs" />
     <Compile Include="IO\IFileParser.cs" />
     <Compile Include="IO\IFileSystemEvent.cs" />
+    <Compile Include="IO\IPerformanceCounter.cs" />
     <Compile Include="IO\IWords.cs" />
     <Compile Include="IO\IWord.cs" />
     <Compile Include="Logging\ILogger.cs" />

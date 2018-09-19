@@ -48,8 +48,12 @@ namespace myoddweb.desktopsearch.service.Configs
     public ITimers Timers { get; protected set; }
 
     /// <inheritdoc />
+    [DefaultValue(null)]
+    public IPerformance Performance { get; protected set; }
+
+    /// <inheritdoc />
     [JsonProperty(Required = Required.Always)]
-    public List<ILogger> Loggers { get; protected set; }
+    public IList<ILogger> Loggers { get; protected set; }
 
     /// <inheritdoc />
     [DefaultValue(null)]
@@ -68,6 +72,11 @@ namespace myoddweb.desktopsearch.service.Configs
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context)
     {
+      if (null == Performance)
+      {
+        Performance = JsonConvert.DeserializeObject<ConfigPerformance>("{}");
+      }
+
       if (null == Timers)
       {
         // set the default values.
@@ -94,6 +103,7 @@ namespace myoddweb.desktopsearch.service.Configs
     /// <param name="maxNumCharactersPerParts"></param>
     /// <param name="paths"></param>
     /// <param name="timers"></param>
+    /// <param name="performance"></param>
     /// <param name="processors"></param>
     /// <param name="webserver"></param>
     /// <param name="database"></param>
@@ -103,6 +113,7 @@ namespace myoddweb.desktopsearch.service.Configs
       int maxNumCharactersPerParts,
       ConfigPaths paths, 
       ConfigTimers timers, 
+      ConfigPerformance performance,
       ConfigProcessor processors, 
       ConfigWebServer webserver,
       ConfigSqliteDatabase database,
@@ -114,6 +125,7 @@ namespace myoddweb.desktopsearch.service.Configs
       Processors = processors;
       WebServer = webserver;
       Database = database;
+      Performance = performance;
 
       if (maxNumCharactersPerWords <= 0)
       {

@@ -15,10 +15,12 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.IO;
-using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 using myoddweb.desktopsearch.processor.Processors;
+using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
+using ProcessorPerformanceCounter = myoddweb.desktopsearch.processor.IO.ProcessorPerformanceCounter;
 
 namespace myoddweb.desktopsearch.processor
 {
@@ -44,25 +46,33 @@ namespace myoddweb.desktopsearch.processor
 
     public Processor(
       List<IFileParser> fileParsers,
-      interfaces.Configs.IProcessors config, 
+      IProcessors config, 
       IPersister persister, 
       ILogger logger, 
-      IDirectory directory)
+      IDirectory directory,
+      IPerformance performance
+    )
     {
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
+      const string directoryCounterName = "Average time processing Directories";
+      const string fileCounterName = "Average time processing Files";
+
       // Create the various processors, they will not start doing anything just yet
       // or at least, they shouldn't
       _timers = new List<ProcessorTimer>();
-      for( var i = 0; i < config.ConcurrentDirectoriesProcessor; ++i)
+
+      for ( var i = 0; i < config.ConcurrentDirectoriesProcessor; ++i)
       {
-        _timers.Add( new ProcessorTimer(new Folders(persister, logger, directory), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
+        var directoriesCounter = new ProcessorPerformanceCounter(performance, directoryCounterName, logger);
+        _timers.Add( new ProcessorTimer(new Folders(directoriesCounter, persister, logger, directory), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
       }
 
       for (var i = 0; i < config.ConcurrentFilesProcessor; ++i)
       {
-        _timers.Add( new ProcessorTimer(new Files( config.UpdatesPerFilesEvent, fileParsers, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
+        var filesCounter = new ProcessorPerformanceCounter(performance, fileCounterName, logger);
+        _timers.Add( new ProcessorTimer(new Files(filesCounter, config.UpdatesPerFilesEvent, fileParsers, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
       }
     }
 

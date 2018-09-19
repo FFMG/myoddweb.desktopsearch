@@ -31,7 +31,7 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     /// <summary>
     /// All the loggers
     /// </summary>
-    List<ILogger> Loggers { get; }
+    IList<ILogger> Loggers { get; }
 
     /// <summary>
     /// The processors variables
@@ -47,6 +47,11 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     /// The database connection information
     /// </summary>
     IDatabase Database { get; }
+
+    /// <summary>
+    /// The performance category/counter manager.
+    /// </summary>
+    IPerformance Performance { get; }
 
     /// <summary>
     /// The maximum word length
