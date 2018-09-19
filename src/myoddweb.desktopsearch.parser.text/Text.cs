@@ -60,11 +60,8 @@ namespace myoddweb.desktopsearch.parser.text
     {
       try
       {
-        using (var sr = new StreamReader(file.FullName))
-        {
-          const long maxFileLength = 1000000;
-          return await _parser.ParserAsync(sr, maxFileLength, token ).ConfigureAwait( false );
-        }
+        const long maxFileLength = 1000000;
+        return await _parser.ParserAsync(file, maxFileLength, token ).ConfigureAwait( false );
       }
       catch (OperationCanceledException )
       {

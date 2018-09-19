@@ -49,21 +49,28 @@ namespace myoddweb.desktopsearch.helper.Components
     }
 
     /// <summary>
-    /// Parse an opened stream.
+    /// Parse a given file.
     /// </summary>
-    /// <param name="sr"></param>
+    /// <param name="file"></param>
     /// <param name="maxFileLength"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<IWords> ParserAsync(StreamReader sr, long maxFileLength, CancellationToken token )
+    public async Task<IWords> ParserAsync(FileSystemInfo file, long maxFileLength, CancellationToken token )
     {
-      if ((sr.BaseStream as FileStream)?.Length > maxFileLength)
+      string text;
+      using (var sr = new StreamReader(file.FullName))
       {
-        return await ParserAsync(sr, token);
-      }
+        // the file is too big for us to read at once
+        // so we have to parse word by word.
+        if ((sr.BaseStream as FileStream)?.Length > maxFileLength)
+        {
+          return await ParserAsync(sr, token);
+        }
 
-      // read everything in one go.
-      var text = sr.ReadToEnd();
+        // read everything in one go.
+        // then close the file and build the list of words.
+        text = sr.ReadToEnd();
+      }
       return await ParserAsync(text, token).ConfigureAwait(false);
     }
 

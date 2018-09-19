@@ -61,16 +61,21 @@ namespace myoddweb.desktopsearch.parser.code
       _parser = new FileParser(@"[^\p{Z}\t\r\n\v\f\p{P}\p{C}\p{S}]+");
     }
 
+    /// <inheritdoc />
+    public bool Supported(FileSystemInfo file)
+    {
+      //  if this is a valid extension ... say yes.
+      return helper.File.IsExtension(file, Extenstions);
+    }
+
+    /// <inheritdoc />
     public async Task<IWords> ParseAsync(FileSystemInfo file, ILogger logger, CancellationToken token)
     {
       try
       {
-        using (var sr = new StreamReader(file.FullName))
-        {
-          const long maxFileLength = 1000000;
-          var words = await _parser.ParserAsync(sr, maxFileLength, token).ConfigureAwait(false);
-          return StripCSharpWords(words);
-        }
+        const long maxFileLength = 1000000;
+        var words = await _parser.ParserAsync(file, maxFileLength, token).ConfigureAwait(false);
+        return StripCSharpWords(words);
       }
       catch (OperationCanceledException)
       {
@@ -102,15 +107,8 @@ namespace myoddweb.desktopsearch.parser.code
     private IWords StripCSharpWords(IWords words)
     {
       // remove the keywords
-      words.RemoveWhere(k => _keyWords.Contains(k));
+      words?.RemoveWhere(k => _keyWords.Contains(k));
       return words;
-    }
-
-    /// <inheritdoc />
-    public bool Supported(FileSystemInfo file)
-    {
-      //  if this is a valid extension ... say yes.
-      return helper.File.IsExtension(file, Extenstions);
     }
   }
 }
