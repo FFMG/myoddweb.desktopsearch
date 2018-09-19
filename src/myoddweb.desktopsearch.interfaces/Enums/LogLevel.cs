@@ -12,18 +12,19 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-namespace myoddweb.desktopsearch.interfaces.Persisters
-{
-  /// <summary>
-  /// The various folder changes 
-  /// </summary>
-  public enum UpdateType
-  {
-    // those value are saved in the db
-    Created = 0,
-    Deleted = 1,
-    Changed = 2,
+using System;
 
-    None    = 255 //  Nothing has happned to that file.
+namespace myoddweb.desktopsearch.interfaces.Enums
+{
+  [Flags]
+  public enum LogLevel
+  {
+    None = 0x0,
+    Verbose = 0x1,
+    Information = 0x2,
+    Warning = 0x4,
+    Error = 0x8,
+
+    All = None | Verbose | Information | Warning | Error
   }
 }

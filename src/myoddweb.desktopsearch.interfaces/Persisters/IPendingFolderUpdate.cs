@@ -15,44 +15,30 @@
 
 using System.Collections.Generic;
 using System.IO;
+using myoddweb.desktopsearch.interfaces.Enums;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public class PendingFolderUpdate
+  public interface IPendingFolderUpdate
   {
     /// <summary>
     /// The folder id with a pending update
     /// </summary>
-    public long FolderId { get; }
+    long FolderId { get; }
 
     /// <summary>
     /// The directory beeing updated.
     /// </summary>
-    public DirectoryInfo Directory { get; }
+    DirectoryInfo Directory { get; }
 
     /// <summary>
     /// The pending update type.
     /// </summary>
-    public UpdateType PendingUpdateType { get; }
+    UpdateType PendingUpdateType { get; }
 
     /// <summary>
     /// All the files on record.
     /// </summary>
-    public List<FileInfo> Files { get; }
-
-    public PendingFolderUpdate(long folderId, DirectoryInfo directory, List<FileInfo> files, UpdateType pendingUpdateType)
-    {
-      // set the folder id.
-      FolderId = folderId;
-
-      // get the directory being updated.
-      Directory = directory;
-
-      // the pending update type.
-      PendingUpdateType = pendingUpdateType;
-
-      // the files
-      Files = files ?? new List<FileInfo>();
-    }
+    IList<FileInfo> Files { get; }
   }
 }

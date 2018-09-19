@@ -12,33 +12,40 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
-using System;
+using System.Collections.Generic;
 using System.IO;
 using myoddweb.desktopsearch.interfaces.Enums;
-using myoddweb.desktopsearch.interfaces.Logging;
-using ILogger = myoddweb.desktopsearch.interfaces.Configs.ILogger;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
-namespace myoddweb.desktopsearch.service.Configs
+namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal class ConfigFileLogger : ILogger
+  public class PendingFolderUpdate : IPendingFolderUpdate
   {
-    public LogLevel LogLevel { get; }
+    /// <inheritdoc />
+    public long FolderId { get; }
 
-    public DirectoryInfo BaseDirectoryInfo { get; }
+    /// <inheritdoc />
+    public DirectoryInfo Directory { get; }
 
-    public ConfigFileLogger( string path, LogLevel ll)
+    /// <inheritdoc />
+    public UpdateType PendingUpdateType { get; }
+
+    /// <inheritdoc />
+    public IList<FileInfo> Files { get; }
+
+    public PendingFolderUpdate(long folderId, DirectoryInfo directory, List<FileInfo> files, UpdateType pendingUpdateType)
     {
-      BaseDirectoryInfo = path != null ? new DirectoryInfo(path) : throw new ArgumentNullException(path);
-      if (!BaseDirectoryInfo.Exists)
-      {
-        BaseDirectoryInfo.Create();
-      }
-      if (!BaseDirectoryInfo.Exists)
-      {
-        throw new ArgumentException($"I was unable to create the path: {path}");
-      }
-      LogLevel = ll;
+      // set the folder id.
+      FolderId = folderId;
+
+      // get the directory being updated.
+      Directory = directory;
+
+      // the pending update type.
+      PendingUpdateType = pendingUpdateType;
+
+      // the files
+      Files = files ?? new List<FileInfo>();
     }
   }
 }
