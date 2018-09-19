@@ -10,10 +10,16 @@ Because it is much faster than the default windows search feature and it is more
 
 The components are the various 'parsers' that indexes **your** own folders, you can create your own components to fit your own needs.
 
-- TextParser: Is one of the default parser, it indexes all the text files on your system.
+### Parsers
+- C++, (.cpp, .c, .cc, .c++, .cxx, .h, .hh, .hpp, .hxx, .h++)
+- C#, (.cs)
+- Python (.py)
+- Text files, (.txt)
+- SQL, (.sql)
+
 
 ### Create your own
-Simply create your own component with one or more IFileParser class, when a file is indexed, your components will return a list of words to add to the database.
+Simply create your own component with one or more `IFileParser` class, when a file is indexed, your components will return a list of words to add to the database.
 And that's all really, you can add a list of supported extensions, (but you could still return `false` when calling `Supported( ... )` if you feel that it is not a file you support). 
 
     public interface IFileParser

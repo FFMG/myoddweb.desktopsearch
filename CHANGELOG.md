@@ -10,9 +10,10 @@ This is the initial feature release
 -  SQlite database (+3.25)
 
 ### Components
-- C++
-- C#
-- Python (py3)
-- Text files, (.txt only)
+- C++, (.cpp, .c, .cc, .c++, .cxx, .h, .hh, .hpp, .hxx, .h++)
+- C#, (.cs)
+- Python (.py)
+- Text files, (.txt)
+- SQL, (.sql)
 
 
