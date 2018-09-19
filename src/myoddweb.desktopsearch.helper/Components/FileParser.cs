@@ -18,6 +18,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.IO;
 
 namespace myoddweb.desktopsearch.helper.Components
@@ -54,7 +55,7 @@ namespace myoddweb.desktopsearch.helper.Components
     /// <param name="maxFileLength"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<Words> ParserAsync(StreamReader sr, long maxFileLength, CancellationToken token )
+    public async Task<IWords> ParserAsync(StreamReader sr, long maxFileLength, CancellationToken token )
     {
       if ((sr.BaseStream as FileStream)?.Length > maxFileLength)
       {
@@ -72,11 +73,11 @@ namespace myoddweb.desktopsearch.helper.Components
     /// <param name="text"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task<Words> ParserAsync(string text, CancellationToken token)
+    public Task<IWords> ParserAsync(string text, CancellationToken token)
     {
       // split the line into words.
       var words = _reg.Matches(text).OfType<Match>().Select(m => m.Groups[0].Value).ToArray();
-      return Task.FromResult(new Words(words));
+      return Task.FromResult<IWords>(new Words(words));
     }
 
     /// <summary>
@@ -85,7 +86,7 @@ namespace myoddweb.desktopsearch.helper.Components
     /// <param name="sr"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<Words> ParserAsync(TextReader sr, CancellationToken token)
+    public async Task<IWords> ParserAsync(TextReader sr, CancellationToken token)
     {
       // The list of words we found.
       var textWord = new List<string>();

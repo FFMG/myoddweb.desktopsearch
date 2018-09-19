@@ -12,17 +12,17 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using myoddweb.desktopsearch.interfaces.IO;
 
-namespace myoddweb.desktopsearch.interfaces.IO
+namespace myoddweb.desktopsearch.helper.IO
 {
-  public class Word
+  public class Word : IWord
   {
-    /// <summary>
-    /// The word value.
-    /// </summary>
+    /// <inheritdoc />
     public string Value { get; }
 
     /// <summary>
@@ -36,10 +36,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// </summary>
     private int _lastMaxNumMeaningfulCharacters;
 
-    /// <summary>
-    /// Get all the parts of our word.
-    /// <param name="maxNumMeaningfulCharacters"></param>
-    /// </summary>
+    /// <inheritdoc />
     public IReadOnlyCollection<string> Parts(int maxNumMeaningfulCharacters)
     {
       if (maxNumMeaningfulCharacters <= 0)

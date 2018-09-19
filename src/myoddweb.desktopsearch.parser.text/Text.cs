@@ -56,7 +56,7 @@ namespace myoddweb.desktopsearch.parser.text
     }
 
     /// <inheritdoc />
-    public async Task<Words> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
+    public async Task<IWords> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
     {
       try
       {
