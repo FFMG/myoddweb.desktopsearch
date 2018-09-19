@@ -410,7 +410,7 @@ namespace myoddweb.desktopsearch.helper
     /// <param name="fisA"></param>
     /// <param name="fisB"></param>
     /// <returns></returns>
-    public static List<FileInfo> Intersection(List<FileInfo> fisA, List<FileInfo> fisB)
+    public static IList<FileInfo> Intersection(List<FileInfo> fisA, List<FileInfo> fisB)
     {
       // if either A or B are null then it does not matter what is in the 
       // other collection as the first one has to be empty.
@@ -440,7 +440,7 @@ namespace myoddweb.desktopsearch.helper
     /// </summary>
     /// <param name="fis"></param>
     /// <returns></returns>
-    public static List<FileInfo> Distinct(List<FileInfo> fis)
+    public static IList<FileInfo> Distinct(IList<FileInfo> fis)
     {
       return fis.GroupBy(fi => fi.FullName).Select(fi => fi.First()).ToList();
     }
@@ -452,7 +452,7 @@ namespace myoddweb.desktopsearch.helper
     /// <param name="fisA"></param>
     /// <param name="fisB"></param>
     /// <returns></returns>
-    public static List<FileInfo> RelativeComplement(List<FileInfo> fisA, List<FileInfo> fisB)
+    public static IList<FileInfo> RelativeComplement(IList<FileInfo> fisA, IList<FileInfo> fisB)
     {
       // if they are both empty then the complement is nothing.
       if (null == fisA && null == fisB)

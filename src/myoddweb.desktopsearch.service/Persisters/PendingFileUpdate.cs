@@ -13,47 +13,46 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
-using System.Collections.Generic;
 using System.IO;
 using myoddweb.desktopsearch.interfaces.Enums;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public class PendingFolderUpdate
+  public class PendingFileUpdate
   {
     /// <summary>
     /// The folder id with a pending update
     /// </summary>
-    public long FolderId { get; }
+    public long FileId { get; }
 
     /// <summary>
-    /// The directory beeing updated.
+    /// Get the file info.
     /// </summary>
-    public DirectoryInfo Directory { get; }
+    public FileInfo File { get; }
 
     /// <summary>
     /// The pending update type.
     /// </summary>
     public UpdateType PendingUpdateType { get; }
 
-    /// <summary>
-    /// All the files on record.
-    /// </summary>
-    public List<FileInfo> Files { get; }
-
-    public PendingFolderUpdate(long folderId, DirectoryInfo directory, List<FileInfo> files, UpdateType pendingUpdateType)
+    public PendingFileUpdate(long fileId, FileInfo file, UpdateType pendingUpdateType)
     {
-      // set the folder id.
-      FolderId = folderId;
+      // set the file id.
+      FileId = fileId;
 
-      // get the directory being updated.
-      Directory = directory;
+      // the file.
+      File = file;
 
       // the pending update type.
       PendingUpdateType = pendingUpdateType;
+    }
 
-      // the files
-      Files = files ?? new List<FileInfo>();
+    /// <summary>
+    /// Copy contructor.
+    /// </summary>
+    /// <param name="pu"></param>
+    public PendingFileUpdate(PendingFileUpdate pu) : this(pu.FileId, pu.File, pu.PendingUpdateType)
+    {
     }
   }
 }

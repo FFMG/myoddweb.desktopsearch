@@ -68,7 +68,7 @@
     <Compile Include="Persisters\IFolders.cs" />
     <Compile Include="Persisters\IFolderUpdates.cs" />
     <Compile Include="Persisters\IPersister.cs" />
-    <Compile Include="Persisters\PendingFolderUpdate.cs" />
+    <Compile Include="Persisters\IPendingFolderUpdate.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

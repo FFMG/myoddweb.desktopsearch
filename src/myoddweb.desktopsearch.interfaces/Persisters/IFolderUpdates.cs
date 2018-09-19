@@ -76,6 +76,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<List<PendingFolderUpdate>> GetPendingFolderUpdatesAsync( long limit, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<IList<IPendingFolderUpdate>> GetPendingFolderUpdatesAsync( long limit, IConnectionFactory connectionFactory, CancellationToken token);
   }
 }
