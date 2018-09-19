@@ -28,7 +28,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateWordToFileAsync(Word word, long fileId, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> AddOrUpdateWordToFileAsync(IWord word, long fileId, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Add multiple words to a single file id
@@ -38,7 +38,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateWordsToFileAsync(Words words, long fileId, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> AddOrUpdateWordsToFileAsync(IO.IWords words, long fileId, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Remove a file id from the FilesWords list.

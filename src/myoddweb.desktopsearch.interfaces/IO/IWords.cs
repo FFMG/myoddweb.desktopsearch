@@ -13,31 +13,20 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Collections.Generic;
-using System.ComponentModel;
-using myoddweb.desktopsearch.interfaces.Configs;
-using Newtonsoft.Json;
 
-namespace myoddweb.desktopsearch.service.Configs
+namespace myoddweb.desktopsearch.interfaces.IO
 {
-  internal class ConfigSqliteDatabase : IDatabase
+  public interface IWords : IEnumerable<IWord>
   {
     /// <summary>
-    /// The cache size.
-    /// https://www.sqlite.org/pragma.html#pragma_cache_size
+    /// The number of words
     /// </summary>
-    [DefaultValue(-2000)]
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public long CacheSize { get; protected set; }
+    int Count { get; }
 
     /// <summary>
-    /// The source to the database.
+    /// Do we have any values?
     /// </summary>
-    [JsonProperty(Required = Required.Always)]
-    public string Source { get; protected set; }
-
-    /// <inheritdoc />
-    [DefaultValue(null)]
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public List<string> IgnoredPaths { get; protected set; }
+    /// <returns></returns>
+    bool Any();
   }
 }

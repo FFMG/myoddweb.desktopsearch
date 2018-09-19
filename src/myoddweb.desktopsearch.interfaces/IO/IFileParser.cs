@@ -45,6 +45,6 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="logger"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<Words> ParseAsync(FileInfo file, ILogger logger, CancellationToken token);
+    Task<IWords> ParseAsync(FileInfo file, ILogger logger, CancellationToken token);
   }
 }

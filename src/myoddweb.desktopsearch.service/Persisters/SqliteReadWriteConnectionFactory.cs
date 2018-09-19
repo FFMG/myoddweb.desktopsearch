@@ -12,6 +12,8 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using System.Data.Common;
 using System.Data.SQLite;
 using System.Threading;
@@ -21,13 +23,26 @@ namespace myoddweb.desktopsearch.service.Persisters
 {
   internal class SqliteReadWriteConnectionFactory : SqliteConnectionFactory
   {
+    #region Member variables
+    /// <summary>
+    /// The current SQLite transaction
+    /// </summary>
     private SQLiteTransaction _sqLiteTransaction;
-    
+
+    /// <summary>
+    /// The cache size we want to use.
+    /// </summary>
+    private readonly long _cacheSize;
+
+    /// <inheritdoc />
     public override bool IsReadOnly => false;
+    #endregion
 
     public SqliteReadWriteConnectionFactory(ConfigSqliteDatabase config) :
       base( CreateConnection( config ) )
     {
+      // save the config value
+      _cacheSize = config?.CacheSize ?? throw new ArgumentNullException(nameof(config));
     }
 
     /// <summary>
@@ -65,6 +80,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       // @see https://www.sqlite.org/wal.html
       // we call a read function ... so no transactions are created... yet.
       ExecuteReadOneAsync(CreateCommand("PRAGMA journal_mode=WAL;"), default(CancellationToken)).Wait();
+
+      // other little tricks to speed things up...
+      // https://www.sqlite.org/pragma.html#pragma_cache_size
+      ExecuteReadOneAsync(CreateCommand($"PRAGMA cache_size = {_cacheSize};"), default(CancellationToken)).Wait();
+
+      // https://www.sqlite.org/pragma.html#pragma_temp_store
+      ExecuteReadOneAsync(CreateCommand("PRAGMA temp_store = MEMORY;"), default(CancellationToken)).Wait(); 
     }
 
     /// <inheritdoc />

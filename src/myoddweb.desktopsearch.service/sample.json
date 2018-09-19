@@ -59,7 +59,8 @@
   },
   "Database": {
     "Source": ".\\database.db",
-    "IgnoredPaths": [ ".\\" ]
+    "IgnoredPaths": [ ".\\" ],
+    "CacheSize": -8000
   },
   "Performance": {
     "CategoryName": "myoddweb.desktopsearch",

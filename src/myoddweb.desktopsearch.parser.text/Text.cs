@@ -19,6 +19,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 
@@ -58,24 +59,33 @@ namespace myoddweb.desktopsearch.parser.text
     }
 
     /// <inheritdoc />
-    public async Task<Words> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
+    public async Task<IWords> ParseAsync(FileInfo file, ILogger logger, CancellationToken token)
     {
-      var textWord = new List<string>();
       try
       {
+        var textWord = new List<string>();
         using (var sr = new StreamReader(file.FullName))
         {
-          string line;
-          while ((line = await sr.ReadLineAsync().ConfigureAwait(false)) != null)
+          const long maxFileLength = 1000000;
+          if ((sr.BaseStream as FileStream)?.Length <= maxFileLength)
           {
-            // get out if we cancelled.
-            token.ThrowIfCancellationRequested();
+            // read everything in one go.
+            var text = sr.ReadToEnd();
 
             // split the line into words.
-            var words = _reg.Matches(line).OfType<Match>().Select(m => m.Groups[0].Value).ToArray();
+            var words = _reg.Matches(text).OfType<Match>().Select(m => m.Groups[0].Value).ToArray();
             textWord.AddRange(words);
           }
+          else
+          {
+            string word;
+            while ((word = await ReadWordAsync(sr, token).ConfigureAwait(false)) != null)
+            {
+              textWord.Add(word);
+            }
+          }
         }
+        return new Words(textWord);
       }
       catch (OperationCanceledException )
       {
@@ -97,7 +107,55 @@ namespace myoddweb.desktopsearch.parser.text
         logger.Exception(ex);
         return null;
       }
-      return new Words(textWord);
+    }
+
+    /// <summary>
+    /// Read a word from the file and move the pointer forward.
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<string> ReadWordAsync(TextReader stream, CancellationToken token )
+    {
+      string word = null;
+      const int count = 1;
+      var buffer = new char[count];
+
+      while (true)
+      {
+        // try and read the stream.
+        var read = await stream.ReadAsync(buffer, 0, count).ConfigureAwait(false);
+
+        // anything else to read?
+        // if not return what we have, (we might have nothing)
+        if (read == 0)
+        {
+          return word;
+        }
+
+        // get out if we cancelled.
+        token.ThrowIfCancellationRequested();
+
+        var letter = new string(buffer, 0, read);
+        if (!_reg.IsMatch(letter))
+        {
+          // do we have anything?
+          if (!string.IsNullOrEmpty(word))
+          {
+            return word;
+          }
+
+          // if we are here we found a 'bad' character first.
+          continue;
+        }
+
+        if (word == null)
+        {
+          word = letter;
+          continue;
+        }
+        word += letter;
+      }
     }
   }
 }

@@ -19,6 +19,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -35,10 +36,10 @@ namespace myoddweb.desktopsearch.processor.Processors
       /// <summary>
       /// The words we found for the pending updates.
       /// </summary>
-      public Words Words { get; }
+      public interfaces.IO.IWords Words { get; }
 
       public CompletedPendingFileUpdate(
-        PendingFileUpdate pu, Words words ) : base(pu)
+        PendingFileUpdate pu, interfaces.IO.IWords words ) : base(pu)
       {
         Words = words;
       }
@@ -254,7 +255,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     private async Task<CompletedPendingFileUpdate> ProcessFile(PendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
       // start allt he tasks
-      var tasks = new HashSet<Task<Words>>();
+      var tasks = new HashSet<Task<interfaces.IO.IWords>>();
       _parsers.ForEach(parser => { tasks.Add(ProcessFile(parser, pendingFileUpdate.File, token)); });
 
       // do we have any work to do?
@@ -278,7 +279,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="file"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<Words> ProcessFile(IFileParser parser, FileInfo file, CancellationToken token)
+    private async Task<interfaces.IO.IWords> ProcessFile(IFileParser parser, FileInfo file, CancellationToken token)
     {
       if (!parser.Supported(file))
       {
