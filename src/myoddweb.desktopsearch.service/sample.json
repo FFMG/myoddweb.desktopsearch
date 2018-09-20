@@ -32,7 +32,13 @@
     "ConcurrentFilesProcessor": 8,
     "UpdatesPerFilesEvent": 100,
     "QuietEventsProcessorMs": 10000,
-    "BusyEventsProcessorMs": 1
+    "BusyEventsProcessorMs": 1,
+    "IgnoreFiles" : [
+      {
+        "Pattern": "*.*",
+        "MaxSizeMegabybtes": "1024"
+      }
+    ]
   },
   "Paths": {
     "ParseFixedDrives": true,

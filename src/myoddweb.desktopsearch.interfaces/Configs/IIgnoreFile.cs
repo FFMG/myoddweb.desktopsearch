@@ -12,32 +12,28 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Collections.Generic;
-using System.ComponentModel;
-using myoddweb.desktopsearch.interfaces.Configs;
-using Newtonsoft.Json;
 
-namespace myoddweb.desktopsearch.service.Configs
+using System.IO;
+
+namespace myoddweb.desktopsearch.interfaces.Configs
 {
-  internal class ConfigSqliteDatabase : IDatabase
+  public interface IIgnoreFile
   {
     /// <summary>
-    /// The cache size.
-    /// https://www.sqlite.org/pragma.html#pragma_cache_size
+    /// The pattern of the file being ignored.
     /// </summary>
-    [DefaultValue(-2000)]
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public long CacheSize { get; protected set; }
+    string Pattern { get; }
 
     /// <summary>
-    /// The source to the database.
+    /// The maximum size of the file in megabytes.
     /// </summary>
-    [JsonProperty(Required = Required.Always)]
-    public string Source { get; protected set; }
+    long MaxSizeMegabybtes { get; }
 
-    /// <inheritdoc />
-    [DefaultValue(null)]
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public IList<string> IgnoredPaths { get; protected set; }
+    /// <summary>
+    /// Check if a given file name is a match or not.
+    /// </summary>
+    /// <param name="file">The file we are checking</param>
+    /// <returns>True if the file matches the pattern and if the size matches as well.</returns>
+    bool Match( FileInfo file );
   }
 }

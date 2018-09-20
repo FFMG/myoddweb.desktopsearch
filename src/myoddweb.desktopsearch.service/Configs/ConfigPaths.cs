@@ -36,11 +36,11 @@ namespace myoddweb.desktopsearch.service.Configs
 
     [DefaultValue(null)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public List<string> Paths { get; protected set; }
+    public IList<string> Paths { get; protected set; }
 
     [DefaultValue(null)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public List<string> IgnoredPaths { get; protected set; }
+    public IList<string> IgnoredPaths { get; protected set; }
 
     [DefaultValue(true)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
@@ -55,7 +55,7 @@ namespace myoddweb.desktopsearch.service.Configs
     public bool IgnoreCurrentPath { get; protected set; }
 
     [JsonProperty(Required = Required.Always)]
-    public List<string> ComponentsPaths { get; protected set; }
+    public IList<string> ComponentsPaths { get; protected set; }
 
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context)

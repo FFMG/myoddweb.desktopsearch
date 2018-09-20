@@ -50,6 +50,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    Task<List<long>> GetWordIdsAsync(IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound);
+    Task<IList<long>> GetWordIdsAsync(IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound);
   }
 }

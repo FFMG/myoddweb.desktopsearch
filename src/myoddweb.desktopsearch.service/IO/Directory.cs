@@ -20,7 +20,6 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.IO;
-using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.IO;
 using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
@@ -101,7 +100,7 @@ namespace myoddweb.desktopsearch.service.IO
     }
 
     /// <inheritdoc />
-    public async Task<List<DirectoryInfo>> ParseDirectoriesAsync(DirectoryInfo directory, CancellationToken token)
+    public async Task<IList<DirectoryInfo>> ParseDirectoriesAsync(DirectoryInfo directory, CancellationToken token)
     {
       try
       {
@@ -121,7 +120,7 @@ namespace myoddweb.desktopsearch.service.IO
     }
 
     /// <inheritdoc />
-    public async Task<List<FileInfo>> ParseDirectoryAsync(DirectoryInfo directory, CancellationToken token)
+    public async Task<IList<FileInfo>> ParseDirectoryAsync(DirectoryInfo directory, CancellationToken token)
     {
       try
       {

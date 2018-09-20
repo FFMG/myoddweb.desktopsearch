@@ -21,6 +21,6 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     /// <summary>
     /// Path information we want to ignore
     /// </summary>
-    List<string> IgnoredPaths { get; }
+    IList<string> IgnoredPaths { get; }
   }
 }

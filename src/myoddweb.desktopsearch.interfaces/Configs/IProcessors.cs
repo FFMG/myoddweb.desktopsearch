@@ -12,6 +12,8 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+using System.Collections.Generic;
+
 namespace myoddweb.desktopsearch.interfaces.Configs
 {
   public interface IProcessors
@@ -47,5 +49,10 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     /// But also not too big as it blocks the database when/if there is work to do.
     /// </summary>
     int UpdatesPerFilesEvent { get; }
+
+    /// <summary>
+    /// List of file patterns that we ignore.
+    /// </summary>
+    IList<IIgnoreFile> IgnoreFiles { get; }
   }
 }

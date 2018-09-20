@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 using myoddweb.desktopsearch.interfaces.Configs;
@@ -44,6 +45,11 @@ namespace myoddweb.desktopsearch.service.Configs
     [DefaultValue(100)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int UpdatesPerFilesEvent { get; protected set; }
+
+    /// <inheritdoc />
+    [DefaultValue(null)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public IList<IIgnoreFile> IgnoreFiles { get; protected set; }
 
     public ConfigProcessor()
     {
@@ -82,6 +88,11 @@ namespace myoddweb.desktopsearch.service.Configs
       if (ConcurrentFilesProcessor <= 0)
       {
         throw new ArgumentException($"The ConcurrentFilesProcessor cannot be -ve or zeor ({ConcurrentFilesProcessor}");
+      }
+
+      if (null == IgnoreFiles)
+      {
+        IgnoreFiles = new List<IIgnoreFile>();
       }
     }
   }

@@ -203,7 +203,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<List<long>> GetWordIdsAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
+    public async Task<IList<long>> GetWordIdsAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
     {
       // do we have anything to even look for?
       if (words.Count == 0)

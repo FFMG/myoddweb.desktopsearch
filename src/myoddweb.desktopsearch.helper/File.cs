@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Security;
@@ -552,6 +553,69 @@ namespace myoddweb.desktopsearch.helper
       }
 
       // if we made it here, it is not one of those extensions
+      return false;
+    }
+
+    /// <summary>
+    /// Check if a file name matches a given pattern
+    /// </summary>
+    /// <param name="file"></param>
+    /// <param name="pattern"></param>
+    /// <returns></returns>
+    public static bool NameMatch(FileSystemInfo file, string pattern)
+    {
+      // get the name
+      var name = file?.Name ?? throw new ArgumentNullException(nameof(file));
+
+      // make sure that the pattern is non-null
+      if (null == pattern)
+      {
+        throw new ArgumentNullException(nameof(pattern));
+      }
+
+      // then go around trying to match
+      return SafeNameMatch(name, pattern);
+    }
+
+    /// <summary>
+    /// Safe check of file name pattern matches.
+    /// </summary>
+    /// <param name="name"></param>
+    /// <param name="pattern"></param>
+    /// <returns></returns>
+    private static bool SafeNameMatch(string name, string pattern)
+    {
+      // make sure that the values are correct.
+      Contract.Assert( name != null );
+      Contract.Assert( pattern != null );
+
+      // check for exact match pattern
+      if (pattern == "*")
+      {
+        return true;
+      }
+
+      // check for exact matches.
+      if (0 == string.Compare(pattern, name, StringComparison.OrdinalIgnoreCase))
+      {
+        return true;
+      }
+
+      if (name.Length == 0 || pattern.Length == 0)
+      {
+        return false;
+      }
+
+      if ( char.ToUpperInvariant(pattern[0]) == char.ToUpperInvariant(name[0]) || pattern[0] == '?')
+      {
+        return SafeNameMatch(name.Substring(1), pattern.Substring(1));
+      }
+
+      if (pattern[0] == '*')
+      {
+        return SafeNameMatch(name.Substring(1), pattern) || SafeNameMatch(name, pattern.Substring(1));
+      }
+
       return false;
     }
   }
