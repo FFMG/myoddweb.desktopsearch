@@ -228,8 +228,8 @@ namespace myoddweb.desktopsearch.service
     /// <returns></returns>
     private static IDirectory CreateDirectory(interfaces.Logging.ILogger logger, interfaces.Configs.IConfig config )
     {
-      var paths = config.Paths.IgnoredPaths;
-      paths.AddRange(config.Database?.IgnoredPaths ?? new List<string>());
+      var paths = new List<string>( config.Paths.IgnoredPaths );
+      paths.AddRange( config.Database?.IgnoredPaths ?? new List<string>() );
       return new Directory( logger, paths);
     }
 

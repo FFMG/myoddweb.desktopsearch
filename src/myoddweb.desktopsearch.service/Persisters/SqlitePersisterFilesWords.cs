@@ -173,7 +173,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> RemoveWordIdsThatShouldNotBeInFile(long fileId, IReadOnlyCollection<long> expectedWordIds, IEnumerable<long> currentWordIds, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<bool> RemoveWordIdsThatShouldNotBeInFile(long fileId, IList<long> expectedWordIds, IEnumerable<long> currentWordIds, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // if we have nothing in the list of ids we want then we want to remove everything.
       if (!expectedWordIds.Any())
