@@ -89,6 +89,8 @@ namespace myoddweb.desktopsearch.parser.test
       Assert.IsTrue(File.NameMatch(f, name2.ToUpper()));
     }
 
+    [TestCase("file.txt", "file.**")]
+    [TestCase("file.txt", "**.txt")]
     [TestCase("file.txt", "*.txt")]
     [TestCase("file.txt", "*.tx?")]
     [TestCase("file.txt", "????.txt")]
@@ -111,6 +113,34 @@ namespace myoddweb.desktopsearch.parser.test
     {
       var f = new FileInfo($"c:\\directory\\{name}");
       Assert.IsFalse(File.NameMatch(f, pattern));
+    }
+
+    [Test]
+    public void EmptyPaternNeverMatches()
+    {
+      var f = new FileInfo("c:\\directory\\blah.txt");
+      Assert.IsFalse(File.NameMatch(f, ""));
+    }
+
+    [Test]
+    public void SpacesAreNotIgnoredWithStar()
+    {
+      var f = new FileInfo("c:\\directory\\blah blah.txt");
+      Assert.IsTrue(File.NameMatch(f, "* blah.txt"));
+    }
+
+    [Test]
+    public void SpacesAreNotIgnored()
+    {
+      var f = new FileInfo("c:\\directory\\blah blah.txt");
+      Assert.IsTrue(File.NameMatch(f, "blah blah.txt"));
+    }
+
+    [Test]
+    public void SpacesAreNotIgnoredWithQuestionMark()
+    {
+      var f = new FileInfo("c:\\directory\\blah blah.txt");
+      Assert.IsTrue(File.NameMatch(f, "blah?blah.txt"));
     }
   }
 }

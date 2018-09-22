@@ -574,7 +574,7 @@ namespace myoddweb.desktopsearch.helper
       }
 
       // then go around trying to match
-      return SafeNameMatch(name, pattern);
+      return NameMatch(name, pattern);
     }
 
     /// <summary>
@@ -583,40 +583,118 @@ namespace myoddweb.desktopsearch.helper
     /// <param name="name"></param>
     /// <param name="pattern"></param>
     /// <returns></returns>
-    private static bool SafeNameMatch(string name, string pattern)
+    private static bool NameMatch(string name, string pattern)
     {
       // make sure that the values are correct.
       Contract.Assert( name != null );
       Contract.Assert( pattern != null );
 
-      // check for exact match pattern
-      if (pattern == "*")
+      // get the length of the pattern
+      var lp = pattern.Length;
+      if (lp == 0)
       {
-        return true;
-      }
-
-      // check for exact matches.
-      if (0 == string.Compare(pattern, name, StringComparison.OrdinalIgnoreCase))
-      {
-        return true;
-      }
-
-      if (name.Length == 0 || pattern.Length == 0)
-      {
+        // the pattern is empty
+        // so there is no way it will match.
         return false;
       }
+      // get the name of the name.
+      var ln = name.Length;
 
-      if ( char.ToUpperInvariant(pattern[0]) == char.ToUpperInvariant(name[0]) || pattern[0] == '?')
+      var pn = 0; // current index position of name
+      var pp = 0; // current index position of pattern
+      while (true)
       {
-        return SafeNameMatch(name.Substring(1), pattern.Substring(1));
-      }
+        if (pn >= ln || pp >= lp)
+        {
+          // if we have walked the whole pattern and the whole name
+          // then everything matched.
+          // if we have not finished walking one of the two
+          // then we have not matched.
+          return pn >= ln && pp >= lp;
+        }
 
-      if (pattern[0] == '*')
-      {
-        return SafeNameMatch(name.Substring(1), pattern) || SafeNameMatch(name, pattern.Substring(1));
-      }
+        // the current pattern character.
+        var cp = pattern[pp];
+        // shortcut
+        // if the pattern is '*' and it is the last characer
+        // in the patern list, then we can get out
+        // it does not matter what the name is.
+        if (pp + 1 == lp && cp == '*')
+        {
+          // we don't care about the name
+          // the '*' will guarantee a match.
+          return true;
+        }
 
-      return false;
+        // the current name character
+        var cn = name[pn];
+
+        // if the pattern is '?' then it does not matter
+        // if both letters are the same, then we can move on.
+        if (cp == '?' || char.ToUpperInvariant(cp) == char.ToUpperInvariant(cn))
+        {
+          ++pn;
+          ++pp;
+          continue;
+        }
+
+        // if current the pattern is '*' and the next letter matches 
+        // then we can move on
+        // for cases like *.txt and the current char is '.'
+        if (cp != '*')
+        {
+          // if we are here
+          //  - the pattern is not a '*'
+          //  - the pattern is not a '?'
+          //  - the letter does not match the pattern
+          // 
+          // sooo ... it's not a match.
+          return false;
+        }
+
+        // the current pattern char is '*'
+        // try and froward look so see if we match the next character.
+        if (pp + 1 < lp)
+        {
+          // get the next character.
+          var cnp = pattern[pp + 1];
+          switch (cnp)
+          {
+            case '*':
+              // we have a "**" ... so move to the next one
+              ++pp;
+              continue;
+
+            case '?':
+              // we have a "*?" ... really all we have is "**"
+              var ca = pattern.ToCharArray();
+              ca[pp + 1] = '*';
+              pattern = new string(ca);
+              ++pp;
+              continue;
+
+            default:
+              // if the next character does not match the next charater
+              // then we must just carry on assuming that we are covered by the '*'
+              if (char.ToUpperInvariant(cnp) != char.ToUpperInvariant(cn))
+              {
+                break;
+              }
+
+              // move past the '*' and the actual character.
+              // because we know we match the next character.
+              pp += 2;
+
+              // and move past the character as we know we matched.
+              ++pn;
+              continue;
+          }
+        }
+
+        // we are just a catch-all '*' ... so walk the name
+        // the pattern is still a match.
+        ++pn;
+      }
     }
   }
 }
