@@ -661,12 +661,13 @@ namespace myoddweb.desktopsearch.helper
           switch (cnp)
           {
             case '*':
-              // we have a "**" ... so move to the next one
+              // we have a double wildcard "**" ... so move to the next one
               ++pp;
               continue;
 
             case '?':
-              // we have a "*?" ... really all we have is "**"
+              // we have a "*?" ... really all we have is double wild card, "**"
+              // so replace '?' with '*' and move over to the new wild card.
               var ca = pattern.ToCharArray();
               ca[pp + 1] = '*';
               pattern = new string(ca);
@@ -674,14 +675,17 @@ namespace myoddweb.desktopsearch.helper
               continue;
 
             default:
-              // if the next character does not match the next charater
-              // then we must just carry on assuming that we are covered by the '*'
+              // if the next patern character does not match the name charater
+              // then we must just carry on assuming that we are covered by the wildcard '*'
               if (char.ToUpperInvariant(cnp) != char.ToUpperInvariant(cn))
               {
                 break;
               }
 
-              // move past the '*' and the actual character.
+              // the next pattern character matches the name character
+              // so we can now move forward in the pattern
+
+              // move past the wild card '*' and the actual character.
               // because we know we match the next character.
               pp += 2;
 

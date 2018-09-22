@@ -43,7 +43,7 @@ namespace myoddweb.desktopsearch.parser.test
 
 
     [Test]
-    public void NameCannExactMatchPatternDoubleStar()
+    public void NameCannExactMatchPatternDoubleWildcard()
     {
       var name = $"{Guid.NewGuid().ToString()}.{Guid.NewGuid().ToString()}";
       var f = new FileInfo($"c:\\directory\\{name}");
@@ -123,7 +123,7 @@ namespace myoddweb.desktopsearch.parser.test
     }
 
     [Test]
-    public void SpacesAreNotIgnoredWithStar()
+    public void SpacesAreNotIgnoredWithWildcard()
     {
       var f = new FileInfo("c:\\directory\\blah blah.txt");
       Assert.IsTrue(File.NameMatch(f, "* blah.txt"));
@@ -141,6 +141,13 @@ namespace myoddweb.desktopsearch.parser.test
     {
       var f = new FileInfo("c:\\directory\\blah blah.txt");
       Assert.IsTrue(File.NameMatch(f, "blah?blah.txt"));
+    }
+
+    [Test]
+    public void MultipleWildCard()
+    {
+      var f = new FileInfo("c:\\directory\\blahAblahBblah.txt");
+      Assert.IsTrue(File.NameMatch(f, "*A*B*.txt"));
     }
   }
 }
