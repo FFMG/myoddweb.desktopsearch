@@ -19,10 +19,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.IO;
+using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.Enums;
 using myoddweb.desktopsearch.interfaces.IO;
-using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.processor.Processors
 {
@@ -73,6 +74,11 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// </summary>
     private readonly IList<IFileParser> _parsers;
 
+    /// <summary>
+    /// The files we are choosing to ignore.
+    /// </summary>
+    private readonly IList<IIgnoreFile> _ignoreFiles;
+
     /// <inheritdoc />
     /// <summary>
     /// The number of updates we want to try and do at a time.
@@ -85,7 +91,13 @@ namespace myoddweb.desktopsearch.processor.Processors
     private readonly IPerformanceCounter _counter;
     #endregion
 
-    public Files(IPerformanceCounter counter, int updatesPerFilesEvent, IList<IFileParser> parsers, IPersister persister, ILogger logger)
+    public Files(
+      IPerformanceCounter counter, 
+      int updatesPerFilesEvent, 
+      IList<IFileParser> parsers, 
+      IList<IIgnoreFile> ignoreFiles, 
+      IPersister persister, 
+      ILogger logger)
     {
       // save the counter
       _counter = counter ?? throw new ArgumentNullException(nameof(counter));
@@ -98,6 +110,9 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       // make sure that the parsers are valid.
       _parsers = parsers ?? throw new ArgumentNullException(nameof(parsers));
+
+      // the files we are ignoring.
+      _ignoreFiles = ignoreFiles ?? throw new ArgumentNullException(nameof(ignoreFiles));
 
       // set the persister.
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
@@ -266,6 +281,13 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task<CompletedPendingFileUpdate> ProcessFile(IPendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
+      // is this file ignored?
+      if (IsIgnored(pendingFileUpdate))
+      {
+        _logger.Information( $"Ignoring file: {pendingFileUpdate.File.FullName} as per IgnoreFiles rule(s).");
+        return new CompletedPendingFileUpdate(pendingFileUpdate, null );
+      }
+
       // start allt he tasks
       var tasks = new HashSet<Task<interfaces.IO.IWords>>();
       foreach (var parser in _parsers)
@@ -285,6 +307,16 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       // merge them all into one.
       return new CompletedPendingFileUpdate(pendingFileUpdate, new Words(totalWords));
+    }
+
+    /// <summary>
+    /// Check if the file is ignored or not.
+    /// </summary>
+    /// <param name="pendingFileUpdate"></param>
+    /// <returns></returns>
+    private bool IsIgnored(IPendingFileUpdate pendingFileUpdate)
+    {
+      return _ignoreFiles.Any(ignoreFile => ignoreFile.Match(pendingFileUpdate.File));
     }
 
     /// <summary>

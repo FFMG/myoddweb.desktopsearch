@@ -13,27 +13,18 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
-using System.IO;
+using System.ComponentModel;
+using Newtonsoft.Json;
 
-namespace myoddweb.desktopsearch.interfaces.Configs
+namespace myoddweb.desktopsearch.service.Configs
 {
-  public interface IIgnoreFile
+  internal class ConfigIgnoreFile
   {
-    /// <summary>
-    /// The pattern of the file being ignored.
-    /// </summary>
-    string Pattern { get; }
+    [JsonProperty(Required = Required.Always)]
+    public string Pattern { get; protected set; }
 
-    /// <summary>
-    /// The maximum size of the file in megabytes.
-    /// </summary>
-    long MaxSizeMegabytes { get; }
-
-    /// <summary>
-    /// Check if a given file name is a match or not.
-    /// </summary>
-    /// <param name="file">The file we are checking</param>
-    /// <returns>True if the file matches the pattern and if the size matches as well.</returns>
-    bool Match( FileInfo file );
+    [DefaultValue(0)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public long MaxSizeMegabytes { get; protected set; }
   }
 }
