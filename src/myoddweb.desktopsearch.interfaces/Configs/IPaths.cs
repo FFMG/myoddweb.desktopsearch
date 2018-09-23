@@ -31,12 +31,12 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     /// <summary>
     /// Extra paths that we want to parse
     /// </summary>
-    List<string> Paths { get; }
+    IList<string> Paths { get; }
 
     /// <summary>
     /// Path that we want to ignore by default.
     /// </summary>
-    List<string> IgnoredPaths { get; }
+    IList<string> IgnoredPaths { get; }
 
     /// <summary>
     /// If we want to ignore the internet path or not.
@@ -56,6 +56,6 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     /// <summary>
     /// Paths where all the components are located.
     /// </summary>
-    List<string> ComponentsPaths { get; }
+    IList<string> ComponentsPaths { get; }
   }
 }

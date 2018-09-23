@@ -754,6 +754,15 @@ namespace myoddweb.desktopsearch.parser.test
     }
 
     [Test]
+    public void BothNullWillReturnAnEmptyList()
+    {
+      // 
+      var fi = File.RelativeComplement(null, null);
+      Assert.IsInstanceOf< List<FileInfo>>( fi );
+      Assert.AreEqual(0, fi.Count);
+    }
+
+    [Test]
     public void LargeRelativeComplementWithOneMatch()
     {
       const int count = 10000;

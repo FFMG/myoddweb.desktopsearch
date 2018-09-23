@@ -27,7 +27,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="path">The start path</param>
     /// <param name="token">The cancelation token to cancel the runningtask.</param>
     /// <returns>success or false if the operation was cancelled.</returns>
-    Task<List<DirectoryInfo>> ParseDirectoriesAsync( DirectoryInfo path, CancellationToken token );
+    Task<IList<DirectoryInfo>> ParseDirectoriesAsync( DirectoryInfo path, CancellationToken token );
 
     /// <summary>
     /// Parse all the files in a directory
@@ -35,7 +35,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="path"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<List<FileInfo>> ParseDirectoryAsync(DirectoryInfo path, CancellationToken token);
+    Task<IList<FileInfo>> ParseDirectoryAsync(DirectoryInfo path, CancellationToken token);
 
     /// <summary>
     /// Check if the given directory is ignored or not.

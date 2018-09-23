@@ -22,7 +22,11 @@ namespace myoddweb.desktopsearch.service.Configs
   internal class ConfigWebServer : IWebServer
   {
     /// <inheritdoc />
+#if DEBUG
+    [DefaultValue(9502)]
+#else
     [DefaultValue(9501)]
+#endif
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int Port { get; protected set; }
   }

@@ -12,11 +12,12 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 using myoddweb.desktopsearch.interfaces.Configs;
+using myoddweb.desktopsearch.service.IO;
 using Newtonsoft.Json;
 
 namespace myoddweb.desktopsearch.service.Configs
@@ -45,7 +46,12 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int UpdatesPerFilesEvent { get; protected set; }
 
-    public ConfigProcessor()
+    /// <inheritdoc />
+    [DefaultValue(null)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public IList<IIgnoreFile> IgnoreFiles { get; protected set; }
+
+    public ConfigProcessor(IList<ConfigIgnoreFile> ignoreFiles)
     {
       // the number of directories processor.
       ConcurrentDirectoriesProcessor = (int)Math.Ceiling(Environment.ProcessorCount / 2.0 );
@@ -57,6 +63,15 @@ namespace myoddweb.desktopsearch.service.Configs
 
       // this is per ms, so we want to have one busy processor every ms 
       BusyEventsProcessorMs = Environment.ProcessorCount;
+
+      if (null != ignoreFiles)
+      {
+        IgnoreFiles = new List<IIgnoreFile>();
+        foreach (var ignoreFile in ignoreFiles)
+        {
+          IgnoreFiles.Add( new IgnoreFile(ignoreFile.Pattern, ignoreFile.MaxSizeMegabytes ));
+        }
+      }
     }
 
     [OnDeserialized]
@@ -82,6 +97,14 @@ namespace myoddweb.desktopsearch.service.Configs
       if (ConcurrentFilesProcessor <= 0)
       {
         throw new ArgumentException($"The ConcurrentFilesProcessor cannot be -ve or zeor ({ConcurrentFilesProcessor}");
+      }
+
+      if (null == IgnoreFiles)
+      {
+        IgnoreFiles = new List<IIgnoreFile>
+        {
+          new IgnoreFile( "*.*", 1024 )
+        };
       }
     }
   }

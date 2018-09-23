@@ -405,7 +405,7 @@ namespace myoddweb.desktopsearch.parser
         return;
       }
 
-      var directoriesAndFiles = new Dictionary<DirectoryInfo, List<FileInfo>>();
+      var directoriesAndFiles = new Dictionary<DirectoryInfo, IList<FileInfo>>();
       foreach (var directory in directories)
       {
         // look for all the files in that directory.

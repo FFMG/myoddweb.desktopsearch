@@ -72,7 +72,7 @@ namespace myoddweb.desktopsearch.processor
       for (var i = 0; i < config.ConcurrentFilesProcessor; ++i)
       {
         var filesCounter = new ProcessorPerformanceCounter(performance, fileCounterName, logger);
-        _timers.Add( new ProcessorTimer(new Files(filesCounter, config.UpdatesPerFilesEvent, fileParsers, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
+        _timers.Add( new ProcessorTimer(new Files(filesCounter, config.UpdatesPerFilesEvent, fileParsers, config.IgnoreFiles, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
       }
     }
 
