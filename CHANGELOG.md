@@ -7,7 +7,9 @@ This is the initial feature release
 ### Miscellaneous 
 - Folder/File parser
 - Folder/File watcher
--  SQlite database (+3.25)
+- SQlite database (+3.25)
+- Config
+  - Ignore files by size/name
 
 ### Components
 - C++, (.cpp, .c, .cc, .c++, .cxx, .h, .hh, .hpp, .hxx, .h++)

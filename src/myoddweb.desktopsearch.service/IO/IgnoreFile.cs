@@ -43,11 +43,13 @@ namespace myoddweb.desktopsearch.service.IO
     {
       try
       {
-        if (ConvertBytesToMegabytes(file.Length) < MaxSizeMegabytes)
+        if (MaxSizeMegabytes > 0)
         {
-          return false;
+          if (ConvertBytesToMegabytes(file.Length) < MaxSizeMegabytes)
+          {
+            return false;
+          }
         }
-
       }
       catch (SecurityException)
       {
