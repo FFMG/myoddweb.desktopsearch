@@ -28,6 +28,9 @@ namespace myoddweb.desktopsearch.service.IO
     /// <inheritdoc/>
     public long MaxSizeMegabytes { get; }
 
+    /// The converted megabyte size if Bytes
+    public long MaxSizeBytes { get; }
+
     public IgnoreFile(string pattern, long maxSizeMegabytes)
     {
       Pattern = pattern ?? throw new ArgumentNullException(nameof(pattern));
@@ -36,6 +39,7 @@ namespace myoddweb.desktopsearch.service.IO
         throw new ArgumentNullException( $"The max size in megabytes, ({maxSizeMegabytes}), cannot less than zero.");
       }
       MaxSizeMegabytes = maxSizeMegabytes;
+      MaxSizeBytes = ConvertMegabytesToBytes(maxSizeMegabytes);
     }
 
     /// <inheritdoc/>
@@ -43,9 +47,11 @@ namespace myoddweb.desktopsearch.service.IO
     {
       try
       {
-        if (MaxSizeMegabytes > 0)
+        // Check the required size first
+        // this helps preventing to open file to get the length
+        if (MaxSizeBytes > 0)
         {
-          if (ConvertBytesToMegabytes(file.Length) < MaxSizeMegabytes)
+          if (file.Length < MaxSizeBytes )
           {
             return false;
           }
@@ -70,9 +76,14 @@ namespace myoddweb.desktopsearch.service.IO
       return helper.File.NameMatch(file, Pattern);
     }
 
-    private static double ConvertBytesToMegabytes(long bytes)
+    /// <summary>
+    /// Convert megabytes to bytes.
+    /// </summary>
+    /// <param name="megabytes"></param>
+    /// <returns></returns>
+    private static long ConvertMegabytesToBytes(long megabytes )
     {
-      return (bytes / 1024f) / 1024f;
+      return megabytes * (1024 * 1024);
     }
   }
 }
