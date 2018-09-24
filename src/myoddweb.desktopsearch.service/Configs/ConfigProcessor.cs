@@ -54,12 +54,12 @@ namespace myoddweb.desktopsearch.service.Configs
     public ConfigProcessor(IList<ConfigIgnoreFile> ignoreFiles)
     {
       // the number of directories processor.
-      ConcurrentDirectoriesProcessor = (int)Math.Ceiling(Environment.ProcessorCount / 2.0 );
+      ConcurrentDirectoriesProcessor = Environment.ProcessorCount;
 
       // the number of files to process 
       // as we, (normally), have more files than directories
       // we want to use the number of processors to do them all.
-      ConcurrentFilesProcessor = Environment.ProcessorCount;
+      ConcurrentFilesProcessor = 2*Environment.ProcessorCount;
 
       // this is per ms, so we want to have one busy processor every ms 
       BusyEventsProcessorMs = Environment.ProcessorCount;
