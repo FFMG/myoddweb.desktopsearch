@@ -24,6 +24,11 @@ namespace myoddweb.desktopsearch.helper.IO
   public abstract class PerformanceCounter : IPerformanceCounter, IDisposable
   {
     /// <summary>
+    /// Static lock so that the same lock is used for all instances.
+    /// </summary>
+    private static readonly object Lock = new object();
+
+    /// <summary>
     /// The base performance counter, (if needed).
     /// </summary>
     private System.Diagnostics.PerformanceCounter _counterBase;
@@ -45,10 +50,57 @@ namespace myoddweb.desktopsearch.helper.IO
       {
         CategoryName = performance.CategoryName,
         CounterName = counterName,
+        InstanceName = "",
         MachineName = ".",
         ReadOnly = false,
         RawValue = 0
       };
+    }
+
+    /// <summary>
+    /// Build the collection data.
+    /// </summary>
+    /// <param name="counterName"></param>
+    /// <param name="type"></param>
+    /// <returns></returns>
+    private static CounterCreationDataCollection BuildCollectionData(string counterName, PerformanceCounterType type)
+    {
+      // Create the collection data. 
+      var counterCreationDataCollection = new CounterCreationDataCollection
+      {
+        new CounterCreationData(
+          counterName,
+          counterName,
+          type
+        )
+      };
+
+      switch (type)
+      {
+        case PerformanceCounterType.AverageBase:
+          throw new ArgumentException($"You cannot create a base counter for {counterName}!");
+
+        case PerformanceCounterType.AverageTimer32:
+          var baseCounterName = BuildBaseName( counterName );
+          counterCreationDataCollection.Add(new CounterCreationData(
+            baseCounterName,
+            baseCounterName,
+            PerformanceCounterType.AverageBase
+          ));
+          break;
+      }
+
+      return counterCreationDataCollection;
+    }
+
+    /// <summary>
+    /// Create the base counter name.
+    /// </summary>
+    /// <param name="counterName"></param>
+    /// <returns></returns>
+    private static string BuildBaseName(string counterName)
+    {
+      return $"{counterName} base";
     }
 
     /// <summary>
@@ -60,74 +112,57 @@ namespace myoddweb.desktopsearch.helper.IO
     /// <param name="logger"></param>
     private void Initialise(IPerformance performance, string counterName, PerformanceCounterType type, ILogger logger )
     {
-      var counterCreationDataCollection = new CounterCreationDataCollection
-      {
-        new CounterCreationData(
-          counterName,
-          counterName,
-          type
-        )
-      };
 
-      string baseCounterName = null;
-      switch (type)
-      {
-        case PerformanceCounterType.AverageBase:
-          throw new ArgumentException( $"You cannot create a base counter for {counterName}!");
+      // build the collection data
+      var counterCreationDataCollection = BuildCollectionData(counterName, type);
 
-        case PerformanceCounterType.AverageTimer32:
-          baseCounterName = $"{counterName} base";
-          counterCreationDataCollection.Add(new CounterCreationData(
-            baseCounterName,
-            baseCounterName,
-            PerformanceCounterType.AverageBase
-          ));
-          break;
-      }
-
-      if (!PerformanceCounterCategory.Exists(performance.CategoryName))
+      // enter the lock so we can create the counter.
+      lock (Lock)
       {
-        PerformanceCounterCategory.Create(performance.CategoryName, performance.CategoryHelp,
-          PerformanceCounterCategoryType.SingleInstance,
-          counterCreationDataCollection);
-
-        logger.Information($"Created performance category: {performance.CategoryName} for counter: {counterName}");
-      }
-      else
-      if (!PerformanceCounterCategory.CounterExists(counterName, performance.CategoryName))
-      {
-        var category = PerformanceCounterCategory.GetCategories().First(cat => cat.CategoryName == performance.CategoryName);
-        var counters = category.GetCounters();
-        foreach (var counter in counters)
+        if (!PerformanceCounterCategory.Exists(performance.CategoryName))
         {
-          counterCreationDataCollection.Add(new CounterCreationData(counter.CounterName, counter.CounterHelp, counter.CounterType));
+          PerformanceCounterCategory.Create(performance.CategoryName, performance.CategoryHelp,
+            PerformanceCounterCategoryType.SingleInstance,
+            counterCreationDataCollection);
+
+          logger.Information($"Created performance category: {performance.CategoryName} for counter: {counterName}");
+        }
+        else if (!PerformanceCounterCategory.CounterExists(counterName, performance.CategoryName))
+        {
+          var category = PerformanceCounterCategory.GetCategories()
+            .First(cat => cat.CategoryName == performance.CategoryName);
+          var counters = category.GetCounters();
+          foreach (var counter in counters)
+          {
+            counterCreationDataCollection.Add(new CounterCreationData(counter.CounterName, counter.CounterHelp,
+              counter.CounterType));
+          }
+
+          PerformanceCounterCategory.Delete(performance.CategoryName);
+          PerformanceCounterCategory.Create(performance.CategoryName, performance.CategoryHelp,
+            PerformanceCounterCategoryType.SingleInstance,
+            counterCreationDataCollection);
+
+          logger.Information($"Updated performance category: {performance.CategoryName} for counter: {counterName}");
         }
 
-        PerformanceCounterCategory.Delete(performance.CategoryName);
-        PerformanceCounterCategory.Create(performance.CategoryName, performance.CategoryHelp,
-          PerformanceCounterCategoryType.SingleInstance,
-          counterCreationDataCollection);
+        switch (type)
+        {
+          case PerformanceCounterType.AverageBase:
+            throw new ArgumentException($"You cannot create a base counter for {counterName}!");
 
-        logger.Information($"Updated performance category: {performance.CategoryName} for counter: {counterName}");
+          case PerformanceCounterType.AverageTimer32:
+            _counterBase = new System.Diagnostics.PerformanceCounter
+            {
+              CategoryName = performance.CategoryName,
+              CounterName = BuildBaseName( counterName ),
+              MachineName = ".",
+              ReadOnly = false,
+              RawValue = 0
+            };
+            break;
+        }
       }
-
-      switch (type)
-      {
-        case PerformanceCounterType.AverageBase:
-          throw new ArgumentException($"You cannot create a base counter for {counterName}!");
-
-        case PerformanceCounterType.AverageTimer32:
-          _counterBase = new System.Diagnostics.PerformanceCounter
-          {
-            CategoryName = performance.CategoryName,
-            CounterName = baseCounterName,
-            MachineName = ".",
-            ReadOnly = false,
-            RawValue = 0
-          };
-          break;
-      }
-
     }
 
     /// <summary>
