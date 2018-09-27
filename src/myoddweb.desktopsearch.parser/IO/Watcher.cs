@@ -69,12 +69,12 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The actual file watcher.
     /// </summary>
-    private FileSystemWatcher _fileWatcher;
+    private RecoveringWatcher _directoryWatcher;
 
     /// <summary>
-    /// The actual file watcher.
+    /// The file watcher
     /// </summary>
-    private FileSystemWatcher _directoryWatcher;
+    private RecoveringWatcher _fileWatcher;
 
     /// <summary>
     /// All the tasks currently running
@@ -157,7 +157,7 @@ namespace myoddweb.desktopsearch.parser.IO
       EventsParser = parser ?? throw new ArgumentNullException(nameof(parser));
     }
 
-#region Task Cleanup Timer
+    #region Task Cleanup Timer
     /// <summary>
     /// Start the cleanup timer
     /// </summary>
@@ -234,70 +234,42 @@ namespace myoddweb.desktopsearch.parser.IO
         _tasksTimer = null;
       }
     }
-#endregion
+    #endregion
 
-#region Folder Event
-    private void OnFolderDeleted(object sender, FileSystemEventArgs e)
+    #region File/Folder Event
+    private void Deleted(IFileSystemEvent e )
     {
       lock (_lockTasks)
       {
-        if (sender == _fileWatcher)
-        {
-          _tasks.Add(DeletedAsync(new FileSystemEvent(e, Logger)));
-        }
-        else if (sender == _directoryWatcher)
-        {
-          _tasks.Add(DeletedAsync(new DirectorySystemEvent(e, Logger)));
-        }
+        _tasks.Add(DeletedAsync(e));
       }
     }
 
-    private void OnFolderCreated(object sender, FileSystemEventArgs e)
+    private void Created(IFileSystemEvent e)
     {
       lock (_lockTasks)
       {
-        if (sender == _fileWatcher )
-        {
-          _tasks.Add(CreatedAsync(new FileSystemEvent(e, Logger)));
-        }
-        else if(sender == _directoryWatcher)
-        {
-          _tasks.Add(CreatedAsync(new DirectorySystemEvent(e, Logger)));
-        }
+        _tasks.Add(CreatedAsync(e));
       }
     }
 
-    private void OnFolderRenamed(object sender, RenamedEventArgs e)
+    private void Renamed(IFileSystemEvent e)
     {
       lock (_lockTasks)
       {
-        if (sender == _fileWatcher)
-        {
-          _tasks.Add(RenamedAsync(new FileSystemEvent(e, Logger)));
-        }
-        else if (sender == _directoryWatcher)
-        {
-          _tasks.Add(RenamedAsync(new DirectorySystemEvent(e, Logger)));
-        }
+        _tasks.Add(RenamedAsync(e));
       }
     }
 
-    private void OnFolderChanged(object sender, FileSystemEventArgs e)
+    private void Changed(IFileSystemEvent e)
     {
       lock (_lockTasks)
       {
-        if (sender == _fileWatcher)
-        {
-          _tasks.Add(ChangedAsync(new FileSystemEvent(e, Logger)));
-        }
-        else if (sender == _directoryWatcher)
-        {
-          _tasks.Add(ChangedAsync(new DirectorySystemEvent(e, Logger)));
-        }
+        _tasks.Add(ChangedAsync(e));
       }
     }
 
-    private void OnFolderError(object sender, ErrorEventArgs e)
+    private void Error(Exception e)
     {
       try
       {
@@ -306,7 +278,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
         // we cannot use the tasks here
         // so just show there was an error
-        ErrorAsync(e.GetException(), _token).Wait(_token);
+        ErrorAsync(e, _token).Wait(_token);
       }
       finally
       {
@@ -335,22 +307,15 @@ namespace myoddweb.desktopsearch.parser.IO
       // we have to do it outside th locks because "Dispose" will flush out
       // the remaining events... and they will need a lock to do that
       // so we might as well get out as soon as posible.
-      if (_fileWatcher != null)
-      {
-        _fileWatcher.EnableRaisingEvents = false;
-        _fileWatcher.Dispose();
-        _fileWatcher = null;
-      }
+      _fileWatcher?.Stop();
 
-      if (_directoryWatcher != null)
-      {
-        _directoryWatcher.EnableRaisingEvents = false;
-        _directoryWatcher.Dispose();
-        _directoryWatcher = null;
-      }
+      // stop the directory watcher
+      _directoryWatcher?.Stop();
 
+      // stop the registration
       _cancellationTokenRegistration.Dispose();
 
+      // stop allt the tasks.
       StopAndClearAllTasks();
     }
 
@@ -438,21 +403,8 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      _directoryWatcher = new FileSystemWatcher
-      {
-        Path = Folder.FullName,
-        NotifyFilter = NotifyFilters.DirectoryName,
-        Filter = "*.*",
-        IncludeSubdirectories = true,
-        EnableRaisingEvents = true,
-        InternalBufferSize = InternalBufferSize
-      };
-
-      _directoryWatcher.Error += OnFolderError;
-      _directoryWatcher.Renamed += OnFolderRenamed;
-      _directoryWatcher.Changed += OnFolderChanged;
-      _directoryWatcher.Created += OnFolderCreated;
-      _directoryWatcher.Deleted += OnFolderDeleted;
+      _directoryWatcher = new RecoveringWatcher(Renamed, Changed, Created, Deleted, Error, Folder.FullName, true, InternalBufferSize, Logger);
+      _directoryWatcher.Start(_token);
     }
 
     /// <summary>
@@ -465,21 +417,9 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      _fileWatcher = new FileSystemWatcher
-      {
-        Path = Folder.FullName,
-        NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
-        Filter = "*.*",
-        IncludeSubdirectories = true,
-        EnableRaisingEvents = true,
-        InternalBufferSize = InternalBufferSize
-      };
-
-      _fileWatcher.Error += OnFolderError;
-      _fileWatcher.Renamed += OnFolderRenamed;
-      _fileWatcher.Changed += OnFolderChanged;
-      _fileWatcher.Created += OnFolderCreated;
-      _fileWatcher.Deleted += OnFolderDeleted;
+      // Start the file watcher.
+      _fileWatcher = new RecoveringWatcher( Renamed, Changed, Created, Deleted, Error, Folder.FullName, false, InternalBufferSize, Logger );
+      _fileWatcher.Start( _token );
     }
 
     /// <summary>
@@ -501,5 +441,225 @@ namespace myoddweb.desktopsearch.parser.IO
     /// Called when we have cancelled the work.
     /// </summary>
     protected abstract void OnCancelled();
+  }
+
+  internal class RecoveringWatcher
+  {
+    /// <summary>
+    /// The path we will be watching
+    /// </summary>
+    private readonly string _path;
+
+    /// <summary>
+    /// The File watcher internal bufer size
+    /// </summary>
+    private readonly int _internalBufferSize;
+
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+
+    /// <summary>
+    /// The action called when a file/folder is renamed
+    /// </summary>
+    private readonly Action<IFileSystemEvent> _renamed;
+
+    /// <summary>
+    /// The action called when a file/folder is changed.
+    /// </summary>
+    private readonly Action<IFileSystemEvent> _changed;
+
+    /// <summary>
+    /// Action called when a file/folder is created
+    /// </summary>
+    private readonly Action<IFileSystemEvent> _created;
+
+    /// <summary>
+    /// Action called when a file/folder is deleted.
+    /// </summary>
+    private readonly Action<IFileSystemEvent> _deleted;
+
+    /// <summary>
+    /// Action called when there is an error.
+    /// </summary>
+    private readonly Action<Exception> _error;
+
+    /// <summary>
+    /// Our token source.
+    /// </summary>
+    private CancellationTokenSource _tokenSource;
+
+    /// <summary>
+    /// Monitor cancellations
+    /// </summary>
+    private CancellationTokenRegistration _register;
+    
+    /// <summary>
+    /// The currently running task
+    /// </summary>
+    private Task _task;
+
+    /// <summary>
+    /// Are we watching files or folders?
+    /// </summary>
+    private readonly bool _watchFolder;
+
+    public RecoveringWatcher
+    (
+      Action<IFileSystemEvent> renamed,
+      Action<IFileSystemEvent> changed,
+      Action<IFileSystemEvent> created,
+      Action<IFileSystemEvent> deleted,
+      Action<Exception> error,
+      string path, 
+      bool watchFolders,
+      int internalBufferSize, 
+      ILogger logger 
+    )
+    {
+      // watch files or folders?
+      _watchFolder = watchFolders;
+
+      // set the actions.
+      _renamed = renamed ?? throw new ArgumentNullException(nameof(renamed));
+      _changed = changed ?? throw new ArgumentNullException(nameof(changed));
+      _created = created ?? throw new ArgumentNullException(nameof(created));
+      _deleted = deleted ?? throw new ArgumentNullException(nameof(deleted));
+
+      _error = error ?? throw new ArgumentNullException(nameof(error));
+
+      // the logger
+      _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      // the internal buffer size
+      _internalBufferSize = internalBufferSize;
+
+      // set the path
+      _path = path ?? throw new ArgumentNullException(nameof(path));
+    }
+
+    /// <summary>
+    /// Start the file watcher.
+    /// </summary>
+    public void Start( CancellationToken token )
+    {
+      // stop
+      Stop();
+
+      // register for stop
+      _register = new CancellationTokenRegistration();
+      if (token.CanBeCanceled)
+      {
+        _register = token.Register( Stop );
+      }
+
+      // create a new token source.
+      _tokenSource = new CancellationTokenSource();
+
+      // start the long running thread
+      _task = Task.Run(() => MonitorPath(_tokenSource.Token), _tokenSource.Token );
+    }
+
+    /// <summary>
+    /// Stop the file watching
+    /// </summary>
+    public void Stop()
+    {
+      // stop the register. 
+      _register.Dispose();
+
+      // ask to cancel
+      _tokenSource?.Cancel();
+
+      // if we have a task running...wait for it.
+      if (_task != null)
+      {
+        // and wait for it.
+        helper.Wait.WaitAll(_task, _logger);
+      }
+    }
+
+    private void MonitorPath( CancellationToken token )
+    {
+      try
+      {
+        FileSystemWatcher watcher = null;
+        try
+        {
+          // create the watcher and start monitoring.
+          watcher = _watchFolder ? MonitorFolderPath() : MonitorFilePath();
+
+          // wait forever.
+          Task.Delay(Timeout.Infinite, token).Wait(token);
+        }
+        finally
+        {
+          // clean up everything
+          if (null != watcher)
+          {
+            watcher.EnableRaisingEvents = false;
+            watcher.Dispose();
+          }
+        }
+      }
+      catch (OperationCanceledException e)
+      {
+        // is it our token?
+        if (e.CancellationToken != token)
+        {
+          _logger.Exception(e);
+        }
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        _error(e);
+      }
+    }
+
+    private FileSystemWatcher MonitorFolderPath()
+    {
+      // create the file syste, watcher.
+      var watcher = new FileSystemWatcher
+      {
+        Path = _path,
+        NotifyFilter = NotifyFilters.DirectoryName,
+        Filter = "*.*",
+        IncludeSubdirectories = true,
+        EnableRaisingEvents = true,
+        InternalBufferSize = _internalBufferSize
+      };
+
+      watcher.Error += (sender, e) => _error(e.GetException());
+      watcher.Renamed += (sender, e) => _renamed(new DirectorySystemEvent(e, _logger));
+      watcher.Changed += (sender, e) => _changed(new DirectorySystemEvent(e, _logger));
+      watcher.Created += (sender, e) => _created(new DirectorySystemEvent(e, _logger));
+      watcher.Deleted += (sender, e) => _deleted(new DirectorySystemEvent(e, _logger));
+
+      return watcher;
+    }
+
+    private FileSystemWatcher MonitorFilePath()
+    {
+      // create the file syste, watcher.
+      var watcher = new FileSystemWatcher
+      {
+        Path = _path,
+        NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
+        Filter = "*.*",
+        IncludeSubdirectories = true,
+        EnableRaisingEvents = true,
+        InternalBufferSize = _internalBufferSize
+      };
+
+      watcher.Error += (sender, e) => _error(e.GetException());
+      watcher.Renamed += (sender, e) => _renamed(new FileSystemEvent(e, _logger));
+      watcher.Changed += (sender, e) => _changed(new FileSystemEvent(e, _logger));
+      watcher.Created += (sender, e) => _created(new FileSystemEvent(e, _logger));
+      watcher.Deleted += (sender, e) => _deleted(new FileSystemEvent(e, _logger));
+
+      return watcher;
+    }
   }
 }
