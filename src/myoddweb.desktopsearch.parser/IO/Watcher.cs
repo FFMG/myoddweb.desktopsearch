@@ -271,22 +271,9 @@ namespace myoddweb.desktopsearch.parser.IO
 
     private void Error(Exception e)
     {
-      try
+      lock (_lockTasks)
       {
-        // stop everything 
-        Stop();
-
-        // we cannot use the tasks here
-        // so just show there was an error
-        ErrorAsync(e, _token).Wait(_token);
-      }
-      finally
-      {
-        if (!_token.IsCancellationRequested)
-        {
-          // restart everything
-          Start(_token);
-        }
+        _tasks.Add(ErrorAsync(e, _token));
       }
     }
 #endregion
@@ -582,16 +569,43 @@ namespace myoddweb.desktopsearch.parser.IO
 
     private void MonitorPath( CancellationToken token )
     {
-      try
+      while (token.IsCancellationRequested)
       {
+        Exception lastException = null;
         FileSystemWatcher watcher = null;
         try
         {
           // create the watcher and start monitoring.
           watcher = _watchFolder ? MonitorFolderPath() : MonitorFilePath();
 
-          // wait forever.
-          Task.Delay(Timeout.Infinite, token).Wait(token);
+          // we call error ... but we do not care about the return value.
+          watcher.Error += (sender, e) => lastException = e.GetException();
+
+          // wait forever ... or until we cancel
+          helper.Wait.Until(() => lastException != null || token.IsCancellationRequested);
+
+          // are we here because of an exception?
+          if (lastException != null)
+          {
+            _error(lastException);
+            lastException = null;
+          }
+        }
+        catch (OperationCanceledException e)
+        {
+          // is it our token?
+          if (e.CancellationToken != token)
+          {
+            _logger.Exception(e);
+          }
+
+          // we are done.
+          return;
+        }
+        catch (Exception e)
+        {
+          _logger.Exception(e);
+          _error(e);
         }
         finally
         {
@@ -602,19 +616,6 @@ namespace myoddweb.desktopsearch.parser.IO
             watcher.Dispose();
           }
         }
-      }
-      catch (OperationCanceledException e)
-      {
-        // is it our token?
-        if (e.CancellationToken != token)
-        {
-          _logger.Exception(e);
-        }
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
-        _error(e);
       }
     }
 
@@ -631,7 +632,6 @@ namespace myoddweb.desktopsearch.parser.IO
         InternalBufferSize = _internalBufferSize
       };
 
-      watcher.Error += (sender, e) => _error(e.GetException());
       watcher.Renamed += (sender, e) => _renamed(new DirectorySystemEvent(e, _logger));
       watcher.Changed += (sender, e) => _changed(new DirectorySystemEvent(e, _logger));
       watcher.Created += (sender, e) => _created(new DirectorySystemEvent(e, _logger));
@@ -653,7 +653,6 @@ namespace myoddweb.desktopsearch.parser.IO
         InternalBufferSize = _internalBufferSize
       };
 
-      watcher.Error += (sender, e) => _error(e.GetException());
       watcher.Renamed += (sender, e) => _renamed(new FileSystemEvent(e, _logger));
       watcher.Changed += (sender, e) => _changed(new FileSystemEvent(e, _logger));
       watcher.Created += (sender, e) => _created(new FileSystemEvent(e, _logger));
