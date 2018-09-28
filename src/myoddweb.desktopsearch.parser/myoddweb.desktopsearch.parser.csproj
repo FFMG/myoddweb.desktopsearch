@@ -45,6 +45,7 @@
     <Compile Include="IO\DirectorySystemEvent.cs" />
     <Compile Include="IO\FilesSystemEventsParser.cs" />
     <Compile Include="IO\FileSystemEvent.cs" />
+    <Compile Include="IO\RecoveringWatcher.cs" />
     <Compile Include="IO\SystemEventsParser.cs" />
     <Compile Include="IO\DirectoriesWatcher.cs" />
     <Compile Include="IO\FilesWatcher.cs" />
