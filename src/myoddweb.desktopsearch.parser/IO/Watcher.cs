@@ -43,7 +43,7 @@ namespace myoddweb.desktopsearch.parser.IO
     private const int InternalBufferSize = 32 * 1024;
 #endif
 
-#region Attributes
+    #region Attributes
     /// <summary>
     /// The logger that we will be using to log messages.
     /// </summary>
@@ -58,9 +58,9 @@ namespace myoddweb.desktopsearch.parser.IO
     /// The system event parser
     /// </summary>
     protected SystemEventsParser EventsParser { get; }
-#endregion
+    #endregion
 
-#region Member variables
+    #region Member variables
     /// <summary>
     /// The type of folders we are watching
     /// </summary>
@@ -105,9 +105,9 @@ namespace myoddweb.desktopsearch.parser.IO
     /// When we register a token
     /// </summary>
     private CancellationTokenRegistration _cancellationTokenRegistration;
-#endregion
+    #endregion
 
-#region Events handler
+    #region Events handler
     /// <summary>
     /// Occurs when a file is deleted.
     /// </summary>
@@ -133,7 +133,7 @@ namespace myoddweb.desktopsearch.parser.IO
     ///     monitoring changes or when the internal buffer overflows.
     /// </summary>
     public event ErrorEventHandler ErrorAsync = delegate { return null; };
-#endregion
+    #endregion
 
     /// <summary>
     /// Constructor to prepare the file watcher.

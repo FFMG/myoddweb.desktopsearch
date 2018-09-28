@@ -24,6 +24,25 @@ namespace myoddweb.desktopsearch.parser.IO
 {
   internal sealed class RecoveringWatcher
   {
+    #region Delegates
+    /// <summary>
+    /// The file creator delegate
+    /// </summary>
+    private delegate IFileSystemEvent FileSystemEventCreator(FileSystemEventArgs e, ILogger l);
+
+    /// <summary>
+    /// File system raised event function.
+    /// </summary>
+    /// <param name="e"></param>
+    public delegate void RaisedFileSystemEvent(IFileSystemEvent e );
+    #endregion
+
+    #region Member Variables
+    /// <summary>
+    /// The maximum number of tasks we want to run.
+    /// </summary>
+    private const int MaxNumberOfTasks = 64;
+
     /// <summary>
     /// The path we will be watching
     /// </summary>
@@ -42,22 +61,22 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The action called when a file/folder is renamed
     /// </summary>
-    private readonly Action<IFileSystemEvent> _renamed;
+    private readonly RaisedFileSystemEvent _renamed;
 
     /// <summary>
     /// The action called when a file/folder is changed.
     /// </summary>
-    private readonly Action<IFileSystemEvent> _changed;
+    private readonly RaisedFileSystemEvent _changed;
 
     /// <summary>
     /// Action called when a file/folder is created
     /// </summary>
-    private readonly Action<IFileSystemEvent> _created;
+    private readonly RaisedFileSystemEvent _created;
 
     /// <summary>
     /// Action called when a file/folder is deleted.
     /// </summary>
-    private readonly Action<IFileSystemEvent> _deleted;
+    private readonly RaisedFileSystemEvent _deleted;
 
     /// <summary>
     /// Action called when there is an error.
@@ -81,13 +100,9 @@ namespace myoddweb.desktopsearch.parser.IO
 
     /// <summary>
     /// The currently running notifications.
+    /// We make sure that the capacity has more than enough
     /// </summary>
-    private readonly List<Task> _tasks = new List<Task>();
-
-    /// <summary>
-    /// The file creator delegate
-    /// </summary>
-    private delegate IFileSystemEvent FileSystemEventCreator(FileSystemEventArgs e , ILogger l );
+    private readonly List<Task> _tasks = new List<Task>( 2 * MaxNumberOfTasks );
 
     /// <summary>
     /// The file creator
@@ -98,13 +113,14 @@ namespace myoddweb.desktopsearch.parser.IO
     /// The file watcher notifier.
     /// </summary>
     private readonly NotifyFilters _notifyFilters;
+    #endregion
 
     private RecoveringWatcher
     (
-      Action<IFileSystemEvent> renamed,
-      Action<IFileSystemEvent> changed,
-      Action<IFileSystemEvent> created,
-      Action<IFileSystemEvent> deleted,
+      RaisedFileSystemEvent renamed,
+      RaisedFileSystemEvent changed,
+      RaisedFileSystemEvent created,
+      RaisedFileSystemEvent deleted,
       Action<Exception> error,
       string path,
       FileSystemEventCreator func,
@@ -180,8 +196,15 @@ namespace myoddweb.desktopsearch.parser.IO
       }
     }
 
+    /// <summary>
+    /// The main function that monitors for changes
+    /// we are running in a while loop so we can catch any weeors thrown by FileSystemWatcher
+    /// Unfortunately, that's the only way we can, safely, manage exceptions that are thrown.
+    /// </summary>
+    /// <param name="token"></param>
     private void MonitorPath(CancellationToken token)
     {
+      // Keep going until the token is cancelled.
       while (!token.IsCancellationRequested)
       {
         Exception lastException = null;
@@ -197,7 +220,7 @@ namespace myoddweb.desktopsearch.parser.IO
           // wait forever ... or until we cancel
           helper.Wait.Until(() =>
           {
-            if (_tasks.Count > 32)
+            if (_tasks.Count > MaxNumberOfTasks)
             {
               _tasks.RemoveAll(t => t.IsCompleted);
             }
@@ -229,7 +252,14 @@ namespace myoddweb.desktopsearch.parser.IO
         }
         finally
         {
-          // clean up everything
+          // wait for all the tasks to complete
+          helper.Wait.WaitAll( _tasks, _logger, token );
+
+          // we can now remove everything
+          // as we know they are all complete.
+          _tasks.Clear();
+
+          // clean up the file watcher.
           if (null != watcher)
           {
             watcher.EnableRaisingEvents = false;
@@ -276,10 +306,10 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <returns></returns>
     private static RecoveringWatcher StartWatcher
     (
-      Action<IFileSystemEvent> renamed,
-      Action<IFileSystemEvent> changed,
-      Action<IFileSystemEvent> created,
-      Action<IFileSystemEvent> deleted,
+      RaisedFileSystemEvent renamed,
+      RaisedFileSystemEvent changed,
+      RaisedFileSystemEvent created,
+      RaisedFileSystemEvent deleted,
       Action<Exception> error,
       string path,
       bool watchFolders,
@@ -328,10 +358,10 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <returns></returns>
     public static RecoveringWatcher StartFileWatcher
     (
-      Action<IFileSystemEvent> renamed,
-      Action<IFileSystemEvent> changed,
-      Action<IFileSystemEvent> created,
-      Action<IFileSystemEvent> deleted,
+      RaisedFileSystemEvent renamed,
+      RaisedFileSystemEvent changed,
+      RaisedFileSystemEvent created,
+      RaisedFileSystemEvent deleted,
       Action<Exception> error,
       string path,
       int internalBufferSize,
@@ -358,10 +388,10 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <returns></returns>
     public static RecoveringWatcher StartFolderWatcher
     (
-      Action<IFileSystemEvent> renamed,
-      Action<IFileSystemEvent> changed,
-      Action<IFileSystemEvent> created,
-      Action<IFileSystemEvent> deleted,
+      RaisedFileSystemEvent renamed,
+      RaisedFileSystemEvent changed,
+      RaisedFileSystemEvent created,
+      RaisedFileSystemEvent deleted,
       Action<Exception> error,
       string path,
       int internalBufferSize,
