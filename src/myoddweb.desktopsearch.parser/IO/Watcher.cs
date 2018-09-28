@@ -569,7 +569,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
     private void MonitorPath( CancellationToken token )
     {
-      while (token.IsCancellationRequested)
+      while (!token.IsCancellationRequested)
       {
         Exception lastException = null;
         FileSystemWatcher watcher = null;
