@@ -37,6 +37,15 @@ namespace myoddweb.desktopsearch.parser.IO
     public delegate void RaisedFileSystemEvent(IFileSystemEvent e );
     #endregion
 
+    /// <summary>
+    /// The internal buffer size
+    /// </summary>
+#if DEBUG
+    private const int InternalBufferSize = 16 * 1024;
+#else
+    private const int InternalBufferSize = 32 * 1024;
+#endif
+
     #region Member Variables
     /// <summary>
     /// The maximum number of tasks we want to run.
@@ -47,11 +56,6 @@ namespace myoddweb.desktopsearch.parser.IO
     /// The path we will be watching
     /// </summary>
     private readonly string _path;
-
-    /// <summary>
-    /// The File watcher internal bufer size
-    /// </summary>
-    private readonly int _internalBufferSize;
 
     /// <summary>
     /// The logger
@@ -125,7 +129,6 @@ namespace myoddweb.desktopsearch.parser.IO
       string path,
       FileSystemEventCreator func,
       NotifyFilters notifyFilters,
-      int internalBufferSize,
       ILogger logger
     )
     {
@@ -144,9 +147,6 @@ namespace myoddweb.desktopsearch.parser.IO
 
       // the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-      // the internal buffer size
-      _internalBufferSize = internalBufferSize;
 
       // set the path
       _path = path ?? throw new ArgumentNullException(nameof(path));
@@ -279,7 +279,7 @@ namespace myoddweb.desktopsearch.parser.IO
         Filter = "*.*",
         IncludeSubdirectories = true,
         EnableRaisingEvents = true,
-        InternalBufferSize = _internalBufferSize
+        InternalBufferSize = InternalBufferSize
       };
 
       watcher.Renamed += (sender, e) => _tasks.Add( Task.Run( () => _renamed( _fileSystemEventCreator(e, _logger))));
@@ -300,7 +300,6 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="error"></param>
     /// <param name="path"></param>
     /// <param name="watchFolders"></param>
-    /// <param name="internalBufferSize"></param>
     /// <param name="logger"></param>
     /// <param name="token"></param>
     /// <returns></returns>
@@ -313,7 +312,6 @@ namespace myoddweb.desktopsearch.parser.IO
       Action<Exception> error,
       string path,
       bool watchFolders,
-      int internalBufferSize,
       ILogger logger,
       CancellationToken token
     )
@@ -332,7 +330,6 @@ namespace myoddweb.desktopsearch.parser.IO
         path,
         Lambda,
         notifier, 
-        internalBufferSize, 
         logger
       );
 
@@ -352,7 +349,6 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="deleted"></param>
     /// <param name="error"></param>
     /// <param name="path"></param>
-    /// <param name="internalBufferSize"></param>
     /// <param name="logger"></param>
     /// <param name="token"></param>
     /// <returns></returns>
@@ -364,13 +360,12 @@ namespace myoddweb.desktopsearch.parser.IO
       RaisedFileSystemEvent deleted,
       Action<Exception> error,
       string path,
-      int internalBufferSize,
       ILogger logger,
       CancellationToken token
     )
     {
       // start a file watcher
-      return StartWatcher( renamed, changed, created, deleted, error, path, false, internalBufferSize, logger, token );
+      return StartWatcher( renamed, changed, created, deleted, error, path, false, logger, token );
     }
 
     /// <summary>
@@ -382,7 +377,6 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="deleted"></param>
     /// <param name="error"></param>
     /// <param name="path"></param>
-    /// <param name="internalBufferSize"></param>
     /// <param name="logger"></param>
     /// <param name="token"></param>
     /// <returns></returns>
@@ -394,13 +388,12 @@ namespace myoddweb.desktopsearch.parser.IO
       RaisedFileSystemEvent deleted,
       Action<Exception> error,
       string path,
-      int internalBufferSize,
       ILogger logger,
       CancellationToken token
     )
     {
       // start a folder watcher
-      return StartWatcher(renamed, changed, created, deleted, error, path, true, internalBufferSize, logger, token);
+      return StartWatcher(renamed, changed, created, deleted, error, path, true, logger, token);
     }
   }
 }

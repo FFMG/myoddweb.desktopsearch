@@ -34,15 +34,6 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     private const int TaskTimerTimeOutInMs = 10000;
 
-    /// <summary>
-    /// The internal buffer size
-    /// </summary>
-#if DEBUG
-    private const int InternalBufferSize =  8 * 1024;
-#else
-    private const int InternalBufferSize = 32 * 1024;
-#endif
-
     #region Attributes
     /// <summary>
     /// The logger that we will be using to log messages.
@@ -390,7 +381,7 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      _directoryWatcher = RecoveringWatcher.StartFolderWatcher(Renamed, Changed, Created, Deleted, Error, Folder.FullName, InternalBufferSize, Logger, _token );
+      _directoryWatcher = RecoveringWatcher.StartFolderWatcher(Renamed, Changed, Created, Deleted, Error, Folder.FullName, Logger, _token );
     }
 
     /// <summary>
@@ -404,7 +395,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // Start the file watcher.
-      _fileWatcher = RecoveringWatcher.StartFileWatcher( Renamed, Changed, Created, Deleted, Error, Folder.FullName, InternalBufferSize, Logger, _token );
+      _fileWatcher = RecoveringWatcher.StartFileWatcher( Renamed, Changed, Created, Deleted, Error, Folder.FullName, Logger, _token );
     }
 
     /// <summary>
