@@ -51,7 +51,6 @@ namespace myoddweb.desktopsearch.parser.IO
     /// When a directory has been changed.
     /// </summary>
     /// <param name="e"></param>
-    /// <param name="token"></param>
     private async Task OnDirectoryTouchedAsync(IFileSystemEvent e)
     {
       // It is posible that the event parser has not started yet.

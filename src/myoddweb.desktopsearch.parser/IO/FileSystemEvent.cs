@@ -14,8 +14,9 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.IO;
-using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
+using myoddweb.directorywatcher.interfaces;
+using IFileSystemEvent = myoddweb.desktopsearch.interfaces.IO.IFileSystemEvent;
 
 namespace myoddweb.desktopsearch.parser.IO
 {
@@ -45,11 +46,11 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <inheritdoc />
     public string OldFullName => IsDirectory ? OldDirectory.FullName : OldFile.FullName;
 
-    public FileSystemEvent(FileSystemEventArgs e, ILogger logger ) : this( e, false, logger )
+    public FileSystemEvent(directorywatcher.interfaces.IFileSystemEvent e, ILogger logger ) : this( e, false, logger )
     {
     }
 
-    protected FileSystemEvent(FileSystemEventArgs e, bool isDirectory, ILogger logger)
+    protected FileSystemEvent(directorywatcher.interfaces.IFileSystemEvent e, bool isDirectory, ILogger logger)
     {
       // we must have an argument
       if (null == e)
@@ -61,10 +62,34 @@ namespace myoddweb.desktopsearch.parser.IO
       IsDirectory = isDirectory;
 
       // the change type.
-      ChangeType = e.ChangeType;
+      switch (e.Action)
+      {
+        case EventAction.Added:
+          ChangeType = WatcherChangeTypes.Created;
+          break;
+        case EventAction.Removed:
+          ChangeType = WatcherChangeTypes.Deleted;
+          break;
+        case EventAction.Touched:
+          ChangeType = WatcherChangeTypes.Changed;
+          break;
+        case EventAction.Renamed:
+          ChangeType = WatcherChangeTypes.Renamed;
+          break;
+
+        case EventAction.Error:
+        case EventAction.ErrorMemory:
+        case EventAction.ErrorOverflow:
+        case EventAction.ErrorAborted:
+        case EventAction.ErrorCannotStart:
+        case EventAction.ErrorAccess:
+        case EventAction.Unknown:
+        default:
+          throw new ArgumentOutOfRangeException();
+      }
 
       // The file and directory must never be null
-      SetFileAndDirectory(e.FullPath);
+      SetFileAndDirectory(e.FileSystemInfo);
       ProcessRenameEvent(e, logger);
     }
 
@@ -77,34 +102,34 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// Given a path, set the file/directory
     /// </summary>
-    /// <param name="path"></param>
-    private void SetFileAndDirectory( string path )
+    /// <param name="fsi"></param>
+    private void SetFileAndDirectory( FileSystemInfo fsi )
     {
-      if (IsDirectory)
+      if (fsi is DirectoryInfo)
       {
         File = null;
-        Directory = new DirectoryInfo(path);
+        Directory = new DirectoryInfo(fsi.FullName );
         return;
       }
 
-      File = new FileInfo(path);
+      File = new FileInfo(fsi.FullName);
       Directory = File.Directory;
     }
 
     /// <summary>
     /// Given a path, set the old file/directory
     /// </summary>
-    /// <param name="path"></param>
-    private void SetOldFileAndDirectory(string path)
+    /// <param name="fsi"></param>
+    private void SetOldFileAndDirectory(FileSystemInfo fsi)
     {
-      if (IsDirectory)
+      if (fsi is DirectoryInfo)
       {
         OldFile = null;
-        OldDirectory = new DirectoryInfo(path);
+        OldDirectory = new DirectoryInfo(fsi.FullName);
         return;
       }
 
-      OldFile = new FileInfo(path);
+      OldFile = new FileInfo(fsi.FullName);
       OldDirectory = File.Directory;
     }
 
@@ -113,53 +138,29 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="e"></param>
     /// <param name="logger"></param>
-    private void ProcessRenameEvent(FileSystemEventArgs e, ILogger logger)
+    private void ProcessRenameEvent(directorywatcher.interfaces.IFileSystemEvent e, ILogger logger)
     {
       if (!Is(WatcherChangeTypes.Renamed))
       {
         return;
       }
 
-      if (e is RenamedEventArgs renameEvent)
+      if (e is IRenamedFileSystemEvent renameEvent)
       {
         try
         {
-          // there are some cases where we get a rename event with no old name
-          // so we cannot really delete the old one
-          // so we will just fire as if it was a new one
-          // @see https://referencesource.microsoft.com/#system/services/io/system/io/FileSystemWatcher.cs
-          // with an explaination of what could have happened.
-          if (renameEvent.OldName == null)
-          {
-            logger.Warning($"Received a 'rename' event without an old file name, so processing event as a new one, {e.FullPath}");
-            ChangeType &= ~WatcherChangeTypes.Renamed;
-            ChangeType |= WatcherChangeTypes.Created;
-          }
-          else if (renameEvent.Name == null)
-          {
-            // if we got an old name without a new name
-            // then we cannot really rename anything at all.
-            // all we can do is remove the old one.
-            logger.Warning($"Received a 'rename' event without a new file name, so processing event as delete old one, {renameEvent.OldFullPath}");
-            SetFileAndDirectory(renameEvent.OldFullPath);
-            ChangeType &= ~WatcherChangeTypes.Renamed;
-            ChangeType |= WatcherChangeTypes.Deleted;
-          }
-          else
-          {
-            // we have both a new and old name...
-            SetOldFileAndDirectory(renameEvent.OldFullPath);
-          }
+          // we have both a new and old name...
+          SetOldFileAndDirectory(renameEvent.FileSystemInfo );
         }
         catch
         {
-          logger.Error($"There was an error trying to rename {renameEvent.OldFullPath} to {renameEvent.FullPath}!");
+          logger.Error($"There was an error trying to rename {renameEvent.PreviousFileSystemInfo.FullName} to {renameEvent.FileSystemInfo.FullName}!");
           throw;
         }
       }
       else
       {
-        logger.Warning($"A file, ({e.FullPath}), was marked as renamed, but the event was not.");
+        logger.Warning($"A file, ({e.FileSystemInfo.FullName}), was marked as renamed, but the event was not.");
         ChangeType &= ~WatcherChangeTypes.Renamed;
         ChangeType |= WatcherChangeTypes.Changed;
       }

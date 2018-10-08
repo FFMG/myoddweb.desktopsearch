@@ -19,7 +19,7 @@ namespace myoddweb.desktopsearch.parser.IO
 {
   internal class DirectorySystemEvent : FileSystemEvent
   {
-    public DirectorySystemEvent(FileSystemEventArgs e, ILogger logger) : 
+    public DirectorySystemEvent(directorywatcher.interfaces.IFileSystemEvent e, ILogger logger) : 
       base(e, true, logger )
     {
     }

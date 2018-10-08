@@ -31,6 +31,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="myoddweb.directorywatcher, Version=0.0.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\MyOddWeb.DirectoryWatcher.0.0.3-alpha\lib\net452\myoddweb.directorywatcher.dll</HintPath>
+    </Reference>
+    <Reference Include="myoddweb.directorywatcher.interfaces, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\MyOddWeb.DirectoryWatcher.0.0.3-alpha\lib\net452\myoddweb.directorywatcher.interfaces.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -63,6 +69,9 @@
       <Project>{B1B3597E-D169-47A0-8CA8-FD543EF817D9}</Project>
       <Name>myoddweb.desktopsearch.interfaces</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

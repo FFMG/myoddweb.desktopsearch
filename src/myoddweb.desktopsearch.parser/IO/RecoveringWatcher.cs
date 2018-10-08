@@ -14,7 +14,6 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -28,23 +27,14 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The file creator delegate
     /// </summary>
-    private delegate IFileSystemEvent FileSystemEventCreator(FileSystemEventArgs e, ILogger l);
+    private delegate IFileSystemEvent FileSystemEventCreator(directorywatcher.interfaces.IFileSystemEvent e, ILogger l);
 
     /// <summary>
     /// File system raised event function.
     /// </summary>
     /// <param name="e"></param>
-    public delegate void RaisedFileSystemEvent(IFileSystemEvent e );
+    public delegate Task RaisedFileSystemEvent(directorywatcher.interfaces.IFileSystemEvent e);
     #endregion
-
-    /// <summary>
-    /// The internal buffer size
-    /// </summary>
-#if DEBUG
-    private const int InternalBufferSize = 16 * 1024;
-#else
-    private const int InternalBufferSize = 32 * 1024;
-#endif
 
     #region Member Variables
     /// <summary>
@@ -112,11 +102,6 @@ namespace myoddweb.desktopsearch.parser.IO
     /// The file creator
     /// </summary>
     private readonly FileSystemEventCreator _fileSystemEventCreator;
-
-    /// <summary>
-    /// The file watcher notifier.
-    /// </summary>
-    private readonly NotifyFilters _notifyFilters;
     #endregion
 
     private RecoveringWatcher
@@ -126,17 +111,14 @@ namespace myoddweb.desktopsearch.parser.IO
       RaisedFileSystemEvent created,
       RaisedFileSystemEvent deleted,
       Action<Exception> error,
-      string path,
       FileSystemEventCreator func,
-      NotifyFilters notifyFilters,
+      string path,
       ILogger logger
     )
     {
       // watch files or folders?
       _fileSystemEventCreator = func ?? throw new ArgumentNullException(nameof(func));
 
-      _notifyFilters = notifyFilters;
-      
       // set the actions.
       _renamed = renamed ?? throw new ArgumentNullException(nameof(renamed));
       _changed = changed ?? throw new ArgumentNullException(nameof(changed));
@@ -208,14 +190,17 @@ namespace myoddweb.desktopsearch.parser.IO
       while (!token.IsCancellationRequested)
       {
         Exception lastException = null;
-        FileSystemWatcher watcher = null;
+        directorywatcher.Watcher watcher = null;
         try
         {
           // create the watcher and start monitoring.
           watcher = MonitorPath();
 
           // we call error ... but we do not care about the return value.
-          watcher.Error += (sender, e) => lastException = e.GetException();
+ //         watcher.OnErrorAsync +=  ( e, t ) => 
+ //         {
+ //           lastException = new Exception( e.Message );
+ //         };
 
           // wait forever ... or until we cancel
           helper.Wait.Until(() =>
@@ -260,32 +245,23 @@ namespace myoddweb.desktopsearch.parser.IO
           _tasks.Clear();
 
           // clean up the file watcher.
-          if (null != watcher)
-          {
-            watcher.EnableRaisingEvents = false;
-            watcher.Dispose();
-          }
+          watcher?.Stop();
         }
       }
     }
 
-    private FileSystemWatcher MonitorPath()
+    private directorywatcher.Watcher MonitorPath()
     {
       // create the file syste, watcher.
-      var watcher = new FileSystemWatcher
-      {
-        Path = _path,
-        NotifyFilter = _notifyFilters,
-        Filter = "*.*",
-        IncludeSubdirectories = true,
-        EnableRaisingEvents = true,
-        InternalBufferSize = InternalBufferSize
-      };
+      var watcher = new directorywatcher.Watcher();
+      watcher.Add( new directorywatcher.Request( 
+        _path,
+        true ));
 
-      watcher.Renamed += (sender, e) => _tasks.Add( Task.Run( () => _renamed( _fileSystemEventCreator(e, _logger))));
-      watcher.Changed += (sender, e) => _tasks.Add( Task.Run(() => _changed ( _fileSystemEventCreator(e, _logger))));
-      watcher.Created += (sender, e) => _tasks.Add( Task.Run(() => _created ( _fileSystemEventCreator(e, _logger))));
-      watcher.Deleted += (sender, e) => _tasks.Add( Task.Run(() => _deleted ( _fileSystemEventCreator(e, _logger))));
+//      watcher.OnRenamedAsync += (e, t) => _tasks.Add( _renamed ( _fileSystemEventCreator(e, _logger)));
+//      watcher.OnTouchedAsync += (e, t) => _tasks.Add( _changed ( _fileSystemEventCreator(e, _logger)));
+//      watcher.OnAddedAsync   += (e, t) => _tasks.Add( _created ( _fileSystemEventCreator(e, _logger)));
+//      watcher.OnRemovedAsync += (e, t) => _tasks.Add( _deleted ( _fileSystemEventCreator(e, _logger)));
 
       return watcher;
     }
@@ -316,8 +292,8 @@ namespace myoddweb.desktopsearch.parser.IO
       CancellationToken token
     )
     {
-      IFileSystemEvent Lambda(FileSystemEventArgs e, ILogger l) => (watchFolders ? new DirectorySystemEvent(e, l) : new FileSystemEvent(e, l));
-      var notifier = watchFolders ? NotifyFilters.DirectoryName : NotifyFilters.FileName | NotifyFilters.LastWrite;
+
+      IFileSystemEvent Lambda(directorywatcher.interfaces.IFileSystemEvent e, ILogger l) => (watchFolders ? new DirectorySystemEvent(e, l) : new FileSystemEvent(e, l));
 
       // create the watcher
       var watcher = new RecoveringWatcher
@@ -327,9 +303,8 @@ namespace myoddweb.desktopsearch.parser.IO
         created, 
         deleted, 
         error, 
-        path,
         Lambda,
-        notifier, 
+        path,
         logger
       );
 

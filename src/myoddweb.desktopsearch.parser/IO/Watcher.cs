@@ -18,8 +18,9 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
-using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
+using myoddweb.directorywatcher.interfaces;
+using IFileSystemEvent = myoddweb.desktopsearch.interfaces.IO.IFileSystemEvent;
 
 namespace myoddweb.desktopsearch.parser.IO
 {
@@ -29,6 +30,32 @@ namespace myoddweb.desktopsearch.parser.IO
 
   internal abstract class Watcher
   {
+    /// <summary>
+    /// Event when a FileSystem event was 'touched'.
+    /// Changed attribute, size changed etc...
+    /// </summary>
+    event WatcherEvent<IFileSystemEvent> OnTouchedAsync;
+
+    /// <summary>
+    /// Event when a FileSystem event was added.
+    /// </summary>
+    event WatcherEvent<IFileSystemEvent> OnAddedAsync;
+
+    /// <summary>
+    /// Event when a FileSystem event was Removed.
+    /// </summary>
+    event WatcherEvent<IFileSystemEvent> OnRemovedAsync;
+
+    /// <summary>
+    /// Event when a FileSystem event was Renamed.
+    /// </summary>
+    event WatcherEvent<IRenamedFileSystemEvent> OnRenamedAsync;
+
+    /// <summary>
+    /// There was an error.
+    /// </summary>
+    event WatcherEvent<IEventError> OnErrorAsync;
+
     /// <summary>
     /// How often we will be removing compledted tasks.
     /// </summary>
@@ -68,11 +95,6 @@ namespace myoddweb.desktopsearch.parser.IO
     private RecoveringWatcher _fileWatcher;
 
     /// <summary>
-    /// All the tasks currently running
-    /// </summary>
-    private readonly List<Task> _tasks = new List<Task>();
-
-    /// <summary>
     /// The lock so we can add/remove data
     /// </summary>
     private readonly object _lockTasks = new object();
@@ -96,34 +118,6 @@ namespace myoddweb.desktopsearch.parser.IO
     /// When we register a token
     /// </summary>
     private CancellationTokenRegistration _cancellationTokenRegistration;
-    #endregion
-
-    #region Events handler
-    /// <summary>
-    /// Occurs when a file is deleted.
-    /// </summary>
-    public event FileEventHandler DeletedAsync = delegate { return null; };
-
-    /// <summary>
-    ///  Occurs when a file is created.
-    /// </summary>
-    public event FileEventHandler CreatedAsync = delegate { return null; };
-
-    /// <summary>
-    /// Occurs when a file is changed.
-    /// </summary>
-    public event FileEventHandler ChangedAsync = delegate { return null; };
-
-    /// <summary>
-    /// Occurs when a file is renamed.
-    /// </summary>
-    public event FileEventHandler RenamedAsync = delegate { return null; };
-
-    /// <summary>
-    ///     Occurs when the instance of System.IO.FileSystemWatcher is unable to continue
-    ///     monitoring changes or when the internal buffer overflows.
-    /// </summary>
-    public event ErrorEventHandler ErrorAsync = delegate { return null; };
     #endregion
 
     /// <summary>
@@ -185,12 +179,6 @@ namespace myoddweb.desktopsearch.parser.IO
       // stop the timer
       StopTasksCleanupTimer();
 
-      // clean up the tasks.
-      lock (_lockTasks)
-      {
-        _tasks.RemoveAll(t => t.IsCompleted);
-      }
-
       if (!_token.IsCancellationRequested)
       {
         // restart the timer.
@@ -227,48 +215,6 @@ namespace myoddweb.desktopsearch.parser.IO
     }
     #endregion
 
-    #region File/Folder Event
-    private void Deleted(IFileSystemEvent e )
-    {
-      lock (_lockTasks)
-      {
-        _tasks.Add(DeletedAsync(e));
-      }
-    }
-
-    private void Created(IFileSystemEvent e)
-    {
-      lock (_lockTasks)
-      {
-        _tasks.Add(CreatedAsync(e));
-      }
-    }
-
-    private void Renamed(IFileSystemEvent e)
-    {
-      lock (_lockTasks)
-      {
-        _tasks.Add(RenamedAsync(e));
-      }
-    }
-
-    private void Changed(IFileSystemEvent e)
-    {
-      lock (_lockTasks)
-      {
-        _tasks.Add(ChangedAsync(e));
-      }
-    }
-
-    private void Error(Exception e)
-    {
-      lock (_lockTasks)
-      {
-        _tasks.Add(ErrorAsync(e, _token));
-      }
-    }
-#endregion
-
     /// <summary>
     /// Stop the folder monitoring.
     /// </summary>
@@ -292,50 +238,8 @@ namespace myoddweb.desktopsearch.parser.IO
 
       // stop the registration
       _cancellationTokenRegistration.Dispose();
-
-      // stop allt the tasks.
-      StopAndClearAllTasks();
     }
-
-    /// <summary>
-    /// Stop all the tasks and clear them all.
-    /// </summary>
-    private void StopAndClearAllTasks()
-    {
-      lock (_lockTasks)
-      {
-        //  cancel all the tasks.
-        _tasks.RemoveAll(t => t.IsCompleted);
-
-        try
-        {
-          // wait for them all to finish
-          if (_tasks.Count > 0)
-          {
-            // Log that we are stopping the tasks.
-            Logger.Verbose($"Waiting for {_tasks.Count} tasks to complete in the Watcher.");
-
-            helper.Wait.WaitAll(_tasks, Logger, _token);
-
-            // done 
-            Logger.Verbose("Done.");
-          }
-        }
-        catch (OperationCanceledException e)
-        {
-          // ignore the cancelled exceptions.
-          if (e.CancellationToken != _token)
-          {
-            throw;
-          }
-        }
-        finally
-        {
-          _tasks.Clear();
-        }
-      }
-    }
-
+    
     /// <summary>
     /// Start watching for the folder changes.
     /// </summary>
@@ -381,7 +285,7 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      _directoryWatcher = RecoveringWatcher.StartFolderWatcher(Renamed, Changed, Created, Deleted, Error, Folder.FullName, Logger, _token );
+      // _directoryWatcher = RecoveringWatcher.StartFolderWatcher(Renamed, Changed, Created, Deleted, Error, Folder.FullName, Logger, _token );
     }
 
     /// <summary>
@@ -395,7 +299,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // Start the file watcher.
-      _fileWatcher = RecoveringWatcher.StartFileWatcher( Renamed, Changed, Created, Deleted, Error, Folder.FullName, Logger, _token );
+//      _fileWatcher = RecoveringWatcher.StartFileWatcher( Renamed, Changed, Created, Deleted, Error, Folder.FullName, Logger, _token );
     }
 
     /// <summary>
