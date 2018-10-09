@@ -87,8 +87,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <inheritdoc />
     protected override async Task ProcessRemovedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e, CancellationToken token)
     {
-      var file = e.FileSystemInfo as FileInfo;
-      if (null == file)
+      if (!(e.FileSystemInfo is FileInfo file))
       {
         return;
       }
