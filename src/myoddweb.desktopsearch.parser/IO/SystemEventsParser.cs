@@ -22,6 +22,8 @@ using System.Timers;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using myoddweb.directorywatcher.interfaces;
+using IFileSystemEvent = myoddweb.desktopsearch.interfaces.IO.IFileSystemEvent;
 
 namespace myoddweb.desktopsearch.parser.IO
 {
@@ -41,7 +43,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The list of current/unprocessed events.
     /// </summary>
-    private readonly List<IFileSystemEvent> _currentEvents = new List<IFileSystemEvent>();
+    private readonly List<directorywatcher.interfaces.IFileSystemEvent> _currentEvents = new List<directorywatcher.interfaces.IFileSystemEvent>();
 
     /// <summary>
     /// The cancellation source
@@ -134,7 +136,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// Rebuild all the system events and remove duplicates.
     /// </summary>
-    public List<IFileSystemEvent> RebuildSystemEvents()
+    private List<directorywatcher.interfaces.IFileSystemEvent> RebuildSystemEvents()
     {
       lock (_lockEvents)
       {
@@ -147,7 +149,7 @@ namespace myoddweb.desktopsearch.parser.IO
           }
 
           // the re-created list.
-          var rebuiltEvents = new List<IFileSystemEvent>();
+          var rebuiltEvents = new List<directorywatcher.interfaces.IFileSystemEvent>();
 
           // ReSharper disable once InconsistentlySynchronizedField
           foreach (var currentEvent in _currentEvents)
@@ -162,15 +164,15 @@ namespace myoddweb.desktopsearch.parser.IO
             // so we can remove all the previous 'changed' events.
             // that way, the last one in the list will be the most 'up-to-date' ones.
             rebuiltEvents.RemoveAll(e =>
-              e.ChangeType == currentEvent.ChangeType && e.FullName == currentEvent.FullName);
+              e.Action == currentEvent.Action &&  e.FileSystemInfo.FullName == currentEvent.FileSystemInfo.FullName);
 
             // remove the duplicate
-            if (currentEvent.Is(WatcherChangeTypes.Changed))
+            if (currentEvent.Action == EventAction.Touched )
             {
               // we know that this event is changed
               // but if we have some 'created' events for the same file
               // then there is no need to add the changed events.
-              if (rebuiltEvents.Any(e => e.Is(WatcherChangeTypes.Created) && e.FullName == currentEvent.FullName))
+              if (rebuiltEvents.Any(e => e.Action == EventAction.Added && e.FileSystemInfo.FullName == currentEvent.FileSystemInfo.FullName))
               {
                 // Windows sometime flags an item as changed _and_ created.
                 // we just need to worry about the created one.
@@ -275,7 +277,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="events"></param>
     /// <param name="token"></param>
-    private async Task ProcessEventsAsync(IEnumerable<IFileSystemEvent> events, CancellationToken token)
+    private async Task ProcessEventsAsync(IEnumerable<directorywatcher.interfaces.IFileSystemEvent> events, CancellationToken token)
     {
       // we are starting to process events.
       var factory = await Persister.BeginWrite(token).ConfigureAwait(false);
@@ -313,20 +315,20 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessCreatedAsync(IConnectionFactory factory, IFileSystemEvent e)
+    private async Task TryProcessAddedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e)
     {
       try
       {
-        if (!e.Is(WatcherChangeTypes.Created))
+        if (e.Action != EventAction.Added)
         {
           return;
         }
 
-        await ProcessCreatedAsync(factory, e, _token).ConfigureAwait(false);
+        await ProcessAddedAsync(factory, e, _token).ConfigureAwait(false);
       }
       catch
       {
-        Logger.Error($"There was an error trying to process created game event {e.FullName}!");
+        Logger.Error($"There was an error trying to process created game event {e.FileSystemInfo.FullName}!");
 
         // the exception is logged
         throw;
@@ -339,20 +341,20 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessDeletedAsync(IConnectionFactory factory, IFileSystemEvent e)
+    private async Task TryProcessRemovedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e)
     {
       try
       {
-        if (!e.Is(WatcherChangeTypes.Deleted))
+        if (e.Action != EventAction.Removed)
         {
           return;
         }
 
-        await ProcessDeletedAsync(factory, e, _token).ConfigureAwait(false);
+        await ProcessRemovedAsync(factory, e, _token).ConfigureAwait(false);
       }
       catch
       {
-        Logger.Error($"There was an error trying to process deleted game event {e.FullName}!");
+        Logger.Error($"There was an error trying to process deleted game event {e.FileSystemInfo.FullName}!");
 
         // the exception is logged
         throw;
@@ -365,20 +367,20 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessChangedAsync(IConnectionFactory factory, IFileSystemEvent e)
+    private async Task TryProcessTouchedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e)
     {
       try
       {
-        if (!e.Is(WatcherChangeTypes.Changed))
+        if (e.Action != EventAction.Touched)
         {
           return;
         }
 
-        await ProcessChangedAsync(factory, e, _token).ConfigureAwait(false);
+        await ProcessTouchedAsync(factory, e, _token).ConfigureAwait(false);
       }
       catch
       {
-        Logger.Error($"There was an error trying to process changed game event {e.FullName}!");
+        Logger.Error($"There was an error trying to process changed game event {e.FileSystemInfo.FullName}!");
 
         // the exception is logged
         throw;
@@ -391,21 +393,24 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessRenamedAsync(IConnectionFactory factory, IFileSystemEvent e)
+    private async Task TryProcessRenamedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e)
     {
       try
       {
-        if (!e.Is(WatcherChangeTypes.Renamed))
+        if (e.Action != EventAction.Renamed)
         {
           return;
         }
+
+        var rfse = e as IRenamedFileSystemEvent;
 
         // we have both a new and old name...
-        await ProcessRenamedAsync(factory, e, _token).ConfigureAwait(false);
+        await ProcessRenamedAsync(factory, rfse, _token).ConfigureAwait(false);
       }
       catch
       {
-        Logger.Error($"There was an error trying to rename {e.OldFullName} to {e.FullName}!");
+        var rfse = e as IRenamedFileSystemEvent;
+        Logger.Error($"There was an error trying to rename {rfse?.FileSystemInfo.FullName ?? "???"} to {rfse?.PreviousFileSystemInfo.FullName ?? "???"}!");
         throw;
       }
     }
@@ -416,16 +421,16 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task ProcessEventAsync( IConnectionFactory factory, IFileSystemEvent e)
+    private async Task ProcessEventAsync( IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e)
     {
       // try process as created.
-      await TryProcessCreatedAsync(factory, e).ConfigureAwait(false);
+      await TryProcessAddedAsync(factory, e).ConfigureAwait(false);
 
       // try process as deleted.
-      await TryProcessDeletedAsync(factory, e).ConfigureAwait(false);
+      await TryProcessRemovedAsync(factory, e).ConfigureAwait(false);
 
       // try process as changed.
-      await TryProcessChangedAsync(factory, e).ConfigureAwait(false);
+      await TryProcessTouchedAsync(factory, e).ConfigureAwait(false);
 
       // process as a renamed event
       await TryProcessRenamedAsync(factory, e).ConfigureAwait(false);
@@ -440,11 +445,14 @@ namespace myoddweb.desktopsearch.parser.IO
       // stop what might have already started.
       Stop();
 
-      // start the source.
-      _token = token;
+      lock (_lockTasks)
+      {
+        // start the source.
+        _token = token;
 
-      // register the token cancellation
-      _cancellationTokenRegistration = _token.Register(TokenCancellation);
+        // register the token cancellation
+        _cancellationTokenRegistration = _token.Register(TokenCancellation);
+      }
 
       //Start the system events timer.
       StartSystemEventsTimer();
@@ -511,23 +519,27 @@ namespace myoddweb.desktopsearch.parser.IO
     /// Add a file event to the list.
     /// </summary>
     /// <param name="fileSystemEventArgs"></param>
-    public void Add(IFileSystemEvent fileSystemEventArgs)
+    /// <param name="token"></param>
+    public async Task AddAsync(directorywatcher.interfaces.IFileSystemEvent fileSystemEventArgs, CancellationToken token )
     {
-      lock (_lockEvents)
+      await Task.Run(() =>
       {
-        try
+        lock (_lockEvents)
         {
-          if (_token.IsCancellationRequested)
+          try
           {
-            return;
+            if (_token.IsCancellationRequested)
+            {
+              return;
+            }
+            _currentEvents.Add(fileSystemEventArgs);
           }
-          _currentEvents.Add(fileSystemEventArgs);
+          catch (Exception e)
+          {
+            Logger.Exception(e);
+          }
         }
-        catch (Exception e)
-        {
-          Logger.Exception(e);
-        }
-      }
+      }, token);
     }
 
     #region Abstract Process events
@@ -538,7 +550,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessCreatedAsync(IConnectionFactory factory, IFileSystemEvent fileSystemEvent, CancellationToken token);
+    protected abstract Task ProcessAddedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent fileSystemEvent, CancellationToken token);
 
     /// <summary>
     /// Process a deleted event
@@ -546,7 +558,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessDeletedAsync(IConnectionFactory factory, IFileSystemEvent fileSystemEvent, CancellationToken token);
+    protected abstract Task ProcessRemovedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent fileSystemEvent, CancellationToken token);
 
     /// <summary>
     /// Process a created event
@@ -554,7 +566,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessChangedAsync(IConnectionFactory factory, IFileSystemEvent fileSystemEvent, CancellationToken token);
+    protected abstract Task ProcessTouchedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent fileSystemEvent, CancellationToken token);
 
     /// <summary>
     /// Process a renamed event
@@ -562,7 +574,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessRenamedAsync(IConnectionFactory factory, IFileSystemEvent fileSystemEvent, CancellationToken token);
+    protected abstract Task ProcessRenamedAsync(IConnectionFactory factory, IRenamedFileSystemEvent fileSystemEvent, CancellationToken token);
     #endregion
   }
 }

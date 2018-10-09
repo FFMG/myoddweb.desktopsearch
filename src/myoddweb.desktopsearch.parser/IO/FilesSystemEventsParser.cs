@@ -19,6 +19,7 @@ using myoddweb.desktopsearch.interfaces.Enums;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using myoddweb.directorywatcher.interfaces;
 
 namespace myoddweb.desktopsearch.parser.IO
 {
@@ -68,25 +69,25 @@ namespace myoddweb.desktopsearch.parser.IO
 
     #region Abstract Process events
     /// <inheritdoc />
-    protected override async Task ProcessCreatedAsync(IConnectionFactory factory, IFileSystemEvent e, CancellationToken token)
+    protected override async Task ProcessAddedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e, CancellationToken token)
     {
-      var file = e.File;
+      var file = e.FileSystemInfo as FileInfo;
       if (!CanProcessFile(file))
       {
         return;
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {e.FullName} (Created)");
+      Logger.Verbose($"File: {e.FileSystemInfo.FullName} (Created)");
 
       // just add the file.
       await Files.AddOrUpdateFileAsync( file, factory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessDeletedAsync(IConnectionFactory factory, IFileSystemEvent e, CancellationToken token)
+    protected override async Task ProcessRemovedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e, CancellationToken token)
     {
-      var file = e.File;
+      var file = e.FileSystemInfo as FileInfo;
       if (null == file)
       {
         return;
@@ -99,7 +100,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {e.FullName} (Deleted)");
+      Logger.Verbose($"File: {e.FileSystemInfo.FullName} (Deleted)");
 
       // do we have the file on record?
       if (await Files.FileExistsAsync(file, factory, token).ConfigureAwait(false))
@@ -110,9 +111,9 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessChangedAsync(IConnectionFactory factory, IFileSystemEvent e, CancellationToken token)
+    protected override async Task ProcessTouchedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e, CancellationToken token)
     {
-      var file = e.File;
+      var file = e.FileSystemInfo as FileInfo;
       if (!CanProcessFile(file))
       {
         return;
@@ -122,7 +123,7 @@ namespace myoddweb.desktopsearch.parser.IO
       if (!await Files.FileExistsAsync(file, factory, token).ConfigureAwait(false))
       {
         // add the file
-        Logger.Verbose($"File: {e.FullName} (Changed - But not on file)");
+        Logger.Verbose($"File: {e.FileSystemInfo.FullName} (Changed - But not on file)");
 
         // just add the file.
         await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false);
@@ -130,7 +131,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {e.FullName} (Changed)");
+      Logger.Verbose($"File: {e.FileSystemInfo.FullName} (Changed)");
 
 
       // then make sure to touch the folder accordingly
@@ -138,17 +139,17 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <inheritdoc />
-    protected override async Task ProcessRenamedAsync(IConnectionFactory factory, IFileSystemEvent e, CancellationToken token)
+    protected override async Task ProcessRenamedAsync(IConnectionFactory factory, IRenamedFileSystemEvent e, CancellationToken token)
     {
       // get the new name as well as the one one
       // either of those could be null
-      var file = e.File;
-      var oldFile = e.OldFile;
+      var file = e.FileSystemInfo as FileInfo;
+      var oldFile = e.PreviousFileSystemInfo as FileInfo;
 
       // if both are null then we cannot do anything with it
       if (null == file && null == oldFile)
       {
-        Logger.Error($"I was unable to use the renamed files, (old:{e.OldFullName} / new:{e.FullName})");
+        Logger.Error($"I was unable to use the renamed files, (old:{e.PreviousFileSystemInfo.FullName} / new:{e.FileSystemInfo.FullName})");
         return;
       }
 
@@ -165,7 +166,7 @@ namespace myoddweb.desktopsearch.parser.IO
         // just add the new directly.
         if (!await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false))
         {
-          Logger.Error( $"Unable to add file {e.FullName} during rename.");
+          Logger.Error( $"Unable to add file {e.FileSystemInfo.FullName} during rename.");
         }
         return;
       }
@@ -191,13 +192,13 @@ namespace myoddweb.desktopsearch.parser.IO
         // delete the old folder only, in case it did exist.
         if (!await Files.DeleteFileAsync(oldFile, factory, token).ConfigureAwait(false))
         {
-          Logger.Error( $"Unable to remove old file {e.OldFullName} durring rename");
+          Logger.Error( $"Unable to remove old file {e.PreviousFileSystemInfo.FullName} durring rename");
         }
         return;
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {e.OldFullName} > {e.FullName} (Renamed)");
+      Logger.Verbose($"File: {e.PreviousFileSystemInfo.FullName} > {e.FileSystemInfo.FullName} (Renamed)");
 
       // at this point we know we have a new file that we can use
       // and an old file that we could also use.
@@ -209,7 +210,7 @@ namespace myoddweb.desktopsearch.parser.IO
         // just add the new directly.
         if (!await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false))
         {
-          Logger.Error($"Unable to add file {e.FullName} during rename.");
+          Logger.Error($"Unable to add file {e.FileSystemInfo.FullName} during rename.");
         }
         return;
       }
@@ -219,7 +220,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // something that already exists.
       if (-1 == await Files.RenameOrAddFileAsync(file, oldFile, factory, token).ConfigureAwait(false))
       {
-        Logger.Error( $"Unable to rename file {e.OldFullName} > {e.FullName}");
+        Logger.Error( $"Unable to rename file {e.PreviousFileSystemInfo.FullName} > {e.FileSystemInfo.FullName}");
       }
     }
     #endregion

@@ -48,13 +48,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="IO\DirectoriesSystemEventsParser.cs" />
-    <Compile Include="IO\DirectorySystemEvent.cs" />
     <Compile Include="IO\FilesSystemEventsParser.cs" />
-    <Compile Include="IO\FileSystemEvent.cs" />
-    <Compile Include="IO\RecoveringWatcher.cs" />
     <Compile Include="IO\SystemEventsParser.cs" />
-    <Compile Include="IO\DirectoriesWatcher.cs" />
-    <Compile Include="IO\FilesWatcher.cs" />
     <Compile Include="IO\Watcher.cs" />
     <Compile Include="IO\WatcherTypes.cs" />
     <Compile Include="Parser.cs" />

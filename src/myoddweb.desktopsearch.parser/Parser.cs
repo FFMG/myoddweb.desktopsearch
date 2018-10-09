@@ -489,16 +489,14 @@ namespace myoddweb.desktopsearch.parser
       foreach (var path in paths)
       {
         // the file watcher.
-        var fileWatcher = new FilesWatcher(path, _logger, new FilesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger) );
-
-        // and directory watcher.
-        var directoryWatcher = new DirectoriesWatcher(path, _logger, new DirectoriesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger) );
+        var fileWatcher = new Watcher(path, _logger, 
+          new FilesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger),
+          new DirectoriesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger)
+        );
 
         fileWatcher.Start(token);
-        directoryWatcher.Start(token);
 
         _watchers.Add(fileWatcher);
-        _watchers.Add(directoryWatcher);
       }
       return true;
     }

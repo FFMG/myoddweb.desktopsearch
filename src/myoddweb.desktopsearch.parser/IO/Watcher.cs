@@ -13,13 +13,11 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 using myoddweb.desktopsearch.interfaces.Logging;
-using myoddweb.directorywatcher.interfaces;
 using IFileSystemEvent = myoddweb.desktopsearch.interfaces.IO.IFileSystemEvent;
 
 namespace myoddweb.desktopsearch.parser.IO
@@ -28,33 +26,12 @@ namespace myoddweb.desktopsearch.parser.IO
 
   public delegate Task ErrorEventHandler(Exception e, CancellationToken token);
 
-  internal abstract class Watcher
+  internal class Watcher
   {
     /// <summary>
-    /// Event when a FileSystem event was 'touched'.
-    /// Changed attribute, size changed etc...
+    /// The directory watcher.
     /// </summary>
-    event WatcherEvent<IFileSystemEvent> OnTouchedAsync;
-
-    /// <summary>
-    /// Event when a FileSystem event was added.
-    /// </summary>
-    event WatcherEvent<IFileSystemEvent> OnAddedAsync;
-
-    /// <summary>
-    /// Event when a FileSystem event was Removed.
-    /// </summary>
-    event WatcherEvent<IFileSystemEvent> OnRemovedAsync;
-
-    /// <summary>
-    /// Event when a FileSystem event was Renamed.
-    /// </summary>
-    event WatcherEvent<IRenamedFileSystemEvent> OnRenamedAsync;
-
-    /// <summary>
-    /// There was an error.
-    /// </summary>
-    event WatcherEvent<IEventError> OnErrorAsync;
+    private directorywatcher.Watcher _fileWatcher;
 
     /// <summary>
     /// How often we will be removing compledted tasks.
@@ -73,32 +50,17 @@ namespace myoddweb.desktopsearch.parser.IO
     protected DirectoryInfo Folder { get; }
 
     /// <summary>
-    /// The system event parser
+    /// The file system event parser
     /// </summary>
-    protected SystemEventsParser EventsParser { get; }
+    protected SystemEventsParser FileEventsParser { get; }
+
+    /// <summary>
+    /// The directory system event parser
+    /// </summary>
+    protected SystemEventsParser DirectoryEventsParser { get; }
     #endregion
 
     #region Member variables
-    /// <summary>
-    /// The type of folders we are watching
-    /// </summary>
-    private readonly WatcherTypes _watcherTypes;
-
-    /// <summary>
-    /// The actual file watcher.
-    /// </summary>
-    private RecoveringWatcher _directoryWatcher;
-
-    /// <summary>
-    /// The file watcher
-    /// </summary>
-    private RecoveringWatcher _fileWatcher;
-
-    /// <summary>
-    /// The lock so we can add/remove data
-    /// </summary>
-    private readonly object _lockTasks = new object();
-
     /// <summary>
     /// The timer lock
     /// </summary>
@@ -123,23 +85,21 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// Constructor to prepare the file watcher.
     /// </summary>
-    /// <param name="watcherTypes"></param>
     /// <param name="folder"></param>
     /// <param name="logger"></param>
-    /// <param name="parser"></param>
-    protected Watcher ( WatcherTypes watcherTypes, DirectoryInfo folder, ILogger logger, SystemEventsParser parser )
+    /// <param name="fileParser"></param>
+    /// <param name="directoryParser"></param>
+    public Watcher ( DirectoryInfo folder, ILogger logger, SystemEventsParser fileParser, SystemEventsParser directoryParser)
     {
-      // save the type of folders we are watching.
-      _watcherTypes = watcherTypes;
-
       // the folder being watched.
       Folder = folder ?? throw new ArgumentNullException(nameof(folder));
 
       // save the logger.
       Logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-      // save the event parser.
-      EventsParser = parser ?? throw new ArgumentNullException(nameof(parser));
+      // save the event parsers.
+      FileEventsParser = fileParser ?? throw new ArgumentNullException(nameof(parser));
+      DirectoryEventsParser = directoryParser ?? throw new ArgumentNullException(nameof(directoryParser));
     }
 
     #region Task Cleanup Timer
@@ -220,7 +180,8 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     public void Stop()
     {
-      EventsParser?.Stop();
+      FileEventsParser?.Stop();
+      DirectoryEventsParser?.Stop();
 
       // stop the cleanup timer
       // we don't need it anymore.
@@ -232,10 +193,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // the remaining events... and they will need a lock to do that
       // so we might as well get out as soon as posible.
       _fileWatcher?.Stop();
-
-      // stop the directory watcher
-      _directoryWatcher?.Stop();
-
+      
       // stop the registration
       _cancellationTokenRegistration.Dispose();
     }
@@ -261,13 +219,11 @@ namespace myoddweb.desktopsearch.parser.IO
       _cancellationTokenRegistration = _token.Register(TokenCancellation);
 
       // start the event parser.
-      EventsParser?.Start( _token );
+      FileEventsParser?.Start( _token );
+      DirectoryEventsParser?.Start(_token);
 
       // start the file watcher
       StartFilesWatcher();
-
-      // start the directory watcher.
-      StartDirectoriesWatcher();
 
       // we can now start monitoring for tasks.
       // so we can remove the completed ones from time to time.
@@ -275,31 +231,19 @@ namespace myoddweb.desktopsearch.parser.IO
     }
 
     /// <summary>
-    /// Start watching for directory changes
-    /// This is slightly different from the files watching.
-    /// </summary>
-    private void StartDirectoriesWatcher()
-    {
-      if ((_watcherTypes & WatcherTypes.Directories) != WatcherTypes.Directories)
-      {
-        return;
-      }
-
-      // _directoryWatcher = RecoveringWatcher.StartFolderWatcher(Renamed, Changed, Created, Deleted, Error, Folder.FullName, Logger, _token );
-    }
-
-    /// <summary>
     /// Start the files watcher.
     /// </summary>
     private void StartFilesWatcher()
     {
-      if ((_watcherTypes & WatcherTypes.Files) != WatcherTypes.Files)
-      {
-        return;
-      }
-
+      _fileWatcher?.Stop();
       // Start the file watcher.
-//      _fileWatcher = RecoveringWatcher.StartFileWatcher( Renamed, Changed, Created, Deleted, Error, Folder.FullName, Logger, _token );
+      _fileWatcher = new directorywatcher.Watcher();
+      _fileWatcher.Start( new directorywatcher.Request( Folder.FullName, true ) );
+
+      _fileWatcher.OnAddedAsync += EventAsync;
+      _fileWatcher.OnRemovedAsync += EventAsync;
+      _fileWatcher.OnTouchedAsync += EventAsync;
+      _fileWatcher.OnRenamedAsync += EventAsync;
     }
 
     /// <summary>
@@ -307,19 +251,25 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     private void TokenCancellation()
     {
-      OnCancelling();
       Stop();
-      OnCancelled();
     }
 
-    /// <summary>
-    /// Called when we are cancelling the worker, (it has not being cancelled).
-    /// </summary>
-    protected abstract void OnCancelling();
-
-    /// <summary>
-    /// Called when we have cancelled the work.
-    /// </summary>
-    protected abstract void OnCancelled();
+    public async Task EventAsync(directorywatcher.interfaces.IFileSystemEvent fe, CancellationToken token )
+    {
+      if (fe.IsFile)
+      {
+        if (FileEventsParser != null )
+        {
+          await FileEventsParser.AddAsync(fe, token).ConfigureAwait(false);
+        }
+      }
+      else
+      {
+        if (DirectoryEventsParser != null)
+        {
+          await DirectoryEventsParser.AddAsync(fe, token).ConfigureAwait(false);
+        }
+      }
+    }
   }
 }
