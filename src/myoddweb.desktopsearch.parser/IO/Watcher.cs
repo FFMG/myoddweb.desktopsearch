@@ -18,6 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 using myoddweb.desktopsearch.interfaces.Logging;
+using myoddweb.directorywatcher.interfaces;
 using IFileSystemEvent = myoddweb.desktopsearch.interfaces.IO.IFileSystemEvent;
 
 namespace myoddweb.desktopsearch.parser.IO
@@ -244,6 +245,13 @@ namespace myoddweb.desktopsearch.parser.IO
       _fileWatcher.OnRemovedAsync += EventAsync;
       _fileWatcher.OnTouchedAsync += EventAsync;
       _fileWatcher.OnRenamedAsync += EventAsync;
+
+      _fileWatcher.OnErrorAsync += ErrorAsync;
+    }
+
+    private async Task ErrorAsync(IEventError e, CancellationToken token)
+    {
+      await Task.Run( () =>  Logger.Error( e.Message ), token ).ConfigureAwait( false );
     }
 
     /// <summary>

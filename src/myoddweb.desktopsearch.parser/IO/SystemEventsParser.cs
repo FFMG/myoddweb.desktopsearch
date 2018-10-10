@@ -164,7 +164,7 @@ namespace myoddweb.desktopsearch.parser.IO
             // so we can remove all the previous 'changed' events.
             // that way, the last one in the list will be the most 'up-to-date' ones.
             rebuiltEvents.RemoveAll(e =>
-              e.Action == currentEvent.Action &&  e.FileSystemInfo.FullName == currentEvent.FileSystemInfo.FullName);
+              e.Action == currentEvent.Action &&  e.FullName == currentEvent.FullName);
 
             // remove the duplicate
             if (currentEvent.Action == EventAction.Touched )
@@ -172,7 +172,7 @@ namespace myoddweb.desktopsearch.parser.IO
               // we know that this event is changed
               // but if we have some 'created' events for the same file
               // then there is no need to add the changed events.
-              if (rebuiltEvents.Any(e => e.Action == EventAction.Added && e.FileSystemInfo.FullName == currentEvent.FileSystemInfo.FullName))
+              if (rebuiltEvents.Any(e => e.Action == EventAction.Added && e.FullName == currentEvent.FullName))
               {
                 // Windows sometime flags an item as changed _and_ created.
                 // we just need to worry about the created one.
@@ -328,7 +328,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
       catch
       {
-        Logger.Error($"There was an error trying to process created game event {e.FileSystemInfo.FullName}!");
+        Logger.Error($"There was an error trying to process created game event {e.FullName}!");
 
         // the exception is logged
         throw;
@@ -354,7 +354,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
       catch
       {
-        Logger.Error($"There was an error trying to process deleted game event {e.FileSystemInfo.FullName}!");
+        Logger.Error($"There was an error trying to process deleted game event {e.FullName}!");
 
         // the exception is logged
         throw;
@@ -380,7 +380,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
       catch
       {
-        Logger.Error($"There was an error trying to process changed game event {e.FileSystemInfo.FullName}!");
+        Logger.Error($"There was an error trying to process changed game event {e.FullName}!");
 
         // the exception is logged
         throw;
@@ -410,7 +410,7 @@ namespace myoddweb.desktopsearch.parser.IO
       catch
       {
         var rfse = e as IRenamedFileSystemEvent;
-        Logger.Error($"There was an error trying to rename {rfse?.FileSystemInfo.FullName ?? "???"} to {rfse?.PreviousFileSystemInfo.FullName ?? "???"}!");
+        Logger.Error($"There was an error trying to rename {rfse?.FullName ?? "???"} to {rfse?.PreviousFullName ?? "???"}!");
         throw;
       }
     }
