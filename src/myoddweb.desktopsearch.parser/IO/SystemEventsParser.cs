@@ -14,7 +14,6 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,7 +22,7 @@ using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 using myoddweb.directorywatcher.interfaces;
-using IFileSystemEvent = myoddweb.desktopsearch.interfaces.IO.IFileSystemEvent;
+using IFileSystemEvent = myoddweb.directorywatcher.interfaces.IFileSystemEvent;
 
 namespace myoddweb.desktopsearch.parser.IO
 {
@@ -34,6 +33,8 @@ namespace myoddweb.desktopsearch.parser.IO
   /// </summary>
   internal abstract class SystemEventsParser
   {
+    private const int MaxNumberConcurentTasks = 1;
+
     #region Member variables
     /// <summary>
     /// The logger that we will be using to log messages.
@@ -43,7 +44,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// The list of current/unprocessed events.
     /// </summary>
-    private readonly List<directorywatcher.interfaces.IFileSystemEvent> _currentEvents = new List<directorywatcher.interfaces.IFileSystemEvent>();
+    private readonly List<IFileSystemEvent> _currentEvents = new List<IFileSystemEvent>();
 
     /// <summary>
     /// The cancellation source
@@ -136,7 +137,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// Rebuild all the system events and remove duplicates.
     /// </summary>
-    private List<directorywatcher.interfaces.IFileSystemEvent> RebuildSystemEvents()
+    private IEnumerable<IFileSystemEvent> RebuildSystemEvents()
     {
       lock (_lockEvents)
       {
@@ -149,7 +150,7 @@ namespace myoddweb.desktopsearch.parser.IO
           }
 
           // the re-created list.
-          var rebuiltEvents = new List<directorywatcher.interfaces.IFileSystemEvent>();
+          var rebuiltEvents = new List<IFileSystemEvent>();
 
           // ReSharper disable once InconsistentlySynchronizedField
           foreach (var currentEvent in _currentEvents)
@@ -218,16 +219,15 @@ namespace myoddweb.desktopsearch.parser.IO
         StopSystemEventsTimer();
 
         // the events.
-        var events = RebuildSystemEvents();
-        if (null != events)
+        lock (_lockTasks)
         {
-          lock (_lockTasks)
+          if (_tasks.Count(t => !t.IsCompleted) < MaxNumberConcurentTasks)
           {
-            _tasks.Add(ProcessEventsAsync(events, _token));
+            _tasks.Add(ProcessEventsAsync(_token));
+          }
 
           // remove the completed events.
-            _tasks.RemoveAll(t => t.IsCompleted);
-          }
+          _tasks.RemoveAll(t => t.IsCompleted);
         }
       }
       catch (Exception exception)
@@ -275,14 +275,16 @@ namespace myoddweb.desktopsearch.parser.IO
     /// This function is called when processing a list of file events.
     /// It should be non-blocking.
     /// </summary>
-    /// <param name="events"></param>
     /// <param name="token"></param>
-    private async Task ProcessEventsAsync(IEnumerable<directorywatcher.interfaces.IFileSystemEvent> events, CancellationToken token)
+    private async Task ProcessEventsAsync(CancellationToken token)
     {
       // we are starting to process events.
       var factory = await Persister.BeginWrite(token).ConfigureAwait(false);
       try
       {
+        // we now have the lock... so actually get the events.
+        var events = RebuildSystemEvents();
+
         // try and do everything at once.
         foreach (var e in events)
         {
@@ -295,10 +297,18 @@ namespace myoddweb.desktopsearch.parser.IO
         }
         Persister.Commit(factory);
       }
-      catch ( OperationCanceledException )
+      catch ( OperationCanceledException e)
       {
         // we cancelled so we need to rollback
         Persister.Rollback(factory);
+
+        // but no need to log it if it is our token.
+        if (e.CancellationToken != token)
+        {
+          // log it
+          Logger.Exception(e);
+        }
+        throw;
       }
       catch (Exception e)
       {
@@ -315,7 +325,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessAddedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e)
+    private async Task TryProcessAddedAsync(IConnectionFactory factory, IFileSystemEvent e)
     {
       try
       {
@@ -341,7 +351,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessRemovedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e)
+    private async Task TryProcessRemovedAsync(IConnectionFactory factory, IFileSystemEvent e)
     {
       try
       {
@@ -367,7 +377,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessTouchedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e)
+    private async Task TryProcessTouchedAsync(IConnectionFactory factory, IFileSystemEvent e)
     {
       try
       {
@@ -393,7 +403,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task TryProcessRenamedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e)
+    private async Task TryProcessRenamedAsync(IConnectionFactory factory, IFileSystemEvent e)
     {
       try
       {
@@ -421,7 +431,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="e"></param>
     /// <returns></returns>
-    private async Task ProcessEventAsync( IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent e)
+    private async Task ProcessEventAsync( IConnectionFactory factory, IFileSystemEvent e)
     {
       // try process as created.
       await TryProcessAddedAsync(factory, e).ConfigureAwait(false);
@@ -520,7 +530,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     /// <param name="fileSystemEventArgs"></param>
     /// <param name="token"></param>
-    public async Task AddAsync(directorywatcher.interfaces.IFileSystemEvent fileSystemEventArgs, CancellationToken token )
+    public async Task AddAsync(IFileSystemEvent fileSystemEventArgs, CancellationToken token )
     {
       await Task.Run(() =>
       {
@@ -550,7 +560,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessAddedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent fileSystemEvent, CancellationToken token);
+    protected abstract Task ProcessAddedAsync(IConnectionFactory factory, IFileSystemEvent fileSystemEvent, CancellationToken token);
 
     /// <summary>
     /// Process a deleted event
@@ -558,7 +568,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessRemovedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent fileSystemEvent, CancellationToken token);
+    protected abstract Task ProcessRemovedAsync(IConnectionFactory factory, IFileSystemEvent fileSystemEvent, CancellationToken token);
 
     /// <summary>
     /// Process a created event
@@ -566,7 +576,7 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="factory"></param>
     /// <param name="fileSystemEvent"></param>
     /// <param name="token"></param>
-    protected abstract Task ProcessTouchedAsync(IConnectionFactory factory, directorywatcher.interfaces.IFileSystemEvent fileSystemEvent, CancellationToken token);
+    protected abstract Task ProcessTouchedAsync(IConnectionFactory factory, IFileSystemEvent fileSystemEvent, CancellationToken token);
 
     /// <summary>
     /// Process a renamed event

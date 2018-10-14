@@ -43,6 +43,11 @@ namespace myoddweb.desktopsearch.helper
     /// The number of counters currently waiting.
     /// </summary>
     private static int _waitersUntilCount;
+
+    /// <summary>
+    /// The object lock.
+    /// </summary>
+    private static object _lock = new object();
     #endregion
 
     private Wait()
@@ -137,16 +142,12 @@ namespace myoddweb.desktopsearch.helper
     private static async Task UntilAsync(Func<bool> what, int numProcessors, CancellationToken token)
     {
       // increment the number of items.
-      Interlocked.Increment(ref _waitersUntilCount);
       try
       {
-        // the more 'waiters' we have, the more starved or resources we will become
-        // but we also don't want to wait forever.
-        // the value of _waitersUntilCount can never be '0' because there is at least one, (us).
-        var delay = _waitersUntilCount * (numProcessors == 1 ? SingleProcessorSleep : MultipleProcessorsSleep);
-
-        // make sure that the value is within range.
-        delay = delay > MaxDelayPerThread ? MaxDelayPerThread : delay;
+        lock (_lock)
+        {
+          ++_waitersUntilCount;
+        }
 
         // start number of spin waits.
         var spinWait = numProcessors;
@@ -187,6 +188,14 @@ namespace myoddweb.desktopsearch.helper
           }
           else
           {
+            // the more 'waiters' we have, the more starved or resources we will become
+            // but we also don't want to wait forever.
+            // the value of _waitersUntilCount can never be '0' because there is at least one, (us).
+            var delay = _waitersUntilCount * (numProcessors == 1 ? SingleProcessorSleep : MultipleProcessorsSleep);
+
+            // make sure that the value is within range.
+            delay = delay > MaxDelayPerThread ? MaxDelayPerThread : delay;
+
             // cause a small delay that will yield to other CPUs
             await Task.Delay(count * delay, token);
           }
@@ -197,7 +206,10 @@ namespace myoddweb.desktopsearch.helper
       }
       finally
       {
-        Interlocked.Decrement(ref _waitersUntilCount);
+        lock (_lock)
+        {
+          --_waitersUntilCount;
+        }
       }
     }
 
