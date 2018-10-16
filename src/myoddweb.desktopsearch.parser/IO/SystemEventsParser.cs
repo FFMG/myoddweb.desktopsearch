@@ -458,7 +458,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // wait for them all to finish
       try
       {
-        if ( !_task.IsCompleted)
+        if (!_task?.IsCompleted ?? false )
         {
           // Log that we are stopping the tasks.
           Logger.Verbose("Waiting for file event task to complete in the File System Events Timer.");
@@ -477,6 +477,11 @@ namespace myoddweb.desktopsearch.parser.IO
         {
           throw;
         }
+      }
+      catch (Exception e)
+      {
+        Logger.Exception(e);
+        throw;
       }
     }
 
