@@ -33,8 +33,6 @@ namespace myoddweb.desktopsearch.parser.IO
   /// </summary>
   internal abstract class SystemEventsParser
   {
-    private const int MaxNumberConcurentTasks = 1;
-
     #region Member variables
     /// <summary>
     /// The logger that we will be using to log messages.
@@ -52,14 +50,14 @@ namespace myoddweb.desktopsearch.parser.IO
     private CancellationToken _token;
 
     /// <summary>
+    /// The file event processing;
+    /// </summary>
+    private Task _task;
+
+    /// <summary>
     /// When we register a token
     /// </summary>
     private CancellationTokenRegistration _cancellationTokenRegistration;
-
-    /// <summary>
-    /// All the tasks currently running
-    /// </summary>
-    private readonly List<Task> _tasks = new List<Task>();
 
     /// <summary>
     /// The folders we are ignoring.
@@ -70,11 +68,6 @@ namespace myoddweb.desktopsearch.parser.IO
     /// The lock so we can add/remove files events
     /// </summary>
     private readonly object _lockEvents = new object();
-
-    /// <summary>
-    /// The lock so we can add/remove tasks
-    /// </summary>
-    private readonly object _lockTasks = new object();
 
     /// <summary>
     /// The timer so we can clear some completed taks.
@@ -118,20 +111,17 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      lock (_lockTasks)
+      if (_tasksTimer != null)
       {
-        if (_tasksTimer != null)
-        {
-          return;
-        }
-
-        _tasksTimer = new System.Timers.Timer(_eventsTimeOutInMs)
-        {
-          AutoReset = false,
-          Enabled = true
-        };
-        _tasksTimer.Elapsed += SystemEventsProcess;
+        return;
       }
+
+      _tasksTimer = new System.Timers.Timer(_eventsTimeOutInMs)
+      {
+        AutoReset = false,
+        Enabled = true
+      };
+      _tasksTimer.Elapsed += SystemEventsProcess;
     }
 
     /// <summary>
@@ -219,28 +209,19 @@ namespace myoddweb.desktopsearch.parser.IO
         StopSystemEventsTimer();
 
         // the events.
-        lock (_lockTasks)
-        {
-          if (_tasks.Count(t => !t.IsCompleted) < MaxNumberConcurentTasks)
+        _task = 
+        ProcessEventsAsync(_token).ContinueWith( t => 
           {
-            _tasks.Add(ProcessEventsAsync(_token));
-          }
-
-          // remove the completed events.
-          _tasks.RemoveAll(t => t.IsCompleted);
-        }
+            if (!_token.IsCancellationRequested && !t.IsCanceled)
+            {
+              // restart the timer.
+              StartSystemEventsTimer();
+            }
+          }, _token);
       }
       catch (Exception exception)
       {
         Logger.Exception(exception);
-      }
-      finally
-      {
-        if (!_token.IsCancellationRequested)
-        {
-          // restart the timer.
-          StartSystemEventsTimer();
-        }
       }
     }
 
@@ -254,18 +235,15 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      lock (_lockTasks)
+      if (_tasksTimer == null)
       {
-        if (_tasksTimer == null)
-        {
-          return;
-        }
-
-        _tasksTimer.Enabled = false;
-        _tasksTimer.Stop();
-        _tasksTimer.Dispose();
-        _tasksTimer = null;
+        return;
       }
+
+      _tasksTimer.Enabled = false;
+      _tasksTimer.Stop();
+      _tasksTimer.Dispose();
+      _tasksTimer = null;
     }
     #endregion
 
@@ -455,14 +433,11 @@ namespace myoddweb.desktopsearch.parser.IO
       // stop what might have already started.
       Stop();
 
-      lock (_lockTasks)
-      {
-        // start the source.
-        _token = token;
+      // start the source.
+      _token = token;
 
-        // register the token cancellation
-        _cancellationTokenRegistration = _token.Register(TokenCancellation);
-      }
+      // register the token cancellation
+      _cancellationTokenRegistration = _token.Register(TokenCancellation);
 
       //Start the system events timer.
       StartSystemEventsTimer();
@@ -480,37 +455,27 @@ namespace myoddweb.desktopsearch.parser.IO
       // stop the token cancellation
       _cancellationTokenRegistration.Dispose();
 
-      lock (_lockTasks)
+      // wait for them all to finish
+      try
       {
-        //  cancel all the tasks.
-        _tasks.RemoveAll(t => t.IsCompleted);
-
-        // wait for them all to finish
-        try
+        if ( !_task.IsCompleted)
         {
-          if (_tasks.Count > 0)
-          {
-            // Log that we are stopping the tasks.
-            Logger.Verbose($"Waiting for {_tasks.Count} tasks to complete in the File System Events Timer.");
+          // Log that we are stopping the tasks.
+          Logger.Verbose("Waiting for file event task to complete in the File System Events Timer.");
 
-            // then wait...
-            helper.Wait.WaitAll(_tasks, Logger, _token);
+          // then wait...
+          helper.Wait.WaitAll(_task, Logger, _token);
 
-            // done 
-            Logger.Verbose("Done.");
-          }
+          // done 
+          Logger.Verbose("Done.");
         }
-        catch (OperationCanceledException e)
+      }
+      catch (OperationCanceledException e)
+      {
+        // ignore the cancelled exceptions.
+        if (e.CancellationToken != _token)
         {
-          // ignore the cancelled exceptions.
-          if (e.CancellationToken != _token)
-          {
-            throw;
-          }
-        }
-        finally
-        {
-          _tasks.Clear();
+          throw;
         }
       }
     }
