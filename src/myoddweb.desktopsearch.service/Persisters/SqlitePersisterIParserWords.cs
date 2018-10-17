@@ -13,7 +13,9 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Logging;
@@ -37,22 +39,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<long> AddWordAsync(long fileid, string word, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> AddWordAsync(long fileid, IReadOnlyList<string> words, IConnectionFactory connectionFactory, CancellationToken token)
     {
+      if (!words.Any())
+      {
+        return true;
+      }
       if (null == connectionFactory)
       {
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
-
-      // does it exist already?
-      var idNow = await GetWordAsync(fileid, word, connectionFactory, token).ConfigureAwait(false);
-      if (idNow != -1)
-      {
-        return idNow;
-      }
-
-      // get the next id.
-      var nextId = await GetNextWordIdAsync(connectionFactory, token).ConfigureAwait(false);
 
       var sqlInsertWord = $"INSERT INTO {Tables.ParserWords} (id, fileid, word) VALUES (@id, @fileid, @word)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsertWord))
@@ -72,33 +68,50 @@ namespace myoddweb.desktopsearch.service.Persisters
         pWord.ParameterName = "@word";
         cmd.Parameters.Add(pWord);
 
-        try
+        foreach (var word in words)
         {
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
+          // get the next id.
+          var nextId = await GetNextWordIdAsync(connectionFactory, token).ConfigureAwait(false);
 
-          pId.Value = nextId;
-          pFileId.Value = fileid;
-          pWord.Value = word;
-          if (0 != await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+          // does it exist already?
+          var idNow = await GetWordAsync(fileid, word, connectionFactory, token).ConfigureAwait(false);
+          if (idNow != -1)
           {
-            return nextId;
+            continue;
           }
 
-          _logger.Error($"There was an issue adding word: {word} for fileid: {fileid} to persister");
-          return -1;
-        }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Insert Parser word.");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-          return -1;
+          try
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            pId.Value = nextId;
+            pFileId.Value = fileid;
+            pWord.Value = word;
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+            {
+              _logger.Error($"There was an issue adding word: {word} for fileid: {fileid} to persister");
+              continue;
+            }
+
+            // move on to the next id.
+            ++nextId;
+          }
+          catch (OperationCanceledException)
+          {
+            _logger.Warning("Received cancellation request - Insert Parser word.");
+            throw;
+          }
+          catch (Exception ex)
+          {
+            _logger.Exception(ex);
+            return false;
+          }
         }
       }
+
+      // succcess it worked.
+      return true;
     }
 
     /// <inheritdoc />

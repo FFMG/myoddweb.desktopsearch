@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -19,10 +20,10 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <summary>
     /// Add a word to the list.
     /// </summary>
-    /// <param name="word"></param>
+    /// <param name="words"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddWordAsync( string word, CancellationToken token );
+    Task<bool> AddWordAsync(IReadOnlyList<string> words, CancellationToken token );
 
     /// <summary>
     /// 

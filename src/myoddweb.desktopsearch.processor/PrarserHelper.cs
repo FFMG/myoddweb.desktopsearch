@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -81,7 +82,7 @@ namespace myoddweb.desktopsearch.processor
     }
 
     /// <inheritdoc /> 
-    public async Task<bool> AddWordAsync(string word, CancellationToken token)
+    public async Task<bool> AddWordAsync(IReadOnlyList<string> words, CancellationToken token)
     {
       if (null == _factory)
       {
@@ -89,7 +90,7 @@ namespace myoddweb.desktopsearch.processor
       }
 
       // then we just try and add the word.
-      if (await _persister.ParserWords.AddWordAsync(_fileId, word, _factory, token).ConfigureAwait(false) <0 )
+      if (!await _persister.ParserWords.AddWordAsync(_fileId, words, _factory, token).ConfigureAwait(false) )
       {
         return false;
       }

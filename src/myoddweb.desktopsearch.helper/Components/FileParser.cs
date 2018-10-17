@@ -86,21 +86,8 @@ namespace myoddweb.desktopsearch.helper.Components
     public async Task<bool> ParserAsync(IPrarserHelper helper, string text, Func<string, bool> func, CancellationToken token)
     {
       // split the line into words.
-      var added = false;
       var words = _reg.Matches(text).OfType<Match>().Select(m => m.Groups[0].Value).ToArray();
-      foreach (var word in words)
-      {
-        if (!func(word))
-        {
-          continue;
-        }
-
-        if (await helper.AddWordAsync(word, token).ConfigureAwait(false))
-        {
-          added = true;
-        }
-      }
-      return added;
+      return await helper.AddWordAsync(words.Where(func).ToList(), token).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -124,7 +111,7 @@ namespace myoddweb.desktopsearch.helper.Components
         {
           continue;
         }
-        if (await helper.AddWordAsync(word, token).ConfigureAwait(false))
+        if (await helper.AddWordAsync( new []{word}, token).ConfigureAwait(false))
         {
           added = true;
         }
