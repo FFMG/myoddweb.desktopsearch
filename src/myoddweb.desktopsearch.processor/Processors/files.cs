@@ -288,11 +288,14 @@ namespace myoddweb.desktopsearch.processor.Processors
         return new CompletedPendingFileUpdate(pendingFileUpdate, null );
       }
 
+      // create the helper.
+      var parserHelper = new PrarserHelper( pendingFileUpdate.File, _persister, pendingFileUpdate.FileId, token);
+
       // start allt he tasks
-      var tasks = new HashSet<Task<interfaces.IO.IWords>>();
+      var tasks = new List<Task<bool>>();
       foreach (var parser in _parsers)
       {
-        tasks.Add(ProcessFile(parser, pendingFileUpdate.File, token));
+        tasks.Add(ProcessFile( parserHelper, parser, pendingFileUpdate.File, token));
       }
 
       // do we have any work to do?
@@ -305,8 +308,10 @@ namespace myoddweb.desktopsearch.processor.Processors
       // wait for all the parsers to do their work
       var totalWords = await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
 
+      parserHelper.Commit();
+
       // merge them all into one.
-      return new CompletedPendingFileUpdate(pendingFileUpdate, new Words(totalWords));
+      return new CompletedPendingFileUpdate(pendingFileUpdate, new Words());
     }
 
     /// <summary>
@@ -322,28 +327,29 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// Process the file with the given parser.
     /// </summary>
-    /// <param name="parser"></param>
-    /// <param name="file"></param>
-    /// <param name="token"></param>
+    /// <param name="helper">The file helper.</param>
+    /// <param name="parser">The component that will parse this file</param>
+    /// <param name="file">The file we are parsing</param>
+    /// <param name="token">The cancellation token.</param>
     /// <returns></returns>
-    private async Task<interfaces.IO.IWords> ProcessFile(IFileParser parser, FileInfo file, CancellationToken token)
+    private async Task<bool> ProcessFile(IPrarserHelper helper, IFileParser parser, FileSystemInfo file, CancellationToken token)
     {
       if (!parser.Supported(file))
       {
         // nothing to do.
-        return new Words();
+        return false;
       }
 
       // look for the words
-      var words = await parser.ParseAsync(file, _logger, token).ConfigureAwait(false);
-      if (words != null && words.Any() )
+      var added = await parser.ParseAsync(helper, _logger, token).ConfigureAwait(false);
+      if (added )
       {
         // if we found any, log it.
-        _logger.Verbose($"Parser : {parser.Name} processed {words.Count} words in {file.FullName}.");
+        _logger.Verbose($"Parser : {parser.Name} processed {helper.Count} words in {file.FullName}.");
       }
 
       // null values are ignored.
-      return words;
+      return added;
     }
     #endregion
 

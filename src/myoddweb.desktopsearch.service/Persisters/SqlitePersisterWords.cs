@@ -382,7 +382,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       return true;
     }
 
-    public async Task<HashSet<long>> GetOrInsertParts(
+    private async Task<HashSet<long>> GetOrInsertParts(
       IWord word,
       SelectPartCommand cmdSelectPart,
       InsertPartCommand cmdInsertPart,

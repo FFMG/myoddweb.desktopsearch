@@ -41,7 +41,7 @@ namespace myoddweb.desktopsearch.parser.code
     /// List of reserverd keywords
     /// This is NOT an exhaustive list of all the keywords... just the common ones.
     /// </summary>
-    private readonly IWords _keyWords = new Words( new List<string>
+    private readonly List<string> _keyWords = new List<string>
     {
       "ADD", "ALTER", "AND", "AS", "BIGINT", "CASE", "COALESCE", "COMMIT", "CREATE", "COLUMN", "CONSTRAINT",
       "CURSOR", "DATABASE", "DECLARE", "DELETE", "DROP", "ELSE", "EXECUTE", "EXPLAIN", "FUNCTION", "FROM",
@@ -49,7 +49,7 @@ namespace myoddweb.desktopsearch.parser.code
       "JOIN", "KEY", "LEFT", "LIKE", "NOT", "NULL", "NULLIF", "OPEN", "OR", "ORDER", "PRINT", "PROCEDURE",
       "RIGHT", "ROLLBACK", "ROWCOUNT", "RETURNS", "SELECT", "SCHEMA", "TABLE", "TRAN", "TRANSACTION", "TRIGGER",
       "TRUNCATE", "TINYINT", "UNION", "UNIQUE", "UPDATE", "VARCHAR", "VIEW", "WHEN", "WHERE", "WITH"
-    });
+    };
 
     public Sql()
     {
@@ -72,13 +72,12 @@ namespace myoddweb.desktopsearch.parser.code
     }
 
     /// <inheritdoc />
-    public async Task<IWords> ParseAsync(FileSystemInfo file, ILogger logger, CancellationToken token)
+    public async Task<bool> ParseAsync(IPrarserHelper helper, ILogger logger, CancellationToken token)
     {
       try
       {
         const long maxFileLength = 1000000;
-        var words = await _parser.ParserAsync(file, maxFileLength, token).ConfigureAwait(false);
-        return StripCSharpWords(words);
+        return await _parser.ParserAsync(helper, maxFileLength, Contains, token).ConfigureAwait(false);
       }
       catch (OperationCanceledException)
       {
@@ -87,41 +86,29 @@ namespace myoddweb.desktopsearch.parser.code
       }
       catch (IOException)
       {
-        logger.Error($"IO error trying to read the file, {file.FullName}, might be locked/protected ({Name}).");
-        return null;
+        logger.Error($"IO error trying to read the file, {helper.File.FullName}, might be locked/protected ({Name}).");
+        return false;
       }
       catch (OutOfMemoryException)
       {
-        logger.Error($"Out of Memory: reading file, {file.FullName} ({Name})");
-        return null;
+        logger.Error($"Out of Memory: reading file, {helper.File.FullName} ({Name})");
+        return false;
       }
       catch (Exception ex)
       {
         logger.Exception(ex);
-        return null;
+        return false;
       }
     }
-
-    /// <summary>
-    /// Remove words that are too common for the CSharp language
-    /// </summary>
-    /// <param name="words"></param>
-    /// <returns></returns>
-    private IWords StripCSharpWords(IWords words)
-    {
-      // remove the keywords
-      words?.RemoveWhere( MustRemove );
-      return words;
-    }
-
+    
     /// <summary>
     /// Check if a word should be removed from the list of words.
     /// </summary>
     /// <param name="word">The word we are comparing.</param>
     /// <returns></returns>
-    private bool MustRemove( IWord word)
+    private bool Contains( string word)
     {
-      return _keyWords.Any(keyWord => string.Equals(keyWord.Value, word.Value, StringComparison.OrdinalIgnoreCase));
+      return !_keyWords.Any(keyWord => string.Equals(keyWord, word, StringComparison.OrdinalIgnoreCase));
     }
   }
 }

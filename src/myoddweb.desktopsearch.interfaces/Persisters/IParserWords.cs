@@ -12,38 +12,39 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.interfaces.Logging;
 
-namespace myoddweb.desktopsearch.interfaces.IO
+namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IFileParser
+  public interface IParserWords
   {
     /// <summary>
-    /// The name of the parser.
+    /// Add a word to the list of words for that file id.
     /// </summary>
-    string Name { get; }
-
-    /// <summary>
-    /// The list of extensions we aim to support
-    /// </summary>
-    string[] Extenstions { get; }
-
-    /// <summary>
-    /// Check if the given file is supported.
-    /// Return true if we will parse it or not.
-    /// </summary>
-    bool Supported(FileSystemInfo file);
-
-    /// <summary>
-    /// Parse a single file and add the words we found.
-    /// </summary>
-    /// <param name="helper"></param>
-    /// <param name="logger"></param>
+    /// <param name="fileid"></param>
+    /// <param name="word"></param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> ParseAsync(IPrarserHelper helper, ILogger logger, CancellationToken token);
+    Task<long> AddWordAsync( long fileid, string word, IConnectionFactory connectionFactory, CancellationToken token);
+
+    /// <summary>
+    /// Delete all the words for a file id.
+    /// </summary>
+    /// <param name="fileid"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> DeleteFileId(long fileid, IConnectionFactory connectionFactory, CancellationToken token);
+
+    /// <summary>
+    /// Delete a single word id
+    /// </summary>
+    /// <param name="wordid"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> DeleteWordIdFileId(long wordid, IConnectionFactory connectionFactory, CancellationToken token);
   }
 }

@@ -429,8 +429,8 @@ namespace myoddweb.desktopsearch.service.Persisters
           pName.ParameterName = "@name";
           cmd.Parameters.Add(pName);
 
-          cmd.Parameters["@folderid"].Value = folderid;
-          cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
+          pFolderId.Value = folderid;
+          pName.Value = file.Name.ToLowerInvariant();
           var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
           if (null == value || value == DBNull.Value)
           {

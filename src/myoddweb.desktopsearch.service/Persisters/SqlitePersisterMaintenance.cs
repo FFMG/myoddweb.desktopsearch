@@ -84,6 +84,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return false;
       }
+
+      // the prarser words table.
+      if (!await CreateParserWordsAsync(connectionFactory).ConfigureAwait(false))
+      {
+        return false;
+      }
+
       return true;
     }
 
@@ -212,6 +219,40 @@ namespace myoddweb.desktopsearch.service.Persisters
       if (
         !await
           ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{Tables.Counts}_type ON {Tables.Counts}(type);", connectionFactory).ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // done 
+      return true;
+    }
+
+    /// <summary>
+    /// Create the parser table.
+    /// This table contains all the words that the parsers found for a given file.
+    /// Those are unprocessed words that need to be added to the actual words list.
+    /// </summary>
+    /// <param name="connectionFactory"></param>
+    /// <returns></returns>
+    private async Task<bool> CreateParserWordsAsync(IConnectionFactory connectionFactory)
+    {
+      if (!await
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.ParserWords} (id integer PRIMARY KEY, fileid integer, word TEXT)", connectionFactory)
+          .ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.ParserWords}_fileid ON {Tables.ParserWords}(fileid);", connectionFactory).ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.ParserWords}_fileid_word ON {Tables.ParserWords}(fileid, word);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }

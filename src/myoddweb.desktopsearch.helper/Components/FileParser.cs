@@ -12,13 +12,13 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Collections.Generic;
+
+using System;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.IO;
 
 namespace myoddweb.desktopsearch.helper.Components
@@ -51,62 +51,87 @@ namespace myoddweb.desktopsearch.helper.Components
     /// <summary>
     /// Parse a given file.
     /// </summary>
-    /// <param name="file"></param>
+    /// <param name="helper"></param>
     /// <param name="maxFileLength"></param>
     /// <param name="token"></param>
+    /// <param name="func">The function that tells us if we can add a word or not.</param>
     /// <returns></returns>
-    public async Task<IWords> ParserAsync(FileSystemInfo file, long maxFileLength, CancellationToken token )
+    public async Task<bool> ParserAsync(IPrarserHelper helper, long maxFileLength, Func<string, bool> func, CancellationToken token )
     {
       string text;
-      using (var sr = new StreamReader(file.FullName))
+      using (var sr = new StreamReader(helper.File.FullName))
       {
         // the file is too big for us to read at once
         // so we have to parse word by word.
         if ((sr.BaseStream as FileStream)?.Length > maxFileLength)
         {
-          return await ParserAsync(sr, token);
+          return await ParserAsync(helper, sr, func, token);
         }
 
         // read everything in one go.
         // then close the file and build the list of words.
         text = sr.ReadToEnd();
       }
-      return await ParserAsync(text, token).ConfigureAwait(false);
+      return await ParserAsync(helper, text, func, token).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Parse a text reader one word at a time.
     /// </summary>
+    /// <param name="helper"></param>
     /// <param name="text"></param>
+    /// <param name="func"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task<IWords> ParserAsync(string text, CancellationToken token)
+    public async Task<bool> ParserAsync(IPrarserHelper helper, string text, Func<string, bool> func, CancellationToken token)
     {
       // split the line into words.
+      var added = false;
       var words = _reg.Matches(text).OfType<Match>().Select(m => m.Groups[0].Value).ToArray();
-      return Task.FromResult<IWords>(new Words(words));
+      foreach (var word in words)
+      {
+        if (!func(word))
+        {
+          continue;
+        }
+
+        if (await helper.AddWordAsync(word, token).ConfigureAwait(false))
+        {
+          added = true;
+        }
+      }
+      return added;
     }
 
     /// <summary>
     /// Parse a text reader one word at a time.
     /// </summary>
+    /// <param name="helper"></param>
     /// <param name="sr"></param>
+    /// <param name="func"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<IWords> ParserAsync(TextReader sr, CancellationToken token)
+    public async Task<bool> ParserAsync(IPrarserHelper helper, TextReader sr, Func<string, bool> func, CancellationToken token)
     {
-      // The list of words we found.
-      var textWord = new List<string>();
+      // did we find a word?
+      var added = false;
 
       // the word
       string word;
       while ((word = await ReadWordAsync(sr, token).ConfigureAwait(false)) != null)
       {
-        textWord.Add(word);
+        if( !func(word))
+        {
+          continue;
+        }
+        if (await helper.AddWordAsync(word, token).ConfigureAwait(false))
+        {
+          added = true;
+        }
       }
 
-      // return everything as a Words( ... )
-      return new Words(textWord);
+      // did we find anything?
+      return added;
     }
 
     /// <summary>

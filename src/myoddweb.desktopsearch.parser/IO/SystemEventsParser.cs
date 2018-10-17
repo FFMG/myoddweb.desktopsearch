@@ -256,6 +256,15 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <param name="token"></param>
     private async Task ProcessEventsAsync(CancellationToken token)
     {
+      // quick check before we get the transaction.
+      lock (_lockEvents)
+      {
+        if (!_currentEvents.Any())
+        {
+          return;
+        }
+      }
+
       // we are starting to process events.
       var factory = await Persister.BeginWrite(token).ConfigureAwait(false);
       try
@@ -264,7 +273,8 @@ namespace myoddweb.desktopsearch.parser.IO
         var events = RebuildSystemEvents();
 
         // try and do everything at once.
-        foreach (var e in events)
+        // not that we could return null if we have nothing at all to process.
+        foreach (var e in events ?? new List<IFileSystemEvent>() )
         {
           if (token.IsCancellationRequested)
           {

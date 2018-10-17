@@ -20,7 +20,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.Components;
-using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 
@@ -40,7 +39,7 @@ namespace myoddweb.desktopsearch.parser.code
     /// <summary>
     /// List of reserverd keywords
     /// </summary>
-    private readonly IWords _keyWords = new Words( new List<string>
+    private readonly List<string> _keyWords = new List<string>
     {
       "abstract","as","base","bool","break","byte","case","catch","char","checked","class","const",
       "continue","decimal","default","delegate","do","double","else","enum","event","explicit","extern",
@@ -49,16 +48,16 @@ namespace myoddweb.desktopsearch.parser.code
       "protected","public","readonly","ref","return","sbyte","sealed","short","sizeof","stackalloc","static",
       "string","struct","switch","this","throw","true","try","typeof","uint","ulong","unchecked","unsafe",
       "ushort","using","void","volatile","while"
-    });
+    };
 
     /// <summary>
     /// List of reserverd contextual keywords
     /// </summary>
-    private readonly IWords _contextual = new Words( new List<string>
+    private readonly List<string> _contextual = new List<string>
     {
       "add","alias","ascending","async","await","descending","dynamic","from","get","global","group","into",
       "join","let","orderby","partial","remove","select","set","value","var","when","where","yield"
-    });
+    };
 
     public CSharp()
     {
@@ -81,13 +80,12 @@ namespace myoddweb.desktopsearch.parser.code
     }
 
     /// <inheritdoc />
-    public async Task<IWords> ParseAsync(FileSystemInfo file, ILogger logger, CancellationToken token)
+    public async Task<bool> ParseAsync(IPrarserHelper helper, ILogger logger, CancellationToken token)
     {
       try
       {
         const long maxFileLength = 1000000;
-        var words = await _parser.ParserAsync(file, maxFileLength, token).ConfigureAwait(false);
-        return StripCSharpWords(words);
+        return await _parser.ParserAsync(helper, maxFileLength, Contains, token).ConfigureAwait(false);
       }
       catch (OperationCanceledException)
       {
@@ -96,34 +94,34 @@ namespace myoddweb.desktopsearch.parser.code
       }
       catch (IOException)
       {
-        logger.Error($"IO error trying to read the file, {file.FullName}, might be locked/protected ({Name}).");
-        return null;
+        logger.Error($"IO error trying to read the file, {helper.File.FullName}, might be locked/protected ({Name}).");
+        return false;
       }
       catch (OutOfMemoryException)
       {
-        logger.Error($"Out of Memory: reading file, {file.FullName} ({Name})");
-        return null;
+        logger.Error($"Out of Memory: reading file, {helper.File.FullName} ({Name})");
+        return false;
       }
       catch (Exception ex)
       {
         logger.Exception(ex);
-        return null;
+        return false;
       }
     }
 
     /// <summary>
     /// Remove words that are too common for the CSharp language
     /// </summary>
-    /// <param name="words"></param>
+    /// <param name="word"></param>
     /// <returns></returns>
-    private IWords StripCSharpWords(IWords words)
+    private bool Contains(string word )
     {
-      // remove the keywords
-      words?.RemoveWhere( k => _keyWords.Contains(k) );
-
-      // remove the contextual keywords.
-      words?.RemoveWhere(k => _contextual.Contains(k));
-      return words;
+      // return false if we cannot use that keyword.
+      if( _keyWords.Any(s => s.Equals(word, StringComparison.OrdinalIgnoreCase)))
+      {
+        return false;
+      }
+      return !_contextual.Any(s => s.Equals(word, StringComparison.OrdinalIgnoreCase));
     }
   }
 }

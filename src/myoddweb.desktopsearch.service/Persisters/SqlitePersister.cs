@@ -72,6 +72,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     
     /// <inheritdoc />
     public IFolders Folders { get; }
+
+    /// <inheritdoc />
+    public IParserWords ParserWords { get; }
     #endregion
 
     public SqlitePersister(IPerformance performance, ILogger logger, ConfigSqliteDatabase config, int maxNumCharactersPerWords, int maxNumCharactersPerParts)
@@ -102,6 +105,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // create the files / Folders.
       Folders = new SqlitePersisterFolders( Counts, logger );
+
+      // create the word parser.
+      ParserWords = new SqlitePersisterIParserWords( logger );
     }
 
     /// <inheritdoc />

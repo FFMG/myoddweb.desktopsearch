@@ -56,12 +56,12 @@ namespace myoddweb.desktopsearch.parser.text
     }
 
     /// <inheritdoc />
-    public async Task<IWords> ParseAsync(FileSystemInfo file, ILogger logger, CancellationToken token)
+    public async Task<bool> ParseAsync(IPrarserHelper helper, ILogger logger, CancellationToken token)
     {
       try
       {
         const long maxFileLength = 1000000;
-        return await _parser.ParserAsync(file, maxFileLength, token ).ConfigureAwait( false );
+        return await _parser.ParserAsync(helper, maxFileLength, (s) => true, token ).ConfigureAwait( false );
       }
       catch (OperationCanceledException )
       {
@@ -70,18 +70,18 @@ namespace myoddweb.desktopsearch.parser.text
       }
       catch (IOException)
       {
-        logger.Error($"IO error trying to read the file, {file.FullName}, might be locked/protected ({Name}).");
-        return null;
+        logger.Error($"IO error trying to read the file, {helper.File.FullName}, might be locked/protected ({Name}).");
+        return false;
       }
       catch (OutOfMemoryException)
       {
-        logger.Error($"Out of Memory: reading file, {file.FullName} ({Name})");
-        return null;
+        logger.Error($"Out of Memory: reading file, {helper.File.FullName} ({Name})");
+        return false;
       }
       catch (Exception ex )
       {
         logger.Exception(ex);
-        return null;
+        return false;
       }
     }
   }
