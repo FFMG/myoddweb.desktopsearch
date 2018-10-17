@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -104,6 +105,8 @@ namespace myoddweb.desktopsearch.helper.Components
       var added = false;
 
       // the word
+      const int max = 10000;
+      var words = new List<string>(max);
       string word;
       while ((word = await ReadWordAsync(sr, token).ConfigureAwait(false)) != null)
       {
@@ -111,12 +114,30 @@ namespace myoddweb.desktopsearch.helper.Components
         {
           continue;
         }
-        if (await helper.AddWordAsync( new []{word}, token).ConfigureAwait(false))
+
+        words.Add( word );
+        if (words.Count < max)
+        {
+          continue;
+        }
+        if (await helper.AddWordAsync( words.Distinct(), token).ConfigureAwait(false))
         {
           added = true;
         }
+        words.Clear();
       }
 
+      // any words left?
+      if (!words.Any())
+      {
+        // did we find anything?
+        return added;
+      }
+
+      if (await helper.AddWordAsync(words, token).ConfigureAwait(false))
+      {
+        added = true;
+      }
       // did we find anything?
       return added;
     }
