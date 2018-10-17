@@ -120,7 +120,7 @@ namespace myoddweb.desktopsearch.helper.Components
         {
           continue;
         }
-        if (await helper.AddWordAsync( words.Distinct(), token).ConfigureAwait(false))
+        if (await helper.AddWordAsync( words, token).ConfigureAwait(false))
         {
           added = true;
         }

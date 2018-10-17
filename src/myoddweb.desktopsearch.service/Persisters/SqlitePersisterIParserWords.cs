@@ -50,6 +50,9 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
+      // make it a distinct list.
+      var distinctWords = words.Distinct().ToList();
+
       var sqlInsertWord = $"INSERT INTO {Tables.ParserWords} (id, fileid, word) VALUES (@id, @fileid, @word)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsertWord))
       {
@@ -68,7 +71,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         pWord.ParameterName = "@word";
         cmd.Parameters.Add(pWord);
 
-        foreach (var word in words)
+        foreach (var word in distinctWords)
         {
           // get the next id.
           var nextId = await GetNextWordIdAsync(connectionFactory, token).ConfigureAwait(false);
