@@ -173,11 +173,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           {
             case UpdateType.Created:
               // only add the pending updates where there are actual words to add.
-              var cpfu = await WorkCreatedAsync(pendingFileUpdate, token).ConfigureAwait(false);
-              if (cpfu != null )
-              {
-                completedPendingFileUpdates.Add(cpfu);
-              }
+              completedPendingFileUpdates.Add( await WorkCreatedAsync(pendingFileUpdate, token).ConfigureAwait(false));
               break;
 
             case UpdateType.Deleted:
@@ -396,7 +392,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     private async Task CompletePendingFileUpdates(IReadOnlyCollection<IPendingFileUpdate> completedPendingFileUpdates, CancellationToken token)
     {
       // do some smart checking...
-      if (!completedPendingFileUpdates.Any())
+      if (completedPendingFileUpdates.All(c => c == null))
       {
         // nothing to do.
         return;
@@ -446,6 +442,12 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task CompletePendingFileUpdate(IPendingFileUpdate pendingFileUpdate, IConnectionFactory connectionFactory, CancellationToken token)
     {
+      // null checking
+      if (null == pendingFileUpdate)
+      {
+        return;
+      }
+
       // the file id we are trying to update.
       var fileId = pendingFileUpdate.FileId;
 
