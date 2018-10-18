@@ -59,30 +59,7 @@ namespace myoddweb.desktopsearch.parser.text
     /// <inheritdoc />
     public async Task<long> ParseAsync(IPrarserHelper helper, ILogger logger, CancellationToken token)
     {
-      try
-      {
-        return await _parser.ParserAsync(helper, (s) => true, token ).ConfigureAwait( false );
-      }
-      catch (OperationCanceledException )
-      {
-        logger.Warning( $"Received cancellation request - {Name}");
-        throw;
-      }
-      catch (IOException)
-      {
-        logger.Error($"IO error trying to read the file, {helper.File.FullName}, might be locked/protected ({Name}).");
-        return 0;
-      }
-      catch (OutOfMemoryException)
-      {
-        logger.Error($"Out of Memory: reading file, {helper.File.FullName} ({Name})");
-        return 0;
-      }
-      catch (Exception ex )
-      {
-        logger.Exception(ex);
-        return 0;
-      }
+      return await _parser.ParserAsync(helper, (s) => true, token ).ConfigureAwait( false );
     }
   }
 }

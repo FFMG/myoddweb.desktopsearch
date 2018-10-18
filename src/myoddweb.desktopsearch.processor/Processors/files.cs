@@ -327,7 +327,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       // wait for all the parsers to do their work
       var totalWords = await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
-      if (totalWords.Sum() == 0)
+      if (totalWords == null || totalWords.Sum() == 0)
       {
         // nothing was done.
         parserHelper.Rollback();
