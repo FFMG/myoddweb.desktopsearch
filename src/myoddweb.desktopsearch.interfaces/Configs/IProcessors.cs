@@ -51,6 +51,12 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     int UpdatesPerFilesEvent { get; }
 
     /// <summary>
+    /// The number of fileid we want to parse per events.
+    /// There is no point in doing too many at once as they lock the db
+    /// </summary>
+    int UpdateFileIdsEvent { get; }
+
+    /// <summary>
     /// List of file patterns that we ignore.
     /// </summary>
     IList<IIgnoreFile> IgnoreFiles { get; }

@@ -14,7 +14,6 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -31,12 +30,19 @@ namespace myoddweb.desktopsearch.helper.Components
     /// </summary>
     private readonly Regex _reg;
 
+    /// <summary>
+    /// The maximum number of characters we want to read.
+    /// We _might_ read more or less characters depending on the file size.
+    /// </summary>
+    private readonly int _maxNumberReadCharacters;
+
     /// <inheritdoc />
     /// <summary>
     /// Contructor with a string pattern.
     /// </summary>
     /// <param name="pattern"></param>
-    public FileParser(string pattern ) : this(new Regex(pattern) )
+    /// <param name="maxNumberReadCharacters"></param>
+    public FileParser(string pattern, int maxNumberReadCharacters) : this(new Regex(pattern), maxNumberReadCharacters )
     {
     }
 
@@ -44,36 +50,26 @@ namespace myoddweb.desktopsearch.helper.Components
     /// The constructor with a regex.
     /// </summary>
     /// <param name="regex"></param>
-    public FileParser(Regex regex )
+    /// <param name="maxNumberReadCharacters"></param>
+    public FileParser(Regex regex, int maxNumberReadCharacters)
     {
       _reg = regex;
+      _maxNumberReadCharacters = maxNumberReadCharacters;
     }
 
     /// <summary>
     /// Parse a given file.
     /// </summary>
     /// <param name="helper"></param>
-    /// <param name="maxFileLength"></param>
     /// <param name="token"></param>
     /// <param name="func">The function that tells us if we can add a word or not.</param>
     /// <returns></returns>
-    public async Task<bool> ParserAsync(IPrarserHelper helper, long maxFileLength, Func<string, bool> func, CancellationToken token )
+    public async Task<long> ParserAsync(IPrarserHelper helper, Func<string, bool> func, CancellationToken token )
     {
-      string text;
       using (var sr = new StreamReader(helper.File.FullName))
       {
-        // the file is too big for us to read at once
-        // so we have to parse word by word.
-        if ((sr.BaseStream as FileStream)?.Length > maxFileLength)
-        {
-          return await ParserAsync(helper, sr, func, token);
-        }
-
-        // read everything in one go.
-        // then close the file and build the list of words.
-        text = sr.ReadToEnd();
+        return await ParserAsync(helper, sr, func, token);
       }
-      return await ParserAsync(helper, text, func, token).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -84,7 +80,7 @@ namespace myoddweb.desktopsearch.helper.Components
     /// <param name="func"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<bool> ParserAsync(IPrarserHelper helper, string text, Func<string, bool> func, CancellationToken token)
+    public async Task<long> ParserAsync(IPrarserHelper helper, string text, Func<string, bool> func, CancellationToken token)
     {
       // split the line into words.
       var words = _reg.Matches(text).OfType<Match>().Select(m => m.Groups[0].Value).ToArray();
@@ -99,60 +95,48 @@ namespace myoddweb.desktopsearch.helper.Components
     /// <param name="func"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<bool> ParserAsync(IPrarserHelper helper, TextReader sr, Func<string, bool> func, CancellationToken token)
+    public async Task<long> ParserAsync(IPrarserHelper helper, TextReader sr, Func<string, bool> func, CancellationToken token)
     {
-      // did we find a word?
-      var added = false;
+      // the number of words we added.
+      long added = 0;
 
       // the word
-      const int max = 10000;
-      var words = new List<string>(max);
-      string word;
-      while ((word = await ReadWordAsync(sr, token).ConfigureAwait(false)) != null)
+      string text;
+      while ((text = await ReadTextAsync(sr, token).ConfigureAwait(false)) != null)
       {
-        if( !func(word))
-        {
-          continue;
-        }
-
-        words.Add( word );
-        if (words.Count < max)
-        {
-          continue;
-        }
-        if (await helper.AddWordAsync( words, token).ConfigureAwait(false))
-        {
-          added = true;
-        }
-        words.Clear();
+        added += await ParserAsync(helper, text, func, token).ConfigureAwait(false);
       }
 
-      // any words left?
-      if (!words.Any())
-      {
-        // did we find anything?
-        return added;
-      }
-
-      if (await helper.AddWordAsync(words, token).ConfigureAwait(false))
-      {
-        added = true;
-      }
       // did we find anything?
       return added;
     }
 
     /// <summary>
-    /// Read a word from the file and move the pointer forward.
+    /// Read 
     /// </summary>
     /// <param name="stream"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<string> ReadWordAsync(TextReader stream, CancellationToken token)
+    private async Task<string> ReadTextAsync(TextReader stream, CancellationToken token)
     {
-      string word = null;
+      // try and read up to the max
+      var buffer = new char[_maxNumberReadCharacters];
+      var len = await stream.ReadAsync(buffer, 0, _maxNumberReadCharacters).ConfigureAwait(false);
+      if (len == 0)
+      {
+        return null;
+      }
+      if (len < _maxNumberReadCharacters )
+      {
+        return new string(buffer);
+      }
+
+      // we have to read to the next char.
+      var text = new string(buffer);
+
+      // recreate the buffer
       const int count = 1;
-      var buffer = new char[count];
+      buffer = new char[1];
 
       while (true)
       {
@@ -163,7 +147,7 @@ namespace myoddweb.desktopsearch.helper.Components
         // if not return what we have, (we might have nothing)
         if (read == 0)
         {
-          return word;
+          return text;
         }
 
         // get out if we cancelled.
@@ -172,22 +156,10 @@ namespace myoddweb.desktopsearch.helper.Components
         var letter = new string(buffer, 0, read);
         if (!_reg.IsMatch(letter))
         {
-          // do we have anything?
-          if (!string.IsNullOrEmpty(word))
-          {
-            return word;
-          }
-
-          // if we are here we found a 'bad' character first.
-          continue;
+          // if we are here we found a 'bad' character straight away.
+          return text;
         }
-
-        if (word == null)
-        {
-          word = letter;
-          continue;
-        }
-        word += letter;
+        text += letter;
       }
     }
   }

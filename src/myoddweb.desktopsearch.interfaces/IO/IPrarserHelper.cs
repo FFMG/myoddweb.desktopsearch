@@ -22,12 +22,17 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// </summary>
     /// <param name="words"></param>
     /// <param name="token"></param>
-    /// <returns></returns>
-    Task<bool> AddWordAsync(IReadOnlyList<string> words, CancellationToken token );
+    /// <returns>The number of words actually added.</returns>
+    Task<long> AddWordAsync(IReadOnlyList<string> words, CancellationToken token );
 
     /// <summary>
-    /// 
+    /// commit the transaction, if we have one.
     /// </summary>
     void Commit();
+
+    /// <summary>
+    /// Rollback the transaction if we have one.
+    /// </summary>
+    void Rollback();
   }
 }

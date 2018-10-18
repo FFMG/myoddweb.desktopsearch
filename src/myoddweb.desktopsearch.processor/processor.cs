@@ -74,6 +74,9 @@ namespace myoddweb.desktopsearch.processor
         var filesCounter = new ProcessorPerformanceCounter(performance, fileCounterName, logger);
         _timers.Add( new ProcessorTimer(new Files(filesCounter, config.UpdatesPerFilesEvent, fileParsers, config.IgnoreFiles, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
       }
+
+      // the file parser.
+      _timers.Add(new ProcessorTimer(new Parser( config.UpdateFileIdsEvent, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
     }
 
     #region Start/Stop functions

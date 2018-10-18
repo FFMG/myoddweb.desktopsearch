@@ -45,7 +45,8 @@ namespace myoddweb.desktopsearch.parser.text
       //   \p{S}            - All the symbols, (currency/maths)
       //
       // So we allow Numbers and Words together.
-      _parser = new FileParser(@"[^\p{Z}\t\r\n\v\f\p{P}\p{C}\p{S}]+");
+      const int maxNumberReadCharacters = 5000000; // (char = 2bytes * 5000000 = ~10MB)
+      _parser = new FileParser(@"[^\p{Z}\t\r\n\v\f\p{P}\p{C}\p{S}]+", maxNumberReadCharacters);
     }
 
     /// <inheritdoc />
@@ -56,12 +57,11 @@ namespace myoddweb.desktopsearch.parser.text
     }
 
     /// <inheritdoc />
-    public async Task<bool> ParseAsync(IPrarserHelper helper, ILogger logger, CancellationToken token)
+    public async Task<long> ParseAsync(IPrarserHelper helper, ILogger logger, CancellationToken token)
     {
       try
       {
-        const long maxFileLength = 1000000;
-        return await _parser.ParserAsync(helper, maxFileLength, (s) => true, token ).ConfigureAwait( false );
+        return await _parser.ParserAsync(helper, (s) => true, token ).ConfigureAwait( false );
       }
       catch (OperationCanceledException )
       {
@@ -71,17 +71,17 @@ namespace myoddweb.desktopsearch.parser.text
       catch (IOException)
       {
         logger.Error($"IO error trying to read the file, {helper.File.FullName}, might be locked/protected ({Name}).");
-        return false;
+        return 0;
       }
       catch (OutOfMemoryException)
       {
         logger.Error($"Out of Memory: reading file, {helper.File.FullName} ({Name})");
-        return false;
+        return 0;
       }
       catch (Exception ex )
       {
         logger.Exception(ex);
-        return false;
+        return 0;
       }
     }
   }

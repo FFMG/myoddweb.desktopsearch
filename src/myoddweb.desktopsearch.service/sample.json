@@ -31,9 +31,10 @@
     "ConcurrentDirectoriesProcessor": 2,
     "ConcurrentFilesProcessor": 8,
     "UpdatesPerFilesEvent": 100,
+    "UpdateFileIdsEvent": 2,
     "QuietEventsProcessorMs": 10000,
     "BusyEventsProcessorMs": 1,
-    "IgnoreFiles" : [
+    "IgnoreFiles": [
       {
         "Pattern": "*.*",
         "MaxSizeMegabytes": "1024"

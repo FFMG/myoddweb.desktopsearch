@@ -43,7 +43,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="helper"></param>
     /// <param name="logger"></param>
     /// <param name="token"></param>
-    /// <returns></returns>
-    Task<bool> ParseAsync(IPrarserHelper helper, ILogger logger, CancellationToken token);
+    /// <returns>Number of words we added</returns>
+    Task<long> ParseAsync(IPrarserHelper helper, ILogger logger, CancellationToken token);
   }
 }

@@ -53,7 +53,7 @@ namespace myoddweb.desktopsearch.processor
     private CancellationTokenRegistration _cancelationToken;
     #endregion
 
-    public PrarserHelper(FileSystemInfo file, IPersister persister, long fileid, CancellationToken token)
+    public PrarserHelper(FileSystemInfo file, IPersister persister, long fileid )
     {
       _fileId = fileid;
 
@@ -65,8 +65,6 @@ namespace myoddweb.desktopsearch.processor
 
       // we added nothing yet.
       Count = 0;
-
-      _cancelationToken = token.Register(Cancel);
     }
 
     private void Cancel()
@@ -82,25 +80,30 @@ namespace myoddweb.desktopsearch.processor
     }
 
     /// <inheritdoc /> 
-    public async Task<bool> AddWordAsync(IReadOnlyList<string> words, CancellationToken token)
+    public async Task<long> AddWordAsync(IReadOnlyList<string> words, CancellationToken token)
     {
-      if (null == _factory)
-      {
-        _factory = await _persister.BeginWrite(token).ConfigureAwait(false);
-      }
+      await BeginWrite( token ).ConfigureAwait(false );
 
       // then we just try and add the word.
-      if (!await _persister.ParserWords.AddWordAsync(_fileId, words, _factory, token).ConfigureAwait(false) )
-      {
-        return false;
-      }
+      var added = await _persister.ParserWords.AddWordAsync(_fileId, words, _factory, token).ConfigureAwait(false);
 
       // we 'added' the word.
       // technically the word might already exist.
-      ++Count;
+      Count += added;
 
       // success.
-      return true;
+      return added;
+    }
+
+    private async Task BeginWrite( CancellationToken token )
+    {
+      if (null != _factory)
+      {
+        return;
+      }
+
+      _factory = await _persister.BeginWrite(token).ConfigureAwait(false);
+      _cancelationToken = token.Register(Cancel);
     }
 
     /// <inheritdoc /> 
@@ -109,6 +112,19 @@ namespace myoddweb.desktopsearch.processor
       if (_factory != null)
       {
         _persister.Commit(_factory);
+      }
+      _factory = null;
+
+      // free the resources.
+      _cancelationToken.Dispose();
+    }
+
+    /// <inheritdoc /> 
+    public void Rollback()
+    {
+      if (_factory != null)
+      {
+        _persister.Rollback(_factory);
       }
       _factory = null;
 

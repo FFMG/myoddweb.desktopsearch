@@ -47,6 +47,11 @@ namespace myoddweb.desktopsearch.service.Configs
     public int UpdatesPerFilesEvent { get; protected set; }
 
     /// <inheritdoc />
+    [DefaultValue(2)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public int UpdateFileIdsEvent { get; protected set; }
+
+    /// <inheritdoc />
     [DefaultValue(null)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public IList<IIgnoreFile> IgnoreFiles { get; protected set; }

@@ -13,12 +13,9 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -26,6 +23,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 {
   internal class SqlitePersisterFilesWords : IFilesWords
   {
+    #region Member variables
     /// <summary>
     /// The logger
     /// </summary>
@@ -34,10 +32,20 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// The words interface
     /// </summary>
-    private readonly interfaces.Persisters.IWords _words;
+    private readonly IWords _words;
 
-    public SqlitePersisterFilesWords(interfaces.Persisters.IWords words, ILogger logger)
+    /// <summary>
+    /// The parser words we are working with.
+    /// </summary>
+    private readonly IParserWords _parserWords;
+    #endregion
+
+    public SqlitePersisterFilesWords(IParserWords parserWords, IWords words, ILogger logger)
     {
+      // the parsers word.
+      _parserWords = parserWords ?? throw new ArgumentException(nameof(parserWords));
+
+      // the words manager
       _words = words ?? throw new ArgumentNullException(nameof(words));
 
       // save the logger
@@ -45,42 +53,27 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordToFileAsync(IWord word, long fileId, IConnectionFactory connectionFactory, CancellationToken token)
-    {
-      return await AddOrUpdateWordsToFileAsync(new helper.IO.Words( word ), fileId, connectionFactory, token ).ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> AddOrUpdateWordsToFileAsync(interfaces.IO.IWords words, long fileId, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> AddParserWordsAsync( long fileId, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
       {
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
-      // get all the word ids, insert them into the word table if needed.
-      // we will then add those words to the this file id.
-      var wordids = await _words.GetWordIdsAsync(words, connectionFactory, token, true).ConfigureAwait(false);
-
-      // get all the current word ids already in that files.
-      var currentIds = await GetWordIdsForFile(fileId, connectionFactory, token).ConfigureAwait(false);
-
-      // all the ids returned are the ones in the file id.
-      // if that file has any other words then they need to be removed.
-      if (!await RemoveWordIdsThatShouldNotBeInFile(fileId, wordids, currentIds, connectionFactory, token).ConfigureAwait(false))
-      {
-        return false;
-      }
-
       try
       {
-        // finally we need to add all the words to the file that are not in the current file.
-        var wordIdsToAdd = wordids.Except(currentIds).ToList();
-        if (!wordIdsToAdd.Any())
+        // get some words from the parser so we can add them here now.
+        var words = await _parserWords.GetWordsForProcessingAsync(fileId, connectionFactory, token);
+        if (words == null || !words.Any())
         {
+          // there was nothing to add.
           return true;
         }
 
+        // if needed, add all the words to the words list.
+        var wordids = await _words.GetWordIdsAsync(words, connectionFactory, token, true ).ConfigureAwait(false);
+
+        // then do an insert.
         var sql = $"INSERT INTO {Tables.FilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
@@ -98,7 +91,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           // it does not eixst ... we have to add it.
           pFId.Value = fileId;
 
-          foreach (var id in wordIdsToAdd)
+          foreach (var id in wordids)
           {
             pWId.Value = id;
             if (1 != await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
@@ -113,7 +106,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       catch (OperationCanceledException)
       {
-        _logger.Warning("Received cancellation request - Add words to file id");
+        _logger.Warning( $"Received cancellation request - Add words to file id: {fileId}");
         throw;
       }
       catch (Exception ex)
@@ -124,10 +117,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteFileFromFilesAndWordsAsync(long fileId, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> DeleteWordsAsync(long fileId, IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {
+        // remove all the words we might still need to parse
+        await _parserWords.DeleteFileId(fileId, connectionFactory, token).ConfigureAwait(false);
+
+        // then remove the ones we might have done already.
         var sqlDelete = $"DELETE FROM {Tables.FilesWords} WHERE fileid=@fileid";
         using (var cmd = connectionFactory.CreateCommand(sqlDelete))
         {
@@ -162,137 +159,5 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
     }
-
-    #region Private word functions
-    /// <summary>
-    /// Remove the ids that were in the words list but are not anymore.
-    /// </summary>
-    /// <param name="fileId"></param>
-    /// <param name="expectedWordIds">The ids we want to add</param>
-    /// <param name="currentWordIds"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<bool> RemoveWordIdsThatShouldNotBeInFile(long fileId, IList<long> expectedWordIds, IEnumerable<long> currentWordIds, IConnectionFactory connectionFactory, CancellationToken token)
-    {
-      // if we have nothing in the list of ids we want then we want to remove everything.
-      if (!expectedWordIds.Any())
-      {
-        return await DeleteFileFromFilesAndWordsAsync(fileId, connectionFactory, token).ConfigureAwait(false);
-      }
-
-      // then remove all the ids that are in our _current_ list of words
-      // but that are not in our given list.
-      var wordIdsToRemove = currentWordIds.Except(expectedWordIds).ToArray();
-
-      // those are the id that we want to delete.
-      if (!wordIdsToRemove.Any())
-      {
-        // we have nothing to do
-        // but it is no an error in itslef.
-        return true;
-      }
-
-      try
-      {
-        // whatever word ids are left we need to remove them.
-        var sqlDelete = $"DELETE FROM {Tables.FilesWords} WHERE wordid=@wordid and fileid=@fileid";
-        using (var cmd = connectionFactory.CreateCommand(sqlDelete))
-        {
-          var pWId = cmd.CreateParameter();
-          pWId.DbType = DbType.Int64;
-          pWId.ParameterName = "@wordid";
-          cmd.Parameters.Add(pWId);
-
-          var pFId = cmd.CreateParameter();
-          pFId.DbType = DbType.Int64;
-          pFId.ParameterName = "@fileid";
-          cmd.Parameters.Add(pFId);
-
-          pFId.Value = fileId;
-          foreach (var wordId in wordIdsToRemove)
-          {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            // set the word id we are getting rid off.
-            pWId.Value = wordId;
-            if (1 != await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
-            {
-              _logger.Warning($"Could not delete word : {wordId} for file : {fileId}, does it still exist?");
-            }
-          }
-        }
-
-        // all good.
-        return true;
-      }
-      catch (OperationCanceledException)
-      {
-        _logger.Warning("Received cancellation request - Deleting extra word ids.");
-        throw;
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
-        throw;
-      }
-    }
-
-    /// <summary>
-    /// Get all the woord ids for a given file.
-    /// </summary>
-    /// <param name="fileId"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<HashSet<long>> GetWordIdsForFile( long fileId, IConnectionFactory connectionFactory, CancellationToken token)
-    {
-      // first we get the ids that are in the 
-      try
-      {
-        var sqlSelect = $"SELECT wordid FROM {Tables.FilesWords} WHERE fileid=@fileid";
-        using (var cmd = connectionFactory.CreateCommand(sqlSelect))
-        {
-          // and the prameters for selecting.
-          var pFId = cmd.CreateParameter();
-          pFId.DbType = DbType.Int64;
-          pFId.ParameterName = "@fileid";
-          cmd.Parameters.Add(pFId);
-
-          // set the file id.
-          pFId.Value = fileId;
-
-          // the list of wordIds 
-          var wordIds = new HashSet<long>();
-
-          //  execute the query itself.
-          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
-          var ordinal = reader.GetOrdinal("wordid");
-          while (reader.Read())
-          {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            // add this id to the list.
-            wordIds.Add( reader.GetInt64(ordinal));
-          }
-
-          // return all the word ids that we found for this files.
-          return wordIds;
-        }
-      }
-      catch (OperationCanceledException)
-      {
-        _logger.Warning("Received cancellation request - Getting all the word ids for a file id.");
-        throw;
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
-        return new HashSet<long>();
-      }
-    }
-    #endregion
   }
 }

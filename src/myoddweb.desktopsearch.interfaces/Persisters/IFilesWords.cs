@@ -14,39 +14,28 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.interfaces.IO;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
   public interface IFilesWords
   {
     /// <summary>
-    /// Add 
-    /// </summary>
-    /// <param name="word"></param>
-    /// <param name="fileId"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    Task<bool> AddOrUpdateWordToFileAsync(IWord word, long fileId, IConnectionFactory connectionFactory, CancellationToken token);
-
-    /// <summary>
     /// Add multiple words to a single file id
     /// </summary>
-    /// <param name="words"></param>
     /// <param name="fileId"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateWordsToFileAsync(IO.IWords words, long fileId, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> AddParserWordsAsync( long fileId, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
-    /// Remove a file id from the FilesWords list.
+    /// Remove a file id from the FilesWords table.
+    /// So when we are looking for a word, by id, this file will not come up.
     /// </summary>
     /// <param name="fileId"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFileFromFilesAndWordsAsync( long fileId, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> DeleteWordsAsync( long fileId, IConnectionFactory connectionFactory, CancellationToken token);
   }
 }

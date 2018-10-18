@@ -18,8 +18,10 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using IWords = myoddweb.desktopsearch.interfaces.IO.IWords;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
@@ -30,20 +32,33 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
+
+    /// <summary>
+    /// The maximum number of words we want to process at once
+    /// To prevent starving resources, we will make sure that this number is not too high.
+    /// </summary>
+    private readonly int _maxNumberOfWordsToProcess;
     #endregion
 
-    public SqlitePersisterIParserWords(ILogger logger)
+    public SqlitePersisterIParserWords(ILogger logger, int maxNumberOfWordsToProcess )
     {
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      if (maxNumberOfWordsToProcess <= 0)
+      {
+        throw new ArgumentException( $"The max number of words to process, {maxNumberOfWordsToProcess}, cannot be 0 or -ve");
+      }
+
+      _maxNumberOfWordsToProcess = maxNumberOfWordsToProcess;
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddWordAsync(long fileid, IReadOnlyList<string> words, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<long> AddWordAsync(long fileid, IReadOnlyList<string> words, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (!words.Any())
       {
-        return true;
+        return 0;
       }
       if (null == connectionFactory)
       {
@@ -53,6 +68,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // make it a distinct list.
       var distinctWords = words.Distinct().ToList();
 
+      long added = 0;
       var sqlInsertWord = $"INSERT INTO {Tables.ParserWords} (id, fileid, word) VALUES (@id, @fileid, @word)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsertWord))
       {
@@ -97,6 +113,9 @@ namespace myoddweb.desktopsearch.service.Persisters
               continue;
             }
 
+            // word was added
+            ++added;
+
             // move on to the next id.
             ++nextId;
           }
@@ -108,13 +127,13 @@ namespace myoddweb.desktopsearch.service.Persisters
           catch (Exception ex)
           {
             _logger.Exception(ex);
-            return false;
+            return 0;
           }
         }
       }
 
       // succcess it worked.
-      return true;
+      return added;
     }
 
     /// <inheritdoc />
@@ -142,7 +161,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           pFileId.Value = fileid;
           if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
           {
-            _logger.Warning($"Could not delete parser words, file id: {fileid}, does it still exist?");
+            _logger.Verbose($"Could not delete parser words for file id: {fileid}, do they still exist? was there any?");
           }
 
           // we are done.
@@ -201,6 +220,92 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           _logger.Exception(ex);
           return false;
+        }
+      }
+    }
+
+    /// <inheritdoc />
+    public async Task<IList<long>> GetPendingFileIdsAsync(int count, IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      if (null == connectionFactory)
+      {
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
+      }
+
+      var sql = $"SELECT fileid FROM {Tables.ParserWords} GROUP BY fileid LIMIT {count}";
+      using (var cmd = connectionFactory.CreateCommand(sql))
+      {
+        var fileids = new List<long>(count);
+        try
+        {
+          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
+          while (reader.Read())
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            // the word id
+            fileids.Add((long)reader["fileid"]);
+          }
+          return fileids;
+        }
+        catch (OperationCanceledException)
+        {
+          _logger.Warning("Received cancellation request - Parser words - Delete word");
+          throw;
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
+          return null;
+        }
+      }
+    }
+
+    /// <inheritdoc />
+    public async Task<IWords> GetWordsForProcessingAsync(long fileid, IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      if (null == connectionFactory)
+      {
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
+      }
+
+      var sql = $"SELECT id, word FROM {Tables.ParserWords} WHERE fileid=@fileid LIMIT {_maxNumberOfWordsToProcess}";
+      using (var cmd = connectionFactory.CreateCommand(sql))
+      {
+        var pFileId = cmd.CreateParameter();
+        pFileId.DbType = DbType.Int64;
+        pFileId.ParameterName = "@fileid";
+        cmd.Parameters.Add(pFileId);
+
+        pFileId.Value = fileid;
+        var words = new List<string>( _maxNumberOfWordsToProcess );
+        try
+        {
+          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
+          while (reader.Read())
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            // the word id
+            var id = (long) reader["id"];
+            words.Add((string)reader["word"]);
+
+            // remove that word
+            await DeleteWordIdFileId(id, connectionFactory, token).ConfigureAwait(false );
+          }
+          return new Words( words );
+        }
+        catch (OperationCanceledException)
+        {
+          _logger.Warning("Received cancellation request - Parser words - Delete word");
+          throw;
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
+          return null;
         }
       }
     }

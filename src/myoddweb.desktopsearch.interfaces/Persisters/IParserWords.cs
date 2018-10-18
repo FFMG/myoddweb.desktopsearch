@@ -28,8 +28,8 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="words"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
-    /// <returns></returns>
-    Task<bool> AddWordAsync( long fileid, IReadOnlyList<string> words, IConnectionFactory connectionFactory, CancellationToken token);
+    /// <returns>The number of words that were added.</returns>
+    Task<long> AddWordAsync( long fileid, IReadOnlyList<string> words, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Delete all the words for a file id.
@@ -48,5 +48,23 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<bool> DeleteWordIdFileId(long wordid, IConnectionFactory connectionFactory, CancellationToken token);
+
+    /// <summary>
+    /// Get words for processing.
+    /// </summary>
+    /// <param name="fileid">The file we are wanting to process.</param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<IO.IWords> GetWordsForProcessingAsync(long fileid, IConnectionFactory connectionFactory, CancellationToken token);
+
+    /// <summary>
+    /// Get the id of pending file 
+    /// </summary>
+    /// <param name="count">How many ids we would like to get.</param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<IList<long>> GetPendingFileIdsAsync( int count, IConnectionFactory connectionFactory, CancellationToken token);
   }
 }
