@@ -48,5 +48,12 @@ namespace myoddweb.desktopsearch.interfaces.Logging
     /// </summary>
     /// <param name="ex"></param>
     void Exception(Exception ex);
+
+    /// <summary>
+    /// Log an Exception with a message
+    /// </summary>
+    /// <param name="message">The message we want to add.</param>
+    /// <param name="ex"></param>
+    void Exception(string message, Exception ex);
   }
 }

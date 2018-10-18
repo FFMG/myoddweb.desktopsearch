@@ -111,7 +111,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       catch (Exception ex)
       {
-        _logger.Exception(ex);
+        _logger.Exception($"There was an exception adding parser words for FileId: {fileId}", ex);
         throw;
       }
     }

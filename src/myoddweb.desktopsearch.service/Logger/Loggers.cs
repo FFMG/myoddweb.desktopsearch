@@ -99,6 +99,13 @@ namespace myoddweb.desktopsearch.service.Logger
     }
 
     /// <inheritdoc />
+    public void Exception(string message, Exception ex)
+    {
+      Error(message);
+      Exception(ex);
+    }
+
+    /// <inheritdoc />
     public void Error(string message)
     {
       Log(LogLevel.Error, message);

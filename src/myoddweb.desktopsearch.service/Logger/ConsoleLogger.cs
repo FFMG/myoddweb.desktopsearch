@@ -83,6 +83,18 @@ namespace myoddweb.desktopsearch.service.Logger
       {
         return;
       }
+      if (ex is AggregateException ae)
+      {
+        ae.Handle(e =>
+        {
+          //  handle it
+          Exception(e);
+
+          // we handled it.
+          return true;
+        });
+        return;
+      }
       while (true)
       {
         Error(ex.ToString());
@@ -93,6 +105,17 @@ namespace myoddweb.desktopsearch.service.Logger
         }
         break;
       }
+    }
+
+    /// <inheritdoc />
+    public void Exception(string message, Exception ex)
+    {
+      if (!CanLog(LogLevel.Error))
+      {
+        return;
+      }
+      Error(message);
+      Exception( ex );
     }
 
     /// <inheritdoc />
