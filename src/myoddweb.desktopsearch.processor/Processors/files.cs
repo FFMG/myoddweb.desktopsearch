@@ -169,6 +169,9 @@ namespace myoddweb.desktopsearch.processor.Processors
         var completedPendingFileUpdates = new List<IPendingFileUpdate>();
         foreach (var pendingFileUpdate in pendingFileUpdates)
         {
+          // throw if need be.
+          token.ThrowIfCancellationRequested();
+
           switch (pendingFileUpdate.PendingUpdateType)
           {
             case UpdateType.Created:
@@ -408,6 +411,9 @@ namespace myoddweb.desktopsearch.processor.Processors
       {
         foreach (var pendingFileUpdate in completedPendingFileUpdates)
         {
+          // throw if need be.
+          token.ThrowIfCancellationRequested();
+
           // complete the update
           await CompletePendingFileUpdate(pendingFileUpdate, transaction, token).ConfigureAwait(false);
         }

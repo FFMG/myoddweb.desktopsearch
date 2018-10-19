@@ -84,9 +84,9 @@ function myoddweb() {
           "<div class='live-search-result-element'>" + 
           "<div class='live-search-result-element-top'>" + item.Name + "</div>"+
           "<div class='live-search-result-element-bottom'>" +
-            "<strong>Full Path:</strong>" + item.FullName + "<br />"+
-            "<strong>Path:</strong>" + item.Directory  + "<br />"+
-            "<strong>Word:</strong>" + item.Actual +
+            "<strong>Full Path:</strong> <a href=\"file:///"+ item.FullName+"\">" + item.FullName + "</a><br />"+
+            "<strong>Path:</strong> " + item.Directory  + "<br />"+
+            "<strong>Word:</strong> " + item.Actual +
           "</div>" +
           "</div>"
         );
