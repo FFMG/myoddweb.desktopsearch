@@ -67,7 +67,11 @@ namespace myoddweb.desktopsearch.service.Configs
       ConcurrentFilesProcessor = 2*Environment.ProcessorCount;
 
       // this is per ms, so we want to have one busy processor every ms 
-      BusyEventsProcessorMs = Environment.ProcessorCount;
+      // but those will hit the hard drive ... hard.
+      // so we want to give 10ms in between. 
+      // so it is ProcessorCount * 10
+      // and over time we should have one CPU busy all the time.
+      BusyEventsProcessorMs = Environment.ProcessorCount * 10;
 
       if (null != ignoreFiles)
       {
