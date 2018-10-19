@@ -60,19 +60,19 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
+      // get some words from the parser so we can add them here now.
+      var words = await _parserWords.GetWordsForProcessingAsync(fileId, connectionFactory, token);
+      if (words == null || !words.Any())
+      {
+        // there was nothing to add.
+        return true;
+      }
+
+      // if needed, add all the words to the words list.
+      var wordids = await _words.GetWordIdsAsync(words, connectionFactory, token, true).ConfigureAwait(false);
+
       try
       {
-        // get some words from the parser so we can add them here now.
-        var words = await _parserWords.GetWordsForProcessingAsync(fileId, connectionFactory, token);
-        if (words == null || !words.Any())
-        {
-          // there was nothing to add.
-          return true;
-        }
-
-        // if needed, add all the words to the words list.
-        var wordids = await _words.GetWordIdsAsync(words, connectionFactory, token, true ).ConfigureAwait(false);
-
         // then do an insert.
         var sql = $"INSERT INTO {Tables.FilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
         using (var cmd = connectionFactory.CreateCommand(sql))
