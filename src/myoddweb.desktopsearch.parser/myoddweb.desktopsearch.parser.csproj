@@ -31,11 +31,11 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="myoddweb.directorywatcher, Version=0.0.5.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\MyOddWeb.DirectoryWatcher.0.0.5\lib\net452\myoddweb.directorywatcher.dll</HintPath>
+    <Reference Include="myoddweb.directorywatcher, Version=0.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\MyOddWeb.DirectoryWatcher.0.1.0\lib\net452\myoddweb.directorywatcher.dll</HintPath>
     </Reference>
-    <Reference Include="myoddweb.directorywatcher.interfaces, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\MyOddWeb.DirectoryWatcher.0.0.5\lib\net452\myoddweb.directorywatcher.interfaces.dll</HintPath>
+    <Reference Include="myoddweb.directorywatcher.interfaces, Version=0.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\MyOddWeb.DirectoryWatcher.0.1.0\lib\net452\myoddweb.directorywatcher.interfaces.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
