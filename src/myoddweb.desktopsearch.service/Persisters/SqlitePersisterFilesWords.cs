@@ -74,32 +74,55 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // then do an insert.
-        var sql = $"INSERT INTO {Tables.FilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
-        using (var cmd = connectionFactory.CreateCommand(sql))
+        var sqlSelect = $"SELECT wordid FROM {Tables.FilesWords} where wordid=@wordid AND fileid=@fileid";
+        using (var cmdSelect = connectionFactory.CreateCommand(sqlSelect))
         {
           // create the parameters for inserting.
-          var pWId = cmd.CreateParameter();
-          pWId.DbType = DbType.Int64;
-          pWId.ParameterName = "@wordid";
-          cmd.Parameters.Add(pWId);
+          var pSWId = cmdSelect.CreateParameter();
+          pSWId.DbType = DbType.Int64;
+          pSWId.ParameterName = "@wordid";
+          cmdSelect.Parameters.Add(pSWId);
 
-          var pFId = cmd.CreateParameter();
-          pFId.DbType = DbType.Int64;
-          pFId.ParameterName = "@fileid";
-          cmd.Parameters.Add(pFId);
+          var pSFId = cmdSelect.CreateParameter();
+          pSFId.DbType = DbType.Int64;
+          pSFId.ParameterName = "@fileid";
+          cmdSelect.Parameters.Add(pSFId);
 
-          // it does not eixst ... we have to add it.
-          pFId.Value = fileId;
-
-          foreach (var id in wordids)
+          var sqlInsert = $"INSERT INTO {Tables.FilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
+          using (var cmdInsert = connectionFactory.CreateCommand(sqlInsert))
           {
-            pWId.Value = id;
-            if (1 != await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+            // create the parameters for inserting.
+            var pIWId = cmdInsert.CreateParameter();
+            pIWId.DbType = DbType.Int64;
+            pIWId.ParameterName = "@wordid";
+            cmdInsert.Parameters.Add(pIWId);
+
+            var pIFId = cmdInsert.CreateParameter();
+            pIFId.DbType = DbType.Int64;
+            pIFId.ParameterName = "@fileid";
+            cmdInsert.Parameters.Add(pIFId);
+
+            // it does not eixst ... we have to add it.
+            pIFId.Value = fileId;
+            pSFId.Value = fileId;
+
+            foreach (var id in wordids)
             {
-              _logger.Error($"There was an issue inserting word : {id} for file : {fileId}");
+              pSWId.Value = id;
+              var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
+              if (null != value && value != DBNull.Value)
+              {
+                continue;
+              }
+
+              pIWId.Value = id;
+              if (1 != await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
+              {
+                _logger.Error($"There was an issue inserting word : {id} for file : {fileId}");
+              }
             }
-          }
-        }// Command Insert
+          } // Command Insert
+        }
 
         // we are done
         return true;
