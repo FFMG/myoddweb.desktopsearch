@@ -28,28 +28,6 @@ namespace myoddweb.desktopsearch.processor.Processors
 {
   internal class Files : IProcessor
   {
-    /// <summary>
-    /// The words for a completed pending update.
-    /// </summary>
-    internal class CompletedPendingFileUpdate : IPendingFileUpdate
-    {
-      /// <inheritdoc />
-      public long FileId { get; }
-
-      /// <inheritdoc />
-      public FileInfo File { get; }
-
-      /// <inheritdoc />
-      public UpdateType PendingUpdateType { get; }
-
-      public CompletedPendingFileUpdate( IPendingFileUpdate pu  )
-      {
-        FileId = pu.FileId;
-        File = pu.File;
-        PendingUpdateType = pu.PendingUpdateType;
-      }
-    }
-
     #region Member Variables
     /// <summary>
     /// The logger that we will be using to log messages.
@@ -343,7 +321,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       parserHelper.Commit();
 
       // merge them all into one.
-      return new CompletedPendingFileUpdate(pendingFileUpdate);
+      return pendingFileUpdate;
     }
 
     /// <summary>
