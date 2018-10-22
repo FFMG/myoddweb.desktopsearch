@@ -21,6 +21,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.ServiceProcess;
+using System.Text;
 using System.Threading;
 using myoddweb.desktopsearch.http;
 using myoddweb.desktopsearch.interfaces.Configs;
@@ -35,6 +36,7 @@ using Newtonsoft.Json;
 using Directory = myoddweb.desktopsearch.service.IO.Directory;
 using ILogger = myoddweb.desktopsearch.interfaces.Configs.ILogger;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using IConfig = myoddweb.desktopsearch.interfaces.Configs.IConfig;
 
 namespace myoddweb.desktopsearch.service
 {
@@ -134,7 +136,7 @@ namespace myoddweb.desktopsearch.service
     /// Create the config interface
     /// </summary>
     /// <returns></returns>
-    private interfaces.Configs.IConfig CreateConfig()
+    private IConfig CreateConfig()
     {
       var json = File.ReadAllText(_arguments["config"]);
       return JsonConvert.DeserializeObject<Config>(json);
@@ -226,7 +228,7 @@ namespace myoddweb.desktopsearch.service
     /// <param name="logger"></param>
     /// <param name="config"></param>
     /// <returns></returns>
-    private static IDirectory CreateDirectory(interfaces.Logging.ILogger logger, interfaces.Configs.IConfig config )
+    private static IDirectory CreateDirectory(interfaces.Logging.ILogger logger, IConfig config )
     {
       var paths = new List<string>( config.Paths.IgnoredPaths );
       paths.AddRange( config.Database?.IgnoredPaths ?? new List<string>() );
@@ -240,7 +242,7 @@ namespace myoddweb.desktopsearch.service
     /// <param name="logger"></param>
     /// <param name="config"></param>
     /// <returns></returns>
-    private static IPersister CreatePersister(IList<IFileParser> parsers, interfaces.Logging.ILogger logger, interfaces.Configs.IConfig config )
+    private static IPersister CreatePersister(IList<IFileParser> parsers, interfaces.Logging.ILogger logger, IConfig config )
     {
       if( config.Database is ConfigSqliteDatabase sqlData )
       {
@@ -288,8 +290,6 @@ namespace myoddweb.desktopsearch.service
         // create the cancellation source
         _cancellationTokenSource = new CancellationTokenSource();
 
-        var token = _cancellationTokenSource.Token;
-
         // we now need to create the files parsers
         var fileParsers = CreateFileParsers<IFileParser>(config.Paths.ComponentsPaths);
 
@@ -308,11 +308,17 @@ namespace myoddweb.desktopsearch.service
         // create the http server
         _http = new HttpServer( config.WebServer, _persister, _logger);
 
+        // create the cancellation source
+        _cancellationTokenSource = new CancellationTokenSource();
+        var token = _cancellationTokenSource.Token;
+
         // we can now start everything 
         _persister.Start(token);
         _http.Start(token);       //  the http server
         _parser.Start(token);     //  the parser
         _processor.Start(token);  //  the processor
+
+        LogStartupComplete(config);
       }
       catch (AggregateException ex)
       {
@@ -351,6 +357,34 @@ namespace myoddweb.desktopsearch.service
 
       // return if we had an error or not.
       return !errorDuringStartup;
+    }
+
+    /// <summary>
+    /// Log informational message giving a sumarry of what is going on.
+    /// </summary>
+    private void LogStartupComplete( IConfig config )
+    {
+      var sb = new StringBuilder();
+      sb.AppendLine("Startup complete.");
+      sb.AppendLine( "Webserver");
+      sb.AppendLine($"  Port                              {config.WebServer.Port}");
+
+      sb.AppendLine( "Processors" );
+      sb.AppendLine($"  Concurrent Directories Processor  {config.Processors.ConcurrentDirectoriesProcessor}");
+      sb.AppendLine($"  Concurrent File Processor         {config.Processors.ConcurrentFilesProcessor}");
+      sb.AppendLine($"  Update file events                {config.Processors.UpdateFileIdsEvent}");
+      sb.AppendLine($"  Quiet events processor            {config.Processors.QuietEventsProcessorMs} Ms");
+      sb.AppendLine($"  BusyEventsProcessorMs             {config.Processors.BusyEventsProcessorMs} Ms");
+
+      sb.AppendLine("Paths");
+      sb.AppendLine($"  Parse Fixed Drives                {(config.Paths.ParseFixedDrives?"true":"false")}");
+      sb.AppendLine($"  Parse Removable Drives            {(config.Paths.ParseRemovableDrives ? "true" : "false")}");
+
+      sb.AppendLine("Misc");
+      sb.AppendLine($"  Max Number Characters Per Words   {config.MaxNumCharactersPerWords}");
+      sb.AppendLine($"  Max Number Characters Per Parts   {config.MaxNumCharactersPerParts}");
+
+      _logger.Information( sb.ToString() );
     }
 
     /// <summary>

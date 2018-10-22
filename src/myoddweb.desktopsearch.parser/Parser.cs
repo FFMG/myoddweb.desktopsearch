@@ -166,7 +166,7 @@ namespace myoddweb.desktopsearch.parser
       }
 
       // process all the files.
-      if (!await PersistDirectories(path, directories, token).ConfigureAwait(false))
+      if (!await PersistDirectoriesAsync(path, directories, token).ConfigureAwait(false))
       {
         return 0;
       }
@@ -241,7 +241,7 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="directories"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> PersistDirectories(FileSystemInfo parent, IEnumerable<DirectoryInfo> directories, CancellationToken token)
+    private async Task<bool> PersistDirectoriesAsync(FileSystemInfo parent, IEnumerable<DirectoryInfo> directories, CancellationToken token)
     {
       // start the stopwatch
       var stopwatch = new Stopwatch();
