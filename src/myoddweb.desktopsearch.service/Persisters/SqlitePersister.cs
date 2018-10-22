@@ -13,15 +13,18 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Configs;
+using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Persisters;
 using myoddweb.desktopsearch.service.Configs;
 using IConfig = myoddweb.desktopsearch.interfaces.Persisters.IConfig;
 using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
+using IWords = myoddweb.desktopsearch.interfaces.Persisters.IWords;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
@@ -77,7 +80,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     public IParserWords ParserWords { get; }
     #endregion
 
-    public SqlitePersister(IPerformance performance, ILogger logger, ConfigSqliteDatabase config, int maxNumCharactersPerWords, int maxNumCharactersPerParts)
+    public SqlitePersister(IPerformance performance, IList<IFileParser> parsers, ILogger logger, ConfigSqliteDatabase config, int maxNumCharactersPerWords, int maxNumCharactersPerParts)
     {
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -107,7 +110,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       FilesWords = new SqlitePersisterFilesWords(ParserWords, Words, logger );
 
       // create the files / Folders.
-      Folders = new SqlitePersisterFolders( Counts, logger );
+      Folders = new SqlitePersisterFolders( Counts, parsers, logger );
     }
 
     /// <inheritdoc />

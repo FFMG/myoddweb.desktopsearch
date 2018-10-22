@@ -62,7 +62,7 @@ namespace myoddweb.desktopsearch.parser
     private readonly interfaces.Configs.IConfig _config;
     #endregion
 
-    public Parser(interfaces.Configs.IConfig config, IPersister persister, ILogger logger, IDirectory directory)
+    public Parser(interfaces.Configs.IConfig config, IPersister persister, ILogger logger, IDirectory directory )
     {
       // set the config values.
       _config = config ?? throw new ArgumentNullException(nameof(config));

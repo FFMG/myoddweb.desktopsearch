@@ -21,6 +21,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.Enums;
+using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -39,13 +40,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public IFiles Files { get; }
 
-    public SqlitePersisterFolders(ICounts counts, ILogger logger)
+    public SqlitePersisterFolders(ICounts counts, IList<IFileParser> parsers, ILogger logger)
     {
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
       // the files ... in our folders
-      Files = new SqlitePersisterFiles(this, counts, logger);
+      Files = new SqlitePersisterFiles(this, counts, parsers, logger);
 
       // the folder updates.
       FolderUpdates = new SqlitePersisterFolderUpdates(Files, this, logger);

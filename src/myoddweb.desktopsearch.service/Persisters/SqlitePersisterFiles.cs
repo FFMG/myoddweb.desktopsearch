@@ -21,6 +21,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.Enums;
+using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -38,7 +39,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// The counter manager
     /// </summary>
     private readonly ICounts _counts;
-    
+
+    /// <summary>
+    /// The parsers.
+    /// </summary>
+    private readonly IList<IFileParser> _parsers;
+
     /// <summary>
     /// The logger
     /// </summary>
@@ -48,7 +54,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public IFileUpdates FileUpdates { get; }
 
-    public SqlitePersisterFiles(IFolders folders, ICounts counts, ILogger logger)
+    public SqlitePersisterFiles(IFolders folders, ICounts counts, IList<IFileParser> parsers, ILogger logger)
     {
       //  the files interface.
       _folders = folders ?? throw new ArgumentNullException(nameof(folders));
@@ -61,6 +67,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // we can now create the 
       FileUpdates = new SqlitePersisterFileUpdates(this, counts, logger);
+
+      // the various parsers.
+      _parsers = parsers ?? throw new ArgumentNullException(nameof(parsers));
     }
 
     /// <inheritdoc />
@@ -178,8 +187,11 @@ namespace myoddweb.desktopsearch.service.Persisters
         return -1;
       }
 
-      // touch that file as changed
-      await FileUpdates.TouchFileAsync(fileId, UpdateType.Changed, connectionFactory, token).ConfigureAwait(false);
+      if (IsFileSupportedByAnyParsers(file))
+      {
+        // touch that file as changed
+        await FileUpdates.TouchFileAsync(fileId, UpdateType.Changed, connectionFactory, token).ConfigureAwait(false);
+      }
 
       // return the new file id
       return fileId;
@@ -243,9 +255,12 @@ namespace myoddweb.desktopsearch.service.Persisters
               continue;
             }
 
-            // touch that file as changed.
-            await FileUpdates.TouchFilesAsync(new []{fileId}, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
-
+            if (IsFileSupportedByAnyParsers(file))
+            {
+              // touch that file as changed.
+              await FileUpdates.TouchFilesAsync(new[] {fileId}, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
+            }
+            
             // then we can delete this file.
             pFolderId.Value = folderId;
             pName.Value = file.Name.ToLowerInvariant();
@@ -524,8 +539,18 @@ namespace myoddweb.desktopsearch.service.Persisters
       // return whatever we found
       return file;
     }
-    
+
     #region private functions
+    /// <summary>
+    /// Check if any parser supports this file.
+    /// </summary>
+    /// <param name="file"></param>
+    /// <returns></returns>
+    private bool IsFileSupportedByAnyParsers(FileSystemInfo file)
+    {
+      return _parsers.Any(parser => parser.Supported(file));
+    }
+
     private async Task<List<FileInfo>> GetFilesAsync(long directoryId, DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
@@ -645,8 +670,11 @@ namespace myoddweb.desktopsearch.service.Persisters
               continue;
             }
 
-            // we will need to touch this id.
-            idsToTouch.Add(nextId);
+            if (IsFileSupportedByAnyParsers(file))
+            {
+              // we will need to touch this id.
+              idsToTouch.Add(nextId);
+            }
 
             // this item was inserted
             ++insertedCount;
@@ -724,8 +752,8 @@ namespace myoddweb.desktopsearch.service.Persisters
               continue;
             }
 
-            cmd.Parameters["@folderid"].Value = folderId;
-            cmd.Parameters["@name"].Value = file.Name.ToLowerInvariant();
+            pFolderId.Value = folderId;
+            pName.Value = file.Name.ToLowerInvariant();
             if (null != await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false))
             {
               continue;

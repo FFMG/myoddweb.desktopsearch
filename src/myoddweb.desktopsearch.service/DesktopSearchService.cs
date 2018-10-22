@@ -236,14 +236,15 @@ namespace myoddweb.desktopsearch.service
     /// <summary>
     /// Create the persister
     /// </summary>
+    /// <param name="parsers"></param>
     /// <param name="logger"></param>
     /// <param name="config"></param>
     /// <returns></returns>
-    private static IPersister CreatePersister(interfaces.Logging.ILogger logger, interfaces.Configs.IConfig config )
+    private static IPersister CreatePersister(IList<IFileParser> parsers, interfaces.Logging.ILogger logger, interfaces.Configs.IConfig config )
     {
       if( config.Database is ConfigSqliteDatabase sqlData )
       {
-        return new SqlitePersister(config.Performance, logger, sqlData, config.MaxNumCharactersPerWords, config.MaxNumCharactersPerParts );
+        return new SqlitePersister(config.Performance, parsers, logger, sqlData, config.MaxNumCharactersPerWords, config.MaxNumCharactersPerParts );
       }
 
       throw new ArgumentException("Unknown Database type.");
@@ -289,17 +290,17 @@ namespace myoddweb.desktopsearch.service
 
         var token = _cancellationTokenSource.Token;
 
+        // we now need to create the files parsers
+        var fileParsers = CreateFileParsers<IFileParser>(config.Paths.ComponentsPaths);
+
         // the persister
-        _persister = CreatePersister( _logger, config);
+        _persister = CreatePersister( fileParsers, _logger, config);
 
         // the directory parser
         var directory = CreateDirectory( _logger, config );
 
         // and we can now create and start the parser.
         _parser = new Parser( config, _persister, _logger, directory );
-
-        // we now need to create the files parsers
-        var fileParsers = CreateFileParsers<IFileParser>( config.Paths.ComponentsPaths );
 
         // create the processor
         _processor = new Processor( fileParsers, config.Processors, _persister, _logger, directory, config.Performance );

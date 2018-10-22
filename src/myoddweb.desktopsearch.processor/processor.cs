@@ -45,7 +45,7 @@ namespace myoddweb.desktopsearch.processor
     #endregion
 
     public Processor(
-      List<IFileParser> fileParsers,
+      IList<IFileParser> fileParsers,
       IProcessors config, 
       IPersister persister, 
       ILogger logger, 

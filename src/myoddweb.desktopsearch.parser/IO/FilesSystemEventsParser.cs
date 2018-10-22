@@ -12,7 +12,11 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Enums;
@@ -131,8 +135,7 @@ namespace myoddweb.desktopsearch.parser.IO
 
       // the given file is going to be processed.
       Logger.Verbose($"File: {e.FullName} (Changed)");
-
-
+      
       // then make sure to touch the folder accordingly
       await Files.FileUpdates.TouchFileAsync(file, UpdateType.Changed, factory, token).ConfigureAwait(false);
     }
