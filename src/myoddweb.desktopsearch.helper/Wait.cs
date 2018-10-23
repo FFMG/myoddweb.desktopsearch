@@ -144,10 +144,7 @@ namespace myoddweb.desktopsearch.helper
       // increment the number of items.
       try
       {
-        lock (_lock)
-        {
-          ++_waitersUntilCount;
-        }
+        IncrementCounter();
 
         // start number of spin waits.
         var spinWait = numProcessors;
@@ -206,9 +203,40 @@ namespace myoddweb.desktopsearch.helper
       }
       finally
       {
-        lock (_lock)
+        DecrementCounter();
+      }
+    }
+
+    private static void IncrementCounter()
+    {
+      var lockTaken = false;
+      try
+      {
+        Monitor.Enter(_lock, ref lockTaken);
+        ++_waitersUntilCount;
+      }
+      finally
+      {
+        if (lockTaken)
         {
-          --_waitersUntilCount;
+          Monitor.Exit(_lock);
+        }
+      }
+    }
+
+    private static void DecrementCounter()
+    {
+      var lockTaken = false;
+      try
+      {
+        Monitor.Enter(_lock, ref lockTaken);
+        --_waitersUntilCount;
+      }
+      finally
+      {
+        if (lockTaken)
+        {
+          Monitor.Exit(_lock);
         }
       }
     }

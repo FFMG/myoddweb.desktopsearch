@@ -70,15 +70,15 @@ namespace myoddweb.desktopsearch.service.Persisters
     public delegate IConnectionFactory CreateFactory( bool isReadOnly );
 
     /// <summary>
-    /// Our lock
-    /// </summary>
-    private readonly object _lock = new object();
-
-    /// <summary>
     /// This is the write connection factory
     /// We can only have one at a time.
     /// </summary>
     private IConnectionFactory _writeFactory;
+
+    /// <summary>
+    /// Our lock object
+    /// </summary>
+    private readonly object _lock = new object(); 
 
     private readonly CreateFactory _createFactory;
     #endregion
@@ -131,9 +131,13 @@ namespace myoddweb.desktopsearch.service.Persisters
         await helper.Wait.UntilAsync(() => _writeFactory == null, token).ConfigureAwait(false);
 
         // now trans and create the transaction
-        lock (_lock)
+        var lockTaken = false;
+        try
         {
-          // oops... we didn't get it.
+          Monitor.Enter(_lock, ref lockTaken);
+
+          // oops... we didn't really get it.
+          // go around again to make sure.
           if (_writeFactory != null)
           {
             continue;
@@ -142,8 +146,15 @@ namespace myoddweb.desktopsearch.service.Persisters
           // create the connection
           // we were able to get a null transaction
           // ... and we are inside the lock
-          _writeFactory = _createFactory( false );
+          _writeFactory = _createFactory(false);
           return _writeFactory;
+        }
+        finally 
+        {
+          if (lockTaken)
+          {
+            Monitor.Exit( _lock );
+          }
         }
       }
     }
@@ -164,8 +175,10 @@ namespace myoddweb.desktopsearch.service.Persisters
         return;
       }
 
-      lock (_lock)
+      var lockTaken = false;
+      try
       {
+        Monitor.Enter(_lock, ref lockTaken);
         // this is not a readonly transaction
         // so if it is not our factory
         // then we have no idea where it comes from.
@@ -173,40 +186,14 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new ArgumentException("The given transaction was not created by this class");
         }
-      }
-
-      if (null == _writeFactory)
-      {
-        return;
-      }
-
-      lock (_lock)
-      {
         RollbackInLock();
       }
-    }
-
-    /// <summary>
-    /// Rollback a transaction within a lock.
-    /// </summary>
-    private void RollbackInLock()
-    {
-      if (null == _writeFactory)
+      finally
       {
-        return;
-      }
-
-      try
-      {
-        // try and roll back
-        _writeFactory.Rollback();
-
-      }
-      finally 
-      {
-        // whatever happens, we are done with the transaction
-        // it is up to the factory to catch/handle any issues.
-        _writeFactory = null;
+        if (lockTaken)
+        {
+          Monitor.Exit(_lock);
+        }
       }
     }
 
@@ -226,24 +213,43 @@ namespace myoddweb.desktopsearch.service.Persisters
         return;
       }
 
-      lock (_lock)
+      var lockTaken = false;
+      try
       {
+        Monitor.Enter(_lock, ref lockTaken);
         // if this is not a readonly factory
         // and this is not our factory, then we do not know where it comes from.
         if (connectionFactory != _writeFactory)
         {
           throw new ArgumentException("The given transaction was not created by this class");
         }
-      }
-
-      if (null == _writeFactory)
-      {
-        return;
-      }
-
-      lock (_lock)
-      {
         CommitInLock();
+      }
+      finally
+      {
+        if (lockTaken)
+        {
+          Monitor.Exit(_lock);
+        }
+      }
+    }
+
+    /// <summary>
+    /// Rollback a transaction within a lock.
+    /// </summary>
+    private void RollbackInLock()
+    {
+      try
+      {
+        // try and roll back
+        _writeFactory?.Rollback();
+
+      }
+      finally
+      {
+        // whatever happens, we are done with the transaction
+        // it is up to the factory to catch/handle any issues.
+        _writeFactory = null;
       }
     }
 
@@ -252,16 +258,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private void CommitInLock()
     {
-      // do we actually have anything to do?
-      if (null == _writeFactory)
-      {
-        return;
-      }
-
       try
       {
         // try and commit 
-        _writeFactory.Commit();
+        _writeFactory?.Commit();
       }
       finally 
       {
@@ -277,6 +277,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       _counterBegin?.Dispose();
       _counterCommit?.Dispose();
       _counterRollback?.Dispose();
+      _writeFactory = null;
     }
   }
 }

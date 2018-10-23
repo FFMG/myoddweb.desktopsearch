@@ -276,7 +276,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<long>> InsertWordsAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<IList<long>> InsertWordsAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!words.Any())
@@ -486,6 +486,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
+        if (0 == words.Count)
+        {
+          return new helper.IO.Words();
+        }
+
         // The list of words we will be adding to the list.
         var actualWords = new List<string>(words.Count);
 
