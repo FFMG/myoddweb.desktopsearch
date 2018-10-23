@@ -87,11 +87,11 @@ namespace myoddweb.desktopsearch.service.Persisters
         pWord.ParameterName = "@word";
         cmd.Parameters.Add(pWord);
 
+        // get the next id.
+        var nextId = await GetNextWordIdAsync(connectionFactory, token).ConfigureAwait(false);
+
         foreach (var word in distinctWords)
         {
-          // get the next id.
-          var nextId = await GetNextWordIdAsync(connectionFactory, token).ConfigureAwait(false);
-
           // does it exist already?
           var idNow = await GetWordAsync(fileid, word, connectionFactory, token).ConfigureAwait(false);
           if (idNow != -1)
