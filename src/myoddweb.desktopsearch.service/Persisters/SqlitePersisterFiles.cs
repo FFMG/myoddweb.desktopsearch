@@ -86,10 +86,22 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
+      // get all the news files
+      var newFiles = await RebuildFilesListAsync(files, connectionFactory, token).ConfigureAwait(false);
+
+      // then the other fies are not new, they are just updates
+      var oldFiles = helper.File.RelativeComplement(newFiles, files);
+      foreach (var file in oldFiles)
+      {
+        if (!IsFileSupportedByAnyParsers(file))
+        {
+          continue;
+        }
+        await FileUpdates.TouchFileAsync(file, UpdateType.Changed, connectionFactory, token).ConfigureAwait(false);
+      }
+
       // rebuild the list of directory with only those that need to be inserted.
-      return await InsertFilesAsync(
-        await RebuildFilesListAsync(files, connectionFactory, token).ConfigureAwait(false),
-        connectionFactory, token).ConfigureAwait(false);
+      return await InsertFilesAsync( newFiles, connectionFactory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -217,6 +229,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
+      var deletedFileIdsToTouch = new List<long>(files.Count);
       long deletedCount = 0;
       var sqlDelete = $"DELETE FROM {Tables.Files} WHERE folderid=@folderid and name=@name";
       using (var cmd = connectionFactory.CreateCommand(sqlDelete))
@@ -258,7 +271,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             if (IsFileSupportedByAnyParsers(file))
             {
               // touch that file as changed.
-              await FileUpdates.TouchFilesAsync(new[] {fileId}, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
+              deletedFileIdsToTouch.Add( fileId );
             }
             
             // then we can delete this file.
@@ -287,6 +300,9 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
         }
       }
+
+      // touch the files.
+      await FileUpdates.TouchFilesAsync(deletedFileIdsToTouch, UpdateType.Deleted, connectionFactory, token).ConfigureAwait(false);
 
       // update the files count.
       await _counts.UpdateFilesCountAsync( -1* deletedCount, connectionFactory, token).ConfigureAwait(false);
@@ -379,7 +395,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<List<FileInfo>> GetFilesAsync(long directoryId, IConnectionFactory connectionFactory,
+    public async Task<IList<FileInfo>> GetFilesAsync(long directoryId, IConnectionFactory connectionFactory,
       CancellationToken token)
     {
       if (null == connectionFactory)
@@ -551,7 +567,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       return _parsers.Any(parser => parser.Supported(file));
     }
 
-    private async Task<List<FileInfo>> GetFilesAsync(long directoryId, DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<IList<FileInfo>> GetFilesAsync(long directoryId, DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
       {
@@ -612,7 +628,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> InsertFilesAsync(IReadOnlyList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<bool> InsertFilesAsync(IList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!files.Any())
@@ -710,7 +726,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<FileInfo>> RebuildFilesListAsync(IEnumerable<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<IList<FileInfo>> RebuildFilesListAsync(IEnumerable<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {
@@ -815,7 +831,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<long>> GetFileIdsAsync(long folderId, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<IList<long>> GetFileIdsAsync(long folderId, IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {

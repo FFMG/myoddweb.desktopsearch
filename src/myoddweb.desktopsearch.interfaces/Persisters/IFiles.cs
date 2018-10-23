@@ -106,7 +106,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<List<FileInfo>> GetFilesAsync(long directoryId, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<IList<FileInfo>> GetFilesAsync(long directoryId, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Get a file information

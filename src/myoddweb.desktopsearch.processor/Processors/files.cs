@@ -426,6 +426,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task CompletePendingFileUpdate(IPendingFileUpdate pendingFileUpdate, IConnectionFactory connectionFactory, CancellationToken token)
     {
+      return;
       // null checking
       if (null == pendingFileUpdate)
       {
@@ -476,11 +477,8 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        foreach (var pendingFileUpdate in pendingFileUpdates)
-        {
-          // mark it as persisted.
-          await _persister.Folders.Files.FileUpdates.TouchFileAsync(pendingFileUpdate.FileId, pendingFileUpdate.PendingUpdateType, transaction, token).ConfigureAwait(false);
-        }
+        // mark it as persisted.
+        await _persister.Folders.Files.AddOrUpdateFilesAsync(pendingFileUpdates.Select( f => f.File ).ToList(), transaction, token).ConfigureAwait(false);
 
         // we are done
         _persister.Commit(transaction);

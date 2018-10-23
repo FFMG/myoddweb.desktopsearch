@@ -33,7 +33,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public IList<FileInfo> Files { get; }
 
-    public PendingFolderUpdate(long folderId, DirectoryInfo directory, List<FileInfo> files, UpdateType pendingUpdateType)
+    public PendingFolderUpdate(long folderId, DirectoryInfo directory, IList<FileInfo> files, UpdateType pendingUpdateType)
     {
       // set the folder id.
       FolderId = folderId;

@@ -122,22 +122,11 @@ namespace myoddweb.desktopsearch.parser.IO
         return;
       }
 
-      // we know the file changed ... but does it even exist on our record?
-      if (!await Files.FileExistsAsync(file, factory, token).ConfigureAwait(false))
-      {
-        // add the file
-        Logger.Verbose($"File: {e.FullName} (Changed - But not on file)");
-
-        // just add the file.
-        await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false);
-        return;
-      }
-
       // the given file is going to be processed.
       Logger.Verbose($"File: {e.FullName} (Changed)");
-      
-      // then make sure to touch the folder accordingly
-      await Files.FileUpdates.TouchFileAsync(file, UpdateType.Changed, factory, token).ConfigureAwait(false);
+
+      // just add the file.
+      await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
