@@ -79,14 +79,14 @@ namespace myoddweb.desktopsearch.service.Persisters
       // we now have a connection, if we want to support Write-Ahead Logging then we do it now.
       // @see https://www.sqlite.org/wal.html
       // we call a read function ... so no transactions are created... yet.
-      ExecuteReadOneAsync(CreateCommand("PRAGMA journal_mode=WAL;"), default(CancellationToken)).Wait();
+      ExecuteReadOneAsync(CreateCommand("PRAGMA journal_mode=WAL;"), default(CancellationToken)).GetAwaiter().GetResult();
 
       // other little tricks to speed things up...
       // https://www.sqlite.org/pragma.html#pragma_cache_size
-      ExecuteReadOneAsync(CreateCommand($"PRAGMA cache_size = {_cacheSize};"), default(CancellationToken)).Wait();
+      ExecuteReadOneAsync(CreateCommand($"PRAGMA cache_size = {_cacheSize};"), default(CancellationToken)).GetAwaiter().GetResult();
 
       // https://www.sqlite.org/pragma.html#pragma_temp_store
-      ExecuteReadOneAsync(CreateCommand("PRAGMA temp_store = MEMORY;"), default(CancellationToken)).Wait(); 
+      ExecuteReadOneAsync(CreateCommand("PRAGMA temp_store = MEMORY;"), default(CancellationToken)).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />

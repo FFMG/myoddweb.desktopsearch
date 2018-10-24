@@ -106,7 +106,7 @@ namespace myoddweb.desktopsearch.service.Logger
           break;
         }
         //Wait and Retry
-        Task.Delay(5).Wait();
+        Task.Delay(5).GetAwaiter().GetResult();
       }
       stopwatch.Stop();
     }

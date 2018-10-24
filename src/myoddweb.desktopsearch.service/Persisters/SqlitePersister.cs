@@ -141,7 +141,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       _transactionSpinner = new TransactionsManager(ConnectionFactory, _performance, _logger);
 
       // initiialise everything
-      Initialise(token).Wait(token);
+      Initialise(token).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />
@@ -157,10 +157,10 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // update the db if need be.
-        Update(connectionFactory, token).Wait(token);
+        await Update(connectionFactory, token).ConfigureAwait(false);
 
         // init the counters.
-        Counts.Initialise(connectionFactory, token).Wait(token);
+        await Counts.Initialise(connectionFactory, token).ConfigureAwait(false);
         Commit( connectionFactory );
       }
       catch (Exception e)
