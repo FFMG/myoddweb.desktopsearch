@@ -51,6 +51,7 @@
     <Compile Include="FileInfoComparerTest.cs" />
     <Compile Include="FileTests.cs" />
     <Compile Include="NameMatchTests.cs" />
+    <Compile Include="PartsTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="WordsTest.cs" />
     <Compile Include="WordTest.cs" />

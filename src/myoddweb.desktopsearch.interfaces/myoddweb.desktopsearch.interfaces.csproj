@@ -53,6 +53,7 @@
     <Compile Include="IO\IDirectory.cs" />
     <Compile Include="IO\IFileParser.cs" />
     <Compile Include="IO\IFileSystemEvent.cs" />
+    <Compile Include="IO\IParts.cs" />
     <Compile Include="IO\IPerformanceCounter.cs" />
     <Compile Include="IO\IPrarserHelper.cs" />
     <Compile Include="IO\IWords.cs" />

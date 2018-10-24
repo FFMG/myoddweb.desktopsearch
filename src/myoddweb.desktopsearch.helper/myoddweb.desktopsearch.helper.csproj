@@ -46,6 +46,7 @@
     <Compile Include="IO\DirectoryInfoComparer.cs" />
     <Compile Include="IO\FileInfoComparer.cs" />
     <Compile Include="IO\FileSystemInfoComparer.cs" />
+    <Compile Include="IO\Parts.cs" />
     <Compile Include="IO\paths.cs" />
     <Compile Include="IO\PerformanceCounter.cs" />
     <Compile Include="IO\Word.cs" />

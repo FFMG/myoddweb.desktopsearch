@@ -12,20 +12,21 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+using System.Collections.Generic;
 
 namespace myoddweb.desktopsearch.interfaces.IO
 {
-  public interface IWord
+  public interface IParts : IEnumerator<string>, IEnumerable<string>
   {
     /// <summary>
-    /// The word value.
+    /// The number of parts we have.
     /// </summary>
-    string Value { get; }
+    int Count { get; }
 
     /// <summary>
-    /// Get all the parts of our word.
-    /// <param name="maxNumMeaningfulCharacters"></param>
+    /// If we have any parts at all
     /// </summary>
-    IParts Parts(int maxNumMeaningfulCharacters);
+    /// <returns></returns>
+    bool Any();
   }
 }

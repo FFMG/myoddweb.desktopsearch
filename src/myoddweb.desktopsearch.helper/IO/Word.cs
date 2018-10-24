@@ -12,7 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,7 +27,7 @@ namespace myoddweb.desktopsearch.helper.IO
     /// <summary>
     /// All the parts of the word.
     /// </summary>
-    private IReadOnlyCollection<string> _parts;
+    private Parts _parts;
 
     /// <summary>
     /// The maximum number of meaningful charactets in the parts.
@@ -37,7 +36,7 @@ namespace myoddweb.desktopsearch.helper.IO
     private int _lastMaxNumMeaningfulCharacters;
 
     /// <inheritdoc />
-    public IReadOnlyCollection<string> Parts(int maxNumMeaningfulCharacters)
+    public IParts Parts(int maxNumMeaningfulCharacters)
     {
       if (maxNumMeaningfulCharacters <= 0)
       {
@@ -53,47 +52,9 @@ namespace myoddweb.desktopsearch.helper.IO
       //  run the same query more than once.
       _lastMaxNumMeaningfulCharacters = maxNumMeaningfulCharacters;
 
-      // Help <- Word
-      // H
-      // He
-      // Hel
-      // Help         << the word help itslef is a 'part'
-      // e
-      // elp
-      // l
-      // lp
-      // Word len             = 4
-      // expected hashet size = 8
-      //
-      // Mix = 3 letters 
-      //     = 6 expected
-      // M
-      // Mi
-      // Mix
-      // i
-      // ix
-      // x
-
-      // Gauss formula for the sum of the serries of letters.
-      var l = Value.Length;
-      var setsize = (l * (l + 1)) / 2;
-      var parts = new List<string>(setsize);
-      for (var start = 0; start < l; ++start)
-      {
-        for (var i = start; i < l; ++i)
-        {
-          var length = (i - start + 1);
-          if (length > maxNumMeaningfulCharacters)
-          {
-            continue;
-          }
-          parts.Add(Value.Substring(start, length ));
-        }
-      }
-
-      // convert it to a list and remove duplicates.
-      _parts = parts.Distinct().ToList();
-
+      // save the parts.
+      _parts = new Parts(Value);
+      
       // then return the value.
       return _parts;
     }

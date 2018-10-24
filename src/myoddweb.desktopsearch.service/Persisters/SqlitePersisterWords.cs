@@ -392,14 +392,14 @@ namespace myoddweb.desktopsearch.service.Persisters
       // get the parts.
       var parts = word.Parts(_maxNumCharactersPerParts);
 
-      // the ids of all the parts, (added or otherwise).
-      var partIds = new List<long>(parts.Count);
-
       // if we have not words... then move on.
       if (!parts.Any())
       {
-        return new HashSet<long>(partIds);
+        return new HashSet<long>();
       }
+
+      // the ids of all the parts, (added or otherwise).
+      var partIds = new List<long>(parts.Count);
 
       var cmdSelect = cmdSelectPart.Cmd;
 
@@ -443,7 +443,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<long>> InsertPartsAsync(IReadOnlyCollection<string> parts, InsertPartCommand cmdInsertPart, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<IList<long>> InsertPartsAsync(ICollection<string> parts, InsertPartCommand cmdInsertPart, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (!parts.Any())
       {
