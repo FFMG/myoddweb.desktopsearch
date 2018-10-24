@@ -135,7 +135,7 @@ namespace myoddweb.desktopsearch.processor
             StartProcessorTimer(
               task.IsFaulted ? 
                 Almost(QuietEventsProcessorMs) :
-              Almost(task.Result < _processor.MaxUpdatesToProcess ? QuietEventsProcessorMs : BusyEventsProcessorMs));
+              Almost(task.GetAwaiter().GetResult() < _processor.MaxUpdatesToProcess ? QuietEventsProcessorMs : BusyEventsProcessorMs));
           }, _token 
         );
     }

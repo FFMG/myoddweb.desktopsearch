@@ -45,7 +45,7 @@ namespace myoddweb.desktopsearch.http.Route
         var search = JsonConvert.DeserializeObject<SearchRequest>(raw);
 
         // build the response packet.
-        var response = BuildResponse(search).Result;
+        var response = BuildResponse(search).GetAwaiter().GetResult();
 
         return new RouteResponse
         {

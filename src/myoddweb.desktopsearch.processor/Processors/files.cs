@@ -426,7 +426,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task CompletePendingFileUpdate(IPendingFileUpdate pendingFileUpdate, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      return;
       // null checking
       if (null == pendingFileUpdate)
       {

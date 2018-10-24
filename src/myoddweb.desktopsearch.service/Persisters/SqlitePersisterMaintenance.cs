@@ -402,7 +402,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sql = $"SELECT name FROM sqlite_master WHERE type='table' AND name='{name}';";
       using (var command = connectionFactory.CreateCommand(sql))
       {
-        var reader = connectionFactory.ExecuteReadAsync( command, default(CancellationToken)).Result;
+        var reader = connectionFactory.ExecuteReadAsync( command, default(CancellationToken)).GetAwaiter().GetResult();
         try
         {
           while (reader.Read())
