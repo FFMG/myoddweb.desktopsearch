@@ -271,7 +271,7 @@ namespace myoddweb.desktopsearch.helper
     /// <param name="what"></param>
     public static void Until(Func<bool> what)
     {
-      UntilAsync(what).Wait();
+      UntilAsync(what).GetAwaiter().GetResult();
     }
   }
 }

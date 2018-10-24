@@ -58,6 +58,23 @@ namespace myoddweb.desktopsearch.parser.test
       Assert.AreEqual( expected, p.Count );
     }
 
+    [Test]
+    public void TestThatWeDontHaveAny()
+    {
+      var p = new Parts("");
+      Assert.IsFalse( p.Any() );
+    }
+
+    [TestCase("A")]
+    [TestCase("AB")]
+    [TestCase("ABCDEFG")]
+    [TestCase("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz")]
+    public void TestThatWeHaveAny( string word )
+    {
+      var p = new Parts(word );
+      Assert.IsTrue(p.Any());
+    }
+
     [TestCase("", 0)]
     [TestCase("AA", 2)]
     [TestCase("AAA", 3)]
@@ -68,8 +85,8 @@ namespace myoddweb.desktopsearch.parser.test
       Assert.AreEqual(expected, p.Count);
     }
 
-    [TestCase("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz", -1, 1953)]
-    [TestCase("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz", 10, 575)]
+    [TestCase("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz", -1, 1953)] // (62*63)/2 = 1953
+    [TestCase("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz", 10, 575)]  // (62*63)/2 - ((62-10)*(63-10))/2 = 575
     public void LargeParts(string word, int length, int expected)
     {
       var p = new Parts(word, length);
@@ -141,6 +158,40 @@ namespace myoddweb.desktopsearch.parser.test
       {
         Assert.IsNotNull(p);
         Assert.IsTrue(expected.Contains(p));
+      }
+    }
+
+    [TestCase("A", new[] { "A" })]
+    [TestCase("AB", new[] { "A", "AB", "B" })]
+    [TestCase("ABCDEFG", new[]
+    {
+      "A", "AB", "ABC", "ABCD", "ABCDE", "ABCDEF", "ABCDEFG",
+      "B", "BC", "BCD", "BCDE", "BCDEF", "BCDEFG",
+      "C", "CD", "CDE", "CDEF", "CDEFG",
+      "D", "DE", "DEF", "DEFG",
+      "E", "EF", "EFG",
+      "F", "FG",
+      "G"
+    })]
+    public void DoAForEachLoopMoreThanOnce(string word, string[] expected)
+    {
+      var parts = new Parts(word);
+      Assert.AreEqual(expected.Length, parts.Count);
+      foreach (var p in parts)
+      {
+        Assert.IsNotNull(p);
+        Assert.IsTrue(expected.Contains(p));
+      }
+
+      var first = parts.First();
+      parts.Reset();
+      Assert.AreEqual( first, parts.Current);
+
+      // then we do it again
+      foreach (var q in parts)
+      {
+        Assert.IsNotNull(q);
+        Assert.IsTrue(expected.Contains(q));
       }
     }
   }

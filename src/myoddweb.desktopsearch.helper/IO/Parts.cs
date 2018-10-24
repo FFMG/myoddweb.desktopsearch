@@ -110,7 +110,7 @@ namespace myoddweb.desktopsearch.helper.IO
     }
 
     /// <summary>
-    /// Prepare our data for usuage.
+    /// Prepare our data for usage.
     /// </summary>
     private void Prepare()
     {
@@ -120,8 +120,19 @@ namespace myoddweb.desktopsearch.helper.IO
         return;
       }
 
+      // in our array, get the actuall position.
       var actualPosition = 0;
-      var maxLength = (_wordLength * (_wordLength + 1)) / 2;
+
+      // get the max posible array length
+      var maxLength = _wordLength * (_wordLength + 1) / 2;
+
+      // then if we have a max word length, then we can drop the value further
+      if (_maxPartLength > 0)
+      {
+        var excludedLength = _wordLength - _maxPartLength;
+        maxLength -= excludedLength * (excludedLength + 1) / 2;
+      }
+
       var data = new string[maxLength];
 
       for (var start = 0; start < _wordLength; ++start)

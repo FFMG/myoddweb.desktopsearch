@@ -127,7 +127,7 @@ namespace myoddweb.desktopsearch.http
 
       if (null != _task)
       {
-        helper.Wait.UntilAsync( () => _task.IsCompleted, _token).Wait(_token);
+        helper.Wait.Until( () => _task.IsCompleted);
       }
 
       _task = null;

@@ -12,6 +12,8 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using System.Collections.Generic;
 using myoddweb.desktopsearch.helper.IO;
 using NUnit.Framework;
@@ -374,6 +376,22 @@ namespace myoddweb.desktopsearch.parser.test
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
+    }
+
+    [Test]
+    public void TryToGetAnItemOutOfRangeThrowsAnError()
+    {
+#pragma warning disable IDE0028 // Simplify collection initialization
+      // ReSharper disable once UseObjectOrCollectionInitializer
+      var words = new Words();
+#pragma warning restore IDE0028 // Simplify collection initialization
+      words.Add(new[] { new Word("a"), new Word("b") });
+      Assert.That(words.Count == 2);
+
+      Assert.Throws<IndexOutOfRangeException>( () =>
+      {
+        var _ = words[3].Value;
+      } );
     }
   }
 }

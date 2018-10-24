@@ -218,7 +218,7 @@ namespace myoddweb.desktopsearch.helper
     /// <param name="parents"></param>
     /// <param name="child"></param>
     /// <returns></returns>
-    public static bool IsSubDirectory(List<string> parents, string child)
+    public static bool IsSubDirectory(IList<string> parents, string child)
     {
       if (null == parents)
       {
@@ -367,7 +367,7 @@ namespace myoddweb.desktopsearch.helper
     /// <param name="fisA"></param>
     /// <param name="fisB"></param>
     /// <returns></returns>
-    public static List<FileInfo> Union(List<FileInfo> fisA, List<FileInfo> fisB)
+    public static IList<FileInfo> Union(IList<FileInfo> fisA, IList<FileInfo> fisB)
     {
       // if they are both null then the union has to be an empty list.
       if (fisA == null && fisB == null )
@@ -411,7 +411,7 @@ namespace myoddweb.desktopsearch.helper
     /// <param name="fisA"></param>
     /// <param name="fisB"></param>
     /// <returns></returns>
-    public static IList<FileInfo> Intersection(List<FileInfo> fisA, List<FileInfo> fisB)
+    public static IList<FileInfo> Intersection(IList<FileInfo> fisA, IList<FileInfo> fisB)
     {
       // if either A or B are null then it does not matter what is in the 
       // other collection as the first one has to be empty.
