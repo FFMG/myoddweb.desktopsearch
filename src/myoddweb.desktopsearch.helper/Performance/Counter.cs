@@ -17,23 +17,22 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using myoddweb.desktopsearch.interfaces.Configs;
-using myoddweb.desktopsearch.interfaces.IO;
 using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
-namespace myoddweb.desktopsearch.helper.IO
+namespace myoddweb.desktopsearch.helper.Performance
 {
-  public abstract class PerformanceCounter : IPerformanceCounter, IDisposable
+  public abstract class Counter : IPerformanceCounter, IDisposable
   {
     #region Member variables
     /// <summary>
     /// Static list of counters that might need to be re-created.
     /// </summary>
-    private static readonly ConcurrentDictionary<Guid, System.Diagnostics.PerformanceCounter> Counters = new ConcurrentDictionary<Guid, System.Diagnostics.PerformanceCounter>();
+    private static readonly ConcurrentDictionary<Guid, PerformanceCounter> Counters = new ConcurrentDictionary<Guid, PerformanceCounter>();
 
     /// <summary>
     /// Static list of base counters that might need to be re-created.
     /// </summary>
-    private static readonly ConcurrentDictionary<Guid, System.Diagnostics.PerformanceCounter> BaseCounters = new ConcurrentDictionary<Guid, System.Diagnostics.PerformanceCounter>();
+    private static readonly ConcurrentDictionary<Guid, PerformanceCounter> BaseCounters = new ConcurrentDictionary<Guid, PerformanceCounter>();
 
     /// <summary>
     /// Static lock so that the same lock is used for all instances.
@@ -70,7 +69,7 @@ namespace myoddweb.desktopsearch.helper.IO
     /// <summary>
     /// Get this counter, (if we have one).
     /// </summary>
-    private System.Diagnostics.PerformanceCounter Counter
+    private PerformanceCounter PerformanceCounter
     {
       get
       {
@@ -93,7 +92,7 @@ namespace myoddweb.desktopsearch.helper.IO
     /// <summary>
     /// Get the Base Counter if we have one.
     /// </summary>
-    private System.Diagnostics.PerformanceCounter CounterBase
+    private PerformanceCounter PerformanceCounterBase
     {
       get
       {
@@ -126,7 +125,7 @@ namespace myoddweb.desktopsearch.helper.IO
     /// <param name="type"></param>
     /// <param name="logger"></param>
     /// <returns></returns>
-    protected PerformanceCounter(IPerformance performance, string counterName, PerformanceCounterType type, ILogger logger)
+    protected Counter(IPerformance performance, string counterName, PerformanceCounterType type, ILogger logger)
     {
       // performance
       _performance = performance ?? throw new ArgumentNullException(nameof(performance));
@@ -274,17 +273,17 @@ namespace myoddweb.desktopsearch.helper.IO
     public void IncremenFromUtcTime(DateTime startTime)
     {
       var tsDiff = (DateTime.UtcNow - startTime);
-      Counter.IncrementBy(tsDiff.Ticks);
+      PerformanceCounter.IncrementBy(tsDiff.Ticks);
 
       // we might not have a base.
-      CounterBase?.Increment();
+      PerformanceCounterBase?.Increment();
     }
 
     /// <inheritdoc />
     public void Increment()
     {
-      Counter.Increment();
-      CounterBase?.Increment();
+      PerformanceCounter.Increment();
+      PerformanceCounterBase?.Increment();
     }
 
     public void Dispose()

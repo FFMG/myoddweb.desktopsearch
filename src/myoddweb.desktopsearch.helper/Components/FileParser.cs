@@ -64,7 +64,7 @@ namespace myoddweb.desktopsearch.helper.Components
     /// <param name="token"></param>
     /// <param name="func">The function that tells us if we can add a word or not.</param>
     /// <returns></returns>
-    public async Task<long> ParserAsync(IPrarserHelper helper, Func<string, bool> func, CancellationToken token )
+    public async Task<long> ParserAsync(IParserHelper helper, Func<string, bool> func, CancellationToken token )
     {
       using (var sr = new StreamReader(helper.File.FullName))
       {
@@ -80,7 +80,7 @@ namespace myoddweb.desktopsearch.helper.Components
     /// <param name="func"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<long> ParserAsync(IPrarserHelper helper, string text, Func<string, bool> func, CancellationToken token)
+    public async Task<long> ParserAsync(IParserHelper helper, string text, Func<string, bool> func, CancellationToken token)
     {
       // split the line into words.
       var words = _reg.Matches(text).OfType<Match>().Select(m => m.Groups[0].Value).ToArray();
@@ -95,7 +95,7 @@ namespace myoddweb.desktopsearch.helper.Components
     /// <param name="func"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<long> ParserAsync(IPrarserHelper helper, TextReader sr, Func<string, bool> func, CancellationToken token)
+    public async Task<long> ParserAsync(IParserHelper helper, TextReader sr, Func<string, bool> func, CancellationToken token)
     {
       // the number of words we added.
       long added = 0;

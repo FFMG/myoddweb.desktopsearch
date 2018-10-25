@@ -23,7 +23,7 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.processor
 {
-  internal class PrarserHelper : IPrarserHelper
+  internal class PrarserHelper : IParserHelper
   {
     #region Member variables
     /// <inheritdoc />

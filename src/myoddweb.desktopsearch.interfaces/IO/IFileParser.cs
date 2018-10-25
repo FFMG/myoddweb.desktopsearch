@@ -44,6 +44,6 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="logger"></param>
     /// <param name="token"></param>
     /// <returns>Number of words we added</returns>
-    Task<long> ParseAsync(IPrarserHelper helper, ILogger logger, CancellationToken token);
+    Task<long> ParseAsync(IParserHelper helper, ILogger logger, CancellationToken token);
   }
 }

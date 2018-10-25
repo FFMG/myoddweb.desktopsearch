@@ -18,7 +18,7 @@ using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.processor.IO
 {
-  internal class ProcessorPerformanceCounter : helper.IO.PerformanceCounter
+  internal class ProcessorPerformanceCounter : helper.Performance.Counter
   {
     public ProcessorPerformanceCounter( IPerformance performance, string counterName, ILogger logger ) :
       base(performance, counterName, PerformanceCounterType.AverageTimer32, logger)

@@ -18,6 +18,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.Performance;
 using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.Enums;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -342,7 +343,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="file">The file we are parsing</param>
     /// <param name="token">The cancellation token.</param>
     /// <returns></returns>
-    private async Task<long> ProcessFile(IPrarserHelper helper, IFileParser parser, FileSystemInfo file, CancellationToken token)
+    private async Task<long> ProcessFile(IParserHelper helper, IFileParser parser, FileSystemInfo file, CancellationToken token)
     {
       if (!parser.Supported(file))
       {

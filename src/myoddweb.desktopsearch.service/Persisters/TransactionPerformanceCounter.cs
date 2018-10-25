@@ -17,7 +17,7 @@ using myoddweb.desktopsearch.interfaces.Configs;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal class TransactionPerformanceCounter : helper.IO.PerformanceCounter
+  internal class TransactionPerformanceCounter : helper.Performance.Counter
   {
     public TransactionPerformanceCounter(IPerformance performance, string counterName, interfaces.Logging.ILogger logger) :
       base(performance, counterName, PerformanceCounterType.RateOfCountsPerSecond32, logger)

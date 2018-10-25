@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.IO
 {
-  public interface IPrarserHelper
+  public interface IParserHelper
   {
     /// <summary>
     /// The file that is being processed.
