@@ -25,7 +25,7 @@ using IWords = myoddweb.desktopsearch.interfaces.IO.IWords;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal class SqlitePersisterIParserWords : IParserWords
+  internal class SqlitePersisterParserWords : IParserWords
   {
     #region Member variables
     /// <summary>
@@ -40,7 +40,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly int _maxNumberOfWordsToProcess;
     #endregion
 
-    public SqlitePersisterIParserWords(ILogger logger, int maxNumberOfWordsToProcess )
+    public SqlitePersisterParserWords(ILogger logger, int maxNumberOfWordsToProcess )
     {
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));

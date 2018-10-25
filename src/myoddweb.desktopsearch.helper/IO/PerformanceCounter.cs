@@ -100,7 +100,7 @@ namespace myoddweb.desktopsearch.helper.IO
     /// <returns></returns>
     private static string BuildBaseName(string counterName)
     {
-      return $"{counterName} base";
+      return $"{counterName}Base";
     }
 
     /// <summary>
@@ -112,7 +112,6 @@ namespace myoddweb.desktopsearch.helper.IO
     /// <param name="logger"></param>
     private void Initialise(IPerformance performance, string counterName, PerformanceCounterType type, ILogger logger )
     {
-
       // build the collection data
       var counterCreationDataCollection = BuildCollectionData(counterName, type);
 
