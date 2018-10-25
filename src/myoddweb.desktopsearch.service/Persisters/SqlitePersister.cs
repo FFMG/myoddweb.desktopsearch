@@ -80,7 +80,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     public IParserWords ParserWords { get; }
     #endregion
 
-    public SqlitePersister(IPerformance performance, IList<IFileParser> parsers, ILogger logger, ConfigSqliteDatabase config, int maxNumCharactersPerWords, int maxNumCharactersPerParts)
+    public SqlitePersister(IPerformance performance, IList<IFileParser> parsers, ILogger logger, 
+      ConfigSqliteDatabase config, 
+      int maxNumCharactersPerWords, 
+      int maxNumCharactersPerParts,
+      int maxNumberOfWordsToProcess)
     {
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -101,10 +105,10 @@ namespace myoddweb.desktopsearch.service.Persisters
       WordsParts = new SqlitePersisterWordsParts(logger);
 
       // create the words
-      Words = new SqlitePersisterWords( WordsParts, maxNumCharactersPerWords, maxNumCharactersPerParts, logger);
+      Words = new SqlitePersisterWords( performance, WordsParts, maxNumCharactersPerWords, maxNumCharactersPerParts, logger);
 
       // create the word parser.
-      ParserWords = new SqlitePersisterParserWords(logger, 10000 );
+      ParserWords = new SqlitePersisterParserWords(logger, maxNumberOfWordsToProcess);
 
       // file words.
       FilesWords = new SqlitePersisterFilesWords(ParserWords, Words, logger );

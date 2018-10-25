@@ -66,5 +66,10 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     /// Then the searchable words are 'hel', 'ell', 'llo' ... only 3 letters.
     /// </summary>
     int MaxNumCharactersPerParts { get; }
+
+    /// <summary>
+    /// The masimum number of words we want to parse at any one time.
+    /// </summary>
+    int MaxNumberOfWordsToProcess { get; }
   }
 }

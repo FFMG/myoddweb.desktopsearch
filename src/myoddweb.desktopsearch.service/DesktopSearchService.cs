@@ -246,7 +246,13 @@ namespace myoddweb.desktopsearch.service
     {
       if( config.Database is ConfigSqliteDatabase sqlData )
       {
-        return new SqlitePersister(config.Performance, parsers, logger, sqlData, config.MaxNumCharactersPerWords, config.MaxNumCharactersPerParts );
+        return new SqlitePersister(
+          config.Performance, 
+          parsers, logger, sqlData, 
+          config.MaxNumCharactersPerWords, 
+          config.MaxNumCharactersPerParts,
+          config.MaxNumberOfWordsToProcess
+          );
       }
 
       throw new ArgumentException("Unknown Database type.");
@@ -367,22 +373,23 @@ namespace myoddweb.desktopsearch.service
       var sb = new StringBuilder();
       sb.AppendLine("Startup complete.");
       sb.AppendLine( "Webserver");
-      sb.AppendLine($"  Port                              {config.WebServer.Port}");
+      sb.AppendLine($"                                Port : {config.WebServer.Port}");
 
       sb.AppendLine( "Processors" );
-      sb.AppendLine($"  Concurrent Directories Processor  {config.Processors.ConcurrentDirectoriesProcessor}");
-      sb.AppendLine($"  Concurrent File Processor         {config.Processors.ConcurrentFilesProcessor}");
-      sb.AppendLine($"  Update file events                {config.Processors.UpdateFileIdsEvent}");
-      sb.AppendLine($"  Quiet events processor            {config.Processors.QuietEventsProcessorMs} Ms");
-      sb.AppendLine($"  BusyEventsProcessorMs             {config.Processors.BusyEventsProcessorMs} Ms");
+      sb.AppendLine($"    Concurrent Directories Processor : {config.Processors.ConcurrentDirectoriesProcessor}");
+      sb.AppendLine($"           Concurrent File Processor : {config.Processors.ConcurrentFilesProcessor}");
+      sb.AppendLine($"                 Update file events  : {config.Processors.UpdateFileIdsEvent}");
+      sb.AppendLine($"             Quiet events processor  : {config.Processors.QuietEventsProcessorMs} Ms");
+      sb.AppendLine($"               BusyEventsProcessorMs : {config.Processors.BusyEventsProcessorMs} Ms");
 
       sb.AppendLine("Paths");
-      sb.AppendLine($"  Parse Fixed Drives                {(config.Paths.ParseFixedDrives?"true":"false")}");
-      sb.AppendLine($"  Parse Removable Drives            {(config.Paths.ParseRemovableDrives ? "true" : "false")}");
+      sb.AppendLine($"                  Parse Fixed Drives : {(config.Paths.ParseFixedDrives?"true":"false")}");
+      sb.AppendLine($"              Parse Removable Drives : {(config.Paths.ParseRemovableDrives ? "true" : "false")}");
 
       sb.AppendLine("Misc");
-      sb.AppendLine($"  Max Number Characters Per Words   {config.MaxNumCharactersPerWords}");
-      sb.AppendLine($"  Max Number Characters Per Parts   {config.MaxNumCharactersPerParts}");
+      sb.AppendLine($"     Max Number Characters Per Words : {config.MaxNumCharactersPerWords}");
+      sb.AppendLine($"     Max Number Characters Per Parts : {config.MaxNumCharactersPerParts}");
+      sb.AppendLine($"  Max Number Number words per events : {config.MaxNumberOfWordsToProcess}");
 
       _logger.Information( sb.ToString() );
     }

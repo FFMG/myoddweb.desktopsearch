@@ -15,16 +15,26 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.IO;
-using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal class SqlitePersisterWords : interfaces.Persisters.IWords
+  internal class SqlPerformanceCounter : helper.IO.PerformanceCounter
+  {
+    public SqlPerformanceCounter(IPerformance performance, string counterName, ILogger logger) :
+      base(performance, counterName, PerformanceCounterType.AverageTimer32, logger)
+    {
+    }
+  }
+
+  internal class SqlitePersisterWords : interfaces.Persisters.IWords, IDisposable
   {
     #region Command classes
     internal class Command : IDisposable
@@ -143,6 +153,11 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     #region Member variable
     /// <summary>
+    ///  Our proc counter.
+    /// </summary>
+    private readonly SqlPerformanceCounter _counter;
+
+    /// <summary>
     /// The maximum number of characters per words parts...
     /// This is not the max word lenght, but the part lenght
     /// The user cannot enter anything longer in a seatch box.
@@ -166,7 +181,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly ILogger _logger;
     #endregion
 
-    public SqlitePersisterWords( IWordsParts wordsParts, int maxNumCharactersPerWords, int maxNumCharactersPerParts, ILogger logger)
+    public SqlitePersisterWords(IPerformance performance, IWordsParts wordsParts, int maxNumCharactersPerWords, int maxNumCharactersPerParts, ILogger logger)
     {
       // the number of characters per parts.
       _maxNumCharactersPerParts = maxNumCharactersPerParts;
@@ -179,6 +194,14 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      // create the counter,
+      _counter = new SqlPerformanceCounter(performance, "Database: IWords Add Or Update", _logger);
+    }
+
+    public void Dispose()
+    {
+      _counter?.Dispose();
     }
 
     /// <inheritdoc />
@@ -196,10 +219,18 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
-      // rebuild the list of directory with only those that need to be inserted.
-      return await InsertWordsAsync(
-        await RebuildWordsListAsync(words, connectionFactory, token).ConfigureAwait(false),
-        connectionFactory, token).ConfigureAwait(false);
+      var tsActual = DateTime.UtcNow;
+      try
+      {
+        // rebuild the list of directory with only those that need to be inserted.
+        return await InsertWordsAsync(
+          await RebuildWordsListAsync(words, connectionFactory, token).ConfigureAwait(false),
+          connectionFactory, token).ConfigureAwait(false);
+      }
+      finally
+      {
+        _counter.IncremenFromUtcTime(tsActual);
+      }
     }
 
     /// <inheritdoc />

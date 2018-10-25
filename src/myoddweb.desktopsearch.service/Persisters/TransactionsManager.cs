@@ -13,7 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Configs;
@@ -22,38 +21,6 @@ using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal class TransactionPerformanceCounter : helper.IO.PerformanceCounter
-  {
-    /// <summary>
-    /// The performance counter
-    /// </summary>
-    private readonly PerformanceCounter _counter;
-
-    public TransactionPerformanceCounter(IPerformance performance, string counterName, ILogger logger)
-    {
-      // now create the counters.
-      _counter = CreatePerformanceCounter(performance, counterName, PerformanceCounterType.RateOfCountsPerSecond32, logger);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnIncremenFromUtcTime(DateTime startTime)
-    {
-      throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
-    protected override void OnIncrement()
-    {
-      _counter.Increment();
-    }
-
-    /// <inheritdoc/>
-    protected override void OnDispose()
-    {
-      _counter.Dispose();
-    }
-  }
-
   internal class TransactionsManager : IDisposable
   {
     #region Member variables

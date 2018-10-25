@@ -14,14 +14,13 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Diagnostics;
 using myoddweb.desktopsearch.interfaces.Configs;
-using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
-namespace myoddweb.desktopsearch.processor.IO
+namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal class ProcessorPerformanceCounter : helper.IO.PerformanceCounter
+  internal class TransactionPerformanceCounter : helper.IO.PerformanceCounter
   {
-    public ProcessorPerformanceCounter( IPerformance performance, string counterName, ILogger logger ) :
-      base(performance, counterName, PerformanceCounterType.AverageTimer32, logger)
+    public TransactionPerformanceCounter(IPerformance performance, string counterName, interfaces.Logging.ILogger logger) :
+      base(performance, counterName, PerformanceCounterType.RateOfCountsPerSecond32, logger)
     {
     }
   }
