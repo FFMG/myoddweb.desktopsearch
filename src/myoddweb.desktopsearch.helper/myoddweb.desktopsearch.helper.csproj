@@ -52,10 +52,11 @@
     <Compile Include="IO\Word.cs" />
     <Compile Include="IO\WordEqualityComparer.cs" />
     <Compile Include="IO\Words.cs" />
-    <Compile Include="Performance\CounterData.cs" />
-    <Compile Include="Performance\CounterDataWithBase.cs" />
+    <Compile Include="Performance\CounterDataCount.cs" />
+    <Compile Include="Performance\CounterDataTimer.cs" />
     <Compile Include="Performance\ICounter.cs" />
     <Compile Include="Performance\Manager.cs" />
+    <Compile Include="Performance\Type.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Wait.cs" />
   </ItemGroup>

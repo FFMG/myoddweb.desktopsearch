@@ -12,16 +12,11 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Diagnostics;
-using myoddweb.desktopsearch.interfaces.Configs;
-
-namespace myoddweb.desktopsearch.service.Persisters
+namespace myoddweb.desktopsearch.helper.Performance
 {
-  internal class TransactionPerformanceCounter : helper.Performance.Counter
+  public enum Type
   {
-    public TransactionPerformanceCounter(IPerformance performance, string counterName, interfaces.Logging.ILogger logger) :
-      base(performance, counterName, helper.Performance.Type.CountPerSeconds, logger)
-    {
-    }
+    Timed,
+    CountPerSeconds
   }
 }

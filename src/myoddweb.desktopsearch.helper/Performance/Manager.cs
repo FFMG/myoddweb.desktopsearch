@@ -40,7 +40,7 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// <summary>
     /// Static list of counters that might need to be re-created.
     /// </summary>
-    private readonly ConcurrentDictionary<Guid, CounterData> _counters = new ConcurrentDictionary<Guid, CounterData>();
+    private readonly ConcurrentDictionary<Guid, CounterDataCount> _counters = new ConcurrentDictionary<Guid, CounterDataCount>();
     #endregion
 
     private Manager()
@@ -133,7 +133,7 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// <summary>
     /// Get this counter, (if we have one).
     /// </summary>
-    private CounterData Counter(Counter counter)
+    private CounterDataCount Counter(Counter counter)
     {
       if (_counters.TryGetValue(counter.Guid, out var existingCounter))
       {
@@ -143,7 +143,7 @@ namespace myoddweb.desktopsearch.helper.Performance
       // we use the lock in case it is being re-created.
       lock (Lock)
       {
-        var cd = !MustUseBase(counter.Type) ? new CounterData(counter) : new CounterDataWithBase(counter, BaseName(counter));
+        var cd = !MustUseBase(counter.Type) ? new CounterDataCount(counter) : new CounterDataTimer(counter, BaseName(counter));
         _counters[counter.Guid] = cd;
       }
       return _counters[counter.Guid];
@@ -164,7 +164,7 @@ namespace myoddweb.desktopsearch.helper.Performance
         new CounterCreationData(
           counter.Name,
           counter.Name,
-          counter.Type
+          GetPerformanceCounterType(counter.Type)
         )
       };
 
@@ -193,18 +193,33 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// </summary>
     /// <param name="type"></param>
     /// <returns></returns>
-    private static bool MustUseBase(PerformanceCounterType type)
+    private static bool MustUseBase(Type type)
     {
       switch (type)
       {
-        case PerformanceCounterType.AverageBase:
-          return false;
-
-        case PerformanceCounterType.AverageTimer32:
+        case Type.Timed:
           return true;
 
-        default:
+        case Type.CountPerSeconds:
           return false;
+
+        default:
+          throw new ArgumentOutOfRangeException(nameof(type), type, null);
+      }
+    }
+    
+    private static PerformanceCounterType GetPerformanceCounterType(Type type)
+    {
+      switch (type)
+      {
+        case Type.Timed:
+          return PerformanceCounterType.AverageTimer32;
+
+        case Type.CountPerSeconds:
+          return PerformanceCounterType.RateOfCountsPerSecond64;
+
+        default:
+          throw new ArgumentOutOfRangeException(nameof(type), type, null);
       }
     }
     #endregion

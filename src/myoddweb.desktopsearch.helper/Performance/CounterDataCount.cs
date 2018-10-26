@@ -4,14 +4,14 @@ using System.Linq;
 
 namespace myoddweb.desktopsearch.helper.Performance
 {
-  internal class CounterData : IDisposable
+  internal class CounterDataCount : IDisposable
   {
     /// <summary>
     /// The counter we will be using
     /// </summary>
     protected PerformanceCounter Counter { get; set; }
 
-    public CounterData(Counter counter)
+    public CounterDataCount(Counter counter)
     {
       var category = PerformanceCounterCategory.GetCategories().First(cat => cat.CategoryName == counter.CategoryName);
       Counter = category.GetCounters().FirstOrDefault(c => c.CounterName == counter.Name);

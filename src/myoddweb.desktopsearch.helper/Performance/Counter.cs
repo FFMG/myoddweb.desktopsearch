@@ -13,7 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Diagnostics;
 using myoddweb.desktopsearch.interfaces.Configs;
 using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
@@ -45,7 +44,7 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// <summary>
     /// The performance counter type.
     /// </summary>
-    public PerformanceCounterType Type { get; }
+    public Type Type { get; }
     #endregion
 
     /// <summary>
@@ -56,7 +55,7 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// <param name="type"></param>
     /// <param name="logger"></param>
     /// <returns></returns>
-    protected Counter(IPerformance performance, string counterName, PerformanceCounterType type, ILogger logger)
+    protected Counter(IPerformance performance, string counterName, Type type, ILogger logger)
     {
       // performance
       _performance = performance ?? throw new ArgumentNullException(nameof(performance));

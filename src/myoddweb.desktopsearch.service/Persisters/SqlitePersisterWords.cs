@@ -29,7 +29,7 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlPerformanceCounter : helper.Performance.Counter
   {
     public SqlPerformanceCounter(IPerformance performance, string counterName, ILogger logger) :
-      base(performance, counterName, PerformanceCounterType.AverageTimer32, logger)
+      base(performance, counterName, helper.Performance.Type.Timed, logger)
     {
     }
   }
