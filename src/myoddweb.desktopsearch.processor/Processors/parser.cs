@@ -42,10 +42,10 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// The performance counter.
     /// </summary>
-    private readonly IPerformanceCounter _counter;
+    private readonly ICounter _counter;
     #endregion
 
-    public Parser(IPerformanceCounter counter, int numberOfFilesToUpdates, IPersister persister, ILogger logger)
+    public Parser(ICounter counter, int numberOfFilesToUpdates, IPersister persister, ILogger logger)
     {
       // save the counter
       _counter = counter ?? throw new ArgumentNullException(nameof(counter));

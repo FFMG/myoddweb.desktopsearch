@@ -17,7 +17,7 @@ using System;
 
 namespace myoddweb.desktopsearch.helper.Performance
 {
-  public interface IPerformanceCounter
+  public interface ICounter
   {
     /// <summary>
     /// Dispose of resources.

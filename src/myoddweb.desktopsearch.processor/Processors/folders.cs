@@ -51,10 +51,10 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// The performance counter.
     /// </summary>
-    private readonly IPerformanceCounter _counter;
+    private readonly ICounter _counter;
     #endregion
 
-    public Folders(IPerformanceCounter counter, IPersister persister, ILogger logger, IDirectory directory)
+    public Folders(ICounter counter, IPersister persister, ILogger logger, IDirectory directory)
     {
       // save the counter
       _counter = counter ?? throw new ArgumentNullException(nameof(counter));

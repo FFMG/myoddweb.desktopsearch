@@ -18,7 +18,7 @@ using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.helper.Performance
 {
-  public abstract class Counter : IPerformanceCounter, IDisposable
+  public abstract class Counter : ICounter, IDisposable
   {
     #region Member variables
     /// <summary>

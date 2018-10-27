@@ -59,11 +59,11 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// The performance counter.
     /// </summary>
-    private readonly IPerformanceCounter _counter;
+    private readonly ICounter _counter;
     #endregion
 
     public Files(
-      IPerformanceCounter counter, 
+      ICounter counter, 
       int updatesPerFilesEvent, 
       IList<IFileParser> parsers, 
       IList<IIgnoreFile> ignoreFiles, 
