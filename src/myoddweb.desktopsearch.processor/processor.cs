@@ -56,27 +56,29 @@ namespace myoddweb.desktopsearch.processor
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-      const string directoryCounterName = "Average time processing Directories";
-      const string fileCounterName = "Average time processing Files";
+      const string directoryCounterName = "Processor: Average time processing Directories";
+      const string fileCounterName = "Processor: Average time processing Files";
+      const string parserCounterName = "Processor: Average time processing Words";
 
       // Create the various processors, they will not start doing anything just yet
       // or at least, they shouldn't
       _timers = new List<ProcessorTimer>();
 
+      var directoriesCounter = new ProcessorPerformanceCounter(performance, directoryCounterName, logger);
       for ( var i = 0; i < config.ConcurrentDirectoriesProcessor; ++i)
       {
-        var directoriesCounter = new ProcessorPerformanceCounter(performance, directoryCounterName, logger);
         _timers.Add( new ProcessorTimer(new Folders(directoriesCounter, persister, logger, directory), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
       }
 
+      var filesCounter = new ProcessorPerformanceCounter(performance, fileCounterName, logger);
       for (var i = 0; i < config.ConcurrentFilesProcessor; ++i)
       {
-        var filesCounter = new ProcessorPerformanceCounter(performance, fileCounterName, logger);
         _timers.Add( new ProcessorTimer(new Files(filesCounter, config.UpdatesPerFilesEvent, fileParsers, config.IgnoreFiles, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
       }
 
-      // the file parser.
-      _timers.Add(new ProcessorTimer(new Parser( config.UpdateFileIdsEvent, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
+      // the word parser.
+      var parserCounter = new ProcessorPerformanceCounter(performance, parserCounterName, logger);
+      _timers.Add(new ProcessorTimer(new Parser(parserCounter, config.UpdateFileIdsEvent, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
     }
 
     #region Start/Stop functions

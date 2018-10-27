@@ -13,8 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using myoddweb.desktopsearch.interfaces.IO;
 
 namespace myoddweb.desktopsearch.helper.IO
@@ -29,12 +27,6 @@ namespace myoddweb.desktopsearch.helper.IO
     /// </summary>
     private Parts _parts;
 
-    /// <summary>
-    /// The maximum number of meaningful charactets in the parts.
-    /// Anything longer than that will be ignored.
-    /// </summary>
-    private int _lastMaxNumMeaningfulCharacters;
-
     /// <inheritdoc />
     public IParts Parts(int maxNumMeaningfulCharacters)
     {
@@ -43,17 +35,13 @@ namespace myoddweb.desktopsearch.helper.IO
         throw new ArgumentException("The number of meaningful characters cannot be zero or -ve");
       }
 
-      if (_parts != null && _lastMaxNumMeaningfulCharacters == maxNumMeaningfulCharacters )
+      if (_parts != null && _parts.MaxPartLength == maxNumMeaningfulCharacters )
       {
         return _parts;
       }
 
-      // save the last number of items, so we don't
-      //  run the same query more than once.
-      _lastMaxNumMeaningfulCharacters = maxNumMeaningfulCharacters;
-
       // save the parts.
-      _parts = new Parts(Value);
+      _parts = new Parts(Value, maxNumMeaningfulCharacters);
       
       // then return the value.
       return _parts;

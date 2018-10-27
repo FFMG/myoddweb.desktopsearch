@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System;
+using System.Linq;
 using myoddweb.desktopsearch.helper.IO;
 using NUnit.Framework;
 
@@ -75,6 +76,48 @@ namespace myoddweb.desktopsearch.parser.test
       var w = new Word(value);
       Assert.Throws<ArgumentException>(() => { var _ = w.Parts(-1); });
       Assert.Throws<ArgumentException>(() => { var _ = w.Parts(-42); });
+    }
+
+    [Test]
+    public void TheMaxPartLenIsUsedProperly()
+    {
+      const string value = "Hello";
+      var w = new Word(value);
+      var p = w.Parts(1);
+      Assert.AreEqual( new []{"H", "e", "l", "o" }, p.ToArray() );
+    }
+
+    [Test]
+    public void IfThePartsizeIsTheSameAsTheWordLenItDoesNotMatter()
+    {
+      const string value = "Cat";
+      var w = new Word(value);
+      var p = w.Parts(3);
+      Assert.AreEqual(new[] { "C", "Ca", "Cat", "a", "at", "t" }, p.ToArray());
+    }
+
+    [Test]
+    public void UpdatingThePartsLenChangesTheList()
+    {
+      const string value = "Cat";
+      var w = new Word(value);
+      var p = w.Parts(1);
+      Assert.AreEqual(new [] { "C", "a", "t" }, p.ToArray());
+
+      p = w.Parts(2);
+      Assert.AreEqual(new[] { "C", "Ca", "a", "at", "t" }, p.ToArray());
+
+      p = w.Parts(1);
+      Assert.AreEqual(new[] { "C", "a", "t" }, p.ToArray());
+    }
+
+    [Test]
+    public void TheMaxPartLeIsLongerThanTheWordItself()
+    {
+      const string value = "Hi";
+      var w = new Word(value);
+      var p = w.Parts(20);
+      Assert.AreEqual(new [] { "H", "Hi", "i" }, p.ToArray());
     }
   }
 }

@@ -101,7 +101,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <inheritdoc />
     public async Task<int> WorkAsync(CancellationToken token)
     {
-      var tsActual = DateTime.UtcNow;
       try
       {
         // then get _all_ the file updates that we want to do.
@@ -127,10 +126,6 @@ namespace myoddweb.desktopsearch.processor.Processors
       {
         _logger.Exception(e);
         throw;
-      }
-      finally
-      {
-        _counter?.IncremenFromUtcTime(tsActual);
       }
     }
 
@@ -351,16 +346,24 @@ namespace myoddweb.desktopsearch.processor.Processors
         return 0;
       }
 
-      // look for the words
-      var numberOfWords = await parser.ParseAsync(helper, _logger, token).ConfigureAwait(false);
-      if (numberOfWords > 0 )
+      var tsActual = DateTime.UtcNow;
+      try
       {
-        // if we found any, log it.
-        _logger.Verbose($"Parser : {parser.Name} processed {helper.Count} words in {file.FullName}.");
-      }
+        // look for the words
+        var numberOfWords = await parser.ParseAsync(helper, _logger, token).ConfigureAwait(false);
+        if (numberOfWords > 0)
+        {
+          // if we found any, log it.
+          _logger.Verbose($"Parser : {parser.Name} processed {helper.Count} words in {file.FullName}.");
+        }
 
-      // null values are ignored.
-      return numberOfWords;
+        // null values are ignored.
+        return numberOfWords;
+      }
+      finally
+      {
+        _counter?.IncremenFromUtcTime(tsActual);
+      }
     }
     #endregion
 

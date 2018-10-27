@@ -194,5 +194,37 @@ namespace myoddweb.desktopsearch.parser.test
         Assert.IsTrue(expected.Contains(q));
       }
     }
+
+    [Test]
+    public void TheMaxPartLenIsUsedProperly()
+    {
+      const string value = "Hello";
+      var p = new Parts(value, 1);
+      Assert.AreEqual(new[] { "H", "e", "l", "o" }, p.ToArray());
+    }
+
+    [Test]
+    public void IfThePartsizeIsTheSameAsTheWordLenItDoesNotMatter()
+    {
+      const string value = "Cat";
+      var p = new Parts(value, 3);
+      Assert.AreEqual(new[] { "C", "Ca", "Cat", "a", "at", "t" }, p.ToArray());
+    }
+
+    [Test]
+    public void NegativeOneWillReturnTheFullList()
+    {
+      const string value = "Cat";
+      var p = new Parts(value, -1);
+      Assert.AreEqual(new[] { "C", "Ca", "Cat", "a", "at", "t" }, p.ToArray());
+    }
+
+    [Test]
+    public void TheMaxPartLeIsLongerThanTheWordItself()
+    {
+      const string value = "Hi";
+      var p = new Parts( value, 20);
+      Assert.AreEqual(new[] { "H", "Hi", "i" }, p.ToArray());
+    }
   }
 }

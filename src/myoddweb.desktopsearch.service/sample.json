@@ -1,6 +1,6 @@
 ﻿{
   "MaxNumCharactersPerWords": 255,
-  "MaxNumCharactersPerParts": 25,
+  "MaxNumCharactersPerParts": 15,
   "MaxNumberOfWordsToProcess": 1000,
 
   "WebServer": {

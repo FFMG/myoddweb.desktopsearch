@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.Performance;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -37,10 +38,18 @@ namespace myoddweb.desktopsearch.processor.Processors
     private readonly IPersister _persister;
 
     public int MaxUpdatesToProcess { get; }
+
+    /// <summary>
+    /// The performance counter.
+    /// </summary>
+    private readonly IPerformanceCounter _counter;
     #endregion
 
-    public Parser( int numberOfFilesToUpdates, IPersister persister, ILogger logger)
+    public Parser(IPerformanceCounter counter, int numberOfFilesToUpdates, IPersister persister, ILogger logger)
     {
+      // save the counter
+      _counter = counter ?? throw new ArgumentNullException(nameof(counter));
+
       if (numberOfFilesToUpdates <= 0)
       {
         throw new ArgumentException($"The number of file ids to try per events cannot be -ve or zero, ({numberOfFilesToUpdates})");
@@ -64,35 +73,45 @@ namespace myoddweb.desktopsearch.processor.Processors
         return 0;
       }
 
-      var connectionFactory = await _persister.BeginWrite(token).ConfigureAwait(false);
-      if (null == connectionFactory)
-      {
-        throw new Exception("Unable to get transaction!");
-      }
-
+      var tsActual = DateTime.UtcNow;
       try
       {
-        foreach (var id in ids)
+        var connectionFactory = await _persister.BeginWrite(token).ConfigureAwait(false);
+        if (null == connectionFactory)
         {
-          await _persister.FilesWords.AddParserWordsAsync(id, connectionFactory, token).ConfigureAwait(false);
+          throw new Exception("Unable to get transaction!");
         }
-        _persister.Commit(connectionFactory);
-      }
-      catch (OperationCanceledException e)
-      {
-        _persister.Rollback(connectionFactory);
 
-        // is it my token?
-        if (e.CancellationToken != token)
+        try
         {
-          _logger.Exception(e);
+          foreach (var id in ids)
+          {
+            await _persister.FilesWords.AddParserWordsAsync(id, connectionFactory, token).ConfigureAwait(false);
+          }
+
+          _persister.Commit(connectionFactory);
         }
-        throw;
+        catch (OperationCanceledException e)
+        {
+          _persister.Rollback(connectionFactory);
+
+          // is it my token?
+          if (e.CancellationToken != token)
+          {
+            _logger.Exception(e);
+          }
+
+          throw;
+        }
+        catch (Exception)
+        {
+          _persister.Rollback(connectionFactory);
+          throw;
+        }
       }
-      catch (Exception )
+      finally
       {
-        _persister.Rollback(connectionFactory);
-        throw;
+        _counter?.IncremenFromUtcTime(tsActual);
       }
       return ids.Count;
     }
@@ -100,6 +119,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <inheritdoc />
     public void Stop()
     {
+      _counter?.Dispose();
     }
 
     private async Task<IList<long>> GetFileIdsAsync(CancellationToken token)

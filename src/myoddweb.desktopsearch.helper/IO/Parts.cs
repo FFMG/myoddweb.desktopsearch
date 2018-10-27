@@ -34,11 +34,6 @@ namespace myoddweb.desktopsearch.helper.IO
     private readonly string _word;
 
     /// <summary>
-    /// The maximum length of the part.
-    /// </summary>
-    private readonly int _maxPartLength;
-
-    /// <summary>
     /// The length of the word.
     /// </summary>
     private readonly int _wordLength;
@@ -50,6 +45,12 @@ namespace myoddweb.desktopsearch.helper.IO
     #endregion
 
     #region Properties
+
+    /// <summary>
+    /// The maximum length of the part.
+    /// </summary>
+    public int MaxPartLength { get; }
+
     /// <inheritdoc />
     public string Current
     {
@@ -90,14 +91,14 @@ namespace myoddweb.desktopsearch.helper.IO
       _word = word ?? throw new ArgumentNullException(nameof(word));
 
       // the max length
-      _maxPartLength = maxPartLength;
+      MaxPartLength = maxPartLength;
 
       // sanity check
-      if (_maxPartLength == 0)
+      if (MaxPartLength == 0)
       {
         throw new ArgumentException( "The max part size cannot be zero." );
       }
-      if (_maxPartLength < 0 && _maxPartLength != -1 )
+      if (MaxPartLength < 0 && MaxPartLength != -1 )
       {
         throw new ArgumentException("The max part size cannot be -ve");
       }
@@ -127,9 +128,9 @@ namespace myoddweb.desktopsearch.helper.IO
       var maxLength = _wordLength * (_wordLength + 1) / 2;
 
       // then if we have a max word length, then we can drop the value further
-      if (_maxPartLength > 0)
+      if (MaxPartLength > 0 && _wordLength > MaxPartLength)
       {
-        var excludedLength = _wordLength - _maxPartLength;
+        var excludedLength = _wordLength - MaxPartLength;
         maxLength -= excludedLength * (excludedLength + 1) / 2;
       }
 
@@ -140,7 +141,7 @@ namespace myoddweb.desktopsearch.helper.IO
         for( var length = 1; length  <= _wordLength - start; length++ )
         {
           // check if we have reached the max length allowed. 
-          if (_maxPartLength != -1 && length > _maxPartLength)
+          if (MaxPartLength != -1 && length > MaxPartLength)
           {
             break;
           }
