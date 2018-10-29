@@ -78,35 +78,33 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <inheritdoc />
     public async Task<int> WorkAsync(CancellationToken token)
     {
-      var tsActual = DateTime.UtcNow;
-      try
-      {
-        // then get _all_ the file updates that we want to do.
-        var pendingUpdate = await GetPendingFolderUpdateAndMarkDirectoryProcessedAsync(token).ConfigureAwait(false);
-        if (null == pendingUpdate)
+      using (_counter.Start())
+      { 
+        try
         {
-          return 0;
+          // then get _all_ the file updates that we want to do.
+          var pendingUpdate = await GetPendingFolderUpdateAndMarkDirectoryProcessedAsync(token).ConfigureAwait(false);
+          if (null == pendingUpdate)
+          {
+            return 0;
+          }
+
+          // process the update.
+          await ProcessFolderUpdateAsync(pendingUpdate, token).ConfigureAwait(false);
+
+          // we processed one update
+          return 1;
         }
-
-        // process the update.
-        await ProcessFolderUpdateAsync(pendingUpdate, token).ConfigureAwait( false );
-
-        // we processed one update
-        return 1;
-      }
-      catch (OperationCanceledException)
-      {
-        _logger.Warning("Received cancellation request - Directories Processor - Work");
-        throw;
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
-        throw;
-      }
-      finally
-      {
-        _counter?.IncremenFromUtcTime(tsActual);
+        catch (OperationCanceledException)
+        {
+          _logger.Warning("Received cancellation request - Directories Processor - Work");
+          throw;
+        }
+        catch (Exception e)
+        {
+          _logger.Exception(e);
+          throw;
+        }
       }
     }
 

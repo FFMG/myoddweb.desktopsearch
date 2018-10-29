@@ -11,7 +11,7 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// </summary>
     protected PerformanceCounter Counter { get; set; }
 
-    public CounterDataCount(Counter counter)
+    public CounterDataCount(ICounter counter)
     {
       var category = PerformanceCounterCategory.GetCategories().First(cat => cat.CategoryName == counter.CategoryName);
       Counter = category.GetCounters().FirstOrDefault(c => c.CounterName == counter.Name);

@@ -69,14 +69,9 @@ namespace myoddweb.desktopsearch.service.Persisters
       var distinctWords = words.Distinct().ToList();
 
       long added = 0;
-      var sqlInsertWord = $"INSERT INTO {Tables.ParserWords} (id, fileid, word) VALUES (@id, @fileid, @word)";
+      var sqlInsertWord = $"INSERT INTO {Tables.ParserWords} (fileid, word) VALUES (@fileid, @word)";
       using (var cmd = connectionFactory.CreateCommand(sqlInsertWord))
       {
-        var pId = cmd.CreateParameter();
-        pId.DbType = DbType.Int64;
-        pId.ParameterName = "@id";
-        cmd.Parameters.Add(pId);
-
         var pFileId = cmd.CreateParameter();
         pFileId.DbType = DbType.Int64;
         pFileId.ParameterName = "@fileid";
@@ -86,9 +81,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         pWord.DbType = DbType.String;
         pWord.ParameterName = "@word";
         cmd.Parameters.Add(pWord);
-
-        // get the next id.
-        var nextId = await GetNextWordIdAsync(connectionFactory, token).ConfigureAwait(false);
 
         foreach (var word in distinctWords)
         {
@@ -104,7 +96,6 @@ namespace myoddweb.desktopsearch.service.Persisters
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
-            pId.Value = nextId;
             pFileId.Value = fileid;
             pWord.Value = word;
             if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
@@ -115,9 +106,6 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             // word was added
             ++added;
-
-            // move on to the next id.
-            ++nextId;
           }
           catch (OperationCanceledException)
           {
@@ -357,42 +345,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       catch (OperationCanceledException)
       {
         _logger.Warning("Received cancellation request - Get Word id");
-        throw;
-      }
-    }
-
-    /// <summary>
-    /// Get the next row ID we can use.
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<long> GetNextWordIdAsync(IConnectionFactory connectionFactory, CancellationToken token)
-    {
-      try
-      {
-        // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT max(id) from {Tables.ParserWords};";
-        using (var cmd = connectionFactory.CreateCommand(sql))
-        {
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-
-          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
-
-          // does not exist ...
-          if (null == value || value == DBNull.Value)
-          {
-            return 0;
-          }
-
-          // this is the next counter.
-          return ((long)value) + 1;
-        }
-      }
-      catch (OperationCanceledException)
-      {
-        _logger.Warning("Received cancellation request - Get Next valid Word id");
         throw;
       }
     }

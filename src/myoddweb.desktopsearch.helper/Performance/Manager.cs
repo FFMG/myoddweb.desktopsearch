@@ -17,7 +17,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
-using myoddweb.desktopsearch.interfaces.Configs;
 using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.helper.Performance
@@ -40,7 +39,7 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// <summary>
     /// Static list of counters that might need to be re-created.
     /// </summary>
-    private readonly ConcurrentDictionary<Guid, CounterDataCount> _counters = new ConcurrentDictionary<Guid, CounterDataCount>();
+    private readonly ConcurrentDictionary<string, CounterDataCount> _counters = new ConcurrentDictionary<string, CounterDataCount>();
     #endregion
 
     private Manager()
@@ -70,10 +69,9 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// <summary>
     /// Make sure that we have a valid category.
     /// </summary>
-    /// <param name="performance"></param>
     /// <param name="counter"></param>
     /// <param name="logger"></param>
-    public void Initialise(IPerformance performance, Counter counter, ILogger logger)
+    public void Initialise( Counter counter, ILogger logger)
     {
       // we will need to re-create all the counters...
       DisposeAllCounters();
@@ -85,32 +83,32 @@ namespace myoddweb.desktopsearch.helper.Performance
         var counterCreationDataCollection = BuildCollectionData(counter);
 
         // if the category does not exist, try and create it.
-        if (!PerformanceCounterCategory.Exists(performance.CategoryName))
+        if (!PerformanceCounterCategory.Exists(counter.CategoryName))
         {
-          PerformanceCounterCategory.Create(performance.CategoryName, performance.CategoryHelp,
+          PerformanceCounterCategory.Create(counter.CategoryName, counter.CategoryHelp,
             PerformanceCounterCategoryType.SingleInstance, counterCreationDataCollection);
-          logger.Information($"Created performance category: {performance.CategoryName} for counter: {counter.Name}");
+          logger.Information($"Created performance category: {counter.CategoryName} for counter: {counter.Name}");
           return;
         }
 
-        if (PerformanceCounterCategory.CounterExists(counter.Name, performance.CategoryName))
+        if (PerformanceCounterCategory.CounterExists(counter.Name, counter.CategoryName))
         {
           return;
         }
 
         var category = PerformanceCounterCategory.GetCategories()
-          .First(cat => cat.CategoryName == performance.CategoryName);
+          .First(cat => cat.CategoryName == counter.CategoryName);
         var counters = category.GetCounters();
         foreach (var c in counters)
         {
           counterCreationDataCollection.Add(new CounterCreationData(c.CounterName, c.CounterHelp, c.CounterType));
         }
 
-        PerformanceCounterCategory.Delete(performance.CategoryName);
-        PerformanceCounterCategory.Create(performance.CategoryName, performance.CategoryHelp,
+        PerformanceCounterCategory.Delete(counter.CategoryName);
+        PerformanceCounterCategory.Create(counter.CategoryName, counter.CategoryHelp,
           PerformanceCounterCategoryType.SingleInstance, counterCreationDataCollection);
 
-        logger.Information($"Updated performance category: {performance.CategoryName} for counter: {counter.Name}");
+        logger.Information($"Updated performance category: {counter.CategoryName} for counter: {counter.Name}");
       }
     }
 
@@ -133,9 +131,9 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// <summary>
     /// Get this counter, (if we have one).
     /// </summary>
-    private CounterDataCount Counter(Counter counter)
+    private CounterDataCount Counter(ICounter counter)
     {
-      if (_counters.TryGetValue(counter.Guid, out var existingCounter))
+      if (_counters.TryGetValue(counter.Name, out var existingCounter))
       {
         return existingCounter;
       }
@@ -144,9 +142,9 @@ namespace myoddweb.desktopsearch.helper.Performance
       lock (Lock)
       {
         var cd = !MustUseBase(counter.Type) ? new CounterDataCount(counter) : new CounterDataTimer(counter, BaseName(counter));
-        _counters[counter.Guid] = cd;
+        _counters[counter.Name] = cd;
       }
-      return _counters[counter.Guid];
+      return _counters[counter.Name];
     }
     #endregion
 
@@ -183,7 +181,7 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// Base counter name.
     /// </summary>
     /// <returns></returns>
-    private static string BaseName(Counter counter)
+    private static string BaseName( ICounter counter)
     {
       return $"{counter.Name}Base";
     }
@@ -228,14 +226,14 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// <summary>
     /// Dispose of a single counter.
     /// </summary>
-    /// <param name="guid"></param>
-    internal void Dispose(Guid guid)
+    /// <param name="name"></param>
+    internal void Dispose(string name )
     {
       // then remove it from out list.
       // so we can re-get it if need be.
       lock (Lock)
       {
-        if (_counters.TryRemove(guid, out var counter))
+        if (_counters.TryRemove(name, out var counter))
         {
           counter?.Dispose();
         }
@@ -246,7 +244,7 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// Increment the given counter.
     /// </summary>
     /// <param name="counter"></param>
-    internal void Increment( Counter counter )
+    internal void Increment( ICounter counter )
     {
       Counter(counter)?.Increment();
     }
@@ -256,7 +254,7 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// </summary>
     /// <param name="counter"></param>
     /// <param name="startTime"></param>
-    internal void IncremenFromUtcTime(Counter counter, DateTime startTime)
+    internal void IncremenFromUtcTime(ICounter counter, DateTime startTime)
     {
       Counter(counter)?.IncremenFromUtcTime(startTime);
     }

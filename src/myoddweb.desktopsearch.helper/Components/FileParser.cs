@@ -80,11 +80,11 @@ namespace myoddweb.desktopsearch.helper.Components
     /// <param name="func"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<long> ParserAsync(IParserHelper helper, string text, Func<string, bool> func, CancellationToken token)
+    public Task<long> ParserAsync(IParserHelper helper, string text, Func<string, bool> func, CancellationToken token)
     {
       // split the line into words.
       var words = _reg.Matches(text).OfType<Match>().Select(m => m.Groups[0].Value).ToArray();
-      return await helper.AddWordAsync(words.Where(func).ToList(), token).ConfigureAwait(false);
+      return helper.AddWordAsync(words.Where(func).ToList(), token);
     }
 
     /// <summary>
@@ -119,6 +119,17 @@ namespace myoddweb.desktopsearch.helper.Components
     /// <returns></returns>
     private async Task<string> ReadTextAsync(TextReader stream, CancellationToken token)
     {
+      // check if we need to read part of it or the while lot.
+      var fileStream = (stream as StreamReader)?.BaseStream;
+      if (fileStream != null && (fileStream.Length - fileStream.Position) <= _maxNumberReadCharacters)
+      {
+        if (fileStream.Position == fileStream.Length)
+        {
+          return null;
+        }
+        return await stream.ReadToEndAsync().ConfigureAwait(false);
+      }
+
       // try and read up to the max
       var buffer = new char[_maxNumberReadCharacters];
       var len = await stream.ReadAsync(buffer, 0, _maxNumberReadCharacters).ConfigureAwait(false);
@@ -128,7 +139,7 @@ namespace myoddweb.desktopsearch.helper.Components
       }
       if (len < _maxNumberReadCharacters )
       {
-        return new string(buffer);
+        return new string(buffer, 0, len );
       }
 
       // we have to read to the next char.

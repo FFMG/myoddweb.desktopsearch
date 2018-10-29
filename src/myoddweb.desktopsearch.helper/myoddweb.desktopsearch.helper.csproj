@@ -54,7 +54,10 @@
     <Compile Include="IO\Words.cs" />
     <Compile Include="Performance\CounterDataCount.cs" />
     <Compile Include="Performance\CounterDataTimer.cs" />
+    <Compile Include="Performance\CounterEventCount.cs" />
+    <Compile Include="Performance\CounterEventTimer.cs" />
     <Compile Include="Performance\ICounter.cs" />
+    <Compile Include="Performance\ICounterEvent.cs" />
     <Compile Include="Performance\Manager.cs" />
     <Compile Include="Performance\Type.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

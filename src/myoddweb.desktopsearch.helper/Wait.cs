@@ -55,6 +55,25 @@ namespace myoddweb.desktopsearch.helper
 
     }
 
+    public static async Task WhenAll(IReadOnlyCollection<Task> tasks, ILogger logger,
+      CancellationToken token = default(CancellationToken))
+    {
+      var task = Task.WhenAll(tasks.ToArray());
+      try
+      {
+        await task.ConfigureAwait(false);
+      }
+      catch
+      {
+        // ignore the error as we will get it from task
+      }
+
+      if (task.Exception != null)
+      {
+        LogAggregateException(task.Exception, logger, token);
+      }
+    }
+
     public static async Task<T[]> WhenAll<T>(IReadOnlyCollection<Task<T>> tasks, ILogger logger, CancellationToken token = default(CancellationToken))
     {
       var task = Task.WhenAll(tasks.ToArray());

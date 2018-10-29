@@ -13,52 +13,41 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using myoddweb.desktopsearch.interfaces.Configs;
 using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.helper.Performance
 {
-  public abstract class Counter : ICounter, IDisposable
+  public abstract class Counter : ICounter
   {
     #region Member variables
-    /// <summary>
-    /// The performance configuration
-    /// </summary>
-    private readonly IPerformance _performance;
+    /// <inheritdoc />
+    public string CategoryName { get; }
 
     /// <summary>
-    /// Get the category name, if we have one.
+    /// The category help, if we have one.
     /// </summary>
-    public string CategoryName => _performance?.CategoryName;
+    public string CategoryHelp { get; }
 
-    /// <summary>
-    /// The counter name
-    /// </summary>
-    internal Guid Guid { get; } = Guid.NewGuid();
-
-    /// <summary>
-    /// The counter name
-    /// </summary>
+    /// <inheritdoc />
     public string Name { get; }
 
-    /// <summary>
-    /// The performance counter type.
-    /// </summary>
+    /// <inheritdoc />
     public Type Type { get; }
     #endregion
 
     /// <summary>
     /// Return a performance counter, making sure that the category is created properly.
     /// </summary>
-    /// <param name="performance"></param>
+    /// <param name="categoryName"></param>
+    /// <param name="categoryHelp"></param>
     /// <param name="counterName"></param>
     /// <param name="type"></param>
     /// <param name="logger"></param>
     /// <returns></returns>
-    protected Counter(IPerformance performance, string counterName, Type type, ILogger logger)
+    protected Counter(string categoryName, string categoryHelp, string counterName, Type type, ILogger logger)
     {
-      // performance
-      _performance = performance ?? throw new ArgumentNullException(nameof(performance));
+      CategoryName = categoryName;
+      CategoryHelp = categoryHelp;
 
       // save the counter name
       Name = counterName ?? throw new ArgumentNullException( nameof(counterName));
@@ -67,24 +56,28 @@ namespace myoddweb.desktopsearch.helper.Performance
       Type = type;
 
       // initialise it.
-      Manager.Instance.Initialise(performance, this, logger );
-    }
-
-    /// <inheritdoc/>
-    public void IncremenFromUtcTime(DateTime startTime)
-    {
-      Manager.Instance.IncremenFromUtcTime( this, startTime );
+      Manager.Instance.Initialise(this, logger );
     }
 
     /// <inheritdoc />
-    public void Increment()
+    public ICounterEvent Start()
     {
-      Manager.Instance.Increment( this );
+      switch (Type)
+      {
+        case Type.Timed:
+          return new CounterEventTimer( this, Manager.Instance);
+
+        case Type.CountPerSeconds:
+          return new CounterEventCount( this, Manager.Instance);
+
+        default:
+          throw new ArgumentOutOfRangeException();
+      }
     }
 
     public void Dispose()
     {
-      Manager.Instance.Dispose(Guid);
+      Manager.Instance.Dispose( Name );
     }
   }
 }

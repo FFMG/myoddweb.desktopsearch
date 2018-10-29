@@ -68,16 +68,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     public Task<IConnectionFactory> BeginRead(CancellationToken token)
     {
       // update the counter.
-      _counterBegin.Increment();
+      using (_counterBegin.Start())
+      {
+        // get out if needed.
+        token.ThrowIfCancellationRequested();
 
-      // get out if needed.
-      token.ThrowIfCancellationRequested();
+        // create the transaction
+        var trans = _createFactory(true);
 
-      // create the transaction
-      var trans = _createFactory( true );
-
-      // return our created factory.
-      return Task.FromResult(trans);
+        // return our created factory.
+        return Task.FromResult(trans);
+      }
     }
 
     /// <summary>
@@ -89,38 +90,39 @@ namespace myoddweb.desktopsearch.service.Persisters
     public async Task<IConnectionFactory> BeginWrite( CancellationToken token )
     {
       // update the counter.
-      _counterBegin.Increment();
-
-      for (;;)
+      using (_counterBegin.Start())
       {
-        // wait for the transaction to no longer be null
-        // outside of the lock, (so it can be freed.
-        await helper.Wait.UntilAsync(() => _writeFactory == null, token).ConfigureAwait(false);
-
-        // now trans and create the transaction
-        var lockTaken = false;
-        try
+        for (;;)
         {
-          Monitor.Enter(_lock, ref lockTaken);
+          // wait for the transaction to no longer be null
+          // outside of the lock, (so it can be freed.
+          await helper.Wait.UntilAsync(() => _writeFactory == null, token).ConfigureAwait(false);
 
-          // oops... we didn't really get it.
-          // go around again to make sure.
-          if (_writeFactory != null)
+          // now trans and create the transaction
+          var lockTaken = false;
+          try
           {
-            continue;
+            Monitor.Enter(_lock, ref lockTaken);
+
+            // oops... we didn't really get it.
+            // go around again to make sure.
+            if (_writeFactory != null)
+            {
+              continue;
+            }
+
+            // create the connection
+            // we were able to get a null transaction
+            // ... and we are inside the lock
+            _writeFactory = _createFactory(false);
+            return _writeFactory;
           }
-
-          // create the connection
-          // we were able to get a null transaction
-          // ... and we are inside the lock
-          _writeFactory = _createFactory(false);
-          return _writeFactory;
-        }
-        finally 
-        {
-          if (lockTaken)
+          finally
           {
-            Monitor.Exit( _lock );
+            if (lockTaken)
+            {
+              Monitor.Exit(_lock);
+            }
           }
         }
       }
@@ -133,33 +135,35 @@ namespace myoddweb.desktopsearch.service.Persisters
     public void Rollback(IConnectionFactory connectionFactory)
     {
       // update the counter.
-      _counterRollback.Increment();
-
-      // we don't need the lock for readonly factories
-      if (connectionFactory.IsReadOnly)
+      using (_counterRollback.Start())
       {
-        connectionFactory.Rollback();
-        return;
-      }
-
-      var lockTaken = false;
-      try
-      {
-        Monitor.Enter(_lock, ref lockTaken);
-        // this is not a readonly transaction
-        // so if it is not our factory
-        // then we have no idea where it comes from.
-        if (connectionFactory != _writeFactory)
+        // we don't need the lock for readonly factories
+        if (connectionFactory.IsReadOnly)
         {
-          throw new ArgumentException("The given transaction was not created by this class");
+          connectionFactory.Rollback();
+          return;
         }
-        RollbackInLock();
-      }
-      finally
-      {
-        if (lockTaken)
+
+        var lockTaken = false;
+        try
         {
-          Monitor.Exit(_lock);
+          Monitor.Enter(_lock, ref lockTaken);
+          // this is not a readonly transaction
+          // so if it is not our factory
+          // then we have no idea where it comes from.
+          if (connectionFactory != _writeFactory)
+          {
+            throw new ArgumentException("The given transaction was not created by this class");
+          }
+
+          RollbackInLock();
+        }
+        finally
+        {
+          if (lockTaken)
+          {
+            Monitor.Exit(_lock);
+          }
         }
       }
     }
@@ -171,32 +175,34 @@ namespace myoddweb.desktopsearch.service.Persisters
     public void Commit(IConnectionFactory connectionFactory )
     {
       // update the counter.
-      _counterCommit.Increment();
-
-      // we don't need the lock for readonly
-      if (connectionFactory.IsReadOnly)
+      using (_counterCommit.Start())
       {
-        connectionFactory.Commit();
-        return;
-      }
-
-      var lockTaken = false;
-      try
-      {
-        Monitor.Enter(_lock, ref lockTaken);
-        // if this is not a readonly factory
-        // and this is not our factory, then we do not know where it comes from.
-        if (connectionFactory != _writeFactory)
+        // we don't need the lock for readonly
+        if (connectionFactory.IsReadOnly)
         {
-          throw new ArgumentException("The given transaction was not created by this class");
+          connectionFactory.Commit();
+          return;
         }
-        CommitInLock();
-      }
-      finally
-      {
-        if (lockTaken)
+
+        var lockTaken = false;
+        try
         {
-          Monitor.Exit(_lock);
+          Monitor.Enter(_lock, ref lockTaken);
+          // if this is not a readonly factory
+          // and this is not our factory, then we do not know where it comes from.
+          if (connectionFactory != _writeFactory)
+          {
+            throw new ArgumentException("The given transaction was not created by this class");
+          }
+
+          CommitInLock();
+        }
+        finally
+        {
+          if (lockTaken)
+          {
+            Monitor.Exit(_lock);
+          }
         }
       }
     }

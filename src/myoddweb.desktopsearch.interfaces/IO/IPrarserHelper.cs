@@ -24,15 +24,5 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="token"></param>
     /// <returns>The number of words actually added.</returns>
     Task<long> AddWordAsync(IReadOnlyList<string> words, CancellationToken token );
-
-    /// <summary>
-    /// commit the transaction, if we have one.
-    /// </summary>
-    void Commit();
-
-    /// <summary>
-    /// Rollback the transaction if we have one.
-    /// </summary>
-    void Rollback();
   }
 }

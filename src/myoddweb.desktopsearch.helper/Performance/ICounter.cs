@@ -17,22 +17,28 @@ using System;
 
 namespace myoddweb.desktopsearch.helper.Performance
 {
-  public interface ICounter
+  public interface ICounter : IDisposable
   {
     /// <summary>
-    /// Dispose of resources.
+    /// The performance counter type.
     /// </summary>
-    void Dispose();
+    Type Type { get; }
 
     /// <summary>
-    /// Increment the timer once.
+    /// The counter name
     /// </summary>
-    void Increment();
+    string Name { get; }
 
     /// <summary>
-    /// Increment a counter from a start time 
+    /// Get the category name, if we have one.
     /// </summary>
-    /// <param name="startTime"></param>
-    void IncremenFromUtcTime(DateTime startTime );
+    string CategoryName { get; }
+
+    /// <summary>
+    /// Start an event ... when we dispose of the event
+    /// We will update the counters accordingly.
+    /// </summary>
+    /// <returns></returns>
+    ICounterEvent Start();
   }
 }

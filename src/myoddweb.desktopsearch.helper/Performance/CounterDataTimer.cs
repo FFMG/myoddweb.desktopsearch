@@ -12,7 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -26,7 +25,7 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// </summary>
     protected PerformanceCounter Base { get; set; }
 
-    public CounterDataTimer(Counter counter, string baseName ) : base(counter)
+    public CounterDataTimer( ICounter counter, string baseName ) : base(counter)
     {
       var category = PerformanceCounterCategory.GetCategories().First(cat => cat.CategoryName == counter.CategoryName);
       Base = category.GetCounters().FirstOrDefault(c => c.CounterName == baseName);

@@ -135,12 +135,13 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFileUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task ProcessFileUpdates(IList<IPendingFileUpdate> pendingFileUpdates, CancellationToken token)
+    private async Task ProcessFileUpdates(ICollection<IPendingFileUpdate> pendingFileUpdates, CancellationToken token)
     {
       // now try and process the files.
+      var factory = await _persister.BeginWrite(token).ConfigureAwait( false );
       try
       {
-        var completedPendingFileUpdates = new List<IPendingFileUpdate>();
+        var tasks = new List<Task>( pendingFileUpdates.Count );
         foreach (var pendingFileUpdate in pendingFileUpdates)
         {
           // throw if need be.
@@ -150,16 +151,18 @@ namespace myoddweb.desktopsearch.processor.Processors
           {
             case UpdateType.Created:
               // only add the pending updates where there are actual words to add.
-              completedPendingFileUpdates.Add( await WorkCreatedAsync(pendingFileUpdate, token).ConfigureAwait(false));
+              tasks.Add(WorkCreatedAsync(factory, pendingFileUpdate, token).ContinueWith(
+                t => CompletePendingFileUpdate(factory, t.Result, token), token ));
               break;
 
             case UpdateType.Deleted:
-              await WorkDeletedAsync(pendingFileUpdate, token).ConfigureAwait(false);
+              tasks.Add( WorkDeletedAsync( factory, pendingFileUpdate, token) );
               break;
 
             case UpdateType.Changed:
               // renamed or content/settingss changed
-              completedPendingFileUpdates.Add(await WorkChangedAsync(pendingFileUpdate, token).ConfigureAwait(false));
+              tasks.Add( WorkChangedAsync(factory, pendingFileUpdate, token).ContinueWith(
+                t => CompletePendingFileUpdate(factory, t.Result, token), token));
               break;
 
             default:
@@ -167,15 +170,21 @@ namespace myoddweb.desktopsearch.processor.Processors
           }
         }
 
-        // the last step is to pass all the words that we found.
+        // the 'continuewith' step is to pass all the words that we found.
         // this will be within it's own transaction
         // but the parsing has been done already.
-        await CompletePendingFileUpdates(completedPendingFileUpdates, token).ConfigureAwait(false);
+        await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
+
+        // commit the changes we made.
+        _persister.Commit(factory);
       }
-      catch (Exception)
+      catch
       {
+        _persister.Rollback(factory);
+
         // something did not work ... re-touch the files
         await TouchFileAsync(pendingFileUpdates, token).ConfigureAwait(false);
+
 
         // done
         throw;
@@ -183,41 +192,37 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     #region Workers
+
     /// <summary>
     /// A folder was deleted
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task WorkDeletedAsync(IPendingFileUpdate pendingFileUpdate, CancellationToken token)
+    public async Task WorkDeletedAsync(
+      IConnectionFactory factory,
+      IPendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
-      var factory = await _persister.BeginWrite(token).ConfigureAwait(false);
-      try
-      {
-        var fileId = pendingFileUpdate.FileId;
-        // because the file was deleted from the db we must remove the words for it.
-        // we could technically end up with orphan words, (words with no file ids for it)
-        // but that's not really that important, maybe one day we will vacuum those words?.
-        await _persister.FilesWords.DeleteWordsAsync(fileId, factory, token).ConfigureAwait(false);
+      var fileId = pendingFileUpdate.FileId;
 
-        // commit the deleted changes.
-        _persister.Commit(factory);
-      }
-      catch
-      {
-        // something broke, so we have to rollback.
-        _persister.Rollback(factory);
-        throw;
-      }
+      // because the file was deleted from the db we must remove the words for it.
+      // we could technically end up with orphan words, (words with no file ids for it)
+      // but that's not really that important, maybe one day we will vacuum those words?.
+      await _persister.FilesWords.DeleteWordsAsync(fileId, factory, token).ConfigureAwait(false);
     }
 
     /// <summary>
     /// A folder was created
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<IPendingFileUpdate> WorkCreatedAsync(IPendingFileUpdate pendingFileUpdate, CancellationToken token)
+    public async Task<IPendingFileUpdate> WorkCreatedAsync(
+      IConnectionFactory factory,
+      IPendingFileUpdate pendingFileUpdate, 
+      CancellationToken token)
     {
       // get the file we just created.
       var file = pendingFileUpdate.File;
@@ -228,16 +233,20 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
 
       //  process it...
-      return await ProcessFile( pendingFileUpdate, token ).ConfigureAwait(false);
+      return await ProcessFile( factory, pendingFileUpdate, token ).ConfigureAwait(false);
     }
 
     /// <summary>
     /// A folder was changed
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<IPendingFileUpdate> WorkChangedAsync(IPendingFileUpdate pendingFileUpdate, CancellationToken token)
+    public async Task<IPendingFileUpdate> WorkChangedAsync(
+      IConnectionFactory factory,
+      IPendingFileUpdate pendingFileUpdate, 
+      CancellationToken token)
     {
       var file = pendingFileUpdate.File;
       if (null == file)
@@ -246,37 +255,32 @@ namespace myoddweb.desktopsearch.processor.Processors
         return null;
       }
 
-      var factory = await _persister.BeginWrite(token).ConfigureAwait(false);
-      try
-      {
-        var fileId = pendingFileUpdate.FileId;
-        // before we process the file, we need to delete all
-        // the words that are attached to it.
-        await _persister.FilesWords.DeleteWordsAsync(fileId, factory, token).ConfigureAwait(false);
+      // the file we are processing
+      var fileId = pendingFileUpdate.FileId;
 
-        // commit the deleted changes.
-        _persister.Commit(factory);
-      }
-      catch
-      {
-        // something broke, so we have to rollback.
-        _persister.Rollback(factory);
-        throw;
-      }
+      // before we process the file, we need to delete all
+      // the words that are attached to it.
+      await _persister.FilesWords.DeleteWordsAsync(fileId, factory, token).ConfigureAwait(false);
 
       // then we can process it...
-      return await ProcessFile(pendingFileUpdate, token).ConfigureAwait(false);
+      return await ProcessFile(factory, pendingFileUpdate, token).ConfigureAwait(false);
     }
     #endregion
 
     #region Processors
+
     /// <summary>
     /// Process a file.
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<IPendingFileUpdate> ProcessFile(IPendingFileUpdate pendingFileUpdate, CancellationToken token)
+    private async Task<IPendingFileUpdate> ProcessFile(
+      IConnectionFactory factory,
+      IPendingFileUpdate pendingFileUpdate, 
+      CancellationToken token
+    )
     {
       // is this file ignored?
       if (IsIgnored(pendingFileUpdate))
@@ -286,7 +290,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
 
       // create the helper.
-      var parserHelper = new PrarserHelper( pendingFileUpdate.File, _persister, pendingFileUpdate.FileId);
+      var parserHelper = new PrarserHelper( pendingFileUpdate.File, _persister, factory, pendingFileUpdate.FileId);
 
       // start all the parser tasks
       var tasks = new List<Task<long>>();
@@ -307,14 +311,9 @@ namespace myoddweb.desktopsearch.processor.Processors
       if (totalWords == null || totalWords.Sum() == 0)
       {
         // nothing was done.
-        parserHelper.Rollback();
-
         // nothing to do...
         return null;
       }
-
-      // commit it.
-      parserHelper.Commit();
 
       // merge them all into one.
       return pendingFileUpdate;
@@ -346,8 +345,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         return 0;
       }
 
-      var tsActual = DateTime.UtcNow;
-      try
+      using (_counter.Start() )
       {
         // look for the words
         var numberOfWords = await parser.ParseAsync(helper, _logger, token).ConfigureAwait(false);
@@ -360,75 +358,18 @@ namespace myoddweb.desktopsearch.processor.Processors
         // null values are ignored.
         return numberOfWords;
       }
-      finally
-      {
-        _counter?.IncremenFromUtcTime(tsActual);
-      }
     }
     #endregion
 
     #region Database calls.
     /// <summary>
-    /// Complete all the pending updates and send all the words to the file updates.
-    /// </summary>
-    /// <param name="completedPendingFileUpdates"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task CompletePendingFileUpdates(IReadOnlyCollection<IPendingFileUpdate> completedPendingFileUpdates, CancellationToken token)
-    {
-      // do some smart checking...
-      if (completedPendingFileUpdates.All(c => c == null))
-      {
-        // nothing to do.
-        return;
-      }
-
-      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        throw new Exception("Unable to get transaction!");
-      }
-
-      try
-      {
-        foreach (var pendingFileUpdate in completedPendingFileUpdates)
-        {
-          // throw if need be.
-          token.ThrowIfCancellationRequested();
-
-          // complete the update
-          await CompletePendingFileUpdate(pendingFileUpdate, transaction, token).ConfigureAwait(false);
-        }
-
-        // all done
-        _persister.Commit(transaction);
-      }
-      catch (OperationCanceledException e)
-      {
-        _persister.Rollback(transaction);
-        if (e.CancellationToken != token)
-        {
-          // was not my token that cancelled!
-          _logger.Exception(e);
-        }
-        throw;
-      }
-      catch ( Exception e )
-      {
-        _persister.Rollback(transaction);
-        _logger.Exception(e);
-        throw;
-      }
-    }
-
-    /// <summary>
     /// Complete a single pending task.
     /// </summary>
-    /// <param name="pendingFileUpdate"></param>
     /// <param name="connectionFactory"></param>
+    /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task CompletePendingFileUpdate(IPendingFileUpdate pendingFileUpdate, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task CompletePendingFileUpdate(IConnectionFactory connectionFactory, IPendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
       // null checking
       if (null == pendingFileUpdate)

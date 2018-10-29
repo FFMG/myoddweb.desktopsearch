@@ -73,8 +73,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         return 0;
       }
 
-      var tsActual = DateTime.UtcNow;
-      try
+      using( _counter.Start() )
       {
         var connectionFactory = await _persister.BeginWrite(token).ConfigureAwait(false);
         if (null == connectionFactory)
@@ -108,10 +107,6 @@ namespace myoddweb.desktopsearch.processor.Processors
           _persister.Rollback(connectionFactory);
           throw;
         }
-      }
-      finally
-      {
-        _counter?.IncremenFromUtcTime(tsActual);
       }
       return ids.Count;
     }

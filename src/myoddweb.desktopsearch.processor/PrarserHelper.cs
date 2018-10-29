@@ -29,6 +29,11 @@ namespace myoddweb.desktopsearch.processor
     /// <inheritdoc />
     public FileSystemInfo File { get; }
 
+    /// <summary>
+    /// The lock to prevent multiple writes.
+    /// </summary>
+    private readonly object _lock = new object();
+
     /// <inheritdoc />
     public long Count { get; protected set; }
 
@@ -38,27 +43,23 @@ namespace myoddweb.desktopsearch.processor
     private readonly long _fileId;
 
     /// <summary>
-    /// The persister.
-    /// </summary>
-    private readonly IPersister _persister;
-
-    /// <summary>
     /// The connection factory, if we used one.
     /// </summary>
-    private IConnectionFactory _factory;
+    private readonly IConnectionFactory _factory;
 
     /// <summary>
-    /// The handle we need to use to de-register our cancellation function.
+    /// The persister so we can save the words.
     /// </summary>
-    private CancellationTokenRegistration _cancelationToken;
+    private readonly IPersister _persister;
     #endregion
 
-    public PrarserHelper(FileSystemInfo file, IPersister persister, long fileid )
+    public PrarserHelper(FileSystemInfo file, IPersister persister, IConnectionFactory factory, long fileid )
     {
       _fileId = fileid;
 
-      // set the perister.
+      // set the perister and the transaction.
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
+      _factory = factory ?? throw new ArgumentNullException(nameof(factory));
 
       // set the file being worked on.
       File = file ?? throw new ArgumentNullException(nameof(file));
@@ -66,24 +67,10 @@ namespace myoddweb.desktopsearch.processor
       // we added nothing yet.
       Count = 0;
     }
-
-    private void Cancel()
-    {
-      if (_factory != null)
-      {
-        _persister.Rollback(_factory);
-      }
-      _factory = null;
-
-      // free the resources.
-      _cancelationToken.Dispose();
-    }
-
+    
     /// <inheritdoc /> 
     public async Task<long> AddWordAsync(IReadOnlyList<string> words, CancellationToken token)
     {
-      await BeginWrite( token ).ConfigureAwait(false );
-
       // then we just try and add the word.
       var added = await _persister.ParserWords.AddWordAsync(_fileId, words, _factory, token).ConfigureAwait(false);
 
@@ -93,43 +80,6 @@ namespace myoddweb.desktopsearch.processor
 
       // success.
       return added;
-    }
-
-    private async Task BeginWrite( CancellationToken token )
-    {
-      if (null != _factory)
-      {
-        return;
-      }
-
-      _factory = await _persister.BeginWrite(token).ConfigureAwait(false);
-      _cancelationToken = token.Register(Cancel);
-    }
-
-    /// <inheritdoc /> 
-    public void Commit()
-    {
-      if (_factory != null)
-      {
-        _persister.Commit(_factory);
-      }
-      _factory = null;
-
-      // free the resources.
-      _cancelationToken.Dispose();
-    }
-
-    /// <inheritdoc /> 
-    public void Rollback()
-    {
-      if (_factory != null)
-      {
-        _persister.Rollback(_factory);
-      }
-      _factory = null;
-
-      // free the resources.
-      _cancelationToken.Dispose();
     }
   }
 }

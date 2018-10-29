@@ -15,7 +15,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +28,7 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlPerformanceCounter : helper.Performance.Counter
   {
     public SqlPerformanceCounter(IPerformance performance, string counterName, ILogger logger) :
-      base(performance, counterName, helper.Performance.Type.Timed, logger)
+      base(performance.CategoryName, performance.CategoryHelp, counterName, helper.Performance.Type.Timed, logger)
     {
     }
   }
@@ -51,6 +50,22 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
+    internal class SelectWordCommand : Command
+    {
+      public IDataParameter Word { get; }
+
+      public SelectWordCommand(IConnectionFactory factory)
+      {
+        var sqlSelect = $"SELECT id FROM {Tables.Words} WHERE word = @word";
+        Cmd = factory.CreateCommand(sqlSelect);
+
+        Word = Cmd.CreateParameter();
+        Word.DbType = DbType.String;
+        Word.ParameterName = "@word";
+        Cmd.Parameters.Add(Word);
+      }
+    }
+
     internal class SelectPartCommand : Command
     {
       public IDataParameter Part { get; }
@@ -69,19 +84,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     
     internal class InsertWordCommand : Command
     {
-      public IDataParameter Id { get; }
-
       public IDataParameter Word { get; }
 
       public InsertWordCommand(IConnectionFactory factory)
       {
-        var sqlInsertWord = $"INSERT INTO {Tables.Words} (id, word) VALUES (@id, @word)";
+        var sqlInsertWord = $"INSERT OR IGNORE INTO {Tables.Words} (word) VALUES (@word)";
         Cmd = factory.CreateCommand(sqlInsertWord);
-
-        Id = Cmd.CreateParameter();
-        Id.DbType = DbType.Int64;
-        Id.ParameterName = "@id";
-        Cmd.Parameters.Add(Id);
 
         Word = Cmd.CreateParameter();
         Word.DbType = DbType.String;
@@ -92,28 +100,17 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     internal class InsertPartCommand : Command
     {
-      public IDataParameter Id { get; }
-
       public IDataParameter Part { get; }
 
-      public long NextId { get; set; }
-
-      public InsertPartCommand(IConnectionFactory factory, long nextId )
+      public InsertPartCommand(IConnectionFactory factory )
       {
-        var sqlInsertPart = $"INSERT INTO {Tables.Parts} (id, part) VALUES (@id, @part)";
+        var sqlInsertPart = $"INSERT OR IGNORE INTO {Tables.Parts} (part) VALUES (@part)";
         Cmd = factory.CreateCommand(sqlInsertPart);
-
-        Id = Cmd.CreateParameter();
-        Id.DbType = DbType.Int64;
-        Id.ParameterName = "@id";
-        Cmd.Parameters.Add(Id);
 
         Part = Cmd.CreateParameter();
         Part.DbType = DbType.String;
         Part.ParameterName = "@part";
         Cmd.Parameters.Add(Part);
-
-        NextId = nextId;
       }
     }
     #endregion 
@@ -139,15 +136,19 @@ namespace myoddweb.desktopsearch.service.Persisters
       return new SelectPartCommand(connectionFactory);
     }
 
+    private static SelectWordCommand CreateSelectWordIdCommand(IConnectionFactory connectionFactory)
+    {
+      return new SelectWordCommand( connectionFactory );
+    }
+
     /// <summary>
     /// Create the command to insert a word in the database.
     /// </summary>
     /// <param name="connectionFactory"></param>
-    /// <param name="nextId"></param>
     /// <returns></returns>
-    private static InsertPartCommand CreateInsertPartCommand(IConnectionFactory connectionFactory, long nextId)
+    private static InsertPartCommand CreateInsertPartCommand(IConnectionFactory connectionFactory)
     {
-      return new InsertPartCommand(connectionFactory, nextId );
+      return new InsertPartCommand(connectionFactory );
     }
     #endregion
 
@@ -214,22 +215,18 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<IList<long>> AddOrUpdateWordsAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      if (null == connectionFactory)
+      using (_counter.Start())
       {
-        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
-      }
+        if (null == connectionFactory)
+        {
+          throw new ArgumentNullException(nameof(connectionFactory),
+            "You have to be within a tansaction when calling this function.");
+        }
 
-      var tsActual = DateTime.UtcNow;
-      try
-      {
         // rebuild the list of directory with only those that need to be inserted.
         return await InsertWordsAsync(
           await RebuildWordsListAsync(words, connectionFactory, token).ConfigureAwait(false),
           connectionFactory, token).ConfigureAwait(false);
-      }
-      finally
-      {
-        _counter.IncremenFromUtcTime(tsActual);
       }
     }
 
@@ -318,59 +315,49 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the ids of the words we just added
       var ids = new List<long>( words.Count );
 
-      // get the next id.
-      var nextId = await GetNextWordIdAsync(connectionFactory, token).ConfigureAwait(false);
-
       using (var cmdInsertWord = CreateInsertWordCommand(connectionFactory))
+      using (var cmdSelectWord = CreateSelectWordIdCommand(connectionFactory))
+      using (var cmdSelectPart = CreateSelectPartIdCommand(connectionFactory))
+      using (var cmdInsertPart = CreateInsertPartCommand(connectionFactory))
       {
-        using (var cmdSelectPart = CreateSelectPartIdCommand(connectionFactory))
+        try
         {
-          // get the next valid id.
-          var nextPartId = await GetNextPartIdAsync(connectionFactory, token).ConfigureAwait(false);
-          using (var cmdInsertPart = CreateInsertPartCommand(connectionFactory, nextPartId))
+          foreach (var word in words)
           {
-            try
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            // the word is crazy long, so we are ignoring it...
+            if (word.Value.Length > _maxNumCharactersPerWords)
             {
-              foreach (var word in words)
-              {
-                // get out if needed.
-                token.ThrowIfCancellationRequested();
-
-                // the word is crazy long, so we are ignoring it...
-                if (word.Value.Length > _maxNumCharactersPerWords)
-                {
-                  continue;
-                }
-
-                // the word we want to insert.
-                if (!await InsertWordAsync(word, nextId, cmdInsertWord, cmdSelectPart, cmdInsertPart, connectionFactory,
-                  token).ConfigureAwait(false))
-                {
-                  continue;
-                }
-
-                // we added this id.
-                ids.Add(nextId);
-
-                // we can now move on to the next folder id.
-                ++nextId;
-              }
-
-              // all done, return whatever we did.
-              return ids;
+              continue;
             }
-            catch (OperationCanceledException)
+
+            // the word we want to insert.
+            var wordId = await InsertWordAsync(word, cmdSelectWord, cmdInsertWord, cmdSelectPart, cmdInsertPart, connectionFactory, token)                .ConfigureAwait(false);
+            if (-1 == wordId)
             {
-              _logger.Warning("Received cancellation request - Insert multiple words");
-              throw;
+              // we log errors in the insert function
+              continue;
             }
-            catch (Exception ex)
-            {
-              _logger.Exception(ex);
-              throw;
-            }
-          }// insert part
-        }// using select parts command
+
+            // we added this id.
+            ids.Add(wordId);
+          }
+
+          // all done, return whatever we did.
+          return ids;
+        }
+        catch (OperationCanceledException)
+        {
+          _logger.Warning("Received cancellation request - Insert multiple words");
+          throw;
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
+          throw;
+        }
       }// using insert word command
     }
 
@@ -378,39 +365,54 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Insert a word in the database and then insert all the parts
     /// </summary>
     /// <param name="word"></param>
-    /// <param name="id"></param>
+    /// <param name="cmdSelectWord"></param>
     /// <param name="cmdInsertWord"></param>
     /// <param name="cmdSelectPart"></param>
     /// <param name="cmdInsertPart"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> InsertWordAsync(
-      IWord word, 
-      long id, 
+    private async Task<long> InsertWordAsync(
+      IWord word,
+      SelectWordCommand cmdSelectWord,
       InsertWordCommand cmdInsertWord, 
       SelectPartCommand cmdSelectPart,
       InsertPartCommand cmdInsertPart,
       IConnectionFactory connectionFactory,
       CancellationToken token)
     {
-      cmdInsertWord.Id.Value = id;
+      long wordId;
       cmdInsertWord.Word.Value = word.Value;
       if (0 == await connectionFactory.ExecuteWriteAsync(cmdInsertWord.Cmd, token).ConfigureAwait(false))
       {
-        _logger.Error($"There was an issue adding word: {word.Value} to persister");
-        return false;
+        // maybe the word exists already?
+        wordId = await GetWordId(word, cmdSelectWord, connectionFactory, token).ConfigureAwait(false);
+        if (wordId == -1)
+        {
+          _logger.Error($"There was an issue adding word: {word.Value} to persister");
+          return -1;
+        }
+      }
+      else
+      {
+        // get the id of the word we just added.
+        wordId = await GetWordId(word, cmdSelectWord, connectionFactory, token).ConfigureAwait(false);
+        if( wordId == -1 )
+        {
+          _logger.Error($"There was an issue getting the word id: {word.Value} from the persister");
+          return -1;
+        }
       }
 
-      // we now can add/find the parts
+      // we now can add/find the parts for that word.
       var partIds = await GetOrInsertParts( word, cmdSelectPart, cmdInsertPart, connectionFactory, token).ConfigureAwait(false);
 
       // marry the word id, (that we just added).
       // with the partIds, (that we just added).
-      await _wordsParts.AddOrUpdateWordParts(id, partIds, connectionFactory, token).ConfigureAwait(false);
+      await _wordsParts.AddOrUpdateWordParts(wordId, partIds, connectionFactory, token).ConfigureAwait(false);
 
-      // all done.
-      return true;
+      // all done return the id of the word.
+      return wordId;
     }
 
     private async Task<HashSet<long>> GetOrInsertParts(
@@ -432,8 +434,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the ids of all the parts, (added or otherwise).
       var partIds = new List<long>(parts.Count);
 
-      var cmdSelect = cmdSelectPart.Cmd;
-
       // the parts we actually need to add.
       var partsToAdd = new List<string>(parts.Count);
 
@@ -442,15 +442,12 @@ namespace myoddweb.desktopsearch.service.Persisters
         // get out if needed.
         token.ThrowIfCancellationRequested();
 
-        // the part we are adding
-        cmdSelectPart.Part.Value = part;
-
         // look for that part, if it exists, add it to the list
         // otherwird we will need to add it.
-        var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
-        if (null != value && value != DBNull.Value)
+        var partId = await GetPartId(part, cmdSelectPart, connectionFactory, token).ConfigureAwait( false );
+        if (partId != -1)
         {
-          partIds.Add((long)value);
+          partIds.Add(partId);
           continue;
         }
 
@@ -460,21 +457,63 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // then add the ids of the remaining parts.
-      partIds.AddRange(await InsertPartsAsync(partsToAdd.ToArray(), cmdInsertPart, connectionFactory, token).ConfigureAwait(false));
+      partIds.AddRange(await InsertPartsAsync(partsToAdd.ToArray(), cmdSelectPart, cmdInsertPart, connectionFactory, token).ConfigureAwait(false));
 
       // return everything we found.
       return new HashSet<long>(partIds);
     }
 
-    /// <summary>
-    /// Insert parts and return the id of the added parts.
-    /// </summary>
-    /// <param name="parts"></param>
-    /// <param name="cmdInsertPart"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<IList<long>> InsertPartsAsync(ICollection<string> parts, InsertPartCommand cmdInsertPart, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<long> GetWordId(
+      IWord word,
+      SelectWordCommand cmdSelectWord,
+      IConnectionFactory connectionFactory,
+      CancellationToken token)
+    {
+      cmdSelectWord.Word.Value = word.Value;
+      var value = await connectionFactory.ExecuteReadOneAsync(cmdSelectWord.Cmd, token).ConfigureAwait(false);
+      if (null == value || value == DBNull.Value)
+      {
+        _logger.Error($"There was an issue getting the word id: {word.Value} from the persister");
+        return -1;
+      }
+
+      return (long)value;
+    }
+
+    private async Task<long> GetPartId(
+      string part,
+      SelectPartCommand cmdSelectPart,
+      IConnectionFactory connectionFactory,
+      CancellationToken token)
+    {
+      // the part we are adding
+      cmdSelectPart.Part.Value = part;
+
+      // look for that part, if it exists, add it to the list
+      // otherwird we will need to add it.
+      var value = await connectionFactory.ExecuteReadOneAsync(cmdSelectPart.Cmd, token).ConfigureAwait(false);
+      if (null != value && value != DBNull.Value)
+      {
+        return (long) value;
+      }
+      return -1;
+    }
+
+/// <summary>
+/// Insert parts and return the id of the added parts.
+/// </summary>
+/// <param name="parts"></param>
+/// <param name="cmdSelectPart"></param>
+/// <param name="cmdInsertPart"></param>
+/// <param name="connectionFactory"></param>
+/// <param name="token"></param>
+/// <returns></returns>
+private async Task<IList<long>> InsertPartsAsync(
+      ICollection<string> parts, 
+      SelectPartCommand cmdSelectPart,
+      InsertPartCommand cmdInsertPart, 
+      IConnectionFactory connectionFactory, 
+      CancellationToken token)
     {
       if (!parts.Any())
       {
@@ -487,21 +526,34 @@ namespace myoddweb.desktopsearch.service.Persisters
       var cmdInsert = cmdInsertPart.Cmd;
       foreach (var part in parts.Distinct())
       {
-        cmdInsertPart.Id.Value = cmdInsertPart.NextId;
-        cmdInsertPart.Part.Value = part;
-
+        long partId;
         if (0 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
         {
+          partId = await GetPartId(part, cmdSelectPart, connectionFactory, token).ConfigureAwait(false);
+          if (partId != -1)
+          {
+            // this part already exists, so we could not add it again.
+            // but the id is still value.
+            partIds.Add(partId);
+            continue;
+          }
+
           _logger.Error($"There was an issue adding part: {part} to persister");
           continue;
         }
 
-        // we added it, so we can add it to our list
-        partIds.Add(cmdInsertPart.NextId);
+        // look for the id we just added.
+        partId = await GetPartId(part, cmdSelectPart, connectionFactory, token).ConfigureAwait(false);
+        if (partId != -1)
+        {
+          _logger.Error( $"There was an error finding the id of the part: {part}, we just added" );
+          continue;
+        }
 
-        // and move on to the next id.
-        ++cmdInsertPart.NextId;
+        // we added it, so we can add it to our list
+        partIds.Add(partId);
       }
+
       // return all the ids we added.
       return partIds;
     }
@@ -557,78 +609,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       catch (OperationCanceledException)
       {
         _logger.Warning("Received cancellation request - Building word list");
-        throw;
-      }
-    }
-
-    /// <summary>
-    /// Get the next row ID we can use.
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<long> GetNextPartIdAsync(IConnectionFactory connectionFactory, CancellationToken token)
-    {
-      try
-      {
-        // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT max(id) from {Tables.Parts};";
-        using (var cmd = connectionFactory.CreateCommand(sql))
-        {
-          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
-
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-
-          // does not exist ...
-          if (null == value || value == DBNull.Value)
-          {
-            return 0;
-          }
-
-          // this is the next counter.
-          return ((long)value) + 1;
-        }
-      }
-      catch (OperationCanceledException)
-      {
-        _logger.Warning("Received cancellation request - Get Next valid Part id");
-        throw;
-      }
-    }
-
-    /// <summary>
-    /// Get the next row ID we can use.
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<long> GetNextWordIdAsync(IConnectionFactory connectionFactory, CancellationToken token )
-    {
-      try
-      {
-        // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT max(id) from {Tables.Words};";
-        using (var cmd = connectionFactory.CreateCommand(sql))
-        {
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-
-          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
-
-          // does not exist ...
-          if (null == value || value == DBNull.Value)
-          {
-            return 0;
-          }
-
-          // this is the next counter.
-          return ((long) value) + 1;
-        }
-      }
-      catch (OperationCanceledException)
-      {
-        _logger.Warning("Received cancellation request - Get Next valid Word id");
         throw;
       }
     }
