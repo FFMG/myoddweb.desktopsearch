@@ -527,6 +527,7 @@ private async Task<IList<long>> InsertPartsAsync(
       foreach (var part in parts.Distinct())
       {
         long partId;
+        cmdInsertPart.Part.Value = part;
         if (0 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
         {
           partId = await GetPartId(part, cmdSelectPart, connectionFactory, token).ConfigureAwait(false);
@@ -544,7 +545,7 @@ private async Task<IList<long>> InsertPartsAsync(
 
         // look for the id we just added.
         partId = await GetPartId(part, cmdSelectPart, connectionFactory, token).ConfigureAwait(false);
-        if (partId != -1)
+        if (partId == -1)
         {
           _logger.Error( $"There was an error finding the id of the part: {part}, we just added" );
           continue;
