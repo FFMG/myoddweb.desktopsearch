@@ -65,16 +65,10 @@ namespace myoddweb.desktopsearch.processor
       _timers = new List<ProcessorTimer>();
 
       var directoriesCounter = new ProcessorPerformanceCounter(performance, directoryCounterName, logger);
-      for ( var i = 0; i < config.ConcurrentDirectoriesProcessor; ++i)
-      {
-        _timers.Add( new ProcessorTimer(new Folders(directoriesCounter, persister, logger, directory), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
-      }
+      _timers.Add( new ProcessorTimer(new Folders(directoriesCounter, persister, logger, directory), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
 
       var filesCounter = new ProcessorPerformanceCounter(performance, fileCounterName, logger);
-      for (var i = 0; i < config.ConcurrentFilesProcessor; ++i)
-      {
-        _timers.Add( new ProcessorTimer(new Files(filesCounter, config.UpdatesPerFilesEvent, fileParsers, config.IgnoreFiles, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
-      }
+      _timers.Add( new ProcessorTimer(new Files(filesCounter, config.UpdatesPerFilesEvent, fileParsers, config.IgnoreFiles, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
 
       // the word parser.
       var parserCounter = new ProcessorPerformanceCounter(performance, parserCounterName, logger);

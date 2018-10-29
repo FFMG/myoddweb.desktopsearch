@@ -376,8 +376,6 @@ namespace myoddweb.desktopsearch.service
       sb.AppendLine($"                                Port : {config.WebServer.Port}");
 
       sb.AppendLine( "Processors" );
-      sb.AppendLine($"    Concurrent Directories Processor : {config.Processors.ConcurrentDirectoriesProcessor}");
-      sb.AppendLine($"           Concurrent File Processor : {config.Processors.ConcurrentFilesProcessor}");
       sb.AppendLine($"                 Update file events  : {config.Processors.UpdateFileIdsEvent}");
       sb.AppendLine($"             Quiet events processor  : {config.Processors.QuietEventsProcessorMs} Ms");
       sb.AppendLine($"               BusyEventsProcessorMs : {config.Processors.BusyEventsProcessorMs} Ms");

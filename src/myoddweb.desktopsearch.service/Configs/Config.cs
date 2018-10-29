@@ -38,7 +38,7 @@ namespace myoddweb.desktopsearch.service.Configs
     public int MaxNumCharactersPerParts { get; protected set; }
 
     /// <inheritdoc />
-    [DefaultValue(1000)]
+    [DefaultValue(100)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int MaxNumberOfWordsToProcess { get; protected set; }
 

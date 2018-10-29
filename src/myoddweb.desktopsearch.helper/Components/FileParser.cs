@@ -104,6 +104,8 @@ namespace myoddweb.desktopsearch.helper.Components
       string text;
       while ((text = await ReadTextAsync(sr, token).ConfigureAwait(false)) != null)
       {
+        token.ThrowIfCancellationRequested();
+
         added += await ParserAsync(helper, text, func, token).ConfigureAwait(false);
       }
 

@@ -30,16 +30,9 @@ namespace myoddweb.desktopsearch.service.Configs
     public int QuietEventsProcessorMs { get; protected set; }
 
     /// <inheritdoc />
-    [JsonProperty]
+    [DefaultValue(20)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int BusyEventsProcessorMs { get; protected set; }
-
-    /// <inheritdoc />
-    [JsonProperty]
-    public int ConcurrentDirectoriesProcessor { get; protected set; }
-
-    /// <inheritdoc />
-    [JsonProperty]
-    public int ConcurrentFilesProcessor { get; protected set; }
 
     /// <inheritdoc />
     [DefaultValue(100)]
@@ -58,21 +51,6 @@ namespace myoddweb.desktopsearch.service.Configs
 
     public ConfigProcessor(IList<ConfigIgnoreFile> ignoreFiles)
     {
-      // the number of directories processor.
-      ConcurrentDirectoriesProcessor = Environment.ProcessorCount;
-
-      // the number of files to process 
-      // as we, (normally), have more files than directories
-      // we want to use the number of processors to do them all.
-      ConcurrentFilesProcessor = 2*Environment.ProcessorCount;
-
-      // this is per ms, so we want to have one busy processor every ms 
-      // but those will hit the hard drive ... hard.
-      // so we want to give 10ms in between. 
-      // so it is ProcessorCount * 10
-      // and over time we should have one CPU busy all the time.
-      BusyEventsProcessorMs = Environment.ProcessorCount * 10;
-
       if (null != ignoreFiles)
       {
         IgnoreFiles = new List<IIgnoreFile>();
@@ -97,15 +75,6 @@ namespace myoddweb.desktopsearch.service.Configs
       if (QuietEventsProcessorMs < BusyEventsProcessorMs)
       {
         throw new ArgumentException("The 'QuietEventsProcessorMs' cannot be less than the 'BusyEventsProcessorMs'");
-      }
-
-      if (ConcurrentDirectoriesProcessor <= 0)
-      {
-        throw new ArgumentException( $"The ConcurrentDirectoriesProcessor cannot be -ve or zeor ({ConcurrentDirectoriesProcessor}");
-      }
-      if (ConcurrentFilesProcessor <= 0)
-      {
-        throw new ArgumentException($"The ConcurrentFilesProcessor cannot be -ve or zeor ({ConcurrentFilesProcessor}");
       }
 
       if (null == IgnoreFiles)
