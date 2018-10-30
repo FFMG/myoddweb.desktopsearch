@@ -65,7 +65,7 @@ namespace myoddweb.desktopsearch.processor
       _timers = new List<ProcessorTimer>();
 
       var directoriesCounter = new ProcessorPerformanceCounter(performance, directoryCounterName, logger);
-      _timers.Add( new ProcessorTimer(new Folders(directoriesCounter, persister, logger, directory), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
+      _timers.Add( new ProcessorTimer(new Folders(directoriesCounter, config.UpdatesPerFolderEvent, persister, logger, directory), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
 
       var filesCounter = new ProcessorPerformanceCounter(performance, fileCounterName, logger);
       _timers.Add( new ProcessorTimer(new Files(filesCounter, config.UpdatesPerFilesEvent, fileParsers, config.IgnoreFiles, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));

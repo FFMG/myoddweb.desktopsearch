@@ -32,11 +32,18 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     int BusyEventsProcessorMs { get; }
 
     /// <summary>
-    /// The number of events we wand to do per processing events.
+    /// The number of files we want to do per processing events.
     /// Don't make that number too small as it will take forever to parse
     /// But also not too big as it blocks the database when/if there is work to do.
     /// </summary>
     int UpdatesPerFilesEvent { get; }
+
+    /// <summary>
+    /// The number of folders we want to do per processing events.
+    /// Don't make that number too small as it will take forever to parse
+    /// But also not too big as it blocks the database when/if there is work to do.
+    /// </summary>
+    int UpdatesPerFolderEvent { get; }
 
     /// <summary>
     /// The number of fileid we want to parse per events.

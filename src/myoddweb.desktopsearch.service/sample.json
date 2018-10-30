@@ -30,6 +30,7 @@
   },
   "Processors": {
     "UpdatesPerFilesEvent": 100,
+    "UpdatesPerFolderEvent": 10,
     "UpdateFileIdsEvent": 2,
     "QuietEventsProcessorMs": 10000,
     "BusyEventsProcessorMs": 20,
