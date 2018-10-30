@@ -636,29 +636,33 @@ namespace myoddweb.desktopsearch.service.Persisters
         return true;
       }
 
-      // get the next id.
-      var nextId = await GetNextFileIdAsync(connectionFactory, token).ConfigureAwait(false);
-
       // what we actually inserted
       var insertedCount = 0;
 
-      var sqlInsert = $"INSERT INTO {Tables.Files} (id, folderid, name) VALUES (@id, @folderid, @name)";
-      using (var cmd = connectionFactory.CreateCommand(sqlInsert))
+      var sqlSelect = $"SELECT id FROM {Tables.Files} where folderid=@folderid AND name=@name";
+      var sqlInsert = $"INSERT INTO {Tables.Files} (folderid, name) VALUES (@folderid, @name)";
+      using (var cmdInsert = connectionFactory.CreateCommand(sqlInsert))
+      using (var cmdSelect = connectionFactory.CreateCommand(sqlSelect))
       {
-        var pId = cmd.CreateParameter();
-        pId.DbType = DbType.Int64;
-        pId.ParameterName = "@id";
-        cmd.Parameters.Add(pId);
+        var pSFolderId = cmdSelect.CreateParameter();
+        pSFolderId.DbType = DbType.Int64;
+        pSFolderId.ParameterName = "@folderid";
+        cmdSelect.Parameters.Add(pSFolderId);
 
-        var pFolderId = cmd.CreateParameter();
-        pFolderId.DbType = DbType.Int64;
-        pFolderId.ParameterName = "@folderid";
-        cmd.Parameters.Add(pFolderId);
+        var pSName = cmdSelect.CreateParameter();
+        pSName.DbType = DbType.String;
+        pSName.ParameterName = "@name";
+        cmdSelect.Parameters.Add(pSName);
 
-        var pName = cmd.CreateParameter();
-        pName.DbType = DbType.String;
-        pName.ParameterName = "@name";
-        cmd.Parameters.Add(pName);
+        var pIFolderId = cmdInsert.CreateParameter();
+        pIFolderId.DbType = DbType.Int64;
+        pIFolderId.ParameterName = "@folderid";
+        cmdInsert.Parameters.Add(pIFolderId);
+
+        var pIName = cmdInsert.CreateParameter();
+        pIName.DbType = DbType.String;
+        pIName.ParameterName = "@name";
+        cmdInsert.Parameters.Add(pIName);
 
         var idsToTouch = new List<long>();
 
@@ -677,10 +681,9 @@ namespace myoddweb.desktopsearch.service.Persisters
               return false;
             }
 
-            pId.Value = nextId;
-            pFolderId.Value = folderId;
-            pName.Value = file.Name.ToLowerInvariant();
-            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+            pIFolderId.Value = folderId;
+            pIName.Value = file.Name.ToLowerInvariant();
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding file: {file.FullName} to persister");
               continue;
@@ -688,15 +691,21 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             if (IsFileSupportedByAnyParsers(file))
             {
+              pSFolderId.Value = folderId;
+              pSName.Value = file.Name.ToLowerInvariant();
+
+              var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
+              if (null == value || value == DBNull.Value)
+              {
+                _logger.Error($"There was an issue finding the file id: {file.FullName} from");
+                continue;
+              }
               // we will need to touch this id.
-              idsToTouch.Add(nextId);
+              idsToTouch.Add( (long)value );
             }
 
             // this item was inserted
             ++insertedCount;
-
-            // we can now move on to the next folder id.
-            ++nextId;
           }
           catch (OperationCanceledException)
           {
@@ -788,42 +797,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw;
       }
     }
-
-    /// <summary>
-    /// Get the next row ID we can use.
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<long> GetNextFileIdAsync(IConnectionFactory connectionFactory, CancellationToken token )
-    {
-      try
-      {
-        // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT max(id) from {Tables.Files};";
-        using (var cmd = connectionFactory.CreateCommand(sql))
-        {
-          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
-
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-
-          if (null == value || value == DBNull.Value)
-          {
-            return 0;
-          }
-
-          // we could not find this path ... so just add it.
-          return ((long) value) + 1;
-        }
-      }
-      catch (OperationCanceledException)
-      {
-        _logger.Warning("Received cancellation request - Get Next valid File id");
-        throw;
-      }
-    }
-
+    
     /// <summary>
     /// Get the id of all the files that 'belong' to a folder.
     /// </summary>
