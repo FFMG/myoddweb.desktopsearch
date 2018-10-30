@@ -125,33 +125,51 @@ namespace myoddweb.desktopsearch.service.Persisters
         return;
       }
 
-      // the query to insert a new word
-      var sqlInsert = $"INSERT INTO {Tables.WordsParts} (wordid, partid) VALUES (@wordid, @partid)";
-      using (var cmd = connectionFactory.CreateCommand(sqlInsert))
+      try
       {
-        var ppId = cmd.CreateParameter();
-        ppId.DbType = DbType.Int64;
-        ppId.ParameterName = "@partid";
-        cmd.Parameters.Add(ppId);
-
-        var pwId = cmd.CreateParameter();
-        pwId.DbType = DbType.Int64;
-        pwId.ParameterName = "@wordid";
-        cmd.Parameters.Add(pwId);
-
-        pwId.Value = wordId;
-        foreach (var part in partIds)
+        // the query to insert a new word
+        var sqlInsert = $"INSERT INTO {Tables.WordsParts} (wordid, partid) VALUES (@wordid, @partid)";
+        using (var cmd = connectionFactory.CreateCommand(sqlInsert))
         {
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
+          var ppId = cmd.CreateParameter();
+          ppId.DbType = DbType.Int64;
+          ppId.ParameterName = "@partid";
+          cmd.Parameters.Add(ppId);
 
-          ppId.Value = part;
+          var pwId = cmd.CreateParameter();
+          pwId.DbType = DbType.Int64;
+          pwId.ParameterName = "@wordid";
+          cmd.Parameters.Add(pwId);
 
-          if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+          pwId.Value = wordId;
+          foreach (var part in partIds)
           {
-            _logger.Error($"There was an issue adding part to word: {part}/{wordId} to persister");
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            ppId.Value = part;
+
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+            {
+              _logger.Error($"There was an issue adding part to word: {part}/{wordId} to persister");
+            }
           }
         }
+      }
+      catch (OperationCanceledException e)
+      {
+        _logger.Warning( $"Received cancellation request - Insert parts of word {wordId}.");
+        // is it my token?
+        if (e.CancellationToken != token)
+        {
+          _logger.Exception(e);
+        }
+        throw;
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        throw;
       }
     }
 
