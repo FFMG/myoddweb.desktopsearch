@@ -145,9 +145,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
  
     /// <inheritdoc />
-    public async Task<bool> DeleteDirectoryAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token)
+    public Task<bool> DeleteDirectoryAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      return await DeleteDirectoriesAsync(new[] { directory }, connectionFactory, token).ConfigureAwait( false );
+      return DeleteDirectoriesAsync(new[] { directory }, connectionFactory, token);
     }
 
     /// <inheritdoc />
@@ -326,36 +326,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     
     #region private functions
     /// <summary>
-    /// Get the next row ID we can use.
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<long> GetNextDirectoryIdAsync(IConnectionFactory connectionFactory, CancellationToken token)
-    {
-      // we first look for it, and, if we find it then there is nothing to do.
-      var sql = $"SELECT max(id) from {Tables.Folders};";
-      using (var cmd = connectionFactory.CreateCommand(sql))
-      {
-        var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
-        if (null == value || value == DBNull.Value)
-        {
-          return 0;
-        }
-
-        // we could not find this path ... so just add it.
-        return ((long) value) + 1;
-      }
-    }
-
-    /// <summary>
     /// Given a list of directories, re-create the ones that we need to insert.
     /// </summary>
     /// <param name="directories"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<List<long>> InsertDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<List<long>> InsertDirectoriesAsync(IReadOnlyCollection<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!directories.Any())
@@ -366,21 +343,21 @@ namespace myoddweb.desktopsearch.service.Persisters
       // all the ids we have just added.
       var ids = new List<long>(directories.Count);
 
-      // get the next id.
-      var nextId = await GetNextDirectoryIdAsync(connectionFactory, token).ConfigureAwait(false);
-
+      var sqlSelect = $"SELECT id FROM {Tables.Folders} where path=@path";
       var sqlInsert = $"INSERT INTO {Tables.Folders} (id, path) VALUES (@id, @path)";
-      using (var cmd = connectionFactory.CreateCommand(sqlInsert))
+      using (var cmdInsert = connectionFactory.CreateCommand(sqlInsert))
+      using (var cmdSelect = connectionFactory.CreateCommand(sqlSelect))
       {
-        var pId = cmd.CreateParameter();
-        pId.DbType = DbType.Int64;
-        pId.ParameterName = "@id";
-        cmd.Parameters.Add(pId);
+        var pSPath = cmdSelect.CreateParameter();
+        pSPath.DbType = DbType.String;
+        pSPath.ParameterName = "@path";
+        cmdSelect.Parameters.Add(pSPath);
 
-        var pPath = cmd.CreateParameter();
-        pPath.DbType = DbType.String;
-        pPath.ParameterName = "@path";
-        cmd.Parameters.Add(pPath);
+        var pIPath = cmdInsert.CreateParameter();
+        pIPath.DbType = DbType.String;
+        pIPath.ParameterName = "@path";
+        cmdInsert.Parameters.Add(pIPath);
+
         foreach (var directory in directories)
         {
           try
@@ -388,19 +365,24 @@ namespace myoddweb.desktopsearch.service.Persisters
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
-            pId.Value = nextId;
-            pPath.Value = directory.FullName.ToLowerInvariant();
-            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+            pIPath.Value = directory.FullName.ToLowerInvariant();
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
             {
               _logger.Error($"There was an issue adding folder: {directory.FullName} to persister");
               continue;
             }
 
-            // add it to our list of ids
-            ids.Add( nextId );
+            pSPath.Value = directory.FullName.ToLowerInvariant();
 
-            // we can now move on to the next folder id.
-            ++nextId;
+            var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
+            if (null == value || value == DBNull.Value)
+            {
+              _logger.Error($"There was an issue finding the folder id: {directory.FullName} from persister");
+              continue;
+            }
+
+            // add it to our list of ids.
+            ids.Add((long)value);
           }
           catch (OperationCanceledException)
           {

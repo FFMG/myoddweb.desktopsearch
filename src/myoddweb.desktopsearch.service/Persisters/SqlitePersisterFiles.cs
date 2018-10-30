@@ -697,7 +697,7 @@ namespace myoddweb.desktopsearch.service.Persisters
               var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
               if (null == value || value == DBNull.Value)
               {
-                _logger.Error($"There was an issue finding the file id: {file.FullName} from");
+                _logger.Error($"There was an issue finding the file id: {file.FullName} from perister");
                 continue;
               }
               // we will need to touch this id.
