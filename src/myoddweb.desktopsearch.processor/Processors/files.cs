@@ -141,6 +141,12 @@ namespace myoddweb.desktopsearch.processor.Processors
       var factory = await _persister.BeginWrite(token).ConfigureAwait( false );
       try
       {
+        // the first thing we will do is mark the file as processed.
+        // if anything goes wrong _after_ that we will try and 'touch' it again.
+        // by doing it that way around we ensure that we never keep the transaction.
+        // and we don't run the risk of someone else trying to process this again.
+        await _persister.Folders.Files.FileUpdates.MarkFilesProcessedAsync(pendingFileUpdates.Select(p => p.FileId), factory, token).ConfigureAwait(false);
+
         var tasks = new List<Task>( pendingFileUpdates.Count );
         foreach (var pendingFileUpdate in pendingFileUpdates)
         {
@@ -442,7 +448,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     private async Task<IList<IPendingFileUpdate>> GetPendingFileUpdatesAndMarkFileProcessedAsync(CancellationToken token)
     {
       // get the transaction
-      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
+      var transaction = await _persister.BeginRead(token).ConfigureAwait(false);
       if (null == transaction)
       {
         throw new Exception("Unable to get transaction!");
@@ -460,22 +466,11 @@ namespace myoddweb.desktopsearch.processor.Processors
           return null;
         }
 
-        if (!pendingUpdates.Any())
-        {
-          // we found nothing so we just return null.
-          _persister.Commit(transaction);
-          return null;
-        }
-
-        // the first thing we will do is mark the file as processed.
-        // if anything goes wrong _after_ that we will try and 'touch' it again.
-        // by doing it that way around we ensure that we never keep the transaction.
-        // and we don't run the risk of someone else trying to process this again.
-        await _persister.Folders.Files.FileUpdates.MarkFilesProcessedAsync(pendingUpdates.Select( p => p.FileId), transaction, token).ConfigureAwait(false);
-
-        // we are done with this list.
+        // close the transaction.
         _persister.Commit(transaction);
-        return pendingUpdates;
+
+        // return null if we found nothing
+        return !pendingUpdates.Any() ? null : pendingUpdates;
       }
       catch
       {

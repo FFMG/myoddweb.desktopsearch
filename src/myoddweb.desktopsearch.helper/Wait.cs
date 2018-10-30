@@ -33,21 +33,6 @@ namespace myoddweb.desktopsearch.helper
     /// How many ms we want to slee for multiple processors.
     /// </summary>
     private const int MultipleProcessorsSleep = 2;
-
-    /// <summary>
-    /// The maximum amount of time we are prepared to delay.
-    /// </summary>
-    private const int MaxDelayPerThread = 100;
-
-    /// <summary>
-    /// The number of counters currently waiting.
-    /// </summary>
-    private static int _waitersUntilCount;
-
-    /// <summary>
-    /// The object lock.
-    /// </summary>
-    private static object _lock = new object();
     #endregion
 
     private Wait()
@@ -160,128 +145,80 @@ namespace myoddweb.desktopsearch.helper
     /// <returns></returns>
     private static async Task UntilAsync(Func<bool> what, int numProcessors, CancellationToken token)
     {
-      // increment the number of items.
-      try
+      // start number of spin waits.
+      var spinWait = numProcessors;
+      var count = 0;
+      while (!what())
       {
-        IncrementCounter();
+        token.ThrowIfCancellationRequested();
 
-        // start number of spin waits.
-        var spinWait = numProcessors;
-        var count = 0;
-        while (!what())
+        if (count > numProcessors && numProcessors > 1)
         {
-          token.ThrowIfCancellationRequested();
+          // reset
+          count = 0;
 
-          if (count > numProcessors && numProcessors > 1)
-          {
-            // reset
-            count = 0;
-
-            // The number of iterations we want our spinwait to do.
-            // SpinWait essentially puts the processor into a very tight loop, with the loop count specified by the iterations parameter.
-            // The duration of the wait therefore depends on the speed of the processor.
-            //
-            // do some noop operations on our current CPU
-            // @see https://msdn.microsoft.com/en-us/library/system.threading.thread.spinwait%28v=vs.110%29.aspx?f=255&MSPPError=-2147217396
-            Thread.SpinWait(spinWait);
-            spinWait = spinWait > 1024 ? numProcessors : spinWait * _waitersUntilCount;
-            continue;
-          }
-
-          if (count == 0)
-          {
-            // just do a small single yield the first time.
-            // if we only have one processor, and no one else is waiting, this will return straight back.
-            await Task.Yield();
-          }
-          else if (numProcessors == 1)
-          {
-            // we only have one processor so we don't want to always yield
-            // because if we are the only thread then we will yeald straight back to ourselves
-            // so we don't want the CPU to run hot on our behalf.
-            // so we just sleep a little...
-            Thread.Sleep(SingleProcessorSleep);
-          }
-          else
-          {
-            // the more 'waiters' we have, the more starved or resources we will become
-            // but we also don't want to wait forever.
-            // the value of _waitersUntilCount can never be '0' because there is at least one, (us).
-            var delay = _waitersUntilCount * (numProcessors == 1 ? SingleProcessorSleep : MultipleProcessorsSleep);
-
-            // make sure that the value is within range.
-            delay = delay > MaxDelayPerThread ? MaxDelayPerThread : delay;
-
-            // cause a small delay that will yield to other CPUs
-            await Task.Delay(count * delay, token);
-          }
-
-          // move on.
-          ++count;
+          // The number of iterations we want our spinwait to do.
+          // SpinWait essentially puts the processor into a very tight loop, with the loop count specified by the iterations parameter.
+          // The duration of the wait therefore depends on the speed of the processor.
+          //
+          // do some noop operations on our current CPU
+          // @see https://msdn.microsoft.com/en-us/library/system.threading.thread.spinwait%28v=vs.110%29.aspx?f=255&MSPPError=-2147217396
+          Thread.SpinWait(spinWait);
+          spinWait = spinWait > 1024 ? numProcessors : spinWait * 2;
+          continue;
         }
-      }
-      finally
-      {
-        DecrementCounter();
+
+        if (count == 0)
+        {
+          // just do a small single yield the first time.
+          // if we only have one processor, and no one else is waiting, this will return straight back.
+          await Task.Factory.StartNew(() => { /* noop*/ }, token, TaskCreationOptions.PreferFairness, TaskScheduler.Current).ConfigureAwait( false );
+        }
+        else if (numProcessors == 1)
+        {
+          // we only have one processor so we don't want to always yield
+          // because if we are the only thread then we will yeald straight back to ourselves
+          // so we don't want the CPU to run hot on our behalf.
+          // so we just sleep a little...
+          Thread.Sleep(SingleProcessorSleep);
+        }
+        else
+        {
+          // the more 'waiters' we have, the more starved or resources we will become
+          // but we also don't want to wait forever.
+          // the value of _waitersUntilCount can never be '0' because there is at least one, (us).
+          var delay = numProcessors == 1 ? SingleProcessorSleep : MultipleProcessorsSleep;
+          
+          // cause a small delay that will yield to other CPUs
+          await Task.Delay(count * delay, token).ConfigureAwait( false );
+        }
+
+        // move on.
+        ++count;
       }
     }
-
-    private static void IncrementCounter()
-    {
-      var lockTaken = false;
-      try
-      {
-        Monitor.Enter(_lock, ref lockTaken);
-        ++_waitersUntilCount;
-      }
-      finally
-      {
-        if (lockTaken)
-        {
-          Monitor.Exit(_lock);
-        }
-      }
-    }
-
-    private static void DecrementCounter()
-    {
-      var lockTaken = false;
-      try
-      {
-        Monitor.Enter(_lock, ref lockTaken);
-        --_waitersUntilCount;
-      }
-      finally
-      {
-        if (lockTaken)
-        {
-          Monitor.Exit(_lock);
-        }
-      }
-    }
-
     /// <summary>
     /// Wait until a function completes.
     /// </summary>
     /// <param name="what"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public static async Task UntilAsync(Func<bool> what, CancellationToken token = default(CancellationToken) )
+    public static Task UntilAsync(Func<bool> what, CancellationToken token = default(CancellationToken) )
     {
       // already cancelled?
       if (token.IsCancellationRequested)
       {
-        return;
+        return Task.CompletedTask;
       }
 
       // no need to fire a new thread if this is already true 
       if ( what() )
       {
-        return;
+        return Task.CompletedTask;
       }
 
       // do the actual waiting for the event.
-      await UntilAsync(what, Environment.ProcessorCount, token ).ConfigureAwait( false );
+      return UntilAsync(what, Environment.ProcessorCount, token );
     }
 
     /// <summary>
