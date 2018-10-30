@@ -50,9 +50,14 @@ namespace myoddweb.desktopsearch.service.Persisters
         // and try and remove the ids directly
         await DeleteWordParts( wordId, idsToRemove, connectionFactory, token ).ConfigureAwait(false);
       }
-      catch (OperationCanceledException)
+      catch (OperationCanceledException e)
       {
-        _logger.Warning("Received cancellation request - Inserting parts in word");
+        _logger.Warning("Received cancellation request - Add or update word parts in word");
+        // is it my token?
+        if (e.CancellationToken != token)
+        {
+          _logger.Exception(e);
+        }
         throw;
       }
       catch (Exception e)
@@ -79,33 +84,52 @@ namespace myoddweb.desktopsearch.service.Persisters
         return;
       }
 
-      // the query to insert a new word
-      var sqlInsert = $"DELETE FROM {Tables.WordsParts} WHERE wordid=@wordid AND partid=@partid";
-      using (var cmd = connectionFactory.CreateCommand(sqlInsert))
+      try
       {
-        var ppId = cmd.CreateParameter();
-        ppId.DbType = DbType.Int64;
-        ppId.ParameterName = "@partid";
-        cmd.Parameters.Add(ppId);
-
-        var pwId = cmd.CreateParameter();
-        pwId.DbType = DbType.Int64;
-        pwId.ParameterName = "@wordid";
-        cmd.Parameters.Add(pwId);
-
-        pwId.Value = wordId;
-        foreach (var part in partIds)
+        // the query to insert a new word
+        var sqlInsert = $"DELETE FROM {Tables.WordsParts} WHERE wordid=@wordid AND partid=@partid";
+        using (var cmd = connectionFactory.CreateCommand(sqlInsert))
         {
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
+          var ppId = cmd.CreateParameter();
+          ppId.DbType = DbType.Int64;
+          ppId.ParameterName = "@partid";
+          cmd.Parameters.Add(ppId);
 
-          ppId.Value = part;
+          var pwId = cmd.CreateParameter();
+          pwId.DbType = DbType.Int64;
+          pwId.ParameterName = "@wordid";
+          cmd.Parameters.Add(pwId);
 
-          if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+          pwId.Value = wordId;
+          foreach (var part in partIds)
           {
-            _logger.Error($"There was an issue deleting part from word: {part}/{wordId} to persister");
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            ppId.Value = part;
+
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+            {
+              _logger.Error($"There was an issue deleting part from word: {part}/{wordId} to persister");
+            }
           }
         }
+      }
+      catch (OperationCanceledException e)
+      {
+        _logger.Warning( $"Received cancellation request - Deletting parts for word id {wordId}");
+        // is it my token?
+        if (e.CancellationToken != token)
+        {
+          _logger.Exception(e);
+        }
+
+        throw;
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        throw;
       }
     }
 

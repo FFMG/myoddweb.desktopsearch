@@ -234,6 +234,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       catch (OperationCanceledException e)
       {
+        _logger.Warning("Received cancellation request - Getting count value.");
         // is it my token?
         if (e.CancellationToken != token)
         {

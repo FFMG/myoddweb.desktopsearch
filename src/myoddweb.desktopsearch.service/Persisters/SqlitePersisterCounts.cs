@@ -198,9 +198,14 @@ namespace myoddweb.desktopsearch.service.Persisters
           return (long) value;
         }
       }
-      catch (OperationCanceledException)
+      catch (OperationCanceledException e)
       {
         _logger.Warning("Received cancellation request - Getting count value.");
+        // is it my token?
+        if (e.CancellationToken != token)
+        {
+          _logger.Exception(e);
+        }
         throw;
       }
       catch (Exception ex)
