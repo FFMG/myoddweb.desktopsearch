@@ -81,6 +81,10 @@ namespace myoddweb.desktopsearch.service.Persisters
       // we call a read function ... so no transactions are created... yet.
       ExecuteReadOneAsync(CreateCommand("PRAGMA journal_mode=WAL;"), default(CancellationToken)).GetAwaiter().GetResult();
 
+      // https://wiki.mozilla.org/Performance/Avoid_SQLite_In_Your_Next_Firefox_Feature
+      ExecuteReadOneAsync(CreateCommand("PRAGMA wal_autocheckpoint = 16;"), default(CancellationToken)).GetAwaiter().GetResult();
+      ExecuteReadOneAsync(CreateCommand("PRAGMA journal_size_limit = 1536;"), default(CancellationToken)).GetAwaiter().GetResult();
+
       // other little tricks to speed things up...
       // https://www.sqlite.org/pragma.html#pragma_cache_size
       ExecuteReadOneAsync(CreateCommand($"PRAGMA cache_size = {_cacheSize};"), default(CancellationToken)).GetAwaiter().GetResult();

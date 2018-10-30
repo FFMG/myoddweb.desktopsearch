@@ -344,7 +344,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var ids = new List<long>(directories.Count);
 
       var sqlSelect = $"SELECT id FROM {Tables.Folders} where path=@path";
-      var sqlInsert = $"INSERT INTO {Tables.Folders} (id, path) VALUES (@id, @path)";
+      var sqlInsert = $"INSERT INTO {Tables.Folders} (path) VALUES (@path)";
       using (var cmdInsert = connectionFactory.CreateCommand(sqlInsert))
       using (var cmdSelect = connectionFactory.CreateCommand(sqlSelect))
       {
