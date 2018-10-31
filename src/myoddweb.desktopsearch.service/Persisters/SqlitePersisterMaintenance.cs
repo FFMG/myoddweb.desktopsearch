@@ -269,7 +269,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateWordsPartsAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {Tables.WordsParts} (wordid integer, partid integer)", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.WordsParts} (wordid integer, partid integer, UNIQUE(wordid, partid))", connectionFactory)
           .ConfigureAwait(false))
       {
         return false;

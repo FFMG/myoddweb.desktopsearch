@@ -152,28 +152,49 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // the query to insert a new word
-        var sqlInsert = $"INSERT INTO {Tables.WordsParts} (wordid, partid) VALUES (@wordid, @partid)";
-        using (var cmd = connectionFactory.CreateCommand(sqlInsert))
+        var sqlSelect = $"SELECT 1 FROM {Tables.WordsParts} WHERE wordid=@wordid and partid=@partid";
+        var sqlInsert = $"INSERT OR IGNORE INTO {Tables.WordsParts} (wordid, partid) VALUES (@wordid, @partid)";
+        using (var cmdInsert = connectionFactory.CreateCommand(sqlInsert))
+        using (var cmdSelect = connectionFactory.CreateCommand(sqlSelect))
         {
-          var ppId = cmd.CreateParameter();
-          ppId.DbType = DbType.Int64;
-          ppId.ParameterName = "@partid";
-          cmd.Parameters.Add(ppId);
+          var ppSId = cmdSelect.CreateParameter();
+          ppSId.DbType = DbType.Int64;
+          ppSId.ParameterName = "@partid";
+          cmdSelect.Parameters.Add(ppSId);
 
-          var pwId = cmd.CreateParameter();
-          pwId.DbType = DbType.Int64;
-          pwId.ParameterName = "@wordid";
-          cmd.Parameters.Add(pwId);
+          var pwSId = cmdSelect.CreateParameter();
+          pwSId.DbType = DbType.Int64;
+          pwSId.ParameterName = "@wordid";
+          cmdSelect.Parameters.Add(pwSId);
 
-          pwId.Value = wordId;
+          var ppIId = cmdInsert.CreateParameter();
+          ppIId.DbType = DbType.Int64;
+          ppIId.ParameterName = "@partid";
+          cmdInsert.Parameters.Add(ppIId);
+
+          var pwIId = cmdInsert.CreateParameter();
+          pwIId.DbType = DbType.Int64;
+          pwIId.ParameterName = "@wordid";
+          cmdInsert.Parameters.Add(pwIId);
+
+          pwIId.Value = wordId;
+          pwSId.Value = wordId;
           foreach (var part in partIds)
           {
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
-            ppId.Value = part;
+            ppIId.Value = part;
 
-            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+            if (1 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
+            {
+              continue;
+            }
+
+            // make sure that it is not just a duplicate
+            ppSId.Value = part;
+            var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
+            if (null == value || value == DBNull.Value)
             {
               _logger.Error($"There was an issue adding part to word: {part}/{wordId} to persister");
             }
