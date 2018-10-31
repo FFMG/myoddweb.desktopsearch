@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -169,22 +170,22 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFolderUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task ProcessFolderUpdateAsync(IConnectionFactory factory, IPendingFolderUpdate pendingFolderUpdate, CancellationToken token)
+    private Task ProcessFolderUpdateAsync(IConnectionFactory factory, IPendingFolderUpdate pendingFolderUpdate, CancellationToken token)
     {
       switch (pendingFolderUpdate.PendingUpdateType)
       {
         case UpdateType.Created:
-          await WorkCreatedAsync(factory, pendingFolderUpdate, token).ConfigureAwait(false);
-          break;
+          return WorkCreatedAsync(factory, pendingFolderUpdate, token);
 
         case UpdateType.Deleted:
-          await WorkDeletedAsync(factory, pendingFolderUpdate, token).ConfigureAwait(false);
-          break;
+          return WorkDeletedAsync(factory, pendingFolderUpdate, token);
 
         case UpdateType.Changed:
           // renamed or content/settingss changed
-          await WorkChangedAsync(factory, pendingFolderUpdate, token).ConfigureAwait(false);
-          break;
+          return WorkChangedAsync(factory, pendingFolderUpdate, token);
+
+        case UpdateType.None:
+          throw new InvalidEnumArgumentException( "The 'none' argument cannot be used here." );
 
         default:
           throw new ArgumentOutOfRangeException();
@@ -214,6 +215,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       if (files == null)
       {
         // there is nothing to add to this directory so we are done.
+        _logger.Verbose($"Did not find any files in the new directory: {directory.FullName}.");
         return;
       }
 
@@ -238,8 +240,20 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     public async Task WorkDeletedAsync(IConnectionFactory factory, IPendingFolderUpdate pendingUpdate, CancellationToken token)
     {
+      var directory = pendingUpdate.Directory;
+      if (null == directory)
+      {
+        // we are done 
+        return;
+      }
+
       // using the foler id is the fastest.
-      await _persister.Folders.Files.DeleteFilesAsync(pendingUpdate.FolderId, factory, token);
+      if (!await _persister.Folders.Files.DeleteFilesAsync(pendingUpdate.FolderId, factory, token))
+      {
+        _logger.Verbose($"Unable to delete directory: {directory.FullName}.");
+        return;
+      }
+      _logger.Verbose($"Directory: {directory.FullName} was deleted.");
     }
 
     /// <summary>
@@ -278,6 +292,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       // if we have nothing to do... then get out
       if (!filesToRemove.Any() && !filesToAdd.Any())
       {
+        _logger.Verbose($"Directory: {directory.FullName} was changed but no files were changed.");
         return;
       }
 
@@ -292,6 +307,8 @@ namespace myoddweb.desktopsearch.processor.Processors
       {
         await _persister.Folders.Files.AddOrUpdateFilesAsync(filesToAdd, factory, token).ConfigureAwait(false);
       }
+
+      _logger.Verbose($"Directory: {directory.FullName} was changed {filesToRemove.Count} file(s) removed and {filesToAdd.Count} file(s) added.");
     }
     #endregion
 
@@ -313,17 +330,13 @@ namespace myoddweb.desktopsearch.processor.Processors
       try
       {
         var pendingUpdates = await _persister.Folders.FolderUpdates.GetPendingFolderUpdatesAsync(MaxUpdatesToProcess, transaction, token).ConfigureAwait(false);
+        _persister.Commit(transaction);
 
         if (null == pendingUpdates)
         {
           _logger.Error("Unable to get any pending folder updates.");
-
-          // we will now return null
-          _persister.Commit(transaction);
           return null;
         }
-
-        _persister.Commit(transaction);
 
         // return null if we have nothing.
         return !pendingUpdates.Any() ? null : pendingUpdates;
