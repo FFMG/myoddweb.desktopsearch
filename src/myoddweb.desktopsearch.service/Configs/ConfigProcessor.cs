@@ -35,19 +35,19 @@ namespace myoddweb.desktopsearch.service.Configs
     public int BusyEventsProcessorMs { get; protected set; }
 
     /// <inheritdoc />
-    [DefaultValue(100)]
+    [DefaultValue(50)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public int UpdatesPerFilesEvent { get; protected set; }
+    public int UpdatesFilesPerEvent { get; protected set; }
 
     /// <inheritdoc />
     [DefaultValue(10)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public int UpdatesPerFolderEvent { get; protected set; }
+    public int UpdatesFolderPerEvent { get; protected set; }
 
     /// <inheritdoc />
-    [DefaultValue(2)]
+    [DefaultValue(50)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public int UpdateFileIdsEvent { get; protected set; }
+    public int UpdateWordParsedPerEvent { get; protected set; }
 
     /// <inheritdoc />
     [DefaultValue(null)]

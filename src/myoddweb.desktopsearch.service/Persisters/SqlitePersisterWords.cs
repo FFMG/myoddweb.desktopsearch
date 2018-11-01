@@ -18,6 +18,7 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -208,7 +209,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<long> AddOrUpdateWordAsync(IWord word, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      var ids = await AddOrUpdateWordsAsync( new helper.IO.Words(word), connectionFactory, token ).ConfigureAwait(false);
+      var ids = await AddOrUpdateWordsAsync( new Words(word), connectionFactory, token ).ConfigureAwait(false);
       return ids.Any() ? ids.First() : -1;
     }
 
@@ -224,75 +225,11 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
 
         // rebuild the list of directory with only those that need to be inserted.
-        return await InsertWordsAsync(
-          await RebuildWordsListAsync(words, connectionFactory, token).ConfigureAwait(false),
-          connectionFactory, token).ConfigureAwait(false);
-      }
-    }
-
-    /// <inheritdoc />
-    public async Task<IList<long>> GetWordIdsAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound)
-    {
-      // do we have anything to even look for?
-      if (words.Count == 0)
-      {
-        return new List<long>();
-      }
-
-      try
-      {
-        // we do not check for the token as the underlying functions will throw if needed. 
-        // look for the word, add it if needed.
-        var sql = $"SELECT id FROM {Tables.Words} WHERE word=@word";
-        using (var cmd = connectionFactory.CreateCommand(sql))
-        {
-          var pWord = cmd.CreateParameter();
-          pWord.DbType = DbType.String;
-          pWord.ParameterName = "@word";
-          cmd.Parameters.Add(pWord);
-
-          var ids = new List<long>(words.Count);
-
-          // we use a list to allow duplicates.
-          var wordsToAdd = new List<IWord>();
-          foreach (var word in words)
-          {
-            pWord.Value = word.Value;
-            var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
-            if (null != value && value != DBNull.Value)
-            {
-              // get the path id.
-              ids.Add((long)value);
-              continue;
-            }
-
-            if (!createIfNotFound)
-            {
-              // we could not find it and we do not wish to go further.
-              ids.Add(-1);
-              continue;
-            }
-
-            // add this word to our list
-            wordsToAdd.Add(word);
-          }
-
-          // finally we need to add all the words that were not found.
-          ids.AddRange(await AddOrUpdateWordsAsync(new helper.IO.Words(wordsToAdd.ToArray()), connectionFactory, token).ConfigureAwait(false));
-
-          // return all the ids we added, (or not).
-          return ids;
-        }
-      }
-      catch (OperationCanceledException)
-      {
-        _logger.Warning("Received cancellation request - Get multiple word ids.");
-        throw;
-      }
-      catch (Exception ex)
-      {
-        _logger.Exception(ex);
-        throw;
+        var currentValuesAndNewWords = await RebuildWordsListAsync(words, connectionFactory, token).ConfigureAwait(false);
+        var inserts = await InsertWordsAsync(currentValuesAndNewWords.Item1, connectionFactory, token).ConfigureAwait(false);
+        var result = new List<long>(currentValuesAndNewWords.Item2);
+        result.AddRange(inserts);
+        return result;
       }
     }
     
@@ -566,13 +503,14 @@ private async Task<IList<long>> InsertPartsAsync(
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<interfaces.IO.IWords> RebuildWordsListAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<Tuple<Words, IList<long>>>RebuildWordsListAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {
-        if (0 == words.Count)
+        // we have nithing in the list
+        if (!words.Any())
         {
-          return new helper.IO.Words();
+          return new Tuple<Words, IList<long>>(new Words(), new List<long>());
         }
 
         // The list of words we will be adding to the list.
@@ -580,6 +518,7 @@ private async Task<IList<long>> InsertPartsAsync(
 
         // we first look for it, and, if we find it then there is nothing to do.
         var sql = $"SELECT id FROM {Tables.Words} WHERE word=@word";
+        var ids = new List<long>();
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pWord = cmd.CreateParameter();
@@ -593,19 +532,22 @@ private async Task<IList<long>> InsertPartsAsync(
 
             // the words are case sensitive
             pWord.Value = word.Value;
-            if (null != await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false))
+            var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
+            if (null == value || value == DBNull.Value)
             {
+              // we could not find this word so we will 
+              // just add it to our list of words to add.
+              actualWords.Add(word.Value);
               continue;
             }
 
-            // we could not find this word
-            // so we will just add it to our list.
-            actualWords.Add(word.Value);
+            // otherwise we will add it to our list of known ids
+            ids.Add( (long)value );
           }
         }
 
         //  we know that the list is unique thanks to the uniqueness above.
-        return new helper.IO.Words( actualWords );
+        return new Tuple<Words, IList<long>>(new Words( actualWords ), ids );
       }
       catch (OperationCanceledException)
       {

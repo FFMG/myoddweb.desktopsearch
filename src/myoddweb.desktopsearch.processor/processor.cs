@@ -65,14 +65,14 @@ namespace myoddweb.desktopsearch.processor
       _timers = new List<ProcessorTimer>();
 
       var directoriesCounter = new ProcessorPerformanceCounter(performance, directoryCounterName, logger);
-      _timers.Add( new ProcessorTimer(new Folders(directoriesCounter, config.UpdatesPerFolderEvent, persister, logger, directory), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
+      _timers.Add( new ProcessorTimer(new Folders(directoriesCounter, config.UpdatesFolderPerEvent, persister, logger, directory), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
 
       var filesCounter = new ProcessorPerformanceCounter(performance, fileCounterName, logger);
-      _timers.Add( new ProcessorTimer(new Files(filesCounter, config.UpdatesPerFilesEvent, fileParsers, config.IgnoreFiles, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
+      _timers.Add( new ProcessorTimer(new Files(filesCounter, config.UpdatesFilesPerEvent, fileParsers, config.IgnoreFiles, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
 
       // the word parser.
       var parserCounter = new ProcessorPerformanceCounter(performance, parserCounterName, logger);
-      _timers.Add(new ProcessorTimer(new Parser(parserCounter, config.UpdateFileIdsEvent, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
+      _timers.Add(new ProcessorTimer(new Parser(parserCounter, config.UpdateWordParsedPerEvent, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
     }
 
     #region Start/Stop functions

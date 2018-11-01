@@ -1,7 +1,6 @@
 ﻿{
   "MaxNumCharactersPerWords": 255,
   "MaxNumCharactersPerParts": 15,
-  "MaxNumberOfWordsToProcess": 250,
 
   "WebServer": {
     "Port": 9501
@@ -29,9 +28,9 @@
     "EventsParserMs": 30000
   },
   "Processors": {
-    "UpdatesPerFilesEvent": 100,
-    "UpdatesPerFolderEvent": 10,
-    "UpdateFileIdsEvent": 2,
+    "UpdatesFilesPerEvent": 50,
+    "UpdatesFolderPerEvent": 10,
+    "UpdateWordParsedPerEvent": 50,
     "QuietEventsProcessorMs": 10000,
     "BusyEventsProcessorMs": 20,
     "IgnoreFiles": [

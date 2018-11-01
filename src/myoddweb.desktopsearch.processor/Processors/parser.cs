@@ -67,8 +67,8 @@ namespace myoddweb.desktopsearch.processor.Processors
     public async Task<int> WorkAsync(CancellationToken token)
     {
       // get the number of file ids we want to work on.
-      var ids = await GetFileIdsAsync(token).ConfigureAwait( false );
-      if (!ids.Any())
+      var pendingParserWordsUpdates = await GetPendingParserWordsUpdatesAsync(token).ConfigureAwait( false );
+      if (pendingParserWordsUpdates == null || !pendingParserWordsUpdates.Any())
       {
         return 0;
       }
@@ -83,15 +83,34 @@ namespace myoddweb.desktopsearch.processor.Processors
 
         try
         {
-          foreach (var id in ids)
+          if (!await _persister.FilesWords.AddParserWordsAsync(pendingParserWordsUpdates, connectionFactory, token).ConfigureAwait(false))
           {
-            await _persister.FilesWords.AddParserWordsAsync(id, connectionFactory, token).ConfigureAwait(false);
+            // there was an issue adding those words for that file id.
+            _persister.Rollback(connectionFactory);
+            return 0;
           }
 
+          foreach (var pendingParserWordsUpdate in pendingParserWordsUpdates)
+          {
+            // thow if needed./
+            token.ThrowIfCancellationRequested();
+
+            // delete that part id so we do not do it again.
+            await _persister.ParserWords.DeleteWordIdFileId(pendingParserWordsUpdate.Id, connectionFactory, token).ConfigureAwait( false );
+
+            // if we found any, log it.
+            _logger.Verbose($"Processor : {pendingParserWordsUpdate.Word.Value} processed for file id : {pendingParserWordsUpdate.FileId}.");
+          }
+
+          // we are done.
           _persister.Commit(connectionFactory);
+
+          // return what we did
+          return pendingParserWordsUpdates.Count;
         }
         catch (OperationCanceledException e)
         {
+          _logger.Warning("Received cancellation request - Parsing File words.");
           _persister.Rollback(connectionFactory);
 
           // is it my token?
@@ -99,7 +118,6 @@ namespace myoddweb.desktopsearch.processor.Processors
           {
             _logger.Exception(e);
           }
-
           throw;
         }
         catch (Exception)
@@ -108,7 +126,6 @@ namespace myoddweb.desktopsearch.processor.Processors
           throw;
         }
       }
-      return ids.Count;
     }
 
     /// <inheritdoc />
@@ -117,7 +134,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       _counter?.Dispose();
     }
 
-    private async Task<IList<long>> GetFileIdsAsync(CancellationToken token)
+    private async Task<IList<IPendingParserWordsUpdate>> GetPendingParserWordsUpdatesAsync(CancellationToken token)
     {
       // get the transaction
       var connectionFactory = await _persister.BeginRead(token).ConfigureAwait(false);
@@ -128,9 +145,11 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        var ids = await _persister.ParserWords.GetPendingFileIdsAsync( MaxUpdatesToProcess, connectionFactory, token ).ConfigureAwait(false);
+        // we will assume one word per file
+        // so just get them all at once :)
+        var pendingParserWordsUpdates = await _persister.ParserWords.GetPendingParserWordsUpdatesAsync( MaxUpdatesToProcess, connectionFactory, token ).ConfigureAwait(false);
         _persister.Commit(connectionFactory);
-        return ids;
+        return pendingParserWordsUpdates != null ? (pendingParserWordsUpdates.Any() ? pendingParserWordsUpdates : null)  : null;
       }
       catch (OperationCanceledException e)
       {

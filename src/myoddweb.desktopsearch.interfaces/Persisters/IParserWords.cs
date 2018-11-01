@@ -50,21 +50,12 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     Task<bool> DeleteWordIdFileId(long wordid, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
-    /// Get words for processing.
-    /// </summary>
-    /// <param name="fileid">The file we are wanting to process.</param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    Task<IO.IWords> GetWordsForProcessingAsync(long fileid, IConnectionFactory connectionFactory, CancellationToken token);
-
-    /// <summary>
     /// Get the id of pending file 
     /// </summary>
-    /// <param name="count">How many ids we would like to get.</param>
+    /// <param name="limit">How many updates we want to work with.</param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IList<long>> GetPendingFileIdsAsync( int count, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<IList<IPendingParserWordsUpdate>> GetPendingParserWordsUpdatesAsync(long limit, IConnectionFactory connectionFactory, CancellationToken token);
   }
 }

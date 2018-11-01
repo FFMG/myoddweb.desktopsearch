@@ -250,8 +250,7 @@ namespace myoddweb.desktopsearch.service
           config.Performance, 
           parsers, logger, sqlData, 
           config.MaxNumCharactersPerWords, 
-          config.MaxNumCharactersPerParts,
-          config.MaxNumberOfWordsToProcess
+          config.MaxNumCharactersPerParts
           );
       }
 
@@ -371,23 +370,32 @@ namespace myoddweb.desktopsearch.service
     private void LogStartupComplete( IConfig config )
     {
       var sb = new StringBuilder();
-      sb.AppendLine("Startup complete.");
+      sb.AppendLine( "Startup complete.");
+      sb.AppendLine($"                           ProcessID : {Process.GetCurrentProcess().Id}");
+      sb.AppendLine($"                            Platform : {(Environment.Is64BitProcess ? "64-bit (x64)" : "32-bit (x86))")}");
+      sb.AppendLine($"                             Runtime : {Environment.Version}");
+      sb.AppendLine();
+
       sb.AppendLine( "Webserver");
       sb.AppendLine($"                                Port : {config.WebServer.Port}");
+      sb.AppendLine();
 
       sb.AppendLine( "Processors" );
-      sb.AppendLine($"                 Update file events  : {config.Processors.UpdateFileIdsEvent}");
+      sb.AppendLine($"          Update folders per events  : {config.Processors.UpdatesFolderPerEvent}");
+      sb.AppendLine($"           Update files, per events  : {config.Processors.UpdatesFilesPerEvent}");
+      sb.AppendLine($"            Parsed words per events  : {config.Processors.UpdateWordParsedPerEvent}");
       sb.AppendLine($"             Quiet events processor  : {config.Processors.QuietEventsProcessorMs} Ms");
       sb.AppendLine($"               BusyEventsProcessorMs : {config.Processors.BusyEventsProcessorMs} Ms");
+      sb.AppendLine();
 
       sb.AppendLine("Paths");
       sb.AppendLine($"                  Parse Fixed Drives : {(config.Paths.ParseFixedDrives?"true":"false")}");
       sb.AppendLine($"              Parse Removable Drives : {(config.Paths.ParseRemovableDrives ? "true" : "false")}");
+      sb.AppendLine();
 
       sb.AppendLine("Misc");
       sb.AppendLine($"     Max Number Characters Per Words : {config.MaxNumCharactersPerWords}");
       sb.AppendLine($"     Max Number Characters Per Parts : {config.MaxNumCharactersPerParts}");
-      sb.AppendLine($"  Max Number Number words per events : {config.MaxNumberOfWordsToProcess}");
 
       _logger.Information( sb.ToString() );
     }

@@ -12,32 +12,23 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using myoddweb.desktopsearch.interfaces.IO;
-
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IWords
+  public interface IPendingParserWordsUpdate
   {
     /// <summary>
-    /// Add or update a single word.
+    /// The word parser id.
     /// </summary>
-    /// <param name="word"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    Task<long> AddOrUpdateWordAsync(IWord word, IConnectionFactory connectionFactory, CancellationToken token);
+    long Id { get; }
 
     /// <summary>
-    /// Add or update multiple word.
+    /// The file id with a pending update
     /// </summary>
-    /// <param name="words"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    Task<IList<long>> AddOrUpdateWordsAsync(IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token);
+    long FileId { get; }
+
+    /// <summary>
+    /// The pending words.
+    /// </summary>
+    IO.IWord Word { get; }
   }
 }

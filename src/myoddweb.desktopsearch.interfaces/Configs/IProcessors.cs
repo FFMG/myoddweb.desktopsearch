@@ -36,20 +36,19 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     /// Don't make that number too small as it will take forever to parse
     /// But also not too big as it blocks the database when/if there is work to do.
     /// </summary>
-    int UpdatesPerFilesEvent { get; }
+    int UpdatesFilesPerEvent { get; }
 
     /// <summary>
     /// The number of folders we want to do per processing events.
     /// Don't make that number too small as it will take forever to parse
     /// But also not too big as it blocks the database when/if there is work to do.
     /// </summary>
-    int UpdatesPerFolderEvent { get; }
+    int UpdatesFolderPerEvent { get; }
 
     /// <summary>
-    /// The number of fileid we want to parse per events.
-    /// There is no point in doing too many at once as they lock the db
+    /// The number of parsed words we want to process at a time.
     /// </summary>
-    int UpdateFileIdsEvent { get; }
+    int UpdateWordParsedPerEvent { get; }
 
     /// <summary>
     /// List of file patterns that we ignore.

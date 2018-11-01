@@ -38,11 +38,6 @@ namespace myoddweb.desktopsearch.service.Configs
     public int MaxNumCharactersPerParts { get; protected set; }
 
     /// <inheritdoc />
-    [DefaultValue(100)]
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public int MaxNumberOfWordsToProcess { get; protected set; }
-
-    /// <inheritdoc />
     [JsonProperty(Required = Required.Always)]
     public IPaths Paths { get; protected set; }
 
@@ -105,7 +100,6 @@ namespace myoddweb.desktopsearch.service.Configs
     /// </summary>
     /// <param name="maxNumCharactersPerWords"></param>
     /// <param name="maxNumCharactersPerParts"></param>
-    /// <param name="maxNumberOfWordsToProcess"></param>
     /// <param name="paths"></param>
     /// <param name="timers"></param>
     /// <param name="performance"></param>
@@ -116,7 +110,6 @@ namespace myoddweb.desktopsearch.service.Configs
     public Config(
       int maxNumCharactersPerWords,
       int maxNumCharactersPerParts,
-      int maxNumberOfWordsToProcess,
       ConfigPaths paths, 
       ConfigTimers timers, 
       ConfigPerformance performance,
@@ -132,12 +125,6 @@ namespace myoddweb.desktopsearch.service.Configs
       WebServer = webserver;
       Database = database;
       Performance = performance;
-
-      if (maxNumberOfWordsToProcess <= 0)
-      {
-        throw new ArgumentException("The max number number of words to process per events cannot be -ve or zero");
-      }
-      MaxNumberOfWordsToProcess = maxNumberOfWordsToProcess;
 
       if (maxNumCharactersPerWords <= 0)
       {

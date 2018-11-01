@@ -32,25 +32,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
-
-    /// <summary>
-    /// The maximum number of words we want to process at once
-    /// To prevent starving resources, we will make sure that this number is not too high.
-    /// </summary>
-    private readonly int _maxNumberOfWordsToProcess;
     #endregion
 
-    public SqlitePersisterParserWords(ILogger logger, int maxNumberOfWordsToProcess )
+    public SqlitePersisterParserWords(ILogger logger )
     {
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-      if (maxNumberOfWordsToProcess <= 0)
-      {
-        throw new ArgumentException( $"The max number of words to process, {maxNumberOfWordsToProcess}, cannot be 0 or -ve");
-      }
-
-      _maxNumberOfWordsToProcess = maxNumberOfWordsToProcess;
     }
 
     /// <inheritdoc />
@@ -213,17 +200,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<IList<long>> GetPendingFileIdsAsync(int count, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<IList<IPendingParserWordsUpdate>> GetPendingParserWordsUpdatesAsync(long limit, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
       {
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
-      var sql = $"SELECT fileid FROM {Tables.ParserWords} GROUP BY fileid LIMIT {count}";
+      var sql = $"SELECT id, fileid, word FROM {Tables.ParserWords} order by fileid desc LIMIT {limit}";
       using (var cmd = connectionFactory.CreateCommand(sql))
       {
-        var fileids = new List<long>(count);
+        var parserWord = new List<IPendingParserWordsUpdate>( (int)limit);
         try
         {
           var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
@@ -232,58 +219,10 @@ namespace myoddweb.desktopsearch.service.Persisters
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
-            // the word id
-            fileids.Add((long)reader["fileid"]);
+            // add the word to the list.
+            parserWord.Add( new PendingParserWordsUpdate((long)reader["id"], (long)reader["fileid"], (string)reader["word"] ));
           }
-          return fileids;
-        }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Parser words - Delete word");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-          return null;
-        }
-      }
-    }
-
-    /// <inheritdoc />
-    public async Task<IWords> GetWordsForProcessingAsync(long fileid, IConnectionFactory connectionFactory, CancellationToken token)
-    {
-      if (null == connectionFactory)
-      {
-        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
-      }
-
-      var sql = $"SELECT id, word FROM {Tables.ParserWords} WHERE fileid=@fileid LIMIT {_maxNumberOfWordsToProcess}";
-      using (var cmd = connectionFactory.CreateCommand(sql))
-      {
-        var pFileId = cmd.CreateParameter();
-        pFileId.DbType = DbType.Int64;
-        pFileId.ParameterName = "@fileid";
-        cmd.Parameters.Add(pFileId);
-
-        pFileId.Value = fileid;
-        var words = new List<string>( _maxNumberOfWordsToProcess );
-        try
-        {
-          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
-          while (reader.Read())
-          {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            // the word id
-            var id = (long) reader["id"];
-            words.Add((string)reader["word"]);
-
-            // remove that word
-            await DeleteWordIdFileId(id, connectionFactory, token).ConfigureAwait(false );
-          }
-          return new Words( words );
+          return parserWord;
         }
         catch (OperationCanceledException)
         {

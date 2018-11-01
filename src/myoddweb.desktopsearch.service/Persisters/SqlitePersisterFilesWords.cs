@@ -13,7 +13,9 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Logging;
@@ -53,7 +55,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddParserWordsAsync( long fileId, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> AddParserWordsAsync(IList<IPendingParserWordsUpdate> pendingUpdates, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
       {
@@ -61,20 +63,18 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // get some words from the parser so we can add them here now.
-      var words = await _parserWords.GetWordsForProcessingAsync(fileId, connectionFactory, token);
-      if (words == null || !words.Any())
+      if (pendingUpdates == null || !pendingUpdates.Any())
       {
         // there was nothing to add.
         return true;
       }
 
-      // if needed, add all the words to the words list.
-      var wordids = await _words.GetWordIdsAsync(words, connectionFactory, token, true).ConfigureAwait(false);
-
       try
       {
-        // then do an insert.
+        // then do an inserts.
         var sqlSelect = $"SELECT wordid FROM {Tables.FilesWords} where wordid=@wordid AND fileid=@fileid";
+        var sqlInsert = $"INSERT OR IGNORE INTO {Tables.FilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
+        using (var cmdInsert = connectionFactory.CreateCommand(sqlInsert))
         using (var cmdSelect = connectionFactory.CreateCommand(sqlSelect))
         {
           // create the parameters for inserting.
@@ -88,40 +88,44 @@ namespace myoddweb.desktopsearch.service.Persisters
           pSFId.ParameterName = "@fileid";
           cmdSelect.Parameters.Add(pSFId);
 
-          var sqlInsert = $"INSERT INTO {Tables.FilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
-          using (var cmdInsert = connectionFactory.CreateCommand(sqlInsert))
+          // create the parameters for inserting.
+          var pIWId = cmdInsert.CreateParameter();
+          pIWId.DbType = DbType.Int64;
+          pIWId.ParameterName = "@wordid";
+          cmdInsert.Parameters.Add(pIWId);
+
+          var pIFId = cmdInsert.CreateParameter();
+          pIFId.DbType = DbType.Int64;
+          pIFId.ParameterName = "@fileid";
+          cmdInsert.Parameters.Add(pIFId);
+
+          foreach (var pendingParserWordsUpdate in pendingUpdates)
           {
-            // create the parameters for inserting.
-            var pIWId = cmdInsert.CreateParameter();
-            pIWId.DbType = DbType.Int64;
-            pIWId.ParameterName = "@wordid";
-            cmdInsert.Parameters.Add(pIWId);
-
-            var pIFId = cmdInsert.CreateParameter();
-            pIFId.DbType = DbType.Int64;
-            pIFId.ParameterName = "@fileid";
-            cmdInsert.Parameters.Add(pIFId);
-
-            // it does not eixst ... we have to add it.
-            pIFId.Value = fileId;
-            pSFId.Value = fileId;
-
-            foreach (var id in wordids)
+            // get the id for this word.
+            var wordId = await _words.AddOrUpdateWordAsync(pendingParserWordsUpdate.Word, connectionFactory, token ).ConfigureAwait(false);
+            if (-1 == wordId)
             {
-              pSWId.Value = id;
-              var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
-              if (null != value && value != DBNull.Value)
-              {
-                continue;
-              }
-
-              pIWId.Value = id;
-              if (1 != await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
-              {
-                _logger.Error($"There was an issue inserting word : {id} for file : {fileId}");
-              }
+              _logger.Error($"There was an issue inserting/finding the word : {pendingParserWordsUpdate.Word}.");
+              continue;
             }
-          } // Command Insert
+
+            // then try and insert it for this file,
+            pIFId.Value = pendingParserWordsUpdate.FileId;
+            pIWId.Value = wordId;
+            if (1 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
+            {
+              continue;
+            }
+            
+            // we did not insert it... could it be because it exists already?
+            pSFId.Value = pendingParserWordsUpdate.FileId;
+            pSWId.Value = wordId;
+            var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
+            if (null == value || value == DBNull.Value)
+            {
+              _logger.Error($"There was an issue inserting word : {wordId} for file : {pendingParserWordsUpdate.FileId}");
+            }
+          }
         }
 
         // we are done
@@ -129,12 +133,12 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       catch (OperationCanceledException)
       {
-        _logger.Warning( $"Received cancellation request - Add words to file id: {fileId}");
+        _logger.Warning( "Received cancellation request - Add pending parser words");
         throw;
       }
       catch (Exception ex)
       {
-        _logger.Exception($"There was an exception adding parser words for FileId: {fileId}", ex);
+        _logger.Exception("There was an exception adding parser words", ex);
         throw;
       }
     }

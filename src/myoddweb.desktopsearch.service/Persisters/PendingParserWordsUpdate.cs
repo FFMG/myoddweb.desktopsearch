@@ -12,47 +12,46 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.IO;
-using myoddweb.desktopsearch.interfaces.Enums;
+using System;
+using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  public class PendingFileUpdate : IPendingFileUpdate
+  internal class PendingParserWordsUpdate : IPendingParserWordsUpdate
   {
-    /// <summary>
-    /// The folder id with a pending update
-    /// </summary>
+    /// <inheritdoc />
+    public long Id { get; }
+
+    /// <inheritdoc />
     public long FileId { get; }
 
-    /// <summary>
-    /// Get the file info.
-    /// </summary>
-    public FileInfo File { get; }
+    /// <inheritdoc />
+    public IWord Word { get; }
 
-    /// <summary>
-    /// The pending update type.
-    /// </summary>
-    public UpdateType PendingUpdateType { get; }
-
-    public PendingFileUpdate(long fileId, FileInfo file, UpdateType pendingUpdateType)
+    public PendingParserWordsUpdate(long id, long fileId, string word) :
+      this( id, fileId, new helper.IO.Word(word))
     {
-      // set the file id.
-      FileId = fileId;
-
-      // the file.
-      File = file;
-
-      // the pending update type.
-      PendingUpdateType = pendingUpdateType;
     }
 
-    /// <summary>
-    /// Copy contructor.
-    /// </summary>
-    /// <param name="pu"></param>
-    public PendingFileUpdate(IPendingFileUpdate pu) : this(pu.FileId, pu.File, pu.PendingUpdateType)
+    public PendingParserWordsUpdate( long id, long fileId, IWord word)
     {
+      // set the id
+      Id = id;
+      if (id < 0)
+      {
+        throw new ArgumentException("The parsed word id cannot be -ve!");
+      }
+
+      // set the file id.
+      FileId = fileId;
+      if (fileId < 0)
+      {
+        throw new ArgumentException( "The file id cannot be -ve!");
+      }
+
+      // save the word.
+      Word = word ?? throw new ArgumentNullException( nameof(word));
     }
   }
 }

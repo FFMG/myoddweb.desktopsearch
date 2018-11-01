@@ -64,7 +64,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
     public Files(
       ICounter counter, 
-      int updatesPerFilesEvent, 
+      int updatesPerEvent, 
       IList<IFileParser> parsers, 
       IList<IIgnoreFile> ignoreFiles, 
       IPersister persister, 
@@ -73,11 +73,11 @@ namespace myoddweb.desktopsearch.processor.Processors
       // save the counter
       _counter = counter ?? throw new ArgumentNullException(nameof(counter));
 
-      if (updatesPerFilesEvent <= 0)
+      if (updatesPerEvent <= 0)
       {
-        throw new ArgumentException( $"The number of files to try per events cannot be -ve or zero, ({updatesPerFilesEvent})");
+        throw new ArgumentException( $"The number of files to try per events cannot be -ve or zero, ({updatesPerEvent})");
       }
-      MaxUpdatesToProcess = updatesPerFilesEvent;
+      MaxUpdatesToProcess = updatesPerEvent;
 
       // make sure that the parsers are valid.
       _parsers = parsers ?? throw new ArgumentNullException(nameof(parsers));
@@ -157,8 +157,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           {
             case UpdateType.Created:
               // only add the pending updates where there are actual words to add.
-              tasks.Add(WorkCreatedAsync(factory, pendingFileUpdate, token).ContinueWith(
-                t => CompletePendingFileUpdate(factory, t.Result, token), token ));
+              tasks.Add(WorkCreatedAsync(factory, pendingFileUpdate, token));
               break;
 
             case UpdateType.Deleted:
@@ -167,8 +166,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
             case UpdateType.Changed:
               // renamed or content/settingss changed
-              tasks.Add( WorkChangedAsync(factory, pendingFileUpdate, token).ContinueWith(
-                t => CompletePendingFileUpdate(factory, t.Result, token), token));
+              tasks.Add( WorkChangedAsync(factory, pendingFileUpdate, token) );
               break;
 
             default:
@@ -368,49 +366,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     #endregion
 
     #region Database calls.
-    /// <summary>
-    /// Complete a single pending task.
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <param name="pendingFileUpdate"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task CompletePendingFileUpdate(IConnectionFactory connectionFactory, IPendingFileUpdate pendingFileUpdate, CancellationToken token)
-    {
-      // null checking
-      if (null == pendingFileUpdate)
-      {
-        return;
-      }
-
-      // the file id we are trying to update.
-      var fileId = pendingFileUpdate.FileId;
-
-      switch (pendingFileUpdate.PendingUpdateType)
-      {
-        case UpdateType.Created:
-          // this was newly created, so we just want to add the words.
-          // there should be nothing to delete.
-          await _persister.FilesWords.AddParserWordsAsync(fileId, connectionFactory, token).ConfigureAwait(false);
-          break;
-
-        case UpdateType.Changed:
-          // We changed the file, so we have to delete
-          // the old words as well as add the new ones.
-          await _persister.FilesWords.AddParserWordsAsync( fileId, connectionFactory, token).ConfigureAwait(false);
-          break;
-
-        case UpdateType.Deleted:
-          throw new InvalidOperationException("Deleted files should not be processed here.");
-
-        case UpdateType.None:
-          throw new ArgumentException( "Cannot process an update of type 'none'" );
-
-        default:
-          throw new ArgumentOutOfRangeException();
-      }
-    }
-
     /// <summary>
     /// Mark the given file as processed.
     /// </summary>
