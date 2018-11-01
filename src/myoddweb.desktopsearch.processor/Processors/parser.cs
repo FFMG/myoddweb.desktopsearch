@@ -92,7 +92,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
           foreach (var pendingParserWordsUpdate in pendingParserWordsUpdates)
           {
-            // thow if needed./
+            // thow if needed.
             token.ThrowIfCancellationRequested();
 
             // delete that part id so we do not do it again.
