@@ -41,7 +41,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         throw new ArgumentException("The list of ids/fileid cannot be empty");
       }
-      if (!wordIdsAndFileIds.Any( w => w.Key < 0 || w.Value < 0 ))
+      if (wordIdsAndFileIds.Any( w => w.Key < 0 || w.Value < 0 ))
       {
         throw new ArgumentException("The id and/or file id values cannot be -ve");
       }

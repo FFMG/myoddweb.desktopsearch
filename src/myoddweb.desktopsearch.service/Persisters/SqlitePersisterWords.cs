@@ -26,16 +26,25 @@ using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
-  internal class SqlPerformanceCounter : helper.Performance.Counter
-  {
-    public SqlPerformanceCounter(IPerformance performance, string counterName, ILogger logger) :
-      base(performance.CategoryName, performance.CategoryHelp, counterName, helper.Performance.Type.Timed, logger)
-    {
-    }
-  }
-
   internal class SqlitePersisterWords : interfaces.Persisters.IWords, IDisposable
   {
+    /// <summary>
+    /// Internal class to control the words we need to add
+    /// And the words that already exist.
+    /// </summary>
+    private struct RebuiltWordsList
+    {
+      /// <summary>
+      /// List of words we need to add to the persister.
+      /// </summary>
+      public Words WordsToAdd { get; set; }
+
+      /// <summary>
+      /// The ids of the words that exist already.
+      /// </summary>
+      public IList<long> ExistingWordIds { get; set; }
+    }
+
     #region Command classes
     internal class Command : IDisposable
     {
@@ -226,8 +235,8 @@ namespace myoddweb.desktopsearch.service.Persisters
 
         // rebuild the list of directory with only those that need to be inserted.
         var currentValuesAndNewWords = await RebuildWordsListAsync(words, connectionFactory, token).ConfigureAwait(false);
-        var inserts = await InsertWordsAsync(currentValuesAndNewWords.Item1, connectionFactory, token).ConfigureAwait(false);
-        var result = new List<long>(currentValuesAndNewWords.Item2);
+        var inserts = await InsertWordsAsync(currentValuesAndNewWords.WordsToAdd, connectionFactory, token).ConfigureAwait(false);
+        var result = new List<long>(currentValuesAndNewWords.ExistingWordIds);
         result.AddRange(inserts);
         return result;
       }
@@ -271,7 +280,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // the word we want to insert.
-            var wordId = await InsertWordAsync(word, cmdSelectWord, cmdInsertWord, cmdSelectPart, cmdInsertPart, connectionFactory, token)                .ConfigureAwait(false);
+            var wordId = await InsertWordAsync(word, cmdSelectWord, cmdInsertWord, cmdSelectPart, cmdInsertPart, connectionFactory, token).ConfigureAwait(false);
             if (-1 == wordId)
             {
               // we log errors in the insert function
@@ -503,14 +512,14 @@ private async Task<IList<long>> InsertPartsAsync(
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<Tuple<Words, IList<long>>>RebuildWordsListAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<RebuiltWordsList>RebuildWordsListAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {
         // we have nithing in the list
         if (!words.Any())
         {
-          return new Tuple<Words, IList<long>>(new Words(), new List<long>());
+          return new RebuiltWordsList();
         }
 
         // The list of words we will be adding to the list.
@@ -546,8 +555,12 @@ private async Task<IList<long>> InsertPartsAsync(
           }
         }
 
-        //  we know that the list is unique thanks to the uniqueness above.
-        return new Tuple<Words, IList<long>>(new Words( actualWords ), ids );
+        // we can then built the return list with existing word ids
+        // together with the word we will need to add.
+        return new RebuiltWordsList{
+          WordsToAdd = new Words( actualWords ),
+          ExistingWordIds = ids
+        };
       }
       catch (OperationCanceledException)
       {

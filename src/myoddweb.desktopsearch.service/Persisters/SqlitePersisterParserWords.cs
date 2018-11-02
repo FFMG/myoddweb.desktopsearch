@@ -219,7 +219,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
-      var sqlSelectWordId = $"SELECT id, fileid FROM {Tables.ParserWords} where word=@word";
+      // get all the words that match this id.
+      var sqlSelectWordId = $"SELECT id, fileid FROM {Tables.ParserWords} where word=@word LIMIT {limit}";
       var sqlSelectWord = $"SELECT DISTINCT word FROM {Tables.ParserWords} order by fileid asc LIMIT {limit}";
       using (var cmdSelectWord = connectionFactory.CreateCommand(sqlSelectWord))
       using (var cmdSelectWordId = connectionFactory.CreateCommand(sqlSelectWordId))
