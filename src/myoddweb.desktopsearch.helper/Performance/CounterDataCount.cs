@@ -42,12 +42,10 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// <summary>
     /// Increment the counter given a Utc time
     /// </summary>
-    /// <param name="startTime"></param>
-    public virtual void IncremenFromUtcTime(DateTime startTime)
+    /// <param name="ticks"></param>
+    public virtual void IncrementWithElapsedTicks( long ticks )
     {
-      var tsDiff = (DateTime.UtcNow - startTime);
-      var performanceCounterTicks = tsDiff.Ticks * Stopwatch.Frequency / TimeSpan.TicksPerSecond;
-      Counter?.IncrementBy(performanceCounterTicks);
+      Counter?.IncrementBy(ticks);
     }
   }
 }

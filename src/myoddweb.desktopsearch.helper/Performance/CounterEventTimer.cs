@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace myoddweb.desktopsearch.helper.Performance
 {
@@ -17,12 +18,12 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// <summary>
     /// When this timer started
     /// </summary>
-    private readonly DateTime _start;
+    private readonly Stopwatch _start = new Stopwatch();
 
     public CounterEventTimer( Counter counter, Manager manager)
     {
       // start the timer.
-      _start = DateTime.UtcNow;
+      _start.Start();
 
       // save the counter.
       _counter = counter ?? throw new ArgumentNullException(nameof(counter));
@@ -34,7 +35,8 @@ namespace myoddweb.desktopsearch.helper.Performance
     public void Dispose()
     {
       // log the time it took...
-      _manager.IncremenFromUtcTime(_counter, _start);
+      _start.Stop();
+      _manager.IncrementWithElapsedTicks(_counter, _start.ElapsedTicks);
     }
   }
 }

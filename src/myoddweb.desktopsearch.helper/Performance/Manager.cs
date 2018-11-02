@@ -253,10 +253,10 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// Increment the counter given a Utc time
     /// </summary>
     /// <param name="counter"></param>
-    /// <param name="startTime"></param>
-    internal void IncremenFromUtcTime(ICounter counter, DateTime startTime)
+    /// <param name="ticks"></param>
+    internal void IncrementWithElapsedTicks(ICounter counter, long ticks)
     {
-      Counter(counter)?.IncremenFromUtcTime(startTime);
+      Counter(counter)?.IncrementWithElapsedTicks(ticks);
     }
     #endregion
   }

@@ -43,9 +43,9 @@ namespace myoddweb.desktopsearch.helper.Performance
     }
 
     /// <inheritdoc />
-    public override void IncremenFromUtcTime(DateTime startTime)
+    public override void IncrementWithElapsedTicks( long ticks )
     {
-      base.IncremenFromUtcTime(startTime);
+      base.IncrementWithElapsedTicks(ticks);
       Base?.Increment();
     }
   }

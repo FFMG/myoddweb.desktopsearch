@@ -164,9 +164,19 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     #region Member variable
     /// <summary>
-    ///  Our proc counter.
+    /// The counter for adding new words
     /// </summary>
-    private readonly SqlPerformanceCounter _counter;
+    private readonly SqlPerformanceCounter _counterAddOrUpdate;
+
+    /// <summary>
+    /// The counter for inserting new words.
+    /// </summary>
+    private readonly SqlPerformanceCounter _counterInsertedWords;
+
+    /// <summary>
+    /// The counter for how long it takes us to rebuild the word list.
+    /// </summary>
+    private readonly SqlPerformanceCounter _counterRebuildWordsList;
 
     /// <summary>
     /// The maximum number of characters per words parts...
@@ -207,12 +217,16 @@ namespace myoddweb.desktopsearch.service.Persisters
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
       // create the counter,
-      _counter = new SqlPerformanceCounter(performance, "Database: IWords Add Or Update", _logger);
+      _counterAddOrUpdate = new SqlPerformanceCounter(performance, "Database: Add Or Update word", _logger);
+      _counterRebuildWordsList = new SqlPerformanceCounter(performance, "Database: Rebuild Words List", _logger);
+      _counterInsertedWords = new SqlPerformanceCounter(performance, "Database: Inserted new Words", _logger);
     }
 
     public void Dispose()
     {
-      _counter?.Dispose();
+      _counterAddOrUpdate?.Dispose();
+      _counterRebuildWordsList?.Dispose();
+      _counterInsertedWords?.Dispose();
     }
 
     /// <inheritdoc />
@@ -225,17 +239,25 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<IList<long>> AddOrUpdateWordsAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
     {
-      using (_counter.Start())
+      using (_counterAddOrUpdate.Start())
       {
         if (null == connectionFactory)
         {
-          throw new ArgumentNullException(nameof(connectionFactory),
-            "You have to be within a tansaction when calling this function.");
+          throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
         }
 
         // rebuild the list of directory with only those that need to be inserted.
-        var currentValuesAndNewWords = await RebuildWordsListAsync(words, connectionFactory, token).ConfigureAwait(false);
-        var inserts = await InsertWordsAsync(currentValuesAndNewWords.WordsToAdd, connectionFactory, token).ConfigureAwait(false);
+        RebuiltWordsList currentValuesAndNewWords;
+        using (_counterRebuildWordsList.Start())
+        {
+          currentValuesAndNewWords = await RebuildWordsListAsync(words, connectionFactory, token).ConfigureAwait(false);
+        }
+
+        IList<long> inserts;
+        using (_counterInsertedWords.Start())
+        {
+          inserts = await InsertWordsAsync(currentValuesAndNewWords.WordsToAdd, connectionFactory, token).ConfigureAwait(false);
+        }
         var result = new List<long>(currentValuesAndNewWords.ExistingWordIds);
         result.AddRange(inserts);
         return result;
