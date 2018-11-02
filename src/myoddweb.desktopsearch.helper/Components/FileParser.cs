@@ -16,6 +16,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -145,7 +146,8 @@ namespace myoddweb.desktopsearch.helper.Components
       }
 
       // we have to read to the next char.
-      var text = new string(buffer);
+      var text = new StringBuilder();
+      text.Append(buffer);
 
       // recreate the buffer
       const int count = 1;
@@ -160,7 +162,7 @@ namespace myoddweb.desktopsearch.helper.Components
         // if not return what we have, (we might have nothing)
         if (read == 0)
         {
-          return text;
+          return text.ToString();
         }
 
         // get out if we cancelled.
@@ -170,9 +172,9 @@ namespace myoddweb.desktopsearch.helper.Components
         if (!_reg.IsMatch(letter))
         {
           // if we are here we found a 'bad' character straight away.
-          return text;
+          return text.ToString();
         }
-        text += letter;
+        text.Append(letter);
       }
     }
   }
