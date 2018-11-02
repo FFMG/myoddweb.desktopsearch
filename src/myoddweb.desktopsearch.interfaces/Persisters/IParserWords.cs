@@ -43,11 +43,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <summary>
     /// Delete a single word id
     /// </summary>
-    /// <param name="wordid"></param>
+    /// <param name="wordids"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteWordIdFileId(long wordid, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> DeleteWordIds(IList<long> wordids, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Get the id of pending file 

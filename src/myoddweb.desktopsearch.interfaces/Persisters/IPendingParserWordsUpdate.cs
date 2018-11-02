@@ -12,6 +12,9 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System.Collections.Generic;
+
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
   public interface IPendingParserWordsUpdate
@@ -19,12 +22,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <summary>
     /// The word parser id.
     /// </summary>
-    long Id { get; }
-
-    /// <summary>
-    /// The file id with a pending update
-    /// </summary>
-    long FileId { get; }
+    IDictionary<long, long> WordIdsAndFileIds { get; }
 
     /// <summary>
     /// The pending words.

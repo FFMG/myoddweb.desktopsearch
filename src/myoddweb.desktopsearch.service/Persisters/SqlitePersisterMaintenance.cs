@@ -142,6 +142,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return false;
       }
+
       return true;
     }
 
@@ -252,7 +253,14 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.ParserWords}_fileid_word ON {Tables.ParserWords}(fileid, word);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.ParserWords}_word ON {Tables.ParserWords}(word);", connectionFactory).ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{Tables.ParserWords}_fileid_word ON {Tables.ParserWords}(fileid, word);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }

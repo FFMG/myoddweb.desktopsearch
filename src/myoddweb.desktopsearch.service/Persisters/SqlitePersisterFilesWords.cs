@@ -78,26 +78,26 @@ namespace myoddweb.desktopsearch.service.Persisters
         using (var cmdSelect = connectionFactory.CreateCommand(sqlSelect))
         {
           // create the parameters for inserting.
-          var pSWId = cmdSelect.CreateParameter();
-          pSWId.DbType = DbType.Int64;
-          pSWId.ParameterName = "@wordid";
-          cmdSelect.Parameters.Add(pSWId);
+          var pSWordId = cmdSelect.CreateParameter();
+          pSWordId.DbType = DbType.Int64;
+          pSWordId.ParameterName = "@wordid";
+          cmdSelect.Parameters.Add(pSWordId);
 
-          var pSFId = cmdSelect.CreateParameter();
-          pSFId.DbType = DbType.Int64;
-          pSFId.ParameterName = "@fileid";
-          cmdSelect.Parameters.Add(pSFId);
+          var pSFileId = cmdSelect.CreateParameter();
+          pSFileId.DbType = DbType.Int64;
+          pSFileId.ParameterName = "@fileid";
+          cmdSelect.Parameters.Add(pSFileId);
 
           // create the parameters for inserting.
-          var pIWId = cmdInsert.CreateParameter();
-          pIWId.DbType = DbType.Int64;
-          pIWId.ParameterName = "@wordid";
-          cmdInsert.Parameters.Add(pIWId);
+          var pIWordId = cmdInsert.CreateParameter();
+          pIWordId.DbType = DbType.Int64;
+          pIWordId.ParameterName = "@wordid";
+          cmdInsert.Parameters.Add(pIWordId);
 
-          var pIFId = cmdInsert.CreateParameter();
-          pIFId.DbType = DbType.Int64;
-          pIFId.ParameterName = "@fileid";
-          cmdInsert.Parameters.Add(pIFId);
+          var pIFileId = cmdInsert.CreateParameter();
+          pIFileId.DbType = DbType.Int64;
+          pIFileId.ParameterName = "@fileid";
+          cmdInsert.Parameters.Add(pIFileId);
 
           foreach (var pendingParserWordsUpdate in pendingUpdates)
           {
@@ -109,21 +109,26 @@ namespace myoddweb.desktopsearch.service.Persisters
               continue;
             }
 
-            // then try and insert it for this file,
-            pIFId.Value = pendingParserWordsUpdate.FileId;
-            pIWId.Value = wordId;
-            if (1 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
+            foreach (var wordIdAndFileId in pendingParserWordsUpdate.WordIdsAndFileIds)
             {
-              continue;
-            }
-            
-            // we did not insert it... could it be because it exists already?
-            pSFId.Value = pendingParserWordsUpdate.FileId;
-            pSWId.Value = wordId;
-            var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
-            if (null == value || value == DBNull.Value)
-            {
-              _logger.Error($"There was an issue inserting word : {wordId} for file : {pendingParserWordsUpdate.FileId}");
+              var fileId = wordIdAndFileId.Value;
+              // then try and insert it for this file,
+              pIFileId.Value = fileId;
+              pIWordId.Value = wordId;
+              if (1 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
+              {
+                continue;
+              }
+
+              // we did not insert it... could it be because it exists already?
+              pSFileId.Value = fileId;
+              pSWordId.Value = wordId;
+              var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
+              if (null == value || value == DBNull.Value)
+              {
+                _logger.Error(
+                  $"There was an issue inserting word : {pendingParserWordsUpdate.Word.Value}({wordId}) for file : {fileId}");
+              }
             }
           }
         }

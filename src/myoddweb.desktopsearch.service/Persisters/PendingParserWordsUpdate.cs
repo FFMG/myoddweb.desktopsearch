@@ -13,6 +13,8 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -21,33 +23,27 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class PendingParserWordsUpdate : IPendingParserWordsUpdate
   {
     /// <inheritdoc />
-    public long Id { get; }
-
-    /// <inheritdoc />
-    public long FileId { get; }
+    public IDictionary<long, long> WordIdsAndFileIds { get; }
 
     /// <inheritdoc />
     public IWord Word { get; }
 
-    public PendingParserWordsUpdate(long id, long fileId, string word) :
-      this( id, fileId, new helper.IO.Word(word))
+    public PendingParserWordsUpdate(string word, IDictionary<long, long> wordIdsAndFileIds) :
+      this( new helper.IO.Word(word), wordIdsAndFileIds)
     {
     }
 
-    public PendingParserWordsUpdate( long id, long fileId, IWord word)
+    public PendingParserWordsUpdate( IWord word, IDictionary<long, long> wordIdsAndFileIds)
     {
       // set the id
-      Id = id;
-      if (id < 0)
+      WordIdsAndFileIds = wordIdsAndFileIds ?? throw new ArgumentNullException(nameof(wordIdsAndFileIds));
+      if (!wordIdsAndFileIds.Any())
       {
-        throw new ArgumentException("The parsed word id cannot be -ve!");
+        throw new ArgumentException("The list of ids/fileid cannot be empty");
       }
-
-      // set the file id.
-      FileId = fileId;
-      if (fileId < 0)
+      if (!wordIdsAndFileIds.Any( w => w.Key < 0 || w.Value < 0 ))
       {
-        throw new ArgumentException( "The file id cannot be -ve!");
+        throw new ArgumentException("The id and/or file id values cannot be -ve");
       }
 
       // save the word.
