@@ -29,7 +29,7 @@ namespace myoddweb.desktopsearch.helper.Components
     /// <summary>
     /// The regex we will be using over and over.
     /// </summary>
-    private readonly Regex _reg;
+    private readonly string _pattern;
 
     /// <summary>
     /// The maximum number of characters we want to read.
@@ -43,18 +43,9 @@ namespace myoddweb.desktopsearch.helper.Components
     /// </summary>
     /// <param name="pattern"></param>
     /// <param name="maxNumberReadCharacters"></param>
-    public FileParser(string pattern, int maxNumberReadCharacters) : this(new Regex(pattern), maxNumberReadCharacters )
+    public FileParser(string pattern, int maxNumberReadCharacters)
     {
-    }
-
-    /// <summary>
-    /// The constructor with a regex.
-    /// </summary>
-    /// <param name="regex"></param>
-    /// <param name="maxNumberReadCharacters"></param>
-    public FileParser(Regex regex, int maxNumberReadCharacters)
-    {
-      _reg = regex;
+      _pattern = pattern;
       _maxNumberReadCharacters = maxNumberReadCharacters;
     }
 
@@ -69,7 +60,7 @@ namespace myoddweb.desktopsearch.helper.Components
     {
       using (var sr = new StreamReader(helper.File.FullName))
       {
-        return await ParserAsync(helper, sr, func, token);
+        return await ParserAsync(helper, sr, func, token).ConfigureAwait(false);
       }
     }
 
@@ -84,8 +75,8 @@ namespace myoddweb.desktopsearch.helper.Components
     public Task<long> ParserAsync(IParserHelper helper, string text, Func<string, bool> func, CancellationToken token)
     {
       // split the line into words.
-      var words = _reg.Matches(text).OfType<Match>().Select(m => m.Groups[0].Value).ToArray();
-      return helper.AddWordAsync(words.Where(func).ToList(), token);
+      var words = Regex.Matches(text, _pattern).OfType<Match>().Select(m => m.Groups[0].Value).ToArray();
+      return helper.AddWordAsync(func == null ? words.ToList() : words.Where(func).ToList(), token);
     }
 
     /// <summary>
@@ -146,7 +137,7 @@ namespace myoddweb.desktopsearch.helper.Components
       }
 
       // we have to read to the next char.
-      var text = new StringBuilder();
+      var text = new StringBuilder(len);
       text.Append(buffer);
 
       // recreate the buffer
@@ -169,7 +160,7 @@ namespace myoddweb.desktopsearch.helper.Components
         token.ThrowIfCancellationRequested();
 
         var letter = new string(buffer, 0, read);
-        if (!_reg.IsMatch(letter))
+        if (!Regex.IsMatch(letter, _pattern ))
         {
           // if we are here we found a 'bad' character straight away.
           return text.ToString();
