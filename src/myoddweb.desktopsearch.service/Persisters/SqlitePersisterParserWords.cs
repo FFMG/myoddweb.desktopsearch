@@ -332,7 +332,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // get all the words that match this id.
-      var sqlSelectWordId = $"SELECT id, fileid FROM {Tables.ParserWords} where word=@word LIMIT {2*limit}";
+      var sqlSelectWordId = $"SELECT id, fileid FROM {Tables.ParserWords} where word=@word LIMIT {20*limit}";
       var sqlSelectWord = $"SELECT DISTINCT word FROM {Tables.ParserWords} order by fileid asc LIMIT {limit}";
       using (var cmdSelectWord = connectionFactory.CreateCommand(sqlSelectWord))
       using (var cmdSelectWordId = connectionFactory.CreateCommand(sqlSelectWordId))
