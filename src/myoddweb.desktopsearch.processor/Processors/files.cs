@@ -172,6 +172,15 @@ namespace myoddweb.desktopsearch.processor.Processors
             default:
               throw new ArgumentOutOfRangeException();
           }
+
+          if (tasks.Count < 4 * Environment.ProcessorCount)
+          {
+            continue;
+          }
+
+          await helper.Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
+
+          tasks.Clear();
         }
 
         // the 'continuewith' step is to pass all the words that we found.

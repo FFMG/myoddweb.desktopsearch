@@ -75,7 +75,11 @@ namespace myoddweb.desktopsearch.helper.Components
     public Task<long> ParserAsync(IParserHelper helper, string text, Func<string, bool> func, CancellationToken token)
     {
       // split the line into words.
-      var words = Regex.Matches(text, _pattern).OfType<Match>().Select(m => m.Groups[0].Value).ToArray();
+      var words = Regex.Matches(text, _pattern)
+        .OfType<Match>()
+        .Select(m => m.Value)
+        .Distinct()
+        .ToArray();
       return helper.AddWordAsync(func == null ? words.ToList() : words.Where(func).ToList(), token);
     }
 
