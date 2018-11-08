@@ -40,21 +40,19 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
+    /// <summary>
+    /// Insert a parsed word.
+    /// </summary>
     internal class InsertParserWordCommand : Command
     {
       public IDataParameter Word { get; }
 
-      public IDataParameter FileId { get; }
-
       public InsertParserWordCommand(IConnectionFactory factory)
       {
-        var sql = $"INSERT OR IGNORE INTO {Tables.ParserWords} (fileid, word) VALUES (@fileid, @word)";
+        // try and insert the word into the table.
+        // we will ignore duplicates and rather return the id.
+        var sql = $"INSERT OR IGNORE INTO {Tables.ParserWords} (word) VALUES (@word)";
         Cmd = factory.CreateCommand(sql);
-
-        FileId = Cmd.CreateParameter();
-        FileId.DbType = DbType.Int64;
-        FileId.ParameterName = "@fileid";
-        Cmd.Parameters.Add(FileId);
 
         Word = Cmd.CreateParameter();
         Word.DbType = DbType.String;
@@ -63,21 +61,18 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
+    /// <summary>
+    /// Look for a parsed word id.
+    /// </summary>
     internal class SelectParserWordCommand : Command
     {
       public IDataParameter Word { get; }
 
-      public IDataParameter FileId { get; }
-
       public SelectParserWordCommand(IConnectionFactory factory)
       {
-        var sql = $"SELECT id FROM {Tables.ParserWords} where fileid=@fileid AND word=@word";
+        // look for the word id
+        var sql = $"SELECT id FROM {Tables.ParserWords} where word=@word";
         Cmd = factory.CreateCommand(sql);
-
-        FileId = Cmd.CreateParameter();
-        FileId.DbType = DbType.Int64;
-        FileId.ParameterName = "@fileid";
-        Cmd.Parameters.Add(FileId);
 
         Word = Cmd.CreateParameter();
         Word.DbType = DbType.String;
@@ -86,6 +81,64 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
+    /// <summary>
+    /// Insert a parsed file word id/fileid.
+    /// </summary>
+    internal class InsertParserFilesWordsCommand : Command
+    {
+      public IDataParameter WordId { get; }
+
+      public IDataParameter FileId { get; }
+
+      public InsertParserFilesWordsCommand(IConnectionFactory factory)
+      {
+        // try and insert the word into the table.
+        // we will ignore duplicates and rather return the id.
+        var sql = $"INSERT OR IGNORE INTO {Tables.ParserFilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
+        Cmd = factory.CreateCommand(sql);
+
+        WordId = Cmd.CreateParameter();
+        WordId.DbType = DbType.Int64;
+        WordId.ParameterName = "@wordid";
+        Cmd.Parameters.Add(WordId);
+
+        FileId = Cmd.CreateParameter();
+        FileId.DbType = DbType.Int64;
+        FileId.ParameterName = "@fileid";
+        Cmd.Parameters.Add(FileId);
+      }
+    }
+
+    /// <summary>
+    /// Look for a parsed word id.
+    /// </summary>
+    internal class SelectParserFilesWordsCommand : Command
+    {
+      public IDataParameter WordId { get; }
+
+      public IDataParameter FileId { get; }
+
+      public SelectParserFilesWordsCommand(IConnectionFactory factory)
+      {
+        // look for the word id
+        var sql = $"SELECT wordid FROM {Tables.ParserFilesWords} where wordid=@wordid and fileid=@fileid";
+        Cmd = factory.CreateCommand(sql);
+
+        WordId = Cmd.CreateParameter();
+        WordId.DbType = DbType.Int64;
+        WordId.ParameterName = "@wordid";
+        Cmd.Parameters.Add(WordId);
+
+        FileId = Cmd.CreateParameter();
+        FileId.DbType = DbType.Int64;
+        FileId.ParameterName = "@fileid";
+        Cmd.Parameters.Add(FileId);
+      }
+    }
+
+    /// <summary>
+    /// Lookfor a file/word id.
+    /// </summary>
     internal class SelectFilesWordsCommand : Command
     {
       public IDataParameter WordId { get; }
@@ -108,6 +161,9 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
+    /// <summary>
+    /// Insert data into the FilesWords table
+    /// </summary>
     internal class InsertFilesWordsCommand : Command
     {
       public IDataParameter WordId { get; }
@@ -130,6 +186,9 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
+    /// <summary>
+    /// Look for an existing word id in the words id
+    /// </summary>
     internal class SelectWordCommand : Command
     {
       public IDataParameter Word { get; }
@@ -180,6 +239,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       using (var cmdSelectWordWord = new SelectWordCommand(connectionFactory))              //  look for the word
       using (var cmdInsertParserWord = new InsertParserWordCommand(connectionFactory))  //  insert the word in parsed word
       using (var cmdSelectParserWord = new SelectParserWordCommand(connectionFactory))  //  make sure that the parsed word was added properly.
+      using (var cmdInsertParserFilesWords = new InsertParserFilesWordsCommand(connectionFactory))  //  insert a wordid/fileid
+      using (var cmdSelectParserFilesWords = new SelectParserFilesWordsCommand(connectionFactory))  //  look for theinserted wordid/fileid
       {
         foreach (var word in distinctWords)
         {
@@ -192,12 +253,12 @@ namespace myoddweb.desktopsearch.service.Persisters
             // then we do not need to add it anymore
             // we just need to add it to the FilesWords Table.
             if (await TryInsertFilesWords(
-              fileid, 
-              word, 
-              connectionFactory, 
-              cmdInsertFilesWords, 
+              fileid,
+              word,
+              connectionFactory,
+              cmdInsertFilesWords,
               cmdSelectFilesWords,
-              cmdSelectWordWord, 
+              cmdSelectWordWord,
               token).ConfigureAwait(false))
             {
               // the word was not added to the parser table
@@ -207,7 +268,16 @@ namespace myoddweb.desktopsearch.service.Persisters
               continue;
             }
 
-            if (!await TryInsertPartWord(fileid, word, connectionFactory, cmdInsertParserWord, cmdSelectParserWord, token).ConfigureAwait(false))
+            // try and add the word to the 
+            var wordid = await InsertOrGetWord(word, connectionFactory, cmdInsertParserWord, cmdSelectParserWord, token).ConfigureAwait(false);
+            if (-1 == wordid)
+            {
+              // the logging was in the Validate function.
+              continue;
+            }
+
+            // we can now add that wordid/fileid 
+            if( !await TryInsertWordAndFileId(wordid, fileid, connectionFactory, cmdInsertParserFilesWords, cmdSelectParserFilesWords, token).ConfigureAwait(false))
             {
               // the logging was in the Validate function.
               continue;
@@ -234,32 +304,111 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteFileId(long fileid, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> DeleteFileId(long fileId, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
       {
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
-      var sqlDelete = $"DELETE FROM {Tables.ParserWords} WHERE fileid=@fileid";
-      using (var cmd = connectionFactory.CreateCommand(sqlDelete))
+      var sqlSelectWordIds = $"SELECT wordid FROM {Tables.ParserFilesWords} WHERE fileid=@fileid";
+      var sqlDeleteWordAndFileIds = $"DELETE FROM {Tables.ParserFilesWords} WHERE fileid=@fileid";
+      using (var cmdDeleteWordAndFileIds = connectionFactory.CreateCommand(sqlDeleteWordAndFileIds))
+      using (var cmdSelectWordIds = connectionFactory.CreateCommand(sqlSelectWordIds))
       {
-        var pFileId = cmd.CreateParameter();
-        pFileId.DbType = DbType.Int64;
-        pFileId.ParameterName = "@fileid";
-        cmd.Parameters.Add(pFileId);
+        var pDeleteFileId = cmdDeleteWordAndFileIds.CreateParameter();
+        pDeleteFileId.DbType = DbType.Int64;
+        pDeleteFileId.ParameterName = "@fileid";
+        cmdDeleteWordAndFileIds.Parameters.Add(pDeleteFileId);
+
+        var pSelectFileId = cmdSelectWordIds.CreateParameter();
+        pSelectFileId.DbType = DbType.Int64;
+        pSelectFileId.ParameterName = "@fileid";
+        cmdSelectWordIds.Parameters.Add(pSelectFileId);
 
         try
         {
+          // look for all the word id of that file.
+          // so we can delete it later if there are no more words.
+          pSelectFileId.Value = fileId;
+          long wordId = -1;
+          var value = await connectionFactory.ExecuteReadOneAsync(cmdSelectWordIds, token).ConfigureAwait(false);
+          if (value != null && value != DBNull.Value)
+          {
+            wordId = (long) value;
+          }
+
           // get out if needed.
           token.ThrowIfCancellationRequested();
-
+          
           // then do the actual delete.
-          pFileId.Value = fileid;
-          if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+          pDeleteFileId.Value = fileId;
+          if (0 == await connectionFactory.ExecuteWriteAsync(cmdDeleteWordAndFileIds, token).ConfigureAwait(false))
           {
-            _logger.Verbose($"Could not delete parser words for file id: {fileid}, do they still exist? was there any?");
+            _logger.Verbose($"Could not delete parser words for file id: {fileId}, do they still exist? was there any?");
           }
+
+          // then we can delete whatever 
+          if (wordId != -1)
+          {
+            await DeleteWordIdsIfNoFileIds(new List<long> {wordId}, connectionFactory, token).ConfigureAwait(false);
+          }
+
+          // we are done.
+          return true;
+        }
+        catch (OperationCanceledException)
+        {
+          _logger.Warning("Received cancellation request - Parser words - Delete file");
+          throw;
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
+          return false;
+        }
+      }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DeleteFileIds(long wordId, IList<long> fileIds, IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      if (null == connectionFactory)
+      {
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
+      }
+
+      var sqlDeleteWordAndFileIds = $"DELETE FROM {Tables.ParserFilesWords} WHERE wordid=@wordid AND fileid=@fileid";
+      using (var cmdDeleteWordAndFileIds = connectionFactory.CreateCommand(sqlDeleteWordAndFileIds))
+      {
+        var pWordId = cmdDeleteWordAndFileIds.CreateParameter();
+        pWordId.DbType = DbType.Int64;
+        pWordId.ParameterName = "@wordid";
+        cmdDeleteWordAndFileIds.Parameters.Add(pWordId);
+
+        var pFileId = cmdDeleteWordAndFileIds.CreateParameter();
+        pFileId.DbType = DbType.Int64;
+        pFileId.ParameterName = "@fileid";
+        cmdDeleteWordAndFileIds.Parameters.Add(pFileId);
+
+        try
+        {
+          foreach (var fileId in fileIds)
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            // then do the actual delete.
+            pWordId.Value = wordId;
+            pFileId.Value = fileId;
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmdDeleteWordAndFileIds, token).ConfigureAwait(false))
+            {
+              _logger.Verbose($"Could not delete parser words for file id: {fileId}, do they still exist? was there any?");
+            }
+          }
+
+          // then we can delete whatever 
+
 
           // we are done.
           return true;
@@ -285,14 +434,22 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
+      // first we delete all the 
       var sqlDelete = $"DELETE FROM {Tables.ParserWords} WHERE id=@id";
-      using (var cmd = connectionFactory.CreateCommand(sqlDelete))
+      var sqlDeleteWordAndFileId = $"DELETE FROM {Tables.ParserFilesWords} WHERE wordid=@wordid";
+      using (var cmdDeleteWord = connectionFactory.CreateCommand(sqlDelete))
+      using (var cmdDeleteWordAndFile = connectionFactory.CreateCommand(sqlDeleteWordAndFileId))
       {
-        var pId = cmd.CreateParameter();
-        pId.DbType = DbType.Int64;
-        pId.ParameterName = "@id";
-        cmd.Parameters.Add(pId);
+        var pIdWord = cmdDeleteWord.CreateParameter();
+        pIdWord.DbType = DbType.Int64;
+        pIdWord.ParameterName = "@id";
+        cmdDeleteWord.Parameters.Add(pIdWord);
 
+        var pIdWordAndFile = cmdDeleteWordAndFile.CreateParameter();
+        pIdWordAndFile.DbType = DbType.Int64;
+        pIdWordAndFile.ParameterName = "@wordid";
+        cmdDeleteWordAndFile.Parameters.Add(pIdWordAndFile);
+        
         try
         {
           foreach (var wordid in wordids)
@@ -300,14 +457,23 @@ namespace myoddweb.desktopsearch.service.Persisters
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
-            // then do the actual delete.
-            pId.Value = wordid;
-            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+            // delete the word itself.
+            pIdWord.Value = wordid;
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmdDeleteWord, token).ConfigureAwait(false))
             {
               _logger.Warning($"Could not delete parser words, word id: {wordid}, does it still exist?");
+              continue;
+            }
+
+            // then delete the words/files ids.
+            pIdWordAndFile.Value = wordid;
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmdDeleteWordAndFile, token).ConfigureAwait(false))
+            {
+              _logger.Warning($"Could not delete parser files and words id for word id: {wordid}.");
             }
           }
-          // we are done.
+
+          // we are done
           return true;
         }
         catch (OperationCanceledException)
@@ -331,43 +497,56 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
-      // get all the words that match this id.
-      var sqlSelectWordId = $"SELECT id, fileid FROM {Tables.ParserWords} where word=@word LIMIT {20*limit}";
-      var sqlSelectWord = $"SELECT DISTINCT word FROM {Tables.ParserWords} order by fileid asc LIMIT {limit}";
+      // get the files.
+      const int fileIdsLimit = 1000;
+
+      // get the older words ... one at a time.
+      var sqlSelectWord = $"SELECT id, word FROM {Tables.ParserWords} order by id asc LIMIT {limit}";
+
+      // then we can look for the file ids.
+      var sqlSelectWordId = $"SELECT fileid FROM {Tables.ParserFilesWords} where wordid=@wordid LIMIT {fileIdsLimit}";  //  make sure we don't get to many,.
       using (var cmdSelectWord = connectionFactory.CreateCommand(sqlSelectWord))
       using (var cmdSelectWordId = connectionFactory.CreateCommand(sqlSelectWordId))
       {
-        var pWord = cmdSelectWordId.CreateParameter();
+        var pWord = cmdSelectWord.CreateParameter();
         pWord.DbType = DbType.String;
         pWord.ParameterName = "@word";
-        cmdSelectWordId.Parameters.Add(pWord);
+        cmdSelectWord.Parameters.Add(pWord);
 
+        var pWordId = cmdSelectWordId.CreateParameter();
+        pWordId.DbType = DbType.Int64;
+        pWordId.ParameterName = "@word";
+        cmdSelectWordId.Parameters.Add(pWordId);
+        
         var parserWord = new List<IPendingParserWordsUpdate>((int)limit);
         try
         {
-          var reader = await connectionFactory.ExecuteReadAsync(cmdSelectWord, token).ConfigureAwait(false);
-          while (reader.Read())
+          var readerWord = await connectionFactory.ExecuteReadAsync(cmdSelectWord, token).ConfigureAwait(false);
+          while (readerWord.Read())
           {
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
             // the word
-            var word = (string) reader["word"];
+            var id = (long)readerWord["id"];
+            var word = (string)readerWord["word"];
 
-            var wordIdAndFileId = new Dictionary<long, long>();
-            pWord.Value = word;
-            using (var reader2 = await connectionFactory.ExecuteReadAsync(cmdSelectWordId, token).ConfigureAwait(false))
+            // then look for some file ids.
+            pWordId.Value = id;
+            using (var readerFileIds = await connectionFactory.ExecuteReadAsync(cmdSelectWordId, token).ConfigureAwait(false))
             {
-              while (reader2.Read())
+              var fileIds = new List<long>(fileIdsLimit);
+              while (readerFileIds.Read())
               {
                 // get out if needed.
                 token.ThrowIfCancellationRequested();
 
-                wordIdAndFileId.Add((long) reader2["id"], (long) reader2["fileid"]);
+                // add this item to the list of file ids.
+                fileIds.Add( (long)readerFileIds["fileid"]);
               }
 
               // add the word to the list.
-              parserWord.Add(new PendingParserWordsUpdate(word, wordIdAndFileId));
+              parserWord.Add(new PendingParserWordsUpdate(id, word, fileIds));
             }
           }
           return parserWord;
@@ -386,6 +565,115 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     #region Private functions
+    private async Task<bool> DeleteWordIdsIfNoFileIds(IList<long> wordIds, IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      if (null == connectionFactory)
+      {
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
+      }
+
+      // first we delete all the 
+      var sqlDeleteWords = $"DELETE FROM {Tables.ParserWords} WHERE id=@id";
+      var sqlSelectWordId = $"SELECT wordid FROM {Tables.ParserFilesWords} WHERE wordid=@wordid LIMIT 1";
+      using (var cmdDeleteWord = connectionFactory.CreateCommand(sqlDeleteWords))
+      using (var cmdSelectWordId = connectionFactory.CreateCommand(sqlSelectWordId))
+      {
+        try
+        {
+          var pIdWord = cmdDeleteWord.CreateParameter();
+          pIdWord.DbType = DbType.Int64;
+          pIdWord.ParameterName = "@id";
+          cmdDeleteWord.Parameters.Add(pIdWord);
+
+          var pSelectWordId = cmdSelectWordId.CreateParameter();
+          pSelectWordId.DbType = DbType.Int64;
+          pSelectWordId.ParameterName = "@wordid";
+          cmdSelectWordId.Parameters.Add(pSelectWordId);
+
+          // we look for the word id.
+          foreach (var wordId in wordIds)
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            // the word id we are looking for.
+            pSelectWordId.Value = wordId;
+            var value = await connectionFactory.ExecuteReadOneAsync(cmdSelectWordId, token).ConfigureAwait(false);
+            if (value != null && value != DBNull.Value)
+            {
+              //  we found at at least one other file id that still uses that wordl id.
+              continue;
+            }
+
+            // we no longer found any other file id that uses that word
+            // so we can now remove it.
+            pIdWord.Value = wordId;
+            if (0 == await connectionFactory.ExecuteWriteAsync(cmdDeleteWord, token).ConfigureAwait(false))
+            {
+              _logger.Warning($"Could not delete parser words, word id: {wordId}, does it still exist?");
+            }
+          }
+
+          // we are done
+          return true;
+        }
+        catch (OperationCanceledException)
+        {
+          _logger.Warning("Received cancellation request - Parser words - Delete word");
+          throw;
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
+          return false;
+        }
+      }
+    }
+
+    /// <summary>
+    /// Try and insert a linked wordid/fileid
+    /// </summary>
+    /// <param name="wordId"></param>
+    /// <param name="fileId"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="cmdInsertParserFilesWords"></param>
+    /// <param name="cmdSelectParserFilesWords"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> TryInsertWordAndFileId(
+      long wordId, 
+      long fileId, 
+      IConnectionFactory connectionFactory, 
+      InsertParserFilesWordsCommand cmdInsertParserFilesWords, 
+      SelectParserFilesWordsCommand cmdSelectParserFilesWords, 
+      CancellationToken token
+    )
+    {
+      // try ans insert that id directly.
+      // now that we have a fileid/wordid we can then try and insert the value 
+      cmdInsertParserFilesWords.FileId.Value = fileId;
+      cmdInsertParserFilesWords.WordId.Value = wordId;
+      if (1 == await connectionFactory.ExecuteWriteAsync(cmdInsertParserFilesWords.Cmd, token).ConfigureAwait(false))
+      {
+        // the word was added, we are done.
+        return true;
+      }
+
+      // is it really a duplicate?
+      // then lets look for it.
+      cmdSelectParserFilesWords.FileId.Value = fileId;
+      cmdSelectParserFilesWords.WordId.Value = wordId;
+      var valueFileWord = await connectionFactory.ExecuteReadOneAsync(cmdSelectParserFilesWords.Cmd, token).ConfigureAwait(false);
+      if (null != valueFileWord && valueFileWord != DBNull.Value)
+      {
+        return true;
+      }
+
+      // something did not work.
+      _logger.Error($"There was an issue inserting word {wordId} for file : {fileId}");
+      return false;
+    }
+
     /// <summary>
     /// Try and insert the word inf the FilesWords table if the word has been parsed already
     /// If it has already been parsed, then there is no need to add it again.
@@ -451,45 +739,39 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Try and insert the word to the parser table
     /// If we have an error we will check that the word already exists, (ON IGNORE)
     /// </summary>
-    /// <param name="fileId"></param>
     /// <param name="word"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="cmdInsert"></param>
     /// <param name="cmdSelect">If the insert fails we will use this command to make sure it was because the word already exists</param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> TryInsertPartWord(
-      long fileId,
+    private async Task<long> InsertOrGetWord(
       string word,
       IConnectionFactory connectionFactory,
       InsertParserWordCommand cmdInsert,
       SelectParserWordCommand cmdSelect,
       CancellationToken token)
     {
-      cmdInsert.FileId.Value = fileId;
-      cmdInsert.Word.Value = word;
-      if (1 == await connectionFactory.ExecuteWriteAsync(cmdInsert.Cmd, token).ConfigureAwait(false))
-      {
-        // the word was inserted!
-        return true;
-      }
-
-      // looks ike the word _might_ already exist.
-      // so we will double check.
-      cmdSelect.FileId.Value = fileId;
+      // we will be selecting the word if.
       cmdSelect.Word.Value = word;
+
+      // try and insert the word.
+      // it does not matter if we get an error or not
+      // we need to get the id for it.
+      cmdInsert.Word.Value = word;
+      await connectionFactory.ExecuteWriteAsync(cmdInsert.Cmd, token).ConfigureAwait(false);
+
       var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect.Cmd, token).ConfigureAwait(false);
       if (null != value && value != DBNull.Value)
       {
-        // the word already exist, so it is the same as having added it.
-        // this means that another thread was able to add the word.
-        return true;
+        // we found the word...
+        return (long)value;
       }
 
-      _logger.Error($"There was an issue adding word: {word} for fileid: {fileId} to persister");
-      return false;
+      // we could not insert it ... or look for it.
+      _logger.Error($"There was an issue adding word: {word} to persister");
+      return -1;
     }
     #endregion
-
   }
 }

@@ -23,27 +23,27 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class PendingParserWordsUpdate : IPendingParserWordsUpdate
   {
     /// <inheritdoc />
-    public IDictionary<long, long> WordIdsAndFileIds { get; }
+    public IList<long> FileIds { get; }
 
     /// <inheritdoc />
     public IWord Word { get; }
 
-    public PendingParserWordsUpdate(string word, IDictionary<long, long> wordIdsAndFileIds) :
-      this( new helper.IO.Word(word), wordIdsAndFileIds)
+    /// <inheritdoc />
+    public long Id { get; }
+
+    public PendingParserWordsUpdate(long id, string word, IList<long> wordIdsAndFileIds) :
+      this( id, new helper.IO.Word(word), wordIdsAndFileIds)
     {
     }
 
-    public PendingParserWordsUpdate( IWord word, IDictionary<long, long> wordIdsAndFileIds)
+    public PendingParserWordsUpdate( long id, IWord word, IList<long> fileIds)
     {
       // set the id
-      WordIdsAndFileIds = wordIdsAndFileIds ?? throw new ArgumentNullException(nameof(wordIdsAndFileIds));
-      if (!wordIdsAndFileIds.Any())
+      Id = id;
+      FileIds = fileIds ?? throw new ArgumentNullException(nameof(fileIds));
+      if (!fileIds.Any())
       {
         throw new ArgumentException("The list of ids/fileid cannot be empty");
-      }
-      if (wordIdsAndFileIds.Any( w => w.Key < 0 || w.Value < 0 ))
-      {
-        throw new ArgumentException("The id and/or file id values cannot be -ve");
       }
 
       // save the word.

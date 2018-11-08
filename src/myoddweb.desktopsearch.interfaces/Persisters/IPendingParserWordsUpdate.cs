@@ -20,13 +20,18 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IPendingParserWordsUpdate
   {
     /// <summary>
-    /// The word parser id.
+    /// All the file ids for that word.
     /// </summary>
-    IDictionary<long, long> WordIdsAndFileIds { get; }
+    IList<long> FileIds { get; }
 
     /// <summary>
     /// The pending words.
     /// </summary>
     IO.IWord Word { get; }
+
+    /// <summary>
+    /// The pending word id.
+    /// </summary>
+    long Id { get; }
   }
 }

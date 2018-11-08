@@ -96,10 +96,10 @@ namespace myoddweb.desktopsearch.processor.Processors
             token.ThrowIfCancellationRequested();
 
             // delete that part id so we do not do it again.
-            await _persister.ParserWords.DeleteWordIds(pendingParserWordsUpdate.WordIdsAndFileIds.Select(w => w.Key).ToList(), connectionFactory, token).ConfigureAwait( false );
+            await _persister.ParserWords.DeleteFileIds(pendingParserWordsUpdate.Id, pendingParserWordsUpdate.FileIds, connectionFactory, token).ConfigureAwait( false );
 
             // if we found any, log it.
-            _logger.Verbose($"Processor : {pendingParserWordsUpdate.Word.Value} processed for {pendingParserWordsUpdate.WordIdsAndFileIds.Count} file(s).");
+            _logger.Verbose($"Processor : {pendingParserWordsUpdate.Word.Value} processed for {pendingParserWordsUpdate.FileIds.Count} file(s).");
           }
 
           // we are done.

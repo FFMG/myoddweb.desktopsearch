@@ -32,13 +32,23 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     Task<long> AddWordAsync( long fileid, IReadOnlyList<string> words, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
-    /// Delete all the words for a file id.
+    /// Delete file ids for a word id
     /// </summary>
-    /// <param name="fileid"></param>
+    /// <param name="wordId"></param>
+    /// <param name="fileIds"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFileId(long fileid, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> DeleteFileIds(long wordId, IList<long> fileIds, IConnectionFactory connectionFactory, CancellationToken token);
+
+    /// <summary>
+    /// Delete all the words for a file id.
+    /// </summary>
+    /// <param name="fileId"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> DeleteFileId( long fileId, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Delete a single word id

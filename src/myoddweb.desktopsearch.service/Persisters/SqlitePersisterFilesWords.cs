@@ -109,9 +109,8 @@ namespace myoddweb.desktopsearch.service.Persisters
               continue;
             }
 
-            foreach (var wordIdAndFileId in pendingParserWordsUpdate.WordIdsAndFileIds)
+            foreach (var fileId in pendingParserWordsUpdate.FileIds)
             {
-              var fileId = wordIdAndFileId.Value;
               // then try and insert it for this file,
               pIFileId.Value = fileId;
               pIWordId.Value = wordId;
