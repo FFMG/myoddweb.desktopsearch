@@ -388,7 +388,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // then we can delete whatever words are now complete.
-          await DeleteWordIdsIfNoFileIds(connectionFactory, token).ConfigureAwait(false);
+          await DeleteWordIdsIfNoFileIds( wordId, connectionFactory, token).ConfigureAwait(false);
 
           // we are done.
           return true;
@@ -453,6 +453,9 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
           }
 
+          // remove any words that no longer have any file ids attached to it.
+          await DeleteWordIdsIfNoFileIds(connectionFactory, token).ConfigureAwait(false);
+
           // we are done
           return true;
         }
@@ -477,13 +480,14 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
-      // get the files.
-      const int fileIdsLimit = 1000;
+      // get the files ids we can flag as proccessed.
+      // we get a large number of them
+      // but we do not let the user set the number so they don't set a crazy number.
+      // we don't want to kill the process doing one simple/common word.
+      const int fileIdsLimit = 10000;
 
       // get the older words.
-      var sqlSelectWord = $@"SELECT id, word FROM {Tables.ParserWords} pw
-                             WHERE id IN ( SELECT wordid FROM {Tables.ParserFilesWords} pfw)
-                             ORDER BY id asc LIMIT {limit}";
+      var sqlSelectWord = $"SELECT id, word FROM {Tables.ParserWords} pw ORDER BY id asc LIMIT {limit}";
 
       // then we can look for the file ids.
       var sqlSelectWordId = $"SELECT fileid FROM {Tables.ParserFilesWords} where wordid=@wordid LIMIT {fileIdsLimit}";  //  make sure we don't get to many,.
@@ -546,6 +550,62 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     #region Private functions
+
+    /// <summary>
+    /// Delete all the words that do not have any files attached to it.
+    /// </summary>
+    /// <param name="wordid"></param>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> DeleteWordIdsIfNoFileIds(long wordid, IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      if (null == connectionFactory)
+      {
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
+      }
+
+      var sql = $@"DELETE FROM {Tables.ParserWords}
+                   WHERE
+                     id IN
+                   (
+                     SELECT ID 
+                     FROM   {Tables.ParserWords} 
+                     WHERE 
+                     id = @id AND
+                     ID NOT IN (SELECT wordid FROM {Tables.ParserFilesWords} pfw)
+                   )";
+
+      using (var cmd = connectionFactory.CreateCommand(sql))
+      {
+        try
+        {
+          var pId = cmd.CreateParameter();
+          pId.DbType = DbType.Int64;
+          pId.ParameterName = "@id";
+          cmd.Parameters.Add(pId);
+
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
+          pId.Value = wordid;
+          await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false);
+
+          return true;
+        }
+        catch (OperationCanceledException)
+        {
+          _logger.Warning("Received cancellation request - Parser words - Delete word");
+          throw;
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
+          return false;
+        }
+      }
+    }
+
     /// <summary>
     /// Delete all the words that do not have any files attached to it.
     /// </summary>
@@ -565,7 +625,7 @@ namespace myoddweb.desktopsearch.service.Persisters
                    (
                      SELECT ID 
                      FROM   {Tables.ParserWords} 
-                     WHERE  ID NOT IN (SELECT wordid FROM {Tables.ParserFilesWords} pfw)
+                     WHERE ID NOT IN (SELECT wordid FROM {Tables.ParserFilesWords} pfw)
                    )";
 
       using (var cmd = connectionFactory.CreateCommand(sql))
