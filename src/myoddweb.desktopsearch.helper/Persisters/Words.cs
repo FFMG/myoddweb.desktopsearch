@@ -22,51 +22,16 @@ namespace myoddweb.desktopsearch.helper.Persisters
 {
   public class Words : IWordsHelper
   {
-    #region Member variables
-    /// <summary>
-    /// The lock to make sure that we do not create the same thing over and over.
-    /// </summary>
-    private readonly object _lock = new object();
-
-    /// <summary>
-    /// Check if this item has been disposed or not.
-    /// </summary>
-    private bool _disposed;
-
+    #region Insert
     /// <summary>
     /// The insert command;
     /// </summary>
     private IDbCommand _insertCommand;
 
     /// <summary>
-    /// The select command;
-    /// </summary>
-    private IDbCommand _selectCommand;
-
-    /// <summary>
-    /// The insert word parameter;
-    /// </summary>
-    private IDbDataParameter _selectword;
-
-    /// <summary>
     /// The insert word parameter;
     /// </summary>
     private IDbDataParameter _insertWord;
-
-    /// <summary>
-    /// The connection factory.
-    /// </summary>
-    private readonly IConnectionFactory _factory;
-
-    /// <summary>
-    /// The name of the table.
-    /// </summary>
-    private readonly string _tableName;
-
-    /// <summary>
-    /// The sql string that we will use to look for an id.
-    /// </summary>
-    private string SelectSql => $"SELECT id FROM {_tableName} WHERE word = @word";
 
     /// <summary>
     /// The sql string that we will use to insert a word.
@@ -75,73 +40,24 @@ namespace myoddweb.desktopsearch.helper.Persisters
     private string InsertSql => $"INSERT OR IGNORE INTO {_tableName} (word) VALUES (@word)";
 
     /// <summary>
-    /// Create the select command if needed.
-    /// </summary>
-    private IDbCommand SelectCommand
-    {
-      get
-      {
-        if (_selectCommand != null)
-        {
-          return _selectCommand;
-        }
-
-        lock (_lock)
-        {
-          if (_selectCommand == null)
-          {
-            _selectCommand = _factory.CreateCommand(SelectSql);
-          }
-          return _selectCommand;
-        }
-      }
-    }
-
-    /// <summary>
     /// Create the Insert command if needed.
     /// </summary>
     private IDbCommand InsertCommand
     {
       get
       {
-        if (_insertCommand != null )
+        if (_insertCommand != null)
         {
           return _insertCommand;
         }
 
         lock (_lock)
         {
-          if (_insertCommand == null )
+          if (_insertCommand == null)
           {
             _insertCommand = _factory.CreateCommand(InsertSql);
           }
           return _insertCommand;
-        }
-      }
-    }
-
-    /// <summary>
-    /// The word select parameter.
-    /// </summary>
-    private IDbDataParameter SelectWord
-    {
-      get
-      {
-        if (null != _selectword)
-        {
-          return _selectword;
-        }
-
-        lock (_lock)
-        {
-          if (null == _selectword)
-          {
-            _selectword = SelectCommand.CreateParameter();
-            _selectword.DbType = DbType.String;
-            _selectword.ParameterName = "@word";
-            SelectCommand.Parameters.Add(_selectword);
-          }
-          return _selectword;
         }
       }
     }
@@ -173,6 +89,94 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
     #endregion
 
+    #region Select
+    /// <summary>
+    /// The select command;
+    /// </summary>
+    private IDbCommand _selectCommand;
+
+    /// <summary>
+    /// The insert word parameter;
+    /// </summary>
+    private IDbDataParameter _selectword;
+
+    /// <summary>
+    /// The sql string that we will use to look for an id.
+    /// </summary>
+    private string SelectSql => $"SELECT id FROM {_tableName} WHERE word = @word";
+
+    /// <summary>
+    /// Create the select command if needed.
+    /// </summary>
+    private IDbCommand SelectCommand
+    {
+      get
+      {
+        if (_selectCommand != null)
+        {
+          return _selectCommand;
+        }
+
+        lock (_lock)
+        {
+          if (_selectCommand == null)
+          {
+            _selectCommand = _factory.CreateCommand(SelectSql);
+          }
+          return _selectCommand;
+        }
+      }
+    }
+
+    /// <summary>
+    /// The word select parameter.
+    /// </summary>
+    private IDbDataParameter SelectWord
+    {
+      get
+      {
+        if (null != _selectword)
+        {
+          return _selectword;
+        }
+
+        lock (_lock)
+        {
+          if (null == _selectword)
+          {
+            _selectword = SelectCommand.CreateParameter();
+            _selectword.DbType = DbType.String;
+            _selectword.ParameterName = "@word";
+            SelectCommand.Parameters.Add(_selectword);
+          }
+          return _selectword;
+        }
+      }
+    }
+    #endregion
+
+    #region Member variables
+    /// <summary>
+    /// The lock to make sure that we do not create the same thing over and over.
+    /// </summary>
+    private readonly object _lock = new object();
+
+    /// <summary>
+    /// Check if this item has been disposed or not.
+    /// </summary>
+    private bool _disposed;
+
+    /// <summary>
+    /// The connection factory.
+    /// </summary>
+    private readonly IConnectionFactory _factory;
+
+    /// <summary>
+    /// The name of the table.
+    /// </summary>
+    private readonly string _tableName;
+    #endregion
+
     public Words(IConnectionFactory factory, string tableName )
     {
       // the table name
@@ -180,6 +184,18 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
       // save the factory.
       _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+    }
+
+    /// <summary>
+    /// Check that this class has not been disposed already.
+    /// </summary>
+    private void ThrowIfDisposed()
+    {
+      if (!_disposed)
+      {
+        return;
+      }
+      throw new ObjectDisposedException(GetType().FullName);
     }
 
     /// <inheritdoc />
@@ -231,18 +247,6 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // if it existed, get the id
       // if we inserted it, get the id.
       return await GetIdAsync(word, token).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Check that this class has not been disposed already.
-    /// </summary>
-    private void ThrowIfDisposed()
-    {
-      if (!_disposed)
-      {
-        return;
-      }
-      throw new ObjectDisposedException( GetType().FullName );
     }
   }
 }

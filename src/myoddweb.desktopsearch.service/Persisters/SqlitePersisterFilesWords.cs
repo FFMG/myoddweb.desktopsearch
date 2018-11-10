@@ -18,6 +18,7 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -55,6 +56,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
+    public string TableName => Tables.FilesWords;
+
+    /// <inheritdoc />
     public async Task<bool> AddParserWordsAsync(IList<IPendingParserWordsUpdate> pendingUpdates, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
@@ -72,33 +76,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // then do an inserts.
-        var sqlSelect = $"SELECT wordid FROM {Tables.FilesWords} where wordid=@wordid AND fileid=@fileid";
-        var sqlInsert = $"INSERT OR IGNORE INTO {Tables.FilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
-        using (var cmdInsert = connectionFactory.CreateCommand(sqlInsert))
-        using (var cmdSelect = connectionFactory.CreateCommand(sqlSelect))
+        using (var filesWords = new FilesWordsHelper(connectionFactory, TableName))
         {
-          // create the parameters for inserting.
-          var pSWordId = cmdSelect.CreateParameter();
-          pSWordId.DbType = DbType.Int64;
-          pSWordId.ParameterName = "@wordid";
-          cmdSelect.Parameters.Add(pSWordId);
-
-          var pSFileId = cmdSelect.CreateParameter();
-          pSFileId.DbType = DbType.Int64;
-          pSFileId.ParameterName = "@fileid";
-          cmdSelect.Parameters.Add(pSFileId);
-
-          // create the parameters for inserting.
-          var pIWordId = cmdInsert.CreateParameter();
-          pIWordId.DbType = DbType.Int64;
-          pIWordId.ParameterName = "@wordid";
-          cmdInsert.Parameters.Add(pIWordId);
-
-          var pIFileId = cmdInsert.CreateParameter();
-          pIFileId.DbType = DbType.Int64;
-          pIFileId.ParameterName = "@fileid";
-          cmdInsert.Parameters.Add(pIFileId);
-
           foreach (var pendingParserWordsUpdate in pendingUpdates)
           {
             // get the id for this word.
@@ -111,19 +90,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             foreach (var fileId in pendingParserWordsUpdate.FileIds)
             {
-              // then try and insert it for this file,
-              pIFileId.Value = fileId;
-              pIWordId.Value = wordId;
-              if (1 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
-              {
-                continue;
-              }
-
-              // we did not insert it... could it be because it exists already?
-              pSFileId.Value = fileId;
-              pSWordId.Value = wordId;
-              var value = await connectionFactory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
-              if (null == value || value == DBNull.Value)
+              if( !await filesWords.InsertAsync(wordId, fileId, token).ConfigureAwait(false))
               {
                 _logger.Error(
                   $"There was an issue inserting word : {pendingParserWordsUpdate.Word.Value}({wordId}) for file : {fileId}");
@@ -156,7 +123,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         await _parserWords.DeleteFileId(fileId, connectionFactory, token).ConfigureAwait(false);
 
         // then remove the ones we might have done already.
-        var sqlDelete = $"DELETE FROM {Tables.FilesWords} WHERE fileid=@fileid";
+        var sqlDelete = $"DELETE FROM {TableName} WHERE fileid=@fileid";
         using (var cmd = connectionFactory.CreateCommand(sqlDelete))
         {
           var pFId = cmd.CreateParameter();

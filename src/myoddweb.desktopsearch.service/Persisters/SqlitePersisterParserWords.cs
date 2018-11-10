@@ -135,56 +135,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         Cmd.Parameters.Add(FileId);
       }
     }
-
-    /// <summary>
-    /// Lookfor a file/word id.
-    /// </summary>
-    internal class SelectFilesWordsCommand : Command
-    {
-      public IDataParameter WordId { get; }
-
-      public IDataParameter FileId { get; }
-
-      public SelectFilesWordsCommand(IConnectionFactory factory)
-      {
-        var sql = $"SELECT wordid FROM {Tables.FilesWords} where wordid=@wordid AND fileid=@fileid";
-        Cmd = factory.CreateCommand(sql);
-        WordId = Cmd.CreateParameter();
-        WordId.DbType = DbType.Int64;
-        WordId.ParameterName = "@wordid";
-        Cmd.Parameters.Add(WordId);
-
-        FileId = Cmd.CreateParameter();
-        FileId.DbType = DbType.Int64;
-        FileId.ParameterName = "@fileid";
-        Cmd.Parameters.Add(FileId);
-      }
-    }
-
-    /// <summary>
-    /// Insert data into the FilesWords table
-    /// </summary>
-    internal class InsertFilesWordsCommand : Command
-    {
-      public IDataParameter WordId { get; }
-
-      public IDataParameter FileId { get; }
-
-      public InsertFilesWordsCommand(IConnectionFactory factory)
-      {
-        var sql = $"INSERT OR IGNORE INTO {Tables.FilesWords} (wordid, fileid) VALUES (@wordid, @fileid)";
-        Cmd = factory.CreateCommand(sql);
-        WordId = Cmd.CreateParameter();
-        WordId.DbType = DbType.Int64;
-        WordId.ParameterName = "@wordid";
-        Cmd.Parameters.Add(WordId);
-
-        FileId = Cmd.CreateParameter();
-        FileId.DbType = DbType.Int64;
-        FileId.ParameterName = "@fileid";
-        Cmd.Parameters.Add(FileId);
-      }
-    }
     #endregion 
 
     #region Member variables
@@ -205,6 +155,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       long fileid, 
       IReadOnlyList<string> words,
       IWordsHelper wordsHelper,
+      IFilesWordsHelper filesWordsHelper,
       IConnectionFactory connectionFactory, 
       CancellationToken token
     )
@@ -222,8 +173,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       var distinctWords = words.Distinct().ToList();
 
       long added = 0;
-      using (var cmdInsertFilesWords = new InsertFilesWordsCommand(connectionFactory))  //  insert the word/fileid if the word has been processed already
-      using (var cmdSelectFilesWords = new SelectFilesWordsCommand(connectionFactory))  //  look for the word to make sure it was added properly
       using (var cmdInsertParserWord = new InsertParserWordCommand(connectionFactory))  //  insert the word in parsed word
       using (var cmdSelectParserWord = new SelectParserWordCommand(connectionFactory))  //  make sure that the parsed word was added properly.
       using (var cmdInsertParserFilesWords = new InsertParserFilesWordsCommand(connectionFactory))  //  insert a wordid/fileid
@@ -242,10 +191,8 @@ namespace myoddweb.desktopsearch.service.Persisters
             if (await TryInsertFilesWords(
               fileid,
               word,
-              connectionFactory,
-              cmdInsertFilesWords,
-              cmdSelectFilesWords,
               wordsHelper,
+              filesWordsHelper,
               token).ConfigureAwait(false))
             {
               // the word was not added to the parser table
@@ -689,19 +636,15 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     /// <param name="fileId"></param>
     /// <param name="word"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="cmdInsertFilesWords"></param>
-    /// <param name="cmdSelectFilesWords"></param>
+    /// <param name="filesWordsHelper"></param>
     /// <param name="wordsHelper"></param>
     /// <param name="token"></param>
     /// <returns></returns>
     private async Task<bool> TryInsertFilesWords(
       long fileId,
       string word,
-      IConnectionFactory connectionFactory,
-      InsertFilesWordsCommand cmdInsertFilesWords,
-      SelectFilesWordsCommand cmdSelectFilesWords,
       IWordsHelper wordsHelper,
+      IFilesWordsHelper filesWordsHelper,
       CancellationToken token)
     {
       // try and get the id, if it does not exist, we cannot add it.
@@ -712,22 +655,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // now that we have a fileid/wordid we can then try and insert the value 
-      cmdInsertFilesWords.FileId.Value = fileId;
-      cmdInsertFilesWords.WordId.Value = wordId;
-      if (1 == await connectionFactory.ExecuteWriteAsync(cmdInsertFilesWords.Cmd, token).ConfigureAwait(false))
-      {
-        // the word was added
-        return true;
-      }
-
-      // we were not able to add it, it is posible that it is because the word
-      // and file already exists in the table.
-      // we just want to double check that all is good.
-      // we did not insert it... could it be because it exists already?
-      cmdSelectFilesWords.FileId.Value = fileId;
-      cmdSelectFilesWords.WordId.Value = wordId;
-      var valueFileWord = await connectionFactory.ExecuteReadOneAsync(cmdSelectFilesWords.Cmd, token).ConfigureAwait(false);
-      if (null != valueFileWord && valueFileWord != DBNull.Value)
+      if (await filesWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false))
       {
         return true;
       }

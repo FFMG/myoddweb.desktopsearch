@@ -51,10 +51,18 @@ namespace myoddweb.desktopsearch.processor
     /// The words helper.
     /// </summary>
     private readonly IWordsHelper _wordsHelper;
+
+    /// <summary>
+    /// The files words helper.
+    /// </summary>
+    private readonly IFilesWordsHelper _filesWordsHelper;
     #endregion
 
     public PrarserHelper(FileSystemInfo file, IPersister persister, IConnectionFactory factory, long fileid) :
-      this(file, persister, new Words( factory, persister.Words.TableName), factory, fileid )
+      this(file, persister, 
+        new Words( factory, persister.Words.TableName),
+        new FilesWordsHelper(factory, persister.FilesWords.TableName),
+        factory, fileid )
     {
     }
 
@@ -62,6 +70,7 @@ namespace myoddweb.desktopsearch.processor
       FileSystemInfo file, 
       IPersister persister,
       IWordsHelper wordsHelper,
+      IFilesWordsHelper filesWordsHelper,
       IConnectionFactory factory, 
       long fileid 
     )
@@ -72,6 +81,7 @@ namespace myoddweb.desktopsearch.processor
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
       _factory = factory ?? throw new ArgumentNullException(nameof(factory));
       _wordsHelper = wordsHelper ?? throw new ArgumentNullException(nameof(wordsHelper));
+      _filesWordsHelper = filesWordsHelper ?? throw new ArgumentNullException(nameof(filesWordsHelper));
 
       // set the file being worked on.
       File = file ?? throw new ArgumentNullException(nameof(file));
@@ -95,6 +105,7 @@ namespace myoddweb.desktopsearch.processor
         _fileId, 
         words,
         _wordsHelper,
+        _filesWordsHelper,
         _factory, 
         token).ConfigureAwait(false);
 

@@ -26,10 +26,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="fileid"></param>
     /// <param name="words"></param>
     /// <param name="wordsHelper"></param>
+    /// <param name="filesWordsHelper"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns>The number of words that were added.</returns>
-    Task<long> AddWordsAsync( long fileid, IReadOnlyList<string> words, IWordsHelper wordsHelper, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<long> AddWordsAsync( long fileid, IReadOnlyList<string> words, IWordsHelper wordsHelper, IFilesWordsHelper filesWordsHelper, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Delete file ids for a word id
