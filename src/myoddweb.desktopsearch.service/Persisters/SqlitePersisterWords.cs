@@ -60,22 +60,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
-    internal class SelectWordCommand : Command
-    {
-      public IDataParameter Word { get; }
-
-      public SelectWordCommand(IConnectionFactory factory)
-      {
-        var sqlSelect = $"SELECT id FROM {Tables.Words} WHERE word = @word";
-        Cmd = factory.CreateCommand(sqlSelect);
-
-        Word = Cmd.CreateParameter();
-        Word.DbType = DbType.String;
-        Word.ParameterName = "@word";
-        Cmd.Parameters.Add(Word);
-      }
-    }
-
     internal class SelectPartCommand : Command
     {
       public IDataParameter Part { get; }
@@ -91,22 +75,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         Cmd.Parameters.Add(Part);
       }
     }
-    
-    internal class InsertWordCommand : Command
-    {
-      public IDataParameter Word { get; }
-
-      public InsertWordCommand(IConnectionFactory factory)
-      {
-        var sqlInsertWord = $"INSERT OR IGNORE INTO {Tables.Words} (word) VALUES (@word)";
-        Cmd = factory.CreateCommand(sqlInsertWord);
-
-        Word = Cmd.CreateParameter();
-        Word.DbType = DbType.String;
-        Word.ParameterName = "@word";
-        Cmd.Parameters.Add(Word);
-      }
-    }
+   
 
     internal class InsertPartCommand : Command
     {
@@ -131,24 +100,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     /// <param name="connectionFactory"></param>
     /// <returns></returns>
-    private static InsertWordCommand CreateInsertWordCommand(IConnectionFactory connectionFactory)
-    {
-      return new InsertWordCommand(connectionFactory);
-    }
-
-    /// <summary>
-    /// Create the command to insert a word in the database.
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <returns></returns>
     private static SelectPartCommand CreateSelectPartIdCommand(IConnectionFactory connectionFactory)
     {
       return new SelectPartCommand(connectionFactory);
-    }
-
-    private static SelectWordCommand CreateSelectWordIdCommand(IConnectionFactory connectionFactory)
-    {
-      return new SelectWordCommand( connectionFactory );
     }
 
     /// <summary>
@@ -230,6 +184,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
+    public string TableName => Tables.Words;
+
+    /// <inheritdoc />
     public async Task<long> AddOrUpdateWordAsync(IWord word, IConnectionFactory connectionFactory, CancellationToken token)
     {
       var ids = await AddOrUpdateWordsAsync( new Words(word), connectionFactory, token ).ConfigureAwait(false);
@@ -283,8 +240,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the ids of the words we just added
       var ids = new List<long>( words.Count );
 
-      using (var cmdInsertWord = CreateInsertWordCommand(connectionFactory))
-      using (var cmdSelectWord = CreateSelectWordIdCommand(connectionFactory))
+      using (var wordsHelper = new helper.Persisters.Words(connectionFactory, TableName))
       using (var cmdSelectPart = CreateSelectPartIdCommand(connectionFactory))
       using (var cmdInsertPart = CreateInsertPartCommand(connectionFactory))
       {
@@ -302,7 +258,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // the word we want to insert.
-            var wordId = await InsertWordAsync(word, cmdSelectWord, cmdInsertWord, cmdSelectPart, cmdInsertPart, connectionFactory, token).ConfigureAwait(false);
+            var wordId = await InsertWordAsync(word, wordsHelper, cmdSelectPart, cmdInsertPart, connectionFactory, token).ConfigureAwait(false);
             if (-1 == wordId)
             {
               // we log errors in the insert function
@@ -333,8 +289,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Insert a word in the database and then insert all the parts
     /// </summary>
     /// <param name="word"></param>
-    /// <param name="cmdSelectWord"></param>
-    /// <param name="cmdInsertWord"></param>
+    /// <param name="wordsHelper"></param>
     /// <param name="cmdSelectPart"></param>
     /// <param name="cmdInsertPart"></param>
     /// <param name="connectionFactory"></param>
@@ -342,34 +297,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     private async Task<long> InsertWordAsync(
       IWord word,
-      SelectWordCommand cmdSelectWord,
-      InsertWordCommand cmdInsertWord, 
+      IWordsHelper wordsHelper,
       SelectPartCommand cmdSelectPart,
       InsertPartCommand cmdInsertPart,
       IConnectionFactory connectionFactory,
       CancellationToken token)
     {
-      long wordId;
-      cmdInsertWord.Word.Value = word.Value;
-      if (0 == await connectionFactory.ExecuteWriteAsync(cmdInsertWord.Cmd, token).ConfigureAwait(false))
+      var wordId = await wordsHelper.InsertAsync(word.Value, token).ConfigureAwait(false);
+      if ( wordId == -1 )
       {
-        // maybe the word exists already?
-        wordId = await GetWordId(word, cmdSelectWord, connectionFactory, token).ConfigureAwait(false);
-        if (wordId == -1)
-        {
-          _logger.Error($"There was an issue adding word: {word.Value} to persister");
-          return -1;
-        }
-      }
-      else
-      {
-        // get the id of the word we just added.
-        wordId = await GetWordId(word, cmdSelectWord, connectionFactory, token).ConfigureAwait(false);
-        if( wordId == -1 )
-        {
-          _logger.Error($"There was an issue getting the word id: {word.Value} from the persister");
-          return -1;
-        }
+        _logger.Error($"There was an issue getting the word id: {word.Value} from the persister");
+        return -1;
       }
 
       // we now can add/find the parts for that word.
@@ -430,24 +368,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // return everything we found.
       return new HashSet<long>(partIds);
     }
-
-    private async Task<long> GetWordId(
-      IWord word,
-      SelectWordCommand cmdSelectWord,
-      IConnectionFactory connectionFactory,
-      CancellationToken token)
-    {
-      cmdSelectWord.Word.Value = word.Value;
-      var value = await connectionFactory.ExecuteReadOneAsync(cmdSelectWord.Cmd, token).ConfigureAwait(false);
-      if (null == value || value == DBNull.Value)
-      {
-        _logger.Error($"There was an issue getting the word id: {word.Value} from the persister");
-        return -1;
-      }
-
-      return (long)value;
-    }
-
+    
     private async Task<long> GetPartId(
       string part,
       SelectPartCommand cmdSelectPart,
@@ -548,7 +469,7 @@ private async Task<IList<long>> InsertPartsAsync(
         var actualWords = new List<string>(words.Count);
 
         // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT id FROM {Tables.Words} WHERE word=@word";
+        var sql = $"SELECT id FROM {TableName} WHERE word=@word";
         var ids = new List<long>();
         using (var cmd = connectionFactory.CreateCommand(sql))
         {

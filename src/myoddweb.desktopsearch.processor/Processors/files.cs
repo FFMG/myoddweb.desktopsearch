@@ -305,25 +305,28 @@ namespace myoddweb.desktopsearch.processor.Processors
       // start all the parser tasks
       var tasks = new List<Task<long>>();
 
+      // the tasks that will be inserting words.
+      long[] totalWords;
+
       // create the helper.
       using (var parserHelper = new PrarserHelper(pendingFileUpdate.File, _persister, factory, pendingFileUpdate.FileId))
       {
         tasks.AddRange(_parsers.Select(parser => ProcessFile(parserHelper, parser, pendingFileUpdate.File, token)));
+
+        // do we have any work to do?
+        if (!tasks.Any())
+        {
+          // nothing to do...
+          return null;
+        }
+
+        // wait for all the parsers to do their work
+        totalWords = await helper.Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
       }
 
-      // do we have any work to do?
-      if (!tasks.Any())
-      {
-        // nothing to do...
-        return null;
-      }
-
-      // wait for all the parsers to do their work
-      var totalWords = await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
       if (totalWords == null || totalWords.Sum() == 0)
       {
-        // nothing was done.
-        // nothing to do...
+        // nothing was done, nothing to do...
         return null;
       }
 

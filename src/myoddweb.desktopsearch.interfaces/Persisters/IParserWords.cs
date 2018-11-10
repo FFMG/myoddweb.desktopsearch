@@ -12,7 +12,6 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,10 +25,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// </summary>
     /// <param name="fileid"></param>
     /// <param name="words"></param>
+    /// <param name="wordsHelper"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns>The number of words that were added.</returns>
-    Task<long> AddWordsAsync( long fileid, IReadOnlyList<string> words, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<long> AddWordsAsync( long fileid, IReadOnlyList<string> words, IWordsHelper wordsHelper, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Delete file ids for a word id

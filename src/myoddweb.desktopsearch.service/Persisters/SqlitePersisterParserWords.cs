@@ -185,24 +185,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         Cmd.Parameters.Add(FileId);
       }
     }
-
-    /// <summary>
-    /// Look for an existing word id in the words id
-    /// </summary>
-    internal class SelectWordCommand : Command
-    {
-      public IDataParameter Word { get; }
-
-      public SelectWordCommand(IConnectionFactory factory)
-      {
-        var sql = $"SELECT id FROM {Tables.Words} WHERE word = @word";
-        Cmd = factory.CreateCommand(sql);
-        Word = Cmd.CreateParameter();
-        Word.DbType = DbType.String;
-        Word.ParameterName = "@word";
-        Cmd.Parameters.Add(Word);
-      }
-    }
     #endregion 
 
     #region Member variables
@@ -219,7 +201,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<long> AddWordsAsync(long fileid, IReadOnlyList<string> words, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<long> AddWordsAsync(
+      long fileid, 
+      IReadOnlyList<string> words,
+      IWordsHelper wordsHelper,
+      IConnectionFactory connectionFactory, 
+      CancellationToken token
+    )
     {
       if (!words.Any())
       {
@@ -236,7 +224,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       long added = 0;
       using (var cmdInsertFilesWords = new InsertFilesWordsCommand(connectionFactory))  //  insert the word/fileid if the word has been processed already
       using (var cmdSelectFilesWords = new SelectFilesWordsCommand(connectionFactory))  //  look for the word to make sure it was added properly
-      using (var cmdSelectWordWord = new SelectWordCommand(connectionFactory))              //  look for the word
       using (var cmdInsertParserWord = new InsertParserWordCommand(connectionFactory))  //  insert the word in parsed word
       using (var cmdSelectParserWord = new SelectParserWordCommand(connectionFactory))  //  make sure that the parsed word was added properly.
       using (var cmdInsertParserFilesWords = new InsertParserFilesWordsCommand(connectionFactory))  //  insert a wordid/fileid
@@ -258,7 +245,7 @@ namespace myoddweb.desktopsearch.service.Persisters
               connectionFactory,
               cmdInsertFilesWords,
               cmdSelectFilesWords,
-              cmdSelectWordWord,
+              wordsHelper,
               token).ConfigureAwait(false))
             {
               // the word was not added to the parser table
@@ -705,7 +692,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="cmdInsertFilesWords"></param>
     /// <param name="cmdSelectFilesWords"></param>
-    /// <param name="cmdSelectWordWord"></param>
+    /// <param name="wordsHelper"></param>
     /// <param name="token"></param>
     /// <returns></returns>
     private async Task<bool> TryInsertFilesWords(
@@ -714,22 +701,15 @@ namespace myoddweb.desktopsearch.service.Persisters
       IConnectionFactory connectionFactory,
       InsertFilesWordsCommand cmdInsertFilesWords,
       SelectFilesWordsCommand cmdSelectFilesWords,
-      SelectWordCommand cmdSelectWordWord,
+      IWordsHelper wordsHelper,
       CancellationToken token)
     {
-      // we are first going to look for that id
-      // if it does not exist, then we cannot update the files table.
-      cmdSelectWordWord.Word.Value = word;
-      var value = await connectionFactory.ExecuteReadOneAsync(cmdSelectWordWord.Cmd, token).ConfigureAwait(false);
-      if (null == value || value == DBNull.Value)
+      // try and get the id, if it does not exist, we cannot add it.
+      var wordId = await wordsHelper.GetIdAsync(word, token).ConfigureAwait(false);
+      if (-1 == wordId)
       {
-        // the word does not exist
-        // so we cannot really go any further here.
         return false;
       }
-
-      // the word that we have already parsed.
-      var wordId = (long)value;
 
       // now that we have a fileid/wordid we can then try and insert the value 
       cmdInsertFilesWords.FileId.Value = fileId;
