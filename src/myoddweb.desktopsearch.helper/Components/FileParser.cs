@@ -80,7 +80,7 @@ namespace myoddweb.desktopsearch.helper.Components
         .Select(m => m.Value)
         .Distinct()
         .ToArray();
-      return helper.AddWordAsync(func == null ? words.ToList() : words.Where(func).ToList(), token);
+      return helper.AddWordsAsync(func == null ? words.ToList() : words.Where(func).ToList(), token);
     }
 
     /// <summary>

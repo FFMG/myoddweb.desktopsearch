@@ -29,7 +29,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns>The number of words that were added.</returns>
-    Task<long> AddWordAsync( long fileid, IReadOnlyList<string> words, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<long> AddWordsAsync( long fileid, IReadOnlyList<string> words, IConnectionFactory connectionFactory, CancellationToken token);
 
     /// <summary>
     /// Delete file ids for a word id

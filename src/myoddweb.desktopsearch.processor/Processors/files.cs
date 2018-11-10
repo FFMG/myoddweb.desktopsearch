@@ -302,14 +302,13 @@ namespace myoddweb.desktopsearch.processor.Processors
         return null;
       }
 
-      // create the helper.
-      var parserHelper = new PrarserHelper( pendingFileUpdate.File, _persister, factory, pendingFileUpdate.FileId);
-
       // start all the parser tasks
       var tasks = new List<Task<long>>();
-      foreach (var parser in _parsers)
+
+      // create the helper.
+      using (var parserHelper = new PrarserHelper(pendingFileUpdate.File, _persister, factory, pendingFileUpdate.FileId))
       {
-        tasks.Add( ProcessFile( parserHelper, parser, pendingFileUpdate.File, token));
+        tasks.AddRange(_parsers.Select(parser => ProcessFile(parserHelper, parser, pendingFileUpdate.File, token)));
       }
 
       // do we have any work to do?

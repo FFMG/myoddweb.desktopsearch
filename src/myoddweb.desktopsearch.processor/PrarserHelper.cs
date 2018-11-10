@@ -29,11 +29,6 @@ namespace myoddweb.desktopsearch.processor
     /// <inheritdoc />
     public FileSystemInfo File { get; }
 
-    /// <summary>
-    /// The lock to prevent multiple writes.
-    /// </summary>
-    private readonly object _lock = new object();
-
     /// <inheritdoc />
     public long Count { get; protected set; }
 
@@ -67,12 +62,21 @@ namespace myoddweb.desktopsearch.processor
       // we added nothing yet.
       Count = 0;
     }
-    
+
     /// <inheritdoc /> 
-    public async Task<long> AddWordAsync(IReadOnlyList<string> words, CancellationToken token)
+    public void Dispose()
+    {
+    }
+
+    /// <inheritdoc /> 
+    public async Task<long> AddWordsAsync(IReadOnlyList<string> words, CancellationToken token)
     {
       // then we just try and add the word.
-      var added = await _persister.ParserWords.AddWordAsync(_fileId, words, _factory, token).ConfigureAwait(false);
+      var added = await _persister.ParserWords.AddWordsAsync(
+        _fileId, 
+        words, 
+        _factory, 
+        token).ConfigureAwait(false);
 
       // we 'added' the word.
       // technically the word might already exist.
