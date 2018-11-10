@@ -20,7 +20,7 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.helper.Persisters
 {
-  public class Words : IWordsHelper
+  public class WordsHelper : IWordsHelper
   {
     #region Insert
     /// <summary>
@@ -177,7 +177,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
     private readonly string _tableName;
     #endregion
 
-    public Words(IConnectionFactory factory, string tableName )
+    public WordsHelper(IConnectionFactory factory, string tableName )
     {
       // the table name
       _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));

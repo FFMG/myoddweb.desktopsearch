@@ -240,7 +240,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the ids of the words we just added
       var ids = new List<long>( words.Count );
 
-      using (var wordsHelper = new helper.Persisters.Words(connectionFactory, TableName))
+      using (var wordsHelper = new helper.Persisters.WordsHelper(connectionFactory, TableName))
       using (var cmdSelectPart = CreateSelectPartIdCommand(connectionFactory))
       using (var cmdInsertPart = CreateInsertPartCommand(connectionFactory))
       {

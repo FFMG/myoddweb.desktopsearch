@@ -38,11 +38,6 @@ namespace myoddweb.desktopsearch.processor
     private readonly long _fileId;
 
     /// <summary>
-    /// The connection factory, if we used one.
-    /// </summary>
-    private readonly IConnectionFactory _factory;
-
-    /// <summary>
     /// The persister so we can save the words.
     /// </summary>
     private readonly IPersister _persister;
@@ -56,13 +51,25 @@ namespace myoddweb.desktopsearch.processor
     /// The files words helper.
     /// </summary>
     private readonly IFilesWordsHelper _filesWordsHelper;
+
+    /// <summary>
+    /// The parser words helper.
+    /// </summary>
+    private readonly IParserWordsHelper _parserWordsHelper;
+
+    /// <summary>
+    /// The file words helper
+    /// </summary>
+    private readonly IParserFilesWordsHelper _parserFilesWordsHelper;
     #endregion
 
     public PrarserHelper(FileSystemInfo file, IPersister persister, IConnectionFactory factory, long fileid) :
       this(file, persister, 
-        new Words( factory, persister.Words.TableName),
+        new WordsHelper( factory, persister.Words.TableName),
         new FilesWordsHelper(factory, persister.FilesWords.TableName),
-        factory, fileid )
+        new ParserWordsHelper(factory, persister.ParserWords.TableWordName), 
+        new ParserFilesWordsHelper(factory, persister.ParserWords.TableFilesName)
+        , fileid )
     {
     }
 
@@ -71,7 +78,8 @@ namespace myoddweb.desktopsearch.processor
       IPersister persister,
       IWordsHelper wordsHelper,
       IFilesWordsHelper filesWordsHelper,
-      IConnectionFactory factory, 
+      IParserWordsHelper parserWordsHelper,
+      IParserFilesWordsHelper parserFilesWordsHelper, 
       long fileid 
     )
     {
@@ -79,9 +87,10 @@ namespace myoddweb.desktopsearch.processor
 
       // set the perister and the transaction.
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
-      _factory = factory ?? throw new ArgumentNullException(nameof(factory));
       _wordsHelper = wordsHelper ?? throw new ArgumentNullException(nameof(wordsHelper));
       _filesWordsHelper = filesWordsHelper ?? throw new ArgumentNullException(nameof(filesWordsHelper));
+      _parserWordsHelper = parserWordsHelper ?? throw new ArgumentNullException(nameof(parserWordsHelper));
+      _parserFilesWordsHelper = parserFilesWordsHelper ?? throw new ArgumentNullException(nameof(parserFilesWordsHelper));
 
       // set the file being worked on.
       File = file ?? throw new ArgumentNullException(nameof(file));
@@ -106,7 +115,8 @@ namespace myoddweb.desktopsearch.processor
         words,
         _wordsHelper,
         _filesWordsHelper,
-        _factory, 
+        _parserWordsHelper,
+        _parserFilesWordsHelper,
         token).ConfigureAwait(false);
 
       // we 'added' the word.

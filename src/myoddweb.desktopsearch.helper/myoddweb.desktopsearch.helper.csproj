@@ -43,8 +43,10 @@
     <Compile Include="Collection.cs" />
     <Compile Include="Components\FileParser.cs" />
     <Compile Include="File.cs" />
+    <Compile Include="Persisters\ParserFilesWordsHelper.cs" />
     <Compile Include="Persisters\FilesWordsHelper.cs" />
-    <Compile Include="Persisters\Words.cs" />
+    <Compile Include="Persisters\ParserWordsHelper.cs" />
+    <Compile Include="Persisters\WordsHelper.cs" />
     <Compile Include="IO\DirectoryInfoComparer.cs" />
     <Compile Include="IO\FileInfoComparer.cs" />
     <Compile Include="IO\FileSystemInfoComparer.cs" />
