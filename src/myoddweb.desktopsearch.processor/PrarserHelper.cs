@@ -104,6 +104,9 @@ namespace myoddweb.desktopsearch.processor
     {
       // dispose of word helper.
       _wordsHelper?.Dispose();
+      _filesWordsHelper?.Dispose();
+      _parserFilesWordsHelper?.Dispose();
+      _parserWordsHelper?.Dispose();
     }
 
     /// <inheritdoc /> 
