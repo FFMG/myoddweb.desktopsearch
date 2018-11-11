@@ -23,9 +23,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public string TableName => Tables.WordsParts;
-
-    /// <inheritdoc />
     public async Task AddOrUpdateWordParts(long wordId, HashSet<long> partIds, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
@@ -90,7 +87,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // the query to insert a new word
-        var sqlInsert = $"DELETE FROM {TableName} WHERE wordid=@wordid AND partid=@partid";
+        var sqlInsert = $"DELETE FROM {Tables.WordsParts} WHERE wordid=@wordid AND partid=@partid";
         using (var cmd = connectionFactory.CreateCommand(sqlInsert))
         {
           var ppId = cmd.CreateParameter();
@@ -155,8 +152,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // the query to insert a new word
-        var sqlSelect = $"SELECT 1 FROM {TableName} WHERE wordid=@wordid and partid=@partid";
-        var sqlInsert = $"INSERT OR IGNORE INTO {TableName} (wordid, partid) VALUES (@wordid, @partid)";
+        var sqlSelect = $"SELECT 1 FROM {Tables.WordsParts} WHERE wordid=@wordid and partid=@partid";
+        var sqlInsert = $"INSERT OR IGNORE INTO {Tables.WordsParts} (wordid, partid) VALUES (@wordid, @partid)";
         using (var cmdInsert = connectionFactory.CreateCommand(sqlInsert))
         using (var cmdSelect = connectionFactory.CreateCommand(sqlSelect))
         {
@@ -232,7 +229,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // the query to insert a new word
-        var sql = $"SELECT partid FROM {TableName} WHERE wordid = @wordid";
+        var sql = $"SELECT partid FROM {Tables.WordsParts} WHERE wordid = @wordid";
         using (var cmd = connectionFactory.CreateCommand(sql))
         {
           var pId = cmd.CreateParameter();

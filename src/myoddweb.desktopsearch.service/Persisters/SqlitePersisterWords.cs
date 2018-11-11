@@ -241,13 +241,13 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // marry the word id, (that we just added).
       // with the partIds, (that we just added).
-      await _wordsParts.AddOrUpdateWordParts(wordId, partIds, connectionFactory, token).ConfigureAwait(false);
+      await _wordsParts.AddOrUpdateWordParts(wordId, new HashSet<long>(partIds), connectionFactory, token).ConfigureAwait(false);
 
       // all done return the id of the word.
       return wordId;
     }
 
-    private async Task<HashSet<long>> GetOrInsertParts(
+    private async Task<IList<long>> GetOrInsertParts(
       IWord word,
       IPartsHelper partsHelper,
       CancellationToken token)
@@ -258,14 +258,11 @@ namespace myoddweb.desktopsearch.service.Persisters
       // if we have not words... then move on.
       if (!parts.Any())
       {
-        return new HashSet<long>();
+        return new List<long>();
       }
 
       // the ids of all the parts, (added or otherwise).
       var partIds = new List<long>(parts.Count);
-
-      // the parts we actually need to add.
-      var partsToAdd = new List<string>(parts.Count);
 
       foreach (var part in parts)
       {
@@ -281,55 +278,19 @@ namespace myoddweb.desktopsearch.service.Persisters
           continue;
         }
 
-        // we could not locate this part
-        // so it will need to be added.
-        partsToAdd.Add(part);
-      }
-
-      // then add the ids of the remaining parts.
-      partIds.AddRange(await InsertPartsAsync(partsToAdd.ToArray(), partsHelper, token).ConfigureAwait(false));
-
-      // return everything we found.
-      return new HashSet<long>(partIds);
-    }
-    
-
-    /// <summary>
-    /// Insert parts and return the id of the added parts.
-    /// </summary>
-    /// <param name="parts"></param>
-    /// <param name="partsHelper"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<IList<long>> InsertPartsAsync(
-      ICollection<string> parts, 
-      IPartsHelper partsHelper, 
-      CancellationToken token)
-    {
-      if (!parts.Any())
-      {
-        return new List<long>();
-      }
-
-      // the ids of all the parts inserted.
-      var partIds = new List<long>(parts.Count);
-
-      foreach (var part in parts.Distinct())
-      {
-        token.ThrowIfCancellationRequested();
-
-        var partId = await partsHelper.InsertAsync(part, token ).ConfigureAwait(false);
-        if( -1 == partId )
+        // then try and add it.
+        partId = await partsHelper.InsertAsync(part, token).ConfigureAwait(false);
+        if (-1 != partId)
         {
-          _logger.Error($"There was an issue adding part: {part} to persister");
+          partIds.Add(partId);
           continue;
         }
 
-        // we added it, so we can add it to our list
-        partIds.Add(partId);
+        _logger.Error($"There was an issue adding part: {part} to persister");
       }
 
-      // return all the ids we added.
+      // return all the ids that we either
+      // added or that already exist.
       return partIds;
     }
 
