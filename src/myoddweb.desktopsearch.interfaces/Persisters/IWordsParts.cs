@@ -21,6 +21,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IWordsParts
   {
     /// <summary>
+    /// The name of the parts table.
+    /// </summary>
+    string TableName { get; }
+
+    /// <summary>
     /// Add part ids and word ids, if the word already exists then we will add it
     /// And remove whatever words might already exist.
     /// </summary>

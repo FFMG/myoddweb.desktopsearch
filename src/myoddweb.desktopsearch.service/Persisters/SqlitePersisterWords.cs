@@ -45,77 +45,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       public IList<long> ExistingWordIds { get; set; }
     }
 
-    #region Command classes
-    internal class Command : IDisposable
-    {
-      public IDbCommand Cmd { get; protected set; }
-
-      protected Command()
-      {
-      }
-
-      public void Dispose()
-      {
-        Cmd?.Dispose();
-      }
-    }
-
-    internal class SelectPartCommand : Command
-    {
-      public IDataParameter Part { get; }
-
-      public SelectPartCommand(IConnectionFactory factory)
-      {
-        var sqlSelect = $"SELECT id FROM {Tables.Parts} WHERE part = @part";
-        Cmd = factory.CreateCommand(sqlSelect);
-
-        Part = Cmd.CreateParameter();
-        Part.DbType = DbType.String;
-        Part.ParameterName = "@part";
-        Cmd.Parameters.Add(Part);
-      }
-    }
-   
-
-    internal class InsertPartCommand : Command
-    {
-      public IDataParameter Part { get; }
-
-      public InsertPartCommand(IConnectionFactory factory )
-      {
-        var sqlInsertPart = $"INSERT OR IGNORE INTO {Tables.Parts} (part) VALUES (@part)";
-        Cmd = factory.CreateCommand(sqlInsertPart);
-
-        Part = Cmd.CreateParameter();
-        Part.DbType = DbType.String;
-        Part.ParameterName = "@part";
-        Cmd.Parameters.Add(Part);
-      }
-    }
-    #endregion 
-
-    #region Commands creator
-    /// <summary>
-    /// Create the command to insert a word in the database.
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <returns></returns>
-    private static SelectPartCommand CreateSelectPartIdCommand(IConnectionFactory connectionFactory)
-    {
-      return new SelectPartCommand(connectionFactory);
-    }
-
-    /// <summary>
-    /// Create the command to insert a word in the database.
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <returns></returns>
-    private static InsertPartCommand CreateInsertPartCommand(IConnectionFactory connectionFactory)
-    {
-      return new InsertPartCommand(connectionFactory );
-    }
-    #endregion
-
     #region Member variable
     /// <summary>
     /// The counter for adding new words
@@ -148,7 +77,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// The words parts interface
     /// </summary>
-    private readonly IWordsParts _wordsParts;
+    private readonly interfaces.Persisters.IWordsParts _wordsParts;
 
     /// <summary>
     /// The logger
@@ -156,7 +85,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly ILogger _logger;
     #endregion
 
-    public SqlitePersisterWords(IPerformance performance, IWordsParts wordsParts, int maxNumCharactersPerWords, int maxNumCharactersPerParts, ILogger logger)
+    public SqlitePersisterWords(IPerformance performance, interfaces.Persisters.IWordsParts wordsParts, int maxNumCharactersPerWords, int maxNumCharactersPerParts, ILogger logger)
     {
       // the number of characters per parts.
       _maxNumCharactersPerParts = maxNumCharactersPerParts;
@@ -241,8 +170,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       var ids = new List<long>( words.Count );
 
       using (var wordsHelper = new helper.Persisters.WordsHelper(connectionFactory, TableName))
-      using (var cmdSelectPart = CreateSelectPartIdCommand(connectionFactory))
-      using (var cmdInsertPart = CreateInsertPartCommand(connectionFactory))
+      using (var partsHelper = new helper.Persisters.PartsHelper(connectionFactory, Tables.Parts))
       {
         try
         {
@@ -258,7 +186,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             }
 
             // the word we want to insert.
-            var wordId = await InsertWordAsync(word, wordsHelper, cmdSelectPart, cmdInsertPart, connectionFactory, token).ConfigureAwait(false);
+            var wordId = await InsertWordAsync(word, wordsHelper, partsHelper, connectionFactory, token).ConfigureAwait(false);
             if (-1 == wordId)
             {
               // we log errors in the insert function
@@ -290,16 +218,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     /// <param name="word"></param>
     /// <param name="wordsHelper"></param>
-    /// <param name="cmdSelectPart"></param>
-    /// <param name="cmdInsertPart"></param>
+    /// <param name="partsHelper"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
     private async Task<long> InsertWordAsync(
       IWord word,
       IWordsHelper wordsHelper,
-      SelectPartCommand cmdSelectPart,
-      InsertPartCommand cmdInsertPart,
+      IPartsHelper partsHelper,
       IConnectionFactory connectionFactory,
       CancellationToken token)
     {
@@ -311,7 +237,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // we now can add/find the parts for that word.
-      var partIds = await GetOrInsertParts( word, cmdSelectPart, cmdInsertPart, connectionFactory, token).ConfigureAwait(false);
+      var partIds = await GetOrInsertParts( word, partsHelper, token).ConfigureAwait(false);
 
       // marry the word id, (that we just added).
       // with the partIds, (that we just added).
@@ -323,9 +249,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     private async Task<HashSet<long>> GetOrInsertParts(
       IWord word,
-      SelectPartCommand cmdSelectPart,
-      InsertPartCommand cmdInsertPart,
-      IConnectionFactory connectionFactory, 
+      IPartsHelper partsHelper,
       CancellationToken token)
     {
       // get the parts.
@@ -350,7 +274,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
         // look for that part, if it exists, add it to the list
         // otherwird we will need to add it.
-        var partId = await GetPartId(part, cmdSelectPart, connectionFactory, token).ConfigureAwait( false );
+        var partId = await partsHelper.GetIdAsync(part, token).ConfigureAwait( false );
         if (partId != -1)
         {
           partIds.Add(partId);
@@ -363,45 +287,23 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // then add the ids of the remaining parts.
-      partIds.AddRange(await InsertPartsAsync(partsToAdd.ToArray(), cmdSelectPart, cmdInsertPart, connectionFactory, token).ConfigureAwait(false));
+      partIds.AddRange(await InsertPartsAsync(partsToAdd.ToArray(), partsHelper, token).ConfigureAwait(false));
 
       // return everything we found.
       return new HashSet<long>(partIds);
     }
     
-    private async Task<long> GetPartId(
-      string part,
-      SelectPartCommand cmdSelectPart,
-      IConnectionFactory connectionFactory,
-      CancellationToken token)
-    {
-      // the part we are adding
-      cmdSelectPart.Part.Value = part;
 
-      // look for that part, if it exists, add it to the list
-      // otherwird we will need to add it.
-      var value = await connectionFactory.ExecuteReadOneAsync(cmdSelectPart.Cmd, token).ConfigureAwait(false);
-      if (null != value && value != DBNull.Value)
-      {
-        return (long) value;
-      }
-      return -1;
-    }
-
-/// <summary>
-/// Insert parts and return the id of the added parts.
-/// </summary>
-/// <param name="parts"></param>
-/// <param name="cmdSelectPart"></param>
-/// <param name="cmdInsertPart"></param>
-/// <param name="connectionFactory"></param>
-/// <param name="token"></param>
-/// <returns></returns>
-private async Task<IList<long>> InsertPartsAsync(
+    /// <summary>
+    /// Insert parts and return the id of the added parts.
+    /// </summary>
+    /// <param name="parts"></param>
+    /// <param name="partsHelper"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<IList<long>> InsertPartsAsync(
       ICollection<string> parts, 
-      SelectPartCommand cmdSelectPart,
-      InsertPartCommand cmdInsertPart, 
-      IConnectionFactory connectionFactory, 
+      IPartsHelper partsHelper, 
       CancellationToken token)
     {
       if (!parts.Any())
@@ -412,31 +314,14 @@ private async Task<IList<long>> InsertPartsAsync(
       // the ids of all the parts inserted.
       var partIds = new List<long>(parts.Count);
 
-      var cmdInsert = cmdInsertPart.Cmd;
       foreach (var part in parts.Distinct())
       {
-        long partId;
-        cmdInsertPart.Part.Value = part;
-        if (0 == await connectionFactory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
-        {
-          partId = await GetPartId(part, cmdSelectPart, connectionFactory, token).ConfigureAwait(false);
-          if (partId != -1)
-          {
-            // this part already exists, so we could not add it again.
-            // but the id is still value.
-            partIds.Add(partId);
-            continue;
-          }
+        token.ThrowIfCancellationRequested();
 
+        var partId = await partsHelper.InsertAsync(part, token ).ConfigureAwait(false);
+        if( -1 == partId )
+        {
           _logger.Error($"There was an issue adding part: {part} to persister");
-          continue;
-        }
-
-        // look for the id we just added.
-        partId = await GetPartId(part, cmdSelectPart, connectionFactory, token).ConfigureAwait(false);
-        if (partId == -1)
-        {
-          _logger.Error( $"There was an error finding the id of the part: {part}, we just added" );
           continue;
         }
 
