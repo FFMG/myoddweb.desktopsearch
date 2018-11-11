@@ -68,7 +68,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     public IWords Words { get; }
 
     /// <inheritdoc />
-    public IWordsParts WordsParts { get; }
+    public IParts WordsParts { get; }
 
     /// <inheritdoc />
     public IFilesWords FilesWords { get; }
