@@ -87,7 +87,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           var wordId = await _words.AddOrUpdateWordAsync(wordsHelper, partsHelper, pendingParserWordsUpdate.Word, connectionFactory, token ).ConfigureAwait(false);
           if (-1 == wordId)
           {
-            _logger.Error($"There was an issue inserting/finding the word : {pendingParserWordsUpdate.Word}.");
+            _logger.Error($"There was an issue inserting/finding the word : {pendingParserWordsUpdate.Word.Value}.");
             continue;
           }
 

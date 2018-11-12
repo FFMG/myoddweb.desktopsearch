@@ -65,10 +65,10 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<int> WorkAsync(CancellationToken token)
+    public async Task<int> WorkAsync(IConnectionFactory factory, CancellationToken token)
     {
       // get the number of file ids we want to work on.
-      var pendingParserWordsUpdates = await GetPendingParserWordsUpdatesAsync(token).ConfigureAwait( false );
+      var pendingParserWordsUpdates = await GetPendingParserWordsUpdatesAsync(factory, token).ConfigureAwait( false );
       if (pendingParserWordsUpdates == null || !pendingParserWordsUpdates.Any())
       {
         return 0;
@@ -76,23 +76,16 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       using( _counter.Start() )
       {
-        var connectionFactory = await _persister.BeginWrite(token).ConfigureAwait(false);
-        if (null == connectionFactory)
-        {
-          throw new Exception("Unable to get transaction!");
-        }
-
         try
         {
-          using (var wordsHelper = new WordsHelper(connectionFactory, _persister.Words.TableName))
-          using (var partsHelper = new PartsHelper(connectionFactory, _persister.Parts.TableName))
-          using (var filesWords = new FilesWordsHelper(connectionFactory, _persister.FilesWords.TableName))
+          using (var wordsHelper = new WordsHelper(factory, _persister.Words.TableName))
+          using (var partsHelper = new PartsHelper(factory, _persister.Parts.TableName))
+          using (var filesWords = new FilesWordsHelper(factory, _persister.FilesWords.TableName))
           {
-            if (!await _persister.FilesWords.AddParserWordsAsync(wordsHelper, filesWords, partsHelper, pendingParserWordsUpdates, connectionFactory, token)
+            if (!await _persister.FilesWords.AddParserWordsAsync(wordsHelper, filesWords, partsHelper, pendingParserWordsUpdates, factory, token)
               .ConfigureAwait(false))
             {
               // there was an issue adding those words for that file id.
-              _persister.Rollback(connectionFactory);
               return 0;
             }
 
@@ -103,7 +96,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
               // delete that part id so we do not do it again.
               await _persister.ParserWords
-                .DeleteFileIds(pendingParserWordsUpdate.Id, pendingParserWordsUpdate.FileIds, connectionFactory, token)
+                .DeleteFileIds(pendingParserWordsUpdate.Id, pendingParserWordsUpdate.FileIds, factory, token)
                 .ConfigureAwait(false);
 
               // if we found any, log it.
@@ -112,27 +105,18 @@ namespace myoddweb.desktopsearch.processor.Processors
             }
           }
 
-          // we are done.
-          _persister.Commit(connectionFactory);
-
           // return what we did
           return pendingParserWordsUpdates.Count;
         }
         catch (OperationCanceledException e)
         {
           _logger.Warning("Received cancellation request - Parsing File words.");
-          _persister.Rollback(connectionFactory);
 
           // is it my token?
           if (e.CancellationToken != token)
           {
             _logger.Exception(e);
           }
-          throw;
-        }
-        catch (Exception)
-        {
-          _persister.Rollback(connectionFactory);
           throw;
         }
       }
@@ -144,37 +128,23 @@ namespace myoddweb.desktopsearch.processor.Processors
       _counter?.Dispose();
     }
 
-    private async Task<IList<IPendingParserWordsUpdate>> GetPendingParserWordsUpdatesAsync(CancellationToken token)
+    private async Task<IList<IPendingParserWordsUpdate>> GetPendingParserWordsUpdatesAsync(IConnectionFactory factory, CancellationToken token)
     {
       // get the transaction
-      var connectionFactory = await _persister.BeginRead(token).ConfigureAwait(false);
-      if (null == connectionFactory)
-      {
-        throw new Exception("Unable to get transaction!");
-      }
-
       try
       {
         // we will assume one word per file
         // so just get them all at once :)
-        var pendingParserWordsUpdates = await _persister.ParserWords.GetPendingParserWordsUpdatesAsync( MaxUpdatesToProcess, connectionFactory, token ).ConfigureAwait(false);
-        _persister.Commit(connectionFactory);
+        var pendingParserWordsUpdates = await _persister.ParserWords.GetPendingParserWordsUpdatesAsync( MaxUpdatesToProcess, factory, token ).ConfigureAwait(false);
         return pendingParserWordsUpdates != null ? (pendingParserWordsUpdates.Any() ? pendingParserWordsUpdates : null)  : null;
       }
       catch (OperationCanceledException e)
       {
-        _persister.Rollback(connectionFactory);
-
         // is it my token?
         if (e.CancellationToken != token)
         {
           _logger.Exception(e);
         }
-        throw;
-      }
-      catch (Exception)
-      {
-        _persister.Rollback(connectionFactory);
         throw;
       }
     }

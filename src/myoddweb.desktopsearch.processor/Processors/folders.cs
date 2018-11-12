@@ -88,14 +88,14 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<int> WorkAsync(CancellationToken token)
+    public async Task<int> WorkAsync(IConnectionFactory factory, CancellationToken token)
     {
       using (_counter.Start())
       { 
         try
         {
           // then get _all_ the file updates that we want to do.
-          var pendingUpdates = await GetPendingFolderUpdatesAndMarkDirectoryProcessedAsync(token).ConfigureAwait(false);
+          var pendingUpdates = await GetPendingFolderUpdatesAndMarkDirectoryProcessedAsync(factory, token).ConfigureAwait(false);
           if (null == pendingUpdates)
           {
             //  probably was canceled.
@@ -103,7 +103,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           }
 
           // process the update.
-          await ProcessFolderUpdatesAsync(pendingUpdates, token).ConfigureAwait(false);
+          await ProcessFolderUpdatesAsync(factory, pendingUpdates, token).ConfigureAwait(false);
 
           // we processed one update
           return pendingUpdates.Count;
@@ -121,46 +121,27 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
     }
 
-    private async Task ProcessFolderUpdatesAsync(ICollection<IPendingFolderUpdate> pendingFolderUpdates, CancellationToken token)
+    private async Task ProcessFolderUpdatesAsync(IConnectionFactory factory, ICollection<IPendingFolderUpdate> pendingFolderUpdates, CancellationToken token)
     {
-      // now try and process the files.
-      var factory = await _persister.BeginWrite(token).ConfigureAwait(false);
-      try
+      // the first thing we will do is mark the folder as processed.
+      // if anything goes wrong _after_ that we will try and 'touch' it again.
+      // by doing it that way around we ensure that we never keep the transaction.
+      // and we don't run the risk of someone else trying to process this again.
+      await _persister.Folders.FolderUpdates.MarkDirectoriesProcessedAsync(pendingFolderUpdates.Select( f => f.FolderId ), factory, token).ConfigureAwait(false);
+
+      var tasks = new List<Task>(pendingFolderUpdates.Count);
+      foreach (var pendingFolderUpdate in pendingFolderUpdates)
       {
+        // throw if need be.
+        token.ThrowIfCancellationRequested();
 
-        // the first thing we will do is mark the folder as processed.
-        // if anything goes wrong _after_ that we will try and 'touch' it again.
-        // by doing it that way around we ensure that we never keep the transaction.
-        // and we don't run the risk of someone else trying to process this again.
-        await _persister.Folders.FolderUpdates.MarkDirectoriesProcessedAsync(pendingFolderUpdates.Select( f => f.FolderId ), factory, token).ConfigureAwait(false);
-
-        var tasks = new List<Task>(pendingFolderUpdates.Count);
-        foreach (var pendingFolderUpdate in pendingFolderUpdates)
-        {
-          // throw if need be.
-          token.ThrowIfCancellationRequested();
-
-          tasks.Add(ProcessFolderUpdateAsync(factory, pendingFolderUpdate, token));
-        }
-
-        // the 'continuewith' step is to pass all the words that we found.
-        // this will be within it's own transaction
-        // but the parsing has been done already.
-        await helper.Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
-
-        // commit the changes we made.
-        _persister.Commit(factory);
+        tasks.Add(ProcessFolderUpdateAsync(factory, pendingFolderUpdate, token));
       }
-      catch
-      {
-        _persister.Rollback(factory);
 
-        // something did not work ... re-touch the files
-        await TouchDirectoriesAsync(pendingFolderUpdates, token).ConfigureAwait(false);
-
-        // done
-        throw;
-      }
+      // the 'continuewith' step is to pass all the words that we found.
+      // this will be within it's own transaction
+      // but the parsing has been done already.
+      await helper.Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -313,71 +294,24 @@ namespace myoddweb.desktopsearch.processor.Processors
     #endregion
 
     #region Database calls
+
     /// <summary>
     /// Get the folder updates
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<IList<IPendingFolderUpdate>> GetPendingFolderUpdatesAndMarkDirectoryProcessedAsync( CancellationToken token)
+    private async Task<IList<IPendingFolderUpdate>> GetPendingFolderUpdatesAndMarkDirectoryProcessedAsync(IConnectionFactory factory, CancellationToken token)
     {
-      // get the transaction
-      var transaction = await _persister.BeginRead(token).ConfigureAwait(false);
-      if (null == transaction)
+      var pendingUpdates = await _persister.Folders.FolderUpdates.GetPendingFolderUpdatesAsync(MaxUpdatesToProcess, factory, token).ConfigureAwait(false);
+      if (null == pendingUpdates)
       {
-        //  we probably cancelled.
+        _logger.Error("Unable to get any pending folder updates.");
         return null;
       }
-      try
-      {
-        var pendingUpdates = await _persister.Folders.FolderUpdates.GetPendingFolderUpdatesAsync(MaxUpdatesToProcess, transaction, token).ConfigureAwait(false);
-        _persister.Commit(transaction);
 
-        if (null == pendingUpdates)
-        {
-          _logger.Error("Unable to get any pending folder updates.");
-          return null;
-        }
-
-        // return null if we have nothing.
-        return !pendingUpdates.Any() ? null : pendingUpdates;
-      }
-      catch
-      {
-        _persister.Rollback(transaction);
-        return null;
-      }
-    }
-
-    /// <summary>
-    /// Touch the directory to mark it for an update again.
-    /// </summary>
-    /// <param name="pendingFolderUpdates"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task TouchDirectoriesAsync(IEnumerable<IPendingFolderUpdate> pendingFolderUpdates, CancellationToken token)
-    {
-      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        throw new Exception("Unable to get transaction!");
-      }
-
-      try
-      {
-        // touch this directory again.
-        foreach (var pendingFolderUpdate in pendingFolderUpdates)
-        {
-          await _persister.Folders.FolderUpdates.TouchDirectoriesAsync( new []{ pendingFolderUpdate .FolderId}, pendingFolderUpdate.PendingUpdateType, transaction, token).ConfigureAwait(false);
-        }
-
-        // we are done
-        _persister.Commit(transaction);
-      }
-      catch
-      {
-        _persister.Rollback(transaction);
-        throw;
-      }
+      // return null if we have nothing.
+      return !pendingUpdates.Any() ? null : pendingUpdates;
     }
     #endregion
   }

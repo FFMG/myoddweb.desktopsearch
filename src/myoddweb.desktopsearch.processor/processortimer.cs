@@ -13,10 +13,13 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 using myoddweb.desktopsearch.interfaces.Logging;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.processor
 {
@@ -26,7 +29,12 @@ namespace myoddweb.desktopsearch.processor
     /// <summary>
     /// The processor we are currently running.
     /// </summary>
-    private readonly IProcessor _processor;
+    private readonly IList<IProcessor> _processors;
+
+    /// <summary>
+    /// The persister.
+    /// </summary>
+    private readonly IPersister _persister;
 
     /// <summary>
     /// The timer to start the next round.
@@ -37,11 +45,6 @@ namespace myoddweb.desktopsearch.processor
     /// The cancellation
     /// </summary>
     private CancellationToken _token;
-
-    /// <summary>
-    /// The current task.
-    /// </summary>
-    private Task _task;
 
     /// <summary>
     /// When the file/folders updates are compelte
@@ -62,7 +65,7 @@ namespace myoddweb.desktopsearch.processor
     private readonly ILogger _logger;
     #endregion
 
-    public ProcessorTimer(IProcessor processor, ILogger logger, int quietEventsProcessorMs, int busyEventsProcessorMs)
+    public ProcessorTimer( IPersister persister, IList<IProcessor> processors, ILogger logger, int quietEventsProcessorMs, int busyEventsProcessorMs)
     {
       QuietEventsProcessorMs = quietEventsProcessorMs;
       BusyEventsProcessorMs = busyEventsProcessorMs;
@@ -78,8 +81,14 @@ namespace myoddweb.desktopsearch.processor
       {
         throw new ArgumentException($"The busy event processor timer cannot be more than the quiet event processor timer ({QuietEventsProcessorMs} < {BusyEventsProcessorMs})");
       }
-      _processor = processor ?? throw new ArgumentNullException(nameof(processor));
+      _processors = processors ?? throw new ArgumentNullException(nameof(processor));
+      if (_processors.Count == 0)
+      {
+        throw new ArgumentException("You must have at least one item to process!");
+      }
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      _persister = persister ?? throw new ArgumentNullException(nameof(persister));
     }
 
     #region Events Process Timer
@@ -113,31 +122,54 @@ namespace myoddweb.desktopsearch.processor
 
       // process the item ... and when done
       // restart the timer.
-      _task = _processor.WorkAsync(_token).
-        ContinueWith( 
-          task =>
+      CreateTask().GetAwaiter().GetResult();
+    }
+
+    private async Task CreateTask()
+    { 
+      var factory = await _persister.BeginWrite(_token).ConfigureAwait(false);
+
+      var tasks = new List<Task<int>>();
+      foreach (var processor in _processors)
+      {
+        tasks.Add( processor.WorkAsync(factory, _token) );
+      }
+
+      await helper.Wait.WhenAll(tasks, _logger, _token).
+      ContinueWith(
+        task =>
+        {
+          // if the operation was cancelled, no point going further.
+          if (task.IsCanceled)
           {
-            // if the operation was cancelled, no point going further.
-            if (task.IsCanceled)
-            {
-              _logger.Warning("Received cancellation request - Processor timer.");
-              throw new OperationCanceledException(_token);
-            }
+            factory.Rollback();
+            _logger.Warning("Received cancellation request - Processor timer.");
+            throw new OperationCanceledException(_token);
+          }
 
-            // if it was faulted, just log the error.
-            // and restart the timer again.
-            if (task.IsFaulted)
-            {
-              _logger.Exception(task.Exception ?? 
-                                new Exception("There was an exception durring EventsProcessor handling"));
-            }
+          // if it was faulted, just log the error.
+          // and restart the timer again.
+          if (task.IsFaulted)
+          {
+            factory.Rollback();
+            _logger.Exception(task.Exception ?? new Exception("There was an exception durring EventsProcessor handling"));
 
-            StartProcessorTimer(
-              task.IsFaulted ? 
-                Almost(QuietEventsProcessorMs) :
-              Almost(task.GetAwaiter().GetResult() < _processor.MaxUpdatesToProcess ? QuietEventsProcessorMs : BusyEventsProcessorMs));
-          }, _token 
-        );
+            // restart the timer ... quietly.
+            StartProcessorTimer( Almost(QuietEventsProcessorMs) );
+          }
+          else
+          {
+            factory.Commit();
+
+            var totalMaxUpdatesToProcess = _processors.Sum(p => p.MaxUpdatesToProcess);
+            var processed = task.GetAwaiter().GetResult().Sum();
+
+            // restart the timer.
+            StartProcessorTimer( Almost(processed < totalMaxUpdatesToProcess ? QuietEventsProcessorMs : BusyEventsProcessorMs));
+          }
+
+        }, _token
+      ).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -190,12 +222,11 @@ namespace myoddweb.desktopsearch.processor
         // Stop the timers
         StopProcessorTimer();
 
-        if (_task != null)
+        // stop the processors
+        foreach (var processor in _processors)
         {
-          helper.Wait.WaitAll(_task, _logger, _token);
+          processor.Stop();
         }
-
-        _processor.Stop();
       }
       catch (Exception e)
       {

@@ -283,17 +283,10 @@ namespace myoddweb.desktopsearch.service.Persisters
         // get out if needed.
         token.ThrowIfCancellationRequested();
 
-        // look for that part, if it exists, add it to the list
-        // otherwird we will need to add it.
-        var partId = await partsHelper.GetIdAsync(part, token).ConfigureAwait( false );
-        if (partId != -1)
-        {
-          partIds.Add(partId);
-          continue;
-        }
-
-        // then try and add it.
-        partId = await partsHelper.InsertAsync(part, token).ConfigureAwait(false);
+        // we will do an insert regadless if the value exists or not.
+        // this is because we don't just insert if the value exist.
+        // there is no point in just geting the value.
+        var partId = await partsHelper.InsertAndGetIdAsync(part, token).ConfigureAwait(false);
         if (-1 != partId)
         {
           partIds.Add(partId);

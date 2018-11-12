@@ -232,11 +232,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<long> InsertAsync(string part, CancellationToken token)
+    public async Task<long> InsertAndGetIdAsync(string part, CancellationToken token)
     {
-      // sanity check
-      ThrowIfDisposed();
-
       // insert the word.
       InsertPart.Value = part;
       await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false);
