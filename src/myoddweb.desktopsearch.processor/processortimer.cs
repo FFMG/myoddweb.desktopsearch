@@ -151,7 +151,7 @@ namespace myoddweb.desktopsearch.processor
           // and restart the timer again.
           if (task.IsFaulted)
           {
-            factory.Rollback();
+            _persister.Rollback(factory);
             _logger.Exception(task.Exception ?? new Exception("There was an exception durring EventsProcessor handling"));
 
             // restart the timer ... quietly.
@@ -159,7 +159,7 @@ namespace myoddweb.desktopsearch.processor
           }
           else
           {
-            factory.Commit();
+            _persister.Commit(factory);
 
             var totalMaxUpdatesToProcess = _processors.Sum(p => p.MaxUpdatesToProcess);
             var processed = task.GetAwaiter().GetResult().Sum();
