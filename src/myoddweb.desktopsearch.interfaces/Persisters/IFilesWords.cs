@@ -28,11 +28,18 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <summary>
     /// Add multiple words to a single file id
     /// </summary>
+    /// <param name="fileWordsHelper"></param>
     /// <param name="pendingUpdates">The words we want to add to the list of words./</param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddParserWordsAsync( IList<IPendingParserWordsUpdate> pendingUpdates, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> AddParserWordsAsync(
+      IWordsHelper wordsHelper,
+      IFilesWordsHelper fileWordsHelper,
+      IPartsHelper partsHelper,
+      IList<IPendingParserWordsUpdate> pendingUpdates, 
+      IConnectionFactory connectionFactory, 
+      CancellationToken token);
 
     /// <summary>
     /// Remove a file id from the FilesWords table.

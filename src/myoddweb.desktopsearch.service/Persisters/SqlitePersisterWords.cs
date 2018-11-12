@@ -77,7 +77,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// The words parts interface
     /// </summary>
-    private readonly interfaces.Persisters.IWordsParts _wordsParts;
+    private readonly IWordsParts _wordsParts;
 
     /// <summary>
     /// The logger
@@ -85,7 +85,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly ILogger _logger;
     #endregion
 
-    public SqlitePersisterWords(IPerformance performance, interfaces.Persisters.IWordsParts wordsParts, int maxNumCharactersPerWords, int maxNumCharactersPerParts, ILogger logger)
+    public SqlitePersisterWords(IPerformance performance, IWordsParts wordsParts, int maxNumCharactersPerWords, int maxNumCharactersPerParts, ILogger logger)
     {
       // the number of characters per parts.
       _maxNumCharactersPerParts = maxNumCharactersPerParts;
@@ -116,14 +116,24 @@ namespace myoddweb.desktopsearch.service.Persisters
     public string TableName => Tables.Words;
 
     /// <inheritdoc />
-    public async Task<long> AddOrUpdateWordAsync(IWord word, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<long> AddOrUpdateWordAsync(
+      IWordsHelper wordsHelper,
+      IPartsHelper partsHelper,
+      IWord word, 
+      IConnectionFactory connectionFactory, 
+      CancellationToken token)
     {
-      var ids = await AddOrUpdateWordsAsync( new Words(word), connectionFactory, token ).ConfigureAwait(false);
+      var ids = await AddOrUpdateWordsAsync( wordsHelper, partsHelper, new Words(word), connectionFactory, token ).ConfigureAwait(false);
       return ids.Any() ? ids.First() : -1;
     }
 
     /// <inheritdoc />
-    public async Task<IList<long>> AddOrUpdateWordsAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<IList<long>> AddOrUpdateWordsAsync(
+      IWordsHelper wordsHelper,
+      IPartsHelper partsHelper,
+      interfaces.IO.IWords words, 
+      IConnectionFactory connectionFactory, 
+      CancellationToken token)
     {
       using (_counterAddOrUpdate.Start())
       {
@@ -142,7 +152,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         IList<long> inserts;
         using (_counterInsertedWords.Start())
         {
-          inserts = await InsertWordsAsync(currentValuesAndNewWords.WordsToAdd, connectionFactory, token).ConfigureAwait(false);
+          inserts = await InsertWordsAsync(wordsHelper, partsHelper, currentValuesAndNewWords.WordsToAdd, connectionFactory, token).ConfigureAwait(false);
         }
         var result = new List<long>(currentValuesAndNewWords.ExistingWordIds);
         result.AddRange(inserts);
@@ -151,14 +161,22 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
     
     #region Private word functions
+
     /// <summary>
     /// Given a list of words, re-create the ones that we need to insert.
     /// </summary>
+    /// <param name="wordsHelper"></param>
+    /// <param name="partsHelper"></param>
     /// <param name="words"></param>
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<IList<long>> InsertWordsAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<IList<long>> InsertWordsAsync(
+      IWordsHelper wordsHelper,
+      IPartsHelper partsHelper,
+      interfaces.IO.IWords words, 
+      IConnectionFactory connectionFactory, 
+      CancellationToken token)
     {
       // if we have nothing to do... we are done.
       if (!words.Any())
@@ -169,48 +187,44 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the ids of the words we just added
       var ids = new List<long>( words.Count );
 
-      using (var wordsHelper = new helper.Persisters.WordsHelper(connectionFactory, TableName))
-      using (var partsHelper = new helper.Persisters.PartsHelper(connectionFactory, Tables.Parts))
+      try
       {
-        try
+        foreach (var word in words)
         {
-          foreach (var word in words)
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
+          // the word is crazy long, so we are ignoring it...
+          if (word.Value.Length > _maxNumCharactersPerWords)
           {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            // the word is crazy long, so we are ignoring it...
-            if (word.Value.Length > _maxNumCharactersPerWords)
-            {
-              continue;
-            }
-
-            // the word we want to insert.
-            var wordId = await InsertWordAsync(word, wordsHelper, partsHelper, connectionFactory, token).ConfigureAwait(false);
-            if (-1 == wordId)
-            {
-              // we log errors in the insert function
-              continue;
-            }
-
-            // we added this id.
-            ids.Add(wordId);
+            continue;
           }
 
-          // all done, return whatever we did.
-          return ids;
+          // the word we want to insert.
+          var wordId = await InsertWordAsync(word, wordsHelper, partsHelper, connectionFactory, token).ConfigureAwait(false);
+          if (-1 == wordId)
+          {
+            // we log errors in the insert function
+            continue;
+          }
+
+          // we added this id.
+          ids.Add(wordId);
         }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Insert multiple words");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-          throw;
-        }
-      }// using insert word command
+
+        // all done, return whatever we did.
+        return ids;
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Insert multiple words");
+        throw;
+      }
+      catch (Exception ex)
+      {
+        _logger.Exception(ex);
+        throw;
+      }
     }
 
     /// <summary>

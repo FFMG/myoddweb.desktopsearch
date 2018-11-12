@@ -24,6 +24,7 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 using myoddweb.desktopsearch.service.Configs;
 using IConfig = myoddweb.desktopsearch.interfaces.Persisters.IConfig;
 using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
+using IParts = myoddweb.desktopsearch.interfaces.Persisters.IParts;
 using IWords = myoddweb.desktopsearch.interfaces.Persisters.IWords;
 
 namespace myoddweb.desktopsearch.service.Persisters
@@ -71,6 +72,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     public IWordsParts WordsParts { get; }
 
     /// <inheritdoc />
+    public IParts Parts { get; }
+
+    /// <inheritdoc />
     public IFilesWords FilesWords { get; }
     
     /// <inheritdoc />
@@ -115,6 +119,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // create the files / Folders.
       Folders = new SqlitePersisterFolders( Counts, parsers, logger );
+
+      // the parts
+      Parts = new SqlitePersisterParts();
     }
 
     /// <inheritdoc />

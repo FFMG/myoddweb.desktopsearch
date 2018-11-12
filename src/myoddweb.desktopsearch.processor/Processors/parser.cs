@@ -19,6 +19,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.Performance;
+using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -83,23 +84,32 @@ namespace myoddweb.desktopsearch.processor.Processors
 
         try
         {
-          if (!await _persister.FilesWords.AddParserWordsAsync(pendingParserWordsUpdates, connectionFactory, token).ConfigureAwait(false))
+          using (var wordsHelper = new WordsHelper(connectionFactory, _persister.Words.TableName))
+          using (var partsHelper = new PartsHelper(connectionFactory, _persister.Parts.TableName))
+          using (var filesWords = new FilesWordsHelper(connectionFactory, _persister.FilesWords.TableName))
           {
-            // there was an issue adding those words for that file id.
-            _persister.Rollback(connectionFactory);
-            return 0;
-          }
+            if (!await _persister.FilesWords.AddParserWordsAsync(wordsHelper, filesWords, partsHelper, pendingParserWordsUpdates, connectionFactory, token)
+              .ConfigureAwait(false))
+            {
+              // there was an issue adding those words for that file id.
+              _persister.Rollback(connectionFactory);
+              return 0;
+            }
 
-          foreach (var pendingParserWordsUpdate in pendingParserWordsUpdates)
-          {
-            // thow if needed.
-            token.ThrowIfCancellationRequested();
+            foreach (var pendingParserWordsUpdate in pendingParserWordsUpdates)
+            {
+              // thow if needed.
+              token.ThrowIfCancellationRequested();
 
-            // delete that part id so we do not do it again.
-            await _persister.ParserWords.DeleteFileIds(pendingParserWordsUpdate.Id, pendingParserWordsUpdate.FileIds, connectionFactory, token).ConfigureAwait( false );
+              // delete that part id so we do not do it again.
+              await _persister.ParserWords
+                .DeleteFileIds(pendingParserWordsUpdate.Id, pendingParserWordsUpdate.FileIds, connectionFactory, token)
+                .ConfigureAwait(false);
 
-            // if we found any, log it.
-            _logger.Verbose($"Processor : {pendingParserWordsUpdate.Word.Value} processed for {pendingParserWordsUpdate.FileIds.Count} file(s).");
+              // if we found any, log it.
+              _logger.Verbose(
+                $"Processor : {pendingParserWordsUpdate.Word.Value} processed for {pendingParserWordsUpdate.FileIds.Count} file(s).");
+            }
           }
 
           // we are done.

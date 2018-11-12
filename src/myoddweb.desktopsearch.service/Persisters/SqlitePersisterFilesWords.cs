@@ -18,7 +18,6 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -59,7 +58,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     public string TableName => Tables.FilesWords;
 
     /// <inheritdoc />
-    public async Task<bool> AddParserWordsAsync(IList<IPendingParserWordsUpdate> pendingUpdates, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> AddParserWordsAsync(
+      IWordsHelper wordsHelper, 
+      IFilesWordsHelper filesWordsHelper,
+      IPartsHelper partsHelper,
+      IList<IPendingParserWordsUpdate> pendingUpdates, 
+      IConnectionFactory connectionFactory, 
+      CancellationToken token)
     {
       if (null == connectionFactory)
       {
@@ -76,25 +81,21 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // then do an inserts.
-        using (var filesWords = new FilesWordsHelper(connectionFactory, TableName))
+        foreach (var pendingParserWordsUpdate in pendingUpdates)
         {
-          foreach (var pendingParserWordsUpdate in pendingUpdates)
+          // get the id for this word.
+          var wordId = await _words.AddOrUpdateWordAsync(wordsHelper, partsHelper, pendingParserWordsUpdate.Word, connectionFactory, token ).ConfigureAwait(false);
+          if (-1 == wordId)
           {
-            // get the id for this word.
-            var wordId = await _words.AddOrUpdateWordAsync(pendingParserWordsUpdate.Word, connectionFactory, token ).ConfigureAwait(false);
-            if (-1 == wordId)
-            {
-              _logger.Error($"There was an issue inserting/finding the word : {pendingParserWordsUpdate.Word}.");
-              continue;
-            }
+            _logger.Error($"There was an issue inserting/finding the word : {pendingParserWordsUpdate.Word}.");
+            continue;
+          }
 
-            foreach (var fileId in pendingParserWordsUpdate.FileIds)
+          foreach (var fileId in pendingParserWordsUpdate.FileIds)
+          {
+            if( !await filesWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false))
             {
-              if( !await filesWords.InsertAsync(wordId, fileId, token).ConfigureAwait(false))
-              {
-                _logger.Error(
-                  $"There was an issue inserting word : {pendingParserWordsUpdate.Word.Value}({wordId}) for file : {fileId}");
-              }
+              _logger.Error( $"There was an issue inserting word : {pendingParserWordsUpdate.Word.Value}({wordId}) for file : {fileId}");
             }
           }
         }
