@@ -81,8 +81,9 @@ namespace myoddweb.desktopsearch.processor.Processors
           using (var wordsHelper = new WordsHelper(factory, _persister.Words.TableName))
           using (var partsHelper = new PartsHelper(factory, _persister.Parts.TableName))
           using (var filesWords = new FilesWordsHelper(factory, _persister.FilesWords.TableName))
+          using (var wordsParts = new WordsPartsHelper(factory, _persister.WordsParts.TableName))
           {
-            if (!await _persister.FilesWords.AddParserWordsAsync(wordsHelper, filesWords, partsHelper, pendingParserWordsUpdates, factory, token)
+            if (!await _persister.FilesWords.AddParserWordsAsync(wordsHelper, filesWords, partsHelper, wordsParts, pendingParserWordsUpdates, token)
               .ConfigureAwait(false))
             {
               // there was an issue adding those words for that file id.

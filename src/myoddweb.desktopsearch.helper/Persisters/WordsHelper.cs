@@ -234,7 +234,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<long> InsertAsync(string word, CancellationToken token)
+    public async Task<long> InsertAndGetIdAsync(string word, CancellationToken token)
     {
       // sanity check
       ThrowIfDisposed();

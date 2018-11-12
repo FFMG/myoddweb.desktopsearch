@@ -34,6 +34,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="word"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<long> InsertAsync(string word, CancellationToken token);
+    Task<long> InsertAndGetIdAsync(string word, CancellationToken token);
   }
 }

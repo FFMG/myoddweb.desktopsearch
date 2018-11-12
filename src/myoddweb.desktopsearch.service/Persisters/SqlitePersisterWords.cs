@@ -14,7 +14,6 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,23 +27,6 @@ namespace myoddweb.desktopsearch.service.Persisters
 {
   internal class SqlitePersisterWords : interfaces.Persisters.IWords, IDisposable
   {
-    /// <summary>
-    /// Internal class to control the words we need to add
-    /// And the words that already exist.
-    /// </summary>
-    private struct RebuiltWordsList
-    {
-      /// <summary>
-      /// List of words we need to add to the persister.
-      /// </summary>
-      public Words WordsToAdd { get; set; }
-
-      /// <summary>
-      /// The ids of the words that exist already.
-      /// </summary>
-      public IList<long> ExistingWordIds { get; set; }
-    }
-
     #region Member variable
     /// <summary>
     /// The counter for adding new words
@@ -55,11 +37,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// The counter for inserting new words.
     /// </summary>
     private readonly SqlPerformanceCounter _counterInsertedWords;
-
-    /// <summary>
-    /// The counter for how long it takes us to rebuild the word list.
-    /// </summary>
-    private readonly SqlPerformanceCounter _counterRebuildWordsList;
 
     /// <summary>
     /// The maximum number of characters per words parts...
@@ -101,14 +78,12 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // create the counter,
       _counterAddOrUpdate = new SqlPerformanceCounter(performance, "Database: Add Or Update word", _logger);
-      _counterRebuildWordsList = new SqlPerformanceCounter(performance, "Database: Rebuild Words List", _logger);
       _counterInsertedWords = new SqlPerformanceCounter(performance, "Database: Inserted new Words", _logger);
     }
 
     public void Dispose()
     {
       _counterAddOrUpdate?.Dispose();
-      _counterRebuildWordsList?.Dispose();
       _counterInsertedWords?.Dispose();
     }
 
@@ -119,11 +94,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     public async Task<long> AddOrUpdateWordAsync(
       IWordsHelper wordsHelper,
       IPartsHelper partsHelper,
+      IWordsPartsHelper wordsPartsHelper,
       IWord word, 
-      IConnectionFactory connectionFactory, 
       CancellationToken token)
     {
-      var ids = await AddOrUpdateWordsAsync( wordsHelper, partsHelper, new Words(word), connectionFactory, token ).ConfigureAwait(false);
+      var ids = await AddOrUpdateWordsAsync( wordsHelper, partsHelper, wordsPartsHelper, new Words(word), token ).ConfigureAwait(false);
       return ids.Any() ? ids.First() : -1;
     }
 
@@ -131,32 +106,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     public async Task<IList<long>> AddOrUpdateWordsAsync(
       IWordsHelper wordsHelper,
       IPartsHelper partsHelper,
+      IWordsPartsHelper wordsPartsHelper,
       interfaces.IO.IWords words, 
-      IConnectionFactory connectionFactory, 
       CancellationToken token)
     {
       using (_counterAddOrUpdate.Start())
       {
-        if (null == connectionFactory)
-        {
-          throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
-        }
-
-        // rebuild the list of directory with only those that need to be inserted.
-        RebuiltWordsList currentValuesAndNewWords;
-        using (_counterRebuildWordsList.Start())
-        {
-          currentValuesAndNewWords = await RebuildWordsListAsync(words, connectionFactory, token).ConfigureAwait(false);
-        }
-
-        IList<long> inserts;
         using (_counterInsertedWords.Start())
         {
-          inserts = await InsertWordsAsync(wordsHelper, partsHelper, currentValuesAndNewWords.WordsToAdd, connectionFactory, token).ConfigureAwait(false);
+          return await InsertWordsAsync(wordsHelper, partsHelper, words, wordsPartsHelper, token).ConfigureAwait(false);
         }
-        var result = new List<long>(currentValuesAndNewWords.ExistingWordIds);
-        result.AddRange(inserts);
-        return result;
       }
     }
     
@@ -168,14 +127,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="wordsHelper"></param>
     /// <param name="partsHelper"></param>
     /// <param name="words"></param>
-    /// <param name="connectionFactory"></param>
+    /// <param name="wordsPartsHelper"></param>
     /// <param name="token"></param>
     /// <returns></returns>
     private async Task<IList<long>> InsertWordsAsync(
       IWordsHelper wordsHelper,
       IPartsHelper partsHelper,
-      interfaces.IO.IWords words, 
-      IConnectionFactory connectionFactory, 
+      interfaces.IO.IWords words,
+      IWordsPartsHelper wordsPartsHelper, 
       CancellationToken token)
     {
       // if we have nothing to do... we are done.
@@ -201,7 +160,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // the word we want to insert.
-          var wordId = await InsertWordAsync(word, wordsHelper, partsHelper, connectionFactory, token).ConfigureAwait(false);
+          var wordId = await InsertWordAsync(word, wordsHelper, partsHelper, wordsPartsHelper, token).ConfigureAwait(false);
           if (-1 == wordId)
           {
             // we log errors in the insert function
@@ -233,17 +192,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="word"></param>
     /// <param name="wordsHelper"></param>
     /// <param name="partsHelper"></param>
-    /// <param name="connectionFactory"></param>
+    /// <param name="wordsPartsHelper"></param>
     /// <param name="token"></param>
     /// <returns></returns>
     private async Task<long> InsertWordAsync(
       IWord word,
       IWordsHelper wordsHelper,
       IPartsHelper partsHelper,
-      IConnectionFactory connectionFactory,
+      IWordsPartsHelper wordsPartsHelper,
       CancellationToken token)
     {
-      var wordId = await wordsHelper.InsertAsync(word.Value, token).ConfigureAwait(false);
+      var wordId = await wordsHelper.InsertAndGetIdAsync(word.Value, token).ConfigureAwait(false);
       if ( wordId == -1 )
       {
         _logger.Error($"There was an issue getting the word id: {word.Value} from the persister");
@@ -255,7 +214,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // marry the word id, (that we just added).
       // with the partIds, (that we just added).
-      await _wordsParts.AddOrUpdateWordParts(wordId, new HashSet<long>(partIds), connectionFactory, token).ConfigureAwait(false);
+      await _wordsParts.AddOrUpdateWordParts(wordId, new HashSet<long>(partIds), wordsPartsHelper, token).ConfigureAwait(false);
 
       // all done return the id of the word.
       return wordId;
@@ -299,70 +258,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       // return all the ids that we either
       // added or that already exist.
       return partIds;
-    }
-
-    /// <summary>
-    /// Given a list of directories, re-create the ones that we need to insert.
-    /// </summary>
-    /// <param name="words"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<RebuiltWordsList>RebuildWordsListAsync(interfaces.IO.IWords words, IConnectionFactory connectionFactory, CancellationToken token)
-    {
-      try
-      {
-        // we have nithing in the list
-        if (!words.Any())
-        {
-          return new RebuiltWordsList();
-        }
-
-        // The list of words we will be adding to the list.
-        var actualWords = new List<string>(words.Count);
-
-        // we first look for it, and, if we find it then there is nothing to do.
-        var sql = $"SELECT id FROM {TableName} WHERE word=@word";
-        var ids = new List<long>();
-        using (var cmd = connectionFactory.CreateCommand(sql))
-        {
-          var pWord = cmd.CreateParameter();
-          pWord.DbType = DbType.String;
-          pWord.ParameterName = "@word";
-          cmd.Parameters.Add(pWord);
-          foreach (var word in words)
-          {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            // the words are case sensitive
-            pWord.Value = word.Value;
-            var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
-            if (null == value || value == DBNull.Value)
-            {
-              // we could not find this word so we will 
-              // just add it to our list of words to add.
-              actualWords.Add(word.Value);
-              continue;
-            }
-
-            // otherwise we will add it to our list of known ids
-            ids.Add( (long)value );
-          }
-        }
-
-        // we can then built the return list with existing word ids
-        // together with the word we will need to add.
-        return new RebuiltWordsList{
-          WordsToAdd = new Words( actualWords ),
-          ExistingWordIds = ids
-        };
-      }
-      catch (OperationCanceledException)
-      {
-        _logger.Warning("Received cancellation request - Building word list");
-        throw;
-      }
     }
     #endregion
   }

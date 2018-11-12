@@ -72,6 +72,7 @@
     <Compile Include="Persisters\IWords.cs" />
     <Compile Include="Persisters\IParserWordsHelper.cs" />
     <Compile Include="Persisters\IWordsHelper.cs" />
+    <Compile Include="Persisters\IWordsPartsHelper.cs" />
     <Compile Include="Persisters\IWordsParts.cs" />
     <Compile Include="Enums\UpdateType.cs" />
     <Compile Include="Persisters\IConfig.cs" />

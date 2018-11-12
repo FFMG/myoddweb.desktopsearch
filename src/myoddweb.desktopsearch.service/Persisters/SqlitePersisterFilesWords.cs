@@ -62,15 +62,10 @@ namespace myoddweb.desktopsearch.service.Persisters
       IWordsHelper wordsHelper, 
       IFilesWordsHelper filesWordsHelper,
       IPartsHelper partsHelper,
+      IWordsPartsHelper wordsPartsHelper,
       IList<IPendingParserWordsUpdate> pendingUpdates, 
-      IConnectionFactory connectionFactory, 
       CancellationToken token)
     {
-      if (null == connectionFactory)
-      {
-        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
-      }
-
       // get some words from the parser so we can add them here now.
       if (pendingUpdates == null || !pendingUpdates.Any())
       {
@@ -84,7 +79,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         foreach (var pendingParserWordsUpdate in pendingUpdates)
         {
           // get the id for this word.
-          var wordId = await _words.AddOrUpdateWordAsync(wordsHelper, partsHelper, pendingParserWordsUpdate.Word, connectionFactory, token ).ConfigureAwait(false);
+          var wordId = await _words.AddOrUpdateWordAsync(wordsHelper, partsHelper, wordsPartsHelper, pendingParserWordsUpdate.Word, token ).ConfigureAwait(false);
           if (-1 == wordId)
           {
             _logger.Error($"There was an issue inserting/finding the word : {pendingParserWordsUpdate.Word.Value}.");
