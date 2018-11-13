@@ -449,20 +449,21 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
       // select all the ids that belong to that word.
       SelectPartIdsWordId.Value = wordid;
-      var reader = await _factory.ExecuteReadAsync(SelectPartIdsCommand, token).ConfigureAwait(false);
-
-      var partIds = new List<long>();
-      while (reader.Read())
+      using (var reader = await _factory.ExecuteReadAsync(SelectPartIdsCommand, token).ConfigureAwait(false))
       {
-        // get out if needed.
-        token.ThrowIfCancellationRequested();
+        var partIds = new List<long>();
+        while (reader.Read())
+        {
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
 
-        // add this part
-        partIds.Add(reader.GetInt64(0));
+          // add this part
+          partIds.Add(reader.GetInt64(0));
+        }
+
+        //  return all the part ids we found.
+        return partIds;
       }
-
-      //  return all the part ids we found.
-      return partIds;
     }
 
     /// <inheritdoc />
