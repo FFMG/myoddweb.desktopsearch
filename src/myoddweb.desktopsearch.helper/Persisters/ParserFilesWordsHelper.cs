@@ -308,7 +308,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
             _deleteFileId.ParameterName = "@fileid";
             DeleteCommand.Parameters.Add(_deleteFileId);
           }
-          return _insertFileId;
+          return _deleteFileId;
         }
       }
     }

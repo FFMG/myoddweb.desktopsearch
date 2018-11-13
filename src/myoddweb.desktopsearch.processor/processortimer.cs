@@ -125,6 +125,7 @@ namespace myoddweb.desktopsearch.processor
       }
       
       // restart the timer ...
+      _timer = null;
       StartProcessorTimer(EventsProcessorMs);
     }
 
