@@ -80,21 +80,27 @@ namespace myoddweb.desktopsearch.processor.Processors
         {
           using (var wordsHelper = new WordsHelper(factory, _persister.Words.TableName))
           using (var partsHelper = new PartsHelper(factory, _persister.Parts.TableName))
-          using (var filesWords = new FilesWordsHelper(factory, _persister.FilesWords.TableName))
-          using (var wordsParts = new WordsPartsHelper(factory, _persister.WordsParts.TableName))
+          using (var filesWordsHelper = new FilesWordsHelper(factory, _persister.FilesWords.TableName))
+          using (var wordsPartsHelper = new WordsPartsHelper(factory, _persister.WordsParts.TableName))
           using (var parserFilesWordsHelper = new ParserFilesWordsHelper(factory, _persister.ParserWords.TableFilesName))
           {
-            if (!await _persister.FilesWords.AddParserWordsAsync(wordsHelper, filesWords, partsHelper, wordsParts, pendingParserWordsUpdates, token)
-              .ConfigureAwait(false))
-            {
-              // there was an issue adding those words for that file id.
-              return 0;
-            }
-
             foreach (var pendingParserWordsUpdate in pendingParserWordsUpdates)
             {
               // thow if needed.
               token.ThrowIfCancellationRequested();
+
+              if (!await _persister.FilesWords.AddParserWordsAsync(
+                  pendingParserWordsUpdate,
+                  wordsHelper,
+                  filesWordsHelper,
+                  partsHelper,
+                  wordsPartsHelper,
+                  token)
+                .ConfigureAwait(false))
+              {
+                // there was an issue adding those words for that file id.
+                continue;
+              }
 
               // delete that part id so we do not do it again.
               await _persister.ParserWords.DeleteFileIds(pendingParserWordsUpdate.Id, pendingParserWordsUpdate.FileIds, parserFilesWordsHelper, token).ConfigureAwait(false);

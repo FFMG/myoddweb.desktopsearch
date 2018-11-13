@@ -36,11 +36,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<bool> AddParserWordsAsync(
+      IPendingParserWordsUpdate pendingUpdate,
       IWordsHelper wordsHelper,
       IFilesWordsHelper fileWordsHelper,
       IPartsHelper partsHelper,
       IWordsPartsHelper wordsPartsHelper,
-      IList<IPendingParserWordsUpdate> pendingUpdates, 
       CancellationToken token);
 
     /// <summary>

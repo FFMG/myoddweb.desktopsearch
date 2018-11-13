@@ -59,15 +59,15 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     /// <inheritdoc />
     public async Task<bool> AddParserWordsAsync(
+      IPendingParserWordsUpdate pendingUpdate,
       IWordsHelper wordsHelper, 
       IFilesWordsHelper filesWordsHelper,
       IPartsHelper partsHelper,
       IWordsPartsHelper wordsPartsHelper,
-      IList<IPendingParserWordsUpdate> pendingUpdates, 
       CancellationToken token)
     {
       // get some words from the parser so we can add them here now.
-      if (pendingUpdates == null || !pendingUpdates.Any())
+      if (pendingUpdate == null)
       {
         // there was nothing to add.
         return true;
@@ -76,22 +76,19 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         // then do an inserts.
-        foreach (var pendingParserWordsUpdate in pendingUpdates)
+        // get the id for this word.
+        var wordId = await _words.AddOrUpdateWordAsync(wordsHelper, partsHelper, wordsPartsHelper, pendingUpdate.Word, token ).ConfigureAwait(false);
+        if (-1 == wordId)
         {
-          // get the id for this word.
-          var wordId = await _words.AddOrUpdateWordAsync(wordsHelper, partsHelper, wordsPartsHelper, pendingParserWordsUpdate.Word, token ).ConfigureAwait(false);
-          if (-1 == wordId)
-          {
-            _logger.Error($"There was an issue inserting/finding the word : {pendingParserWordsUpdate.Word.Value}.");
-            continue;
-          }
+          _logger.Error($"There was an issue inserting/finding the word : {pendingUpdate.Word.Value}.");
+          return false;
+        }
 
-          foreach (var fileId in pendingParserWordsUpdate.FileIds)
+        foreach (var fileId in pendingUpdate.FileIds)
+        {
+          if( !await filesWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false))
           {
-            if( !await filesWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false))
-            {
-              _logger.Error( $"There was an issue inserting word : {pendingParserWordsUpdate.Word.Value}({wordId}) for file : {fileId}");
-            }
+            _logger.Error( $"There was an issue inserting word : {pendingUpdate.Word.Value}({wordId}) for file : {fileId}");
           }
         }
 
