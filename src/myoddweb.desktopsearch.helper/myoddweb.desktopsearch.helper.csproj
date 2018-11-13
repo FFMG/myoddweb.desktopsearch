@@ -40,6 +40,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AsyncTimer.cs" />
     <Compile Include="Collection.cs" />
     <Compile Include="Components\FileParser.cs" />
     <Compile Include="File.cs" />

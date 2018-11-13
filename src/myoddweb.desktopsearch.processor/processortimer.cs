@@ -14,10 +14,9 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
+using myoddweb.desktopsearch.helper;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -39,7 +38,7 @@ namespace myoddweb.desktopsearch.processor
     /// <summary>
     /// The timer to start the next round.
     /// </summary>
-    private System.Timers.Timer _timer;
+    private AsyncTimer _timer;
 
     /// <summary>
     /// The cancellation
@@ -87,31 +86,16 @@ namespace myoddweb.desktopsearch.processor
         return;
       }
 
-      _timer = new System.Timers.Timer(interval)
-      {
-        AutoReset = false,
-        Enabled = true
-      };
-      _timer.Elapsed += EventsProcessor;
+      _timer = new AsyncTimer(EventsProcessorAsync, interval, _logger, "Events Processor");
     }
 
     /// <summary>
     /// The event called when the timer fires.
     /// </summary>
-    /// <param name="sender"></param>
-    /// <param name="e"></param>
-    private void EventsProcessor(object sender, ElapsedEventArgs e)
+    private async Task EventsProcessorAsync()
     {
-      // stop the timer in case it is running
-      StopProcessorTimer();
-
       // process the item ... and when done
       // restart the timer.
-      CreateTask().GetAwaiter().GetResult();
-    }
-
-    private async Task CreateTask()
-    { 
       var factory = await _persister.BeginWrite(_token).ConfigureAwait(false);
 
       var tasks = new List<Task<int>>();
@@ -119,35 +103,29 @@ namespace myoddweb.desktopsearch.processor
       {
         tasks.Add( processor.WorkAsync(factory, _token) );
       }
+      
+      try
+      {
+        // wait for everything
+        await Wait.WhenAll(tasks, _logger, _token).ConfigureAwait(false);
 
-      await helper.Wait.WhenAll(tasks, _logger, _token).
-      ContinueWith(
-        task =>
-        {
-          // if the operation was cancelled, no point going further.
-          if (task.IsCanceled)
-          {
-            factory.Rollback();
-            _logger.Warning("Received cancellation request - Processor timer.");
-            throw new OperationCanceledException(_token);
-          }
-
-          // if it was faulted, just log the error.
-          // and restart the timer again.
-          if (task.IsFaulted)
-          {
-            _persister.Rollback(factory);
-            _logger.Exception(task.Exception ?? new Exception("There was an exception durring EventsProcessor handling"));
-          }
-          else
-          {
-            _persister.Commit(factory);
-          }
-
-          // restart the timer ... quietly.
-          StartProcessorTimer(EventsProcessorMs);
-        }, _token
-      ).ConfigureAwait(false);
+        // and complete the work.
+        _persister.Commit(factory);
+      }
+      catch (OperationCanceledException)
+      {
+        factory.Rollback();
+        _logger.Warning("Received cancellation request - Processor timer.");
+        throw;
+      }
+      catch (Exception e)
+      {
+        factory.Rollback();
+        _logger.Exception(e);
+      }
+      
+      // restart the timer ...
+      StartProcessorTimer(EventsProcessorMs);
     }
 
     /// <summary>
@@ -160,8 +138,6 @@ namespace myoddweb.desktopsearch.processor
         return;
       }
 
-      _timer.Enabled = false;
-      _timer.Stop();
       _timer.Dispose();
       _timer = null;
     }
