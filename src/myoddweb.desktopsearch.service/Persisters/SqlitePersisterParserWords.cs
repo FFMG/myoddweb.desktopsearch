@@ -321,36 +321,40 @@ namespace myoddweb.desktopsearch.service.Persisters
         var parserWord = new List<IPendingParserWordsUpdate>((int)limit);
         try
         {
-          var readerWord = await connectionFactory.ExecuteReadAsync(cmdSelectWord, token).ConfigureAwait(false);
-          while (readerWord.Read())
+          using (var readerWord = await connectionFactory.ExecuteReadAsync(cmdSelectWord, token).ConfigureAwait(false))
           {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            // the word
-            var id = (long)readerWord["id"];
-            var word = (string)readerWord["word"];
-
-            // then look for some file ids.
-            pWordId.Value = id;
-            using (var readerFileIds = await connectionFactory.ExecuteReadAsync(cmdSelectWordId, token).ConfigureAwait(false))
+            while (readerWord.Read())
             {
-              var fileIds = new List<long>(fileIdsLimit);
-              while (readerFileIds.Read())
-              {
-                // get out if needed.
-                token.ThrowIfCancellationRequested();
+              // get out if needed.
+              token.ThrowIfCancellationRequested();
 
-                // add this item to the list of file ids.
-                fileIds.Add( (long)readerFileIds["fileid"]);
-              }
+              // the word
+              var id = (long) readerWord["id"];
+              var word = (string) readerWord["word"];
 
-              if (!fileIds.Any())
+              // then look for some file ids.
+              pWordId.Value = id;
+              using (var readerFileIds =
+                await connectionFactory.ExecuteReadAsync(cmdSelectWordId, token).ConfigureAwait(false))
               {
-                continue;
+                var fileIds = new List<long>(fileIdsLimit);
+                while (readerFileIds.Read())
+                {
+                  // get out if needed.
+                  token.ThrowIfCancellationRequested();
+
+                  // add this item to the list of file ids.
+                  fileIds.Add((long) readerFileIds["fileid"]);
+                }
+
+                if (!fileIds.Any())
+                {
+                  continue;
+                }
+
+                // add the word to the list.
+                parserWord.Add(new PendingParserWordsUpdate(id, word, fileIds));
               }
-              // add the word to the list.
-              parserWord.Add(new PendingParserWordsUpdate(id, word, fileIds));
             }
           }
           return parserWord;

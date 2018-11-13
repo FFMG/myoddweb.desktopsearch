@@ -518,26 +518,28 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           // set the folder id.
           cmd.Parameters["@id"].Value = fileId;
-          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
-          if (reader.Read())
+          using (var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
           {
-            // get the directory
-            var directory = await _folders.GetDirectoryAsync((long) reader["folderid"], connectionFactory, token)
-              .ConfigureAwait(false);
-
-            // sanity check
-            if (null == directory)
+            if (reader.Read())
             {
-              _logger.Error(
-                $"The file '{(string) reader["name"]}'({fileId}) is on record, but the fodler ({(long) reader["folderid"]}) does not exist!");
-              return null;
+              // get the directory
+              var directory = await _folders.GetDirectoryAsync((long) reader["folderid"], connectionFactory, token)
+                .ConfigureAwait(false);
+
+              // sanity check
+              if (null == directory)
+              {
+                _logger.Error(
+                  $"The file '{(string) reader["name"]}'({fileId}) is on record, but the fodler ({(long) reader["folderid"]}) does not exist!");
+                return null;
+              }
+
+              // we can now rebuild the file info.
+              file = new FileInfo(Path.Combine(directory.FullName, (string) reader["name"]));
+
+              // get out if needed.
+              token.ThrowIfCancellationRequested();
             }
-
-            // we can now rebuild the file info.
-            file = new FileInfo(Path.Combine(directory.FullName, (string) reader["name"]));
-
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
           }
         }
       }
@@ -594,15 +596,17 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           // set the folder id.
           pId.Value = directoryId;
-          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
-          while (reader.Read())
+          using (var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
           {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
+            while (reader.Read())
+            {
+              // get out if needed.
+              token.ThrowIfCancellationRequested();
 
-            // add this update
-            fileInfos.Add(new FileInfo(
-              Path.Combine(directory.FullName, (string)reader["name"])));
+              // add this update
+              fileInfos.Add(new FileInfo(
+                Path.Combine(directory.FullName, (string) reader["name"])));
+            }
           }
 
           // return whatever we found
@@ -820,14 +824,16 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pFolderId);
 
           cmd.Parameters["@folderid"].Value = folderId;
-          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
-          while (reader.Read())
+          using (var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
           {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
+            while (reader.Read())
+            {
+              // get out if needed.
+              token.ThrowIfCancellationRequested();
 
-            // add this id to the list.
-            fileIds.Add((long) reader["id"]);
+              // add this id to the list.
+              fileIds.Add((long) reader["id"]);
+            }
           }
 
           // return all the files we found.

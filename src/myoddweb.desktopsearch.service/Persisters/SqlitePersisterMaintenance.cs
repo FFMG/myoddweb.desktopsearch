@@ -434,9 +434,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     protected bool TableExists(string name, IConnectionFactory connectionFactory)
     {
       var sql = $"SELECT name FROM sqlite_master WHERE type='table' AND name='{name}';";
-      using (var command = connectionFactory.CreateCommand(sql))
+      using(var command = connectionFactory.CreateCommand(sql))
+      using (var reader = connectionFactory.ExecuteReadAsync(command, default(CancellationToken)).GetAwaiter().GetResult())
       {
-        var reader = connectionFactory.ExecuteReadAsync( command, default(CancellationToken)).GetAwaiter().GetResult();
         try
         {
           while (reader.Read())

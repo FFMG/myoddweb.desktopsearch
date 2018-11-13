@@ -261,8 +261,8 @@ namespace myoddweb.desktopsearch.service.Persisters
                  $"{Tables.FileUpdates} fu, {Tables.Files} f, {Tables.Folders} fo "+
                  $"WHERE f.id = fu.fileid and fo.id = f.folderid ORDER BY fu.ticks DESC LIMIT {limit}";
         using (var cmd = connectionFactory.CreateCommand(sql))
-        {
-          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
+        using (var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
+        { 
           while (reader.Read())
           {
             // get out if needed.
@@ -275,15 +275,15 @@ namespace myoddweb.desktopsearch.service.Persisters
             var type = (UpdateType)(long)reader["type"];
 
             // the folder path
-            var path = (string) reader["path"];
+            var path = (string)reader["path"];
 
             // the file name
-            var name = (string) reader["name"];
+            var name = (string)reader["name"];
 
             // add this update
             pendingUpdates.Add(new PendingFileUpdate(
               fileid,
-              new FileInfo( Path.Combine(path, name)),
+              new FileInfo(Path.Combine(path, name)),
               type
             ));
           }
@@ -296,8 +296,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           sql = $"SELECT fileid FROM {Tables.FileUpdates} WHERE type={(int)UpdateType.Deleted} ORDER BY ticks DESC LIMIT {limit - pendingUpdates.Count}";
           using (var cmd = connectionFactory.CreateCommand(sql))
+          using (var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
           {
-            var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
             while (reader.Read())
             {
               // get out if needed.
