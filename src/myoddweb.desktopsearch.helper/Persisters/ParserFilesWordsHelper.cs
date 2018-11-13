@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
@@ -216,6 +217,103 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
     #endregion
 
+    #region Delete
+    /// <summary>
+    /// The delete command;
+    /// </summary>
+    private IDbCommand _deleteCommand;
+
+    /// <summary>
+    /// The word id to delete.
+    /// </summary>
+    private IDbDataParameter _deleteWordId;
+
+    /// <summary>
+    /// The file id to insert.
+    /// </summary>
+    private IDbDataParameter _deleteFileId;
+
+    /// <summary>
+    /// The sql string that we will use to insert an id.
+    /// </summary>
+    private string DeleteSql => $"DELETE FROM {_tableName} WHERE wordid=@wordid AND fileid=@fileid";
+
+    /// <summary>
+    /// Create the delete command if needed.
+    /// </summary>
+    private IDbCommand DeleteCommand
+    {
+      get
+      {
+        if (_deleteCommand != null)
+        {
+          return _deleteCommand;
+        }
+
+        lock (_lock)
+        {
+          if (_deleteCommand == null)
+          {
+            _deleteCommand = _factory.CreateCommand(DeleteSql);
+          }
+          return _deleteCommand;
+        }
+      }
+    }
+
+    /// <summary>
+    /// The delete word id parameter.
+    /// </summary>
+    private IDbDataParameter DeleteWordId
+    {
+      get
+      {
+        if (null != _deleteWordId)
+        {
+          return _deleteWordId;
+        }
+
+        lock (_lock)
+        {
+          if (null == _deleteWordId)
+          {
+            _deleteWordId = DeleteCommand.CreateParameter();
+            _deleteWordId.DbType = DbType.Int64;
+            _deleteWordId.ParameterName = "@wordid";
+            DeleteCommand.Parameters.Add(_deleteWordId);
+          }
+          return _deleteWordId;
+        }
+      }
+    }
+
+    /// <summary>
+    /// The delete file id parameter.
+    /// </summary>
+    private IDbDataParameter DeleteFileId
+    {
+      get
+      {
+        if (null != _deleteFileId)
+        {
+          return _deleteFileId;
+        }
+
+        lock (_lock)
+        {
+          if (null == _deleteFileId)
+          {
+            _deleteFileId = DeleteCommand.CreateParameter();
+            _deleteFileId.DbType = DbType.Int64;
+            _deleteFileId.ParameterName = "@fileid";
+            DeleteCommand.Parameters.Add(_deleteFileId);
+          }
+          return _insertFileId;
+        }
+      }
+    }
+    #endregion
+
     #region Member variables
     /// <summary>
     /// The lock to make sure that we do not create the same thing over and over.
@@ -270,8 +368,10 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // we are now done.
       _disposed = true;
 
+      // dispose of all the commands.
       _existsCommand?.Dispose();
       _insertCommand?.Dispose();
+      _deleteCommand?.Dispose();
     }
 
     /// <inheritdoc />
@@ -307,6 +407,21 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
       // was there an error ... or is it a duplicate.
       return await ExistsAsync(wordId, fileId, token).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteAsync(long wordId, IList<long> fileIds, CancellationToken token)
+    {
+      // sanity check
+      ThrowIfDisposed();
+
+      // insert the word.
+      DeleteWordId.Value = wordId;
+      foreach (var fileId in fileIds)
+      {
+        DeleteFileId.Value = fileId;
+        await _factory.ExecuteWriteAsync(DeleteCommand, token).ConfigureAwait(false);
+      }
     }
   }
 }

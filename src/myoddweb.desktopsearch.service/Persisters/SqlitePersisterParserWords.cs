@@ -170,58 +170,22 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteFileIds(long wordId, IList<long> fileIds, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> DeleteFileIds(long wordId, IList<long> fileIds, IParserFilesWordsHelper parserFilesWordsHelper, CancellationToken token)
     {
-      if (null == connectionFactory)
+      try
       {
-        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
+        await parserFilesWordsHelper.DeleteAsync(wordId, fileIds, token ).ConfigureAwait(false);
+        return true;
       }
-
-      var sqlDeleteWordAndFileIds = $"DELETE FROM {TableFilesName} WHERE wordid=@wordid AND fileid=@fileid";
-      using (var cmdDeleteWordAndFileIds = connectionFactory.CreateCommand(sqlDeleteWordAndFileIds))
+      catch (OperationCanceledException)
       {
-        var pWordId = cmdDeleteWordAndFileIds.CreateParameter();
-        pWordId.DbType = DbType.Int64;
-        pWordId.ParameterName = "@wordid";
-        cmdDeleteWordAndFileIds.Parameters.Add(pWordId);
-
-        var pFileId = cmdDeleteWordAndFileIds.CreateParameter();
-        pFileId.DbType = DbType.Int64;
-        pFileId.ParameterName = "@fileid";
-        cmdDeleteWordAndFileIds.Parameters.Add(pFileId);
-
-        try
-        {
-          foreach (var fileId in fileIds)
-          {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            // then do the actual delete.
-            pWordId.Value = wordId;
-            pFileId.Value = fileId;
-            if (0 == await connectionFactory.ExecuteWriteAsync(cmdDeleteWordAndFileIds, token).ConfigureAwait(false))
-            {
-              _logger.Verbose($"Could not delete parser words for file id: {fileId}, do they still exist? was there any?");
-            }
-          }
-
-          // then we can delete whatever words are now complete.
-          await DeleteWordIdsIfNoFileIds( wordId, connectionFactory, token).ConfigureAwait(false);
-
-          // we are done.
-          return true;
-        }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Parser words - Delete file");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-          return false;
-        }
+        _logger.Warning("Received cancellation request - Parser words - Delete file");
+        throw;
+      }
+      catch (Exception ex)
+      {
+        _logger.Exception(ex);
+        return false;
       }
     }
 
@@ -306,7 +270,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       const int fileIdsLimit = 10000;
 
       // get the older words.
-      var sqlSelectWord = $"SELECT id, word FROM {TableWordName} pw ORDER BY id asc LIMIT {limit}";
+      var sqlSelectWord = $"SELECT id, word FROM {TableWordName} LIMIT {limit}";
 
       // then we can look for the file ids.
       var sqlSelectWordId = $"SELECT fileid FROM {TableFilesName} where wordid=@wordid LIMIT {fileIdsLimit}";  //  make sure we don't get to many,.
@@ -373,62 +337,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     #region Private functions
-
-    /// <summary>
-    /// Delete all the words that do not have any files attached to it.
-    /// </summary>
-    /// <param name="wordid"></param>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<bool> DeleteWordIdsIfNoFileIds(long wordid, IConnectionFactory connectionFactory, CancellationToken token)
-    {
-      if (null == connectionFactory)
-      {
-        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
-      }
-
-      var sql = $@"DELETE FROM {TableWordName}
-                   WHERE
-                     id IN
-                   (
-                     SELECT ID 
-                     FROM   {TableWordName} 
-                     WHERE 
-                     id = @id AND
-                     ID NOT IN (SELECT wordid FROM {TableFilesName} pfw)
-                   )";
-
-      using (var cmd = connectionFactory.CreateCommand(sql))
-      {
-        try
-        {
-          var pId = cmd.CreateParameter();
-          pId.DbType = DbType.Int64;
-          pId.ParameterName = "@id";
-          cmd.Parameters.Add(pId);
-
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-
-          pId.Value = wordid;
-          await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false);
-
-          return true;
-        }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Parser words - Delete word");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-          return false;
-        }
-      }
-    }
-
     /// <summary>
     /// Delete all the words that do not have any files attached to it.
     /// </summary>

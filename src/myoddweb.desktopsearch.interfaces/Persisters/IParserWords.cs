@@ -55,10 +55,10 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// </summary>
     /// <param name="wordId"></param>
     /// <param name="fileIds"></param>
-    /// <param name="connectionFactory"></param>
+    /// <param name="parserFilesWordsHelper"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFileIds(long wordId, IList<long> fileIds, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> DeleteFileIds(long wordId, IList<long> fileIds, IParserFilesWordsHelper parserFilesWordsHelper, CancellationToken token);
 
     /// <summary>
     /// Delete all the words for a file id.

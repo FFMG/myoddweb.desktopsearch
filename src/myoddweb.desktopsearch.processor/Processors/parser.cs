@@ -82,6 +82,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           using (var partsHelper = new PartsHelper(factory, _persister.Parts.TableName))
           using (var filesWords = new FilesWordsHelper(factory, _persister.FilesWords.TableName))
           using (var wordsParts = new WordsPartsHelper(factory, _persister.WordsParts.TableName))
+          using (var parserFilesWordsHelper = new ParserFilesWordsHelper(factory, _persister.ParserWords.TableFilesName))
           {
             if (!await _persister.FilesWords.AddParserWordsAsync(wordsHelper, filesWords, partsHelper, wordsParts, pendingParserWordsUpdates, token)
               .ConfigureAwait(false))
@@ -96,13 +97,10 @@ namespace myoddweb.desktopsearch.processor.Processors
               token.ThrowIfCancellationRequested();
 
               // delete that part id so we do not do it again.
-              await _persister.ParserWords
-                .DeleteFileIds(pendingParserWordsUpdate.Id, pendingParserWordsUpdate.FileIds, factory, token)
-                .ConfigureAwait(false);
+              await _persister.ParserWords.DeleteFileIds(pendingParserWordsUpdate.Id, pendingParserWordsUpdate.FileIds, parserFilesWordsHelper, token).ConfigureAwait(false);
 
               // if we found any, log it.
-              _logger.Verbose(
-                $"Processor : {pendingParserWordsUpdate.Word.Value} processed for {pendingParserWordsUpdate.FileIds.Count} file(s).");
+              _logger.Verbose( $"Processor : {pendingParserWordsUpdate.Word.Value} processed for {pendingParserWordsUpdate.FileIds.Count} file(s).");
             }
           }
 
