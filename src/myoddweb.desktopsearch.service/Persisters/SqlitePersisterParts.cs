@@ -12,32 +12,13 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
-namespace myoddweb.desktopsearch.interfaces.IO
+namespace myoddweb.desktopsearch.service.Persisters
 {
-  public interface IParserHelper : IDisposable
+  internal class SqlitePersisterParts : IParts
   {
-    /// <summary>
-    /// The file that is being processed.
-    /// </summary>
-    FileSystemInfo File { get; }
-
-    /// <summary>
-    /// The number of words added.
-    /// </summary>
-    long Count { get; }
-
-    /// <summary>
-    /// Add multiple words.
-    /// </summary>
-    /// <param name="words"></param>
-    /// <param name="token"></param>
-    /// <returns>The number of words actually added.</returns>
-    Task<long> AddWordsAsync(IReadOnlyList<string> words, CancellationToken token );
+    /// <inheritdoc />
+    public string TableName => Tables.Parts;
   }
 }

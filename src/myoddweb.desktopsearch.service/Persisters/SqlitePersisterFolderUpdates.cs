@@ -219,21 +219,21 @@ namespace myoddweb.desktopsearch.service.Persisters
         var sql = $"SELECT fu.folderid as folderid, fu.type as type, f.path as path FROM {Tables.FolderUpdates} fu, {Tables.Folders} f WHERE f.id=fu.folderid "+
                   $"ORDER BY fu.ticks DESC LIMIT { limit}";
         using (var cmd = connectionFactory.CreateCommand(sql))
-        {
-          var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
+        using (var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
+        { 
           while (reader.Read())
           {
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
             // the folder id
-            var folderId = (long) reader["folderid"];
+            var folderId = (long)reader["folderid"];
 
             // the directory for that folder
-            var directory = new DirectoryInfo((string) reader["path"]);
+            var directory = new DirectoryInfo((string)reader["path"]);
 
             // the update type
-            var type = (UpdateType) (long) reader["type"];
+            var type = (UpdateType)(long)reader["type"];
 
             // Get the files currently on record this can be null if we have nothing.
             // if the folder was just created we are not going to bother getting more data.

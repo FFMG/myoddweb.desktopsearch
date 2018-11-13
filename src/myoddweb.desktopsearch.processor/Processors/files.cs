@@ -99,12 +99,12 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<int> WorkAsync(CancellationToken token)
+    public async Task<int> WorkAsync( IConnectionFactory factory, CancellationToken token)
     {
       try
       {
         // then get _all_ the file updates that we want to do.
-        var pendingUpdates = await GetPendingFileUpdatesAndMarkFileProcessedAsync(token).ConfigureAwait(false);
+        var pendingUpdates = await GetPendingFileUpdatesAndMarkFileProcessedAsync(factory, token).ConfigureAwait(false);
         if (null == pendingUpdates)
         {
           //  probably was canceled.
@@ -112,7 +112,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         }
 
         // process the updates.
-        await ProcessFileUpdates(pendingUpdates, token).ConfigureAwait(false);
+        await ProcessFileUpdates(factory, pendingUpdates, token).ConfigureAwait(false);
 
         // return how many updates we did.
         return pendingUpdates.Count;
@@ -132,76 +132,58 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// Process a single list update
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="pendingFileUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task ProcessFileUpdates(ICollection<IPendingFileUpdate> pendingFileUpdates, CancellationToken token)
+    private async Task ProcessFileUpdates(IConnectionFactory factory, ICollection<IPendingFileUpdate> pendingFileUpdates, CancellationToken token)
     {
-      // now try and process the files.
-      var factory = await _persister.BeginWrite(token).ConfigureAwait( false );
-      try
+      // the first thing we will do is mark the file as processed.
+      // if anything goes wrong _after_ that we will try and 'touch' it again.
+      // by doing it that way around we ensure that we never keep the transaction.
+      // and we don't run the risk of someone else trying to process this again.
+      await _persister.Folders.Files.FileUpdates.MarkFilesProcessedAsync(pendingFileUpdates.Select(p => p.FileId), factory, token).ConfigureAwait(false);
+
+      var tasks = new List<Task>( pendingFileUpdates.Count );
+      foreach (var pendingFileUpdate in pendingFileUpdates)
       {
-        // the first thing we will do is mark the file as processed.
-        // if anything goes wrong _after_ that we will try and 'touch' it again.
-        // by doing it that way around we ensure that we never keep the transaction.
-        // and we don't run the risk of someone else trying to process this again.
-        await _persister.Folders.Files.FileUpdates.MarkFilesProcessedAsync(pendingFileUpdates.Select(p => p.FileId), factory, token).ConfigureAwait(false);
+        // throw if need be.
+        token.ThrowIfCancellationRequested();
 
-        var tasks = new List<Task>( pendingFileUpdates.Count );
-        foreach (var pendingFileUpdate in pendingFileUpdates)
+        switch (pendingFileUpdate.PendingUpdateType)
         {
-          // throw if need be.
-          token.ThrowIfCancellationRequested();
+          case UpdateType.Created:
+            // only add the pending updates where there are actual words to add.
+            tasks.Add(WorkCreatedAsync(factory, pendingFileUpdate, token));
+            break;
 
-          switch (pendingFileUpdate.PendingUpdateType)
-          {
-            case UpdateType.Created:
-              // only add the pending updates where there are actual words to add.
-              tasks.Add(WorkCreatedAsync(factory, pendingFileUpdate, token));
-              break;
+          case UpdateType.Deleted:
+            tasks.Add( WorkDeletedAsync( factory, pendingFileUpdate, token) );
+            break;
 
-            case UpdateType.Deleted:
-              tasks.Add( WorkDeletedAsync( factory, pendingFileUpdate, token) );
-              break;
+          case UpdateType.Changed:
+            // renamed or content/settingss changed
+            tasks.Add( WorkChangedAsync(factory, pendingFileUpdate, token) );
+            break;
 
-            case UpdateType.Changed:
-              // renamed or content/settingss changed
-              tasks.Add( WorkChangedAsync(factory, pendingFileUpdate, token) );
-              break;
-
-            default:
-              throw new ArgumentOutOfRangeException();
-          }
-
-          if (tasks.Count < 4 * Environment.ProcessorCount)
-          {
-            continue;
-          }
-
-          await helper.Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
-
-          tasks.Clear();
+          default:
+            throw new ArgumentOutOfRangeException();
         }
 
-        // the 'continuewith' step is to pass all the words that we found.
-        // this will be within it's own transaction
-        // but the parsing has been done already.
-        await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
+        if (tasks.Count < 4 * Environment.ProcessorCount)
+        {
+          continue;
+        }
 
-        // commit the changes we made.
-        _persister.Commit(factory);
+        await helper.Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
+
+        tasks.Clear();
       }
-      catch
-      {
-        _persister.Rollback(factory);
 
-        // something did not work ... re-touch the files
-        await TouchFileAsync(pendingFileUpdates, token).ConfigureAwait(false);
-
-
-        // done
-        throw;
-      }
+      // the 'continuewith' step is to pass all the words that we found.
+      // this will be within it's own transaction
+      // but the parsing has been done already.
+      await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
     }
 
     #region Workers
@@ -302,29 +284,31 @@ namespace myoddweb.desktopsearch.processor.Processors
         return null;
       }
 
-      // create the helper.
-      var parserHelper = new PrarserHelper( pendingFileUpdate.File, _persister, factory, pendingFileUpdate.FileId);
-
       // start all the parser tasks
       var tasks = new List<Task<long>>();
-      foreach (var parser in _parsers)
+
+      // the tasks that will be inserting words.
+      long[] totalWords;
+
+      // create the helper.
+      using (var parserHelper = new PrarserHelper(pendingFileUpdate.File, _persister, factory, pendingFileUpdate.FileId))
       {
-        tasks.Add( ProcessFile( parserHelper, parser, pendingFileUpdate.File, token));
+        tasks.AddRange(_parsers.Select(parser => ProcessFile(parserHelper, parser, pendingFileUpdate.File, token)));
+
+        // do we have any work to do?
+        if (!tasks.Any())
+        {
+          // nothing to do...
+          return null;
+        }
+
+        // wait for all the parsers to do their work
+        totalWords = await helper.Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
       }
 
-      // do we have any work to do?
-      if (!tasks.Any())
-      {
-        // nothing to do...
-        return null;
-      }
-
-      // wait for all the parsers to do their work
-      var totalWords = await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
       if (totalWords == null || totalWords.Sum() == 0)
       {
-        // nothing was done.
-        // nothing to do...
+        // nothing was done, nothing to do...
         return null;
       }
 
@@ -376,71 +360,23 @@ namespace myoddweb.desktopsearch.processor.Processors
 
     #region Database calls.
     /// <summary>
-    /// Mark the given file as processed.
-    /// </summary>
-    /// <param name="pendingFileUpdates"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task TouchFileAsync(IEnumerable<IPendingFileUpdate> pendingFileUpdates, CancellationToken token)
-    {
-      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        throw new Exception("Unable to get transaction!");
-      }
-
-      try
-      {
-        // mark it as persisted.
-        await _persister.Folders.Files.AddOrUpdateFilesAsync(pendingFileUpdates.Select( f => f.File ).ToList(), transaction, token).ConfigureAwait(false);
-
-        // we are done
-        _persister.Commit(transaction);
-      }
-      catch
-      {
-        _persister.Rollback(transaction);
-        throw;
-      }
-    }
-
-    /// <summary>
     /// Get the pending update
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<IList<IPendingFileUpdate>> GetPendingFileUpdatesAndMarkFileProcessedAsync(CancellationToken token)
+    private async Task<IList<IPendingFileUpdate>> GetPendingFileUpdatesAndMarkFileProcessedAsync(IConnectionFactory factory, CancellationToken token)
     {
-      // get the transaction
-      var transaction = await _persister.BeginRead(token).ConfigureAwait(false);
-      if (null == transaction)
+      var pendingUpdates = await _persister.Folders.Files.FileUpdates.GetPendingFileUpdatesAsync(MaxUpdatesToProcess, factory, token).ConfigureAwait(false);
+      if (null == pendingUpdates)
       {
-        throw new Exception("Unable to get transaction!");
+        _logger.Error("Unable to get any pending file updates.");
+
+        return null;
       }
 
-      try
-      {
-        var pendingUpdates = await _persister.Folders.Files.FileUpdates.GetPendingFileUpdatesAsync(MaxUpdatesToProcess, transaction, token).ConfigureAwait(false);
-        if (null == pendingUpdates)
-        {
-          _logger.Error("Unable to get any pending file updates.");
-
-          // we will now return null
-          _persister.Commit(transaction);
-          return null;
-        }
-
-        // close the transaction.
-        _persister.Commit(transaction);
-
-        // return null if we found nothing
-        return !pendingUpdates.Any() ? null : pendingUpdates;
-      }
-      catch
-      {
-        _persister.Rollback(transaction);
-        throw;
-      }
+      // return null if we found nothing
+      return !pendingUpdates.Any() ? null : pendingUpdates;
     }
     #endregion
   }

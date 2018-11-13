@@ -31,8 +31,7 @@
     "UpdatesFilesPerEvent": 50,
     "UpdatesFolderPerEvent": 10,
     "UpdateWordParsedPerEvent": 50,
-    "QuietEventsProcessorMs": 10000,
-    "BusyEventsProcessorMs": 20,
+    "EventsProcessorMs": 20,
     "IgnoreFiles": [
       {
         "Pattern": "*.*",

@@ -21,14 +21,19 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IWordsParts
   {
     /// <summary>
+    /// Get the table name.
+    /// </summary>
+    string TableName { get; }
+
+    /// <summary>
     /// Add part ids and word ids, if the word already exists then we will add it
     /// And remove whatever words might already exist.
     /// </summary>
     /// <param name="wordId"></param>
     /// <param name="partIds"></param>
-    /// <param name="connectionFactory"></param>
+    /// <param name="wordsPartsHelper"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task AddOrUpdateWordParts( long wordId, HashSet<long> partIds, IConnectionFactory connectionFactory, CancellationToken token);
+    Task AddOrUpdateWordParts( long wordId, HashSet<long> partIds, IWordsPartsHelper wordsPartsHelper, CancellationToken token);
   }
 }

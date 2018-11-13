@@ -95,17 +95,25 @@ namespace myoddweb.desktopsearch.http.Route
         pSearch.ParameterName = "@search";
         cmd.Parameters.Add(pSearch);
         pSearch.Value = search.What;
-        var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
-        while (reader.Read())
+        using (var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
         {
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
+          while (reader.Read())
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
 
-          // add this update
-          var word = (string)reader["word"];
-          var name = (string)reader["name"];
-          var path = (string)reader["path"];
-          words.Add(new Word { FullName = System.IO.Path.Combine(path, name), Directory = path, Name = name, Actual = word });
+            // add this update
+            var word = (string) reader["word"];
+            var name = (string) reader["name"];
+            var path = (string) reader["path"];
+            words.Add(new Word
+            {
+              FullName = System.IO.Path.Combine(path, name),
+              Directory = path,
+              Name = name,
+              Actual = word
+            });
+          }
         }
       }
 
@@ -125,8 +133,8 @@ namespace myoddweb.desktopsearch.http.Route
         ) AS Files";
 
       using (var cmd = connectionFactory.CreateCommand(sql))
+      using( var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
       {
-        var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false);
         if (!reader.Read())
         {
           return new StatusResponse

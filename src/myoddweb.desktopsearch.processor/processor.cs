@@ -41,7 +41,7 @@ namespace myoddweb.desktopsearch.processor
     /// <summary>
     /// All the processor timeers running.
     /// </summary>
-    private readonly List<ProcessorTimer> _timers;
+    private readonly ProcessorTimer _timer;
     #endregion
 
     public Processor(
@@ -62,17 +62,19 @@ namespace myoddweb.desktopsearch.processor
 
       // Create the various processors, they will not start doing anything just yet
       // or at least, they shouldn't
-      _timers = new List<ProcessorTimer>();
-
       var directoriesCounter = new ProcessorPerformanceCounter(performance, directoryCounterName, logger);
-      _timers.Add( new ProcessorTimer(new Folders(directoriesCounter, config.UpdatesFolderPerEvent, persister, logger, directory), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
-
       var filesCounter = new ProcessorPerformanceCounter(performance, fileCounterName, logger);
-      _timers.Add( new ProcessorTimer(new Files(filesCounter, config.UpdatesFilesPerEvent, fileParsers, config.IgnoreFiles, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
-
-      // the word parser.
       var parserCounter = new ProcessorPerformanceCounter(performance, parserCounterName, logger);
-      _timers.Add(new ProcessorTimer(new Parser(parserCounter, config.UpdateWordParsedPerEvent, persister, logger), _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs));
+
+      _timer = new ProcessorTimer(
+        persister,
+        new List<IProcessor>
+        {
+          new Folders(directoriesCounter, config.UpdatesFolderPerEvent, persister, logger, directory),
+          new Files(filesCounter, config.UpdatesFilesPerEvent, fileParsers, config.IgnoreFiles, persister, logger),
+          new Parser(parserCounter, config.UpdateWordParsedPerEvent, persister, logger)
+        },
+        _logger, config.EventsProcessorMs);
     }
 
     #region Start/Stop functions
@@ -85,7 +87,7 @@ namespace myoddweb.desktopsearch.processor
       Stop();
 
       // start the timers
-      _timers.ForEach(t => t.Start( token));
+      _timer.Start( token );
 
       // register the token cancellation
       _cancellationTokenRegistration = token.Register(TokenCancellation);
@@ -100,7 +102,7 @@ namespace myoddweb.desktopsearch.processor
       _cancellationTokenRegistration.Dispose();
 
       // and we can stop the timers.
-      _timers.ForEach(t => t.Stop());
+      _timer.Stop();
     }
 
     /// <summary>

@@ -50,6 +50,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     IWordsParts WordsParts { get; }
 
     /// <summary>
+    /// The parts manager
+    /// </summary>
+    IParts Parts { get; }
+
+    /// <summary>
     /// The table that contains the words of a file being parsed.
     /// </summary>
     IParserWords ParserWords { get; }

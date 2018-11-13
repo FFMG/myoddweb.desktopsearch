@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.processor
 {
@@ -27,8 +28,10 @@ namespace myoddweb.desktopsearch.processor
     /// <summary>
     /// We are telling the processor to do some work.
     /// </summary>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    Task<int> WorkAsync( CancellationToken token );
+    Task<int> WorkAsync(IConnectionFactory connectionFactory, CancellationToken token );
 
     /// <summary>
     /// Stop all processing and cleanup

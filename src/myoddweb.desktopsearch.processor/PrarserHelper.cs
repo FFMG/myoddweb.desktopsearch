@@ -12,12 +12,12 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -29,11 +29,6 @@ namespace myoddweb.desktopsearch.processor
     /// <inheritdoc />
     public FileSystemInfo File { get; }
 
-    /// <summary>
-    /// The lock to prevent multiple writes.
-    /// </summary>
-    private readonly object _lock = new object();
-
     /// <inheritdoc />
     public long Count { get; protected set; }
 
@@ -43,23 +38,59 @@ namespace myoddweb.desktopsearch.processor
     private readonly long _fileId;
 
     /// <summary>
-    /// The connection factory, if we used one.
-    /// </summary>
-    private readonly IConnectionFactory _factory;
-
-    /// <summary>
     /// The persister so we can save the words.
     /// </summary>
     private readonly IPersister _persister;
+
+    /// <summary>
+    /// The words helper.
+    /// </summary>
+    private readonly IWordsHelper _wordsHelper;
+
+    /// <summary>
+    /// The files words helper.
+    /// </summary>
+    private readonly IFilesWordsHelper _filesWordsHelper;
+
+    /// <summary>
+    /// The parser words helper.
+    /// </summary>
+    private readonly IParserWordsHelper _parserWordsHelper;
+
+    /// <summary>
+    /// The file words helper
+    /// </summary>
+    private readonly IParserFilesWordsHelper _parserFilesWordsHelper;
     #endregion
 
-    public PrarserHelper(FileSystemInfo file, IPersister persister, IConnectionFactory factory, long fileid )
+    public PrarserHelper(FileSystemInfo file, IPersister persister, IConnectionFactory factory, long fileid) :
+      this(file, persister, 
+        new WordsHelper( factory, persister.Words.TableName),
+        new FilesWordsHelper(factory, persister.FilesWords.TableName),
+        new ParserWordsHelper(factory, persister.ParserWords.TableWordName), 
+        new ParserFilesWordsHelper(factory, persister.ParserWords.TableFilesName)
+        , fileid )
+    {
+    }
+
+    public PrarserHelper(
+      FileSystemInfo file, 
+      IPersister persister,
+      IWordsHelper wordsHelper,
+      IFilesWordsHelper filesWordsHelper,
+      IParserWordsHelper parserWordsHelper,
+      IParserFilesWordsHelper parserFilesWordsHelper, 
+      long fileid 
+    )
     {
       _fileId = fileid;
 
       // set the perister and the transaction.
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
-      _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+      _wordsHelper = wordsHelper ?? throw new ArgumentNullException(nameof(wordsHelper));
+      _filesWordsHelper = filesWordsHelper ?? throw new ArgumentNullException(nameof(filesWordsHelper));
+      _parserWordsHelper = parserWordsHelper ?? throw new ArgumentNullException(nameof(parserWordsHelper));
+      _parserFilesWordsHelper = parserFilesWordsHelper ?? throw new ArgumentNullException(nameof(parserFilesWordsHelper));
 
       // set the file being worked on.
       File = file ?? throw new ArgumentNullException(nameof(file));
@@ -67,12 +98,29 @@ namespace myoddweb.desktopsearch.processor
       // we added nothing yet.
       Count = 0;
     }
-    
+
     /// <inheritdoc /> 
-    public async Task<long> AddWordAsync(IReadOnlyList<string> words, CancellationToken token)
+    public void Dispose()
+    {
+      // dispose of word helper.
+      _wordsHelper?.Dispose();
+      _filesWordsHelper?.Dispose();
+      _parserFilesWordsHelper?.Dispose();
+      _parserWordsHelper?.Dispose();
+    }
+
+    /// <inheritdoc /> 
+    public async Task<long> AddWordsAsync(IReadOnlyList<string> words, CancellationToken token)
     {
       // then we just try and add the word.
-      var added = await _persister.ParserWords.AddWordAsync(_fileId, words, _factory, token).ConfigureAwait(false);
+      var added = await _persister.ParserWords.AddWordsAsync(
+        _fileId, 
+        words,
+        _wordsHelper,
+        _filesWordsHelper,
+        _parserWordsHelper,
+        _parserFilesWordsHelper,
+        token).ConfigureAwait(false);
 
       // we 'added' the word.
       // technically the word might already exist.

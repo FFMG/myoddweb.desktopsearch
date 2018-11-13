@@ -43,6 +43,11 @@
     <Compile Include="Collection.cs" />
     <Compile Include="Components\FileParser.cs" />
     <Compile Include="File.cs" />
+    <Compile Include="Persisters\ParserFilesWordsHelper.cs" />
+    <Compile Include="Persisters\FilesWordsHelper.cs" />
+    <Compile Include="Persisters\ParserWordsHelper.cs" />
+    <Compile Include="Persisters\PartsHelper.cs" />
+    <Compile Include="Persisters\WordsHelper.cs" />
     <Compile Include="IO\DirectoryInfoComparer.cs" />
     <Compile Include="IO\FileInfoComparer.cs" />
     <Compile Include="IO\FileSystemInfoComparer.cs" />
@@ -60,6 +65,7 @@
     <Compile Include="Performance\ICounterEvent.cs" />
     <Compile Include="Performance\Manager.cs" />
     <Compile Include="Performance\Type.cs" />
+    <Compile Include="Persisters\WordsPartsHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Wait.cs" />
   </ItemGroup>
