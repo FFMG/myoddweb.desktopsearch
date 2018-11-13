@@ -25,14 +25,9 @@ namespace myoddweb.desktopsearch.service.Configs
   internal class ConfigProcessor : IProcessors
   {
     /// <inheritdoc />
-    [DefaultValue(10000)]
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public int QuietEventsProcessorMs { get; protected set; }
-
-    /// <inheritdoc />
     [DefaultValue(20)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public int BusyEventsProcessorMs { get; protected set; }
+    public int EventsProcessorMs { get; protected set; }
 
     /// <inheritdoc />
     [DefaultValue(50)]
@@ -69,17 +64,9 @@ namespace myoddweb.desktopsearch.service.Configs
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context)
     {
-      if (BusyEventsProcessorMs <= 0)
+      if (EventsProcessorMs <= 0)
       {
-        throw new ArgumentException($"The 'BusyEventsProcessorMs'({BusyEventsProcessorMs}) cannot be -ve or zero");
-      }
-      if (QuietEventsProcessorMs <= 0)
-      {
-        throw new ArgumentException($"The 'QuietEventsProcessorMs'({QuietEventsProcessorMs}) cannot be -ve or zero");
-      }
-      if (QuietEventsProcessorMs < BusyEventsProcessorMs)
-      {
-        throw new ArgumentException("The 'QuietEventsProcessorMs' cannot be less than the 'BusyEventsProcessorMs'");
+        throw new ArgumentException($"The 'EventsProcessorMs'({EventsProcessorMs}) cannot be -ve or zero");
       }
 
       if (null == IgnoreFiles)

@@ -74,7 +74,7 @@ namespace myoddweb.desktopsearch.processor
           new Files(filesCounter, config.UpdatesFilesPerEvent, fileParsers, config.IgnoreFiles, persister, logger),
           new Parser(parserCounter, config.UpdateWordParsedPerEvent, persister, logger)
         },
-        _logger, config.QuietEventsProcessorMs, config.BusyEventsProcessorMs);
+        _logger, config.EventsProcessorMs);
     }
 
     #region Start/Stop functions

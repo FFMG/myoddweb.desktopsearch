@@ -384,8 +384,7 @@ namespace myoddweb.desktopsearch.service
       sb.AppendLine($"          Update folders per events  : {config.Processors.UpdatesFolderPerEvent}");
       sb.AppendLine($"           Update files, per events  : {config.Processors.UpdatesFilesPerEvent}");
       sb.AppendLine($"            Parsed words per events  : {config.Processors.UpdateWordParsedPerEvent}");
-      sb.AppendLine($"             Quiet events processor  : {config.Processors.QuietEventsProcessorMs} Ms");
-      sb.AppendLine($"               BusyEventsProcessorMs : {config.Processors.BusyEventsProcessorMs} Ms");
+      sb.AppendLine($"                 Events Processor Ms : {config.Processors.EventsProcessorMs} Ms");
       sb.AppendLine();
 
       sb.AppendLine("Paths");
