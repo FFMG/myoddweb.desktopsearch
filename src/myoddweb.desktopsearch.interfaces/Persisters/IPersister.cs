@@ -102,5 +102,14 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// Stop the database work.
     /// </summary>
     void Stop();
+
+    /// <summary>
+    /// Let the persister do maintenance work
+    /// Often is a long/blocking operation.
+    /// </summary>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task MaintenanceAsync(IConnectionFactory connectionFactory, CancellationToken token);
   }
 }

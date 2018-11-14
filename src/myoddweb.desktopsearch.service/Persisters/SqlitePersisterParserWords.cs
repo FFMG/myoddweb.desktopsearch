@@ -261,19 +261,20 @@ namespace myoddweb.desktopsearch.service.Persisters
       // we don't want to kill the process doing one simple/common word.
       const int fileIdsLimit = 10000;
 
-      // get the older words.
-      var sqlSelectWord = $"SELECT id, word FROM {TableName} LIMIT {limit}";
-
-      // then we can look for the file ids.
-      var sqlSelectWordId = $"SELECT fileid FROM {Tables.ParserFilesWords} where wordid=@wordid LIMIT {fileIdsLimit}";  //  make sure we don't get to many,.
-      using (var cmdSelectWord = connectionFactory.CreateCommand(sqlSelectWord))
-      using (var cmdSelectWordId = connectionFactory.CreateCommand(sqlSelectWordId))
+      using (var cmdSelectWord = CreateSelectWordsCommand( limit, connectionFactory ))
+      using (var cmdSelectWordId = CreateSelectFileIdCommand(fileIdsLimit, connectionFactory))
+      using (var cmdDeleteFileId = CreateDeleteFileIdCommand(fileIdsLimit, connectionFactory))
       {
         var pWordId = cmdSelectWordId.CreateParameter();
         pWordId.DbType = DbType.Int64;
         pWordId.ParameterName = "@wordid";
         cmdSelectWordId.Parameters.Add(pWordId);
-        
+
+        var pDeleteWordId = cmdDeleteFileId.CreateParameter();
+        pDeleteWordId.DbType = DbType.Int64;
+        pDeleteWordId.ParameterName = "@id";
+        cmdDeleteFileId.Parameters.Add(pDeleteWordId);
+
         var parserWord = new List<IPendingParserWordsUpdate>((int)limit);
         try
         {
@@ -285,13 +286,11 @@ namespace myoddweb.desktopsearch.service.Persisters
               token.ThrowIfCancellationRequested();
 
               // the word
-              var id = (long) readerWord["id"];
-              var word = (string) readerWord["word"];
-
+              var id = (long)readerWord["id"];
+              
               // then look for some file ids.
               pWordId.Value = id;
-              using (var readerFileIds =
-                await connectionFactory.ExecuteReadAsync(cmdSelectWordId, token).ConfigureAwait(false))
+              using (var readerFileIds = await connectionFactory.ExecuteReadAsync(cmdSelectWordId, token).ConfigureAwait(false))
               {
                 var fileIds = new List<long>(fileIdsLimit);
                 while (readerFileIds.Read())
@@ -300,13 +299,18 @@ namespace myoddweb.desktopsearch.service.Persisters
                   token.ThrowIfCancellationRequested();
 
                   // add this item to the list of file ids.
-                  fileIds.Add((long) readerFileIds["fileid"]);
+                  fileIds.Add((long)readerFileIds["fileid"]);
                 }
 
                 if (!fileIds.Any())
                 {
+                  pDeleteWordId.Value = id;
+                  await connectionFactory.ExecuteWriteAsync(cmdDeleteFileId, token).ConfigureAwait(false);
                   continue;
                 }
+
+                // get the word value.
+                var word = (string)readerWord["word"];
 
                 // add the word to the list.
                 parserWord.Add(new PendingParserWordsUpdate(id, word, fileIds));
@@ -329,6 +333,59 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     #region Private functions
+    /// <summary>
+    /// Create the SelectWordCommand
+    /// </summary>
+    /// <param name="limit"></param>
+    /// <param name="connectionFactory"></param>
+    /// <returns></returns>
+    private static IDbCommand CreateDeleteFileIdCommand(long limit, IConnectionFactory connectionFactory)
+    {
+      var sql = $@"DELETE FROM {Tables.ParserWords}
+                   WHERE
+                     id IN
+                   (
+                     SELECT ID 
+                     FROM   {Tables.ParserWords} 
+                     WHERE 
+                     id = @id AND
+                     ID NOT IN (SELECT wordid FROM {Tables.ParserFilesWords})
+                   )";
+
+      // create the comment
+      return connectionFactory.CreateCommand(sql);
+    }
+
+    /// <summary>
+    /// Create the SelectWordCommand
+    /// </summary>
+    /// <param name="limit"></param>
+    /// <param name="connectionFactory"></param>
+    /// <returns></returns>
+    private static IDbCommand CreateSelectFileIdCommand(long limit, IConnectionFactory connectionFactory)
+    {
+      // then we can look for the file ids.
+      var sqlSelectWordId = $"SELECT fileid FROM {Tables.ParserFilesWords} where wordid=@wordid LIMIT {limit}";  //  make sure we don't get to many,.
+
+      // create the comment
+      return connectionFactory.CreateCommand(sqlSelectWordId);
+    }
+
+    /// <summary>
+    /// Create the SelectWordCommand
+    /// </summary>
+    /// <param name="limit"></param>
+    /// <param name="connectionFactory"></param>
+    /// <returns></returns>
+    private IDbCommand CreateSelectWordsCommand(long limit, IConnectionFactory connectionFactory)
+    {
+      // get the older words.
+      var sqlSelectWord = $"SELECT id, word FROM {TableName} LIMIT {limit}";
+
+      // create the comment
+      return connectionFactory.CreateCommand(sqlSelectWord);
+    }
+    
     /// <summary>
     /// Try and insert a linked wordid/fileid
     /// </summary>

@@ -41,7 +41,12 @@ namespace myoddweb.desktopsearch.processor
     /// <summary>
     /// All the processor timeers running.
     /// </summary>
-    private readonly ProcessorTimer _timer;
+    private readonly ProcessorTimer _eventTimer;
+
+    /// <summary>
+    /// The maintenance time
+    /// </summary>
+    private readonly ProcessorTimer _maintenanceTimer;
     #endregion
 
     public Processor(
@@ -66,7 +71,7 @@ namespace myoddweb.desktopsearch.processor
       var filesCounter = new ProcessorPerformanceCounter(performance, fileCounterName, logger);
       var parserCounter = new ProcessorPerformanceCounter(performance, parserCounterName, logger);
 
-      _timer = new ProcessorTimer(
+      _eventTimer = new ProcessorTimer(
         persister,
         new List<IProcessor>
         {
@@ -75,6 +80,14 @@ namespace myoddweb.desktopsearch.processor
           new Parser(parserCounter, config.UpdateWordParsedPerEvent, persister, logger)
         },
         _logger, config.EventsProcessorMs);
+
+      _maintenanceTimer = new ProcessorTimer(
+        persister,
+        new List<IProcessor>
+        {
+          new Maintenance( persister, logger)
+        },
+        _logger, (int)TimeSpan.FromMinutes( config.MaintenanceProcessorMinutes).TotalMilliseconds );
     }
 
     #region Start/Stop functions
@@ -87,7 +100,8 @@ namespace myoddweb.desktopsearch.processor
       Stop();
 
       // start the timers
-      _timer.Start( token );
+      _eventTimer.Start( token );
+      _maintenanceTimer.Start( token );
 
       // register the token cancellation
       _cancellationTokenRegistration = token.Register(TokenCancellation);
@@ -102,7 +116,8 @@ namespace myoddweb.desktopsearch.processor
       _cancellationTokenRegistration.Dispose();
 
       // and we can stop the timers.
-      _timer.Stop();
+      _eventTimer.Stop();
+      _maintenanceTimer.Stop();
     }
 
     /// <summary>

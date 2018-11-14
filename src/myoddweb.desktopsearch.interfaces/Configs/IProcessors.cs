@@ -24,6 +24,11 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     int EventsProcessorMs { get; }
 
     /// <summary>
+    /// How often we want to run the maintenance.
+    /// </summary>
+    int MaintenanceProcessorMinutes { get; }
+
+    /// <summary>
     /// The number of files we want to do per processing events.
     /// Don't make that number too small as it will take forever to parse
     /// But also not too big as it blocks the database when/if there is work to do.

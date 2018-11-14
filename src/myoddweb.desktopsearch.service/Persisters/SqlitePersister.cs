@@ -204,7 +204,80 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
     #endregion
 
+    #region Private
+    /// <summary>
+    /// Delete all the words that do not have any files attached to it.
+    /// </summary>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> DeleteWordIdsIfNoFileIds(IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      if (null == connectionFactory)
+      {
+        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
+      }
+
+      var sql = $@"DELETE FROM {Tables.ParserWords}
+                   WHERE
+                     ID IN
+                     (
+                       SELECT ID 
+                       FROM  {Tables.ParserWords}
+                       WHERE ID NOT IN (SELECT wordid FROM {Tables.ParserFilesWords})
+                     )";
+
+      using (var cmd = connectionFactory.CreateCommand(sql))
+      {
+        try
+        {
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
+          await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false);
+
+          return true;
+        }
+        catch (OperationCanceledException)
+        {
+          _logger.Warning("Received cancellation request - Parser words - Delete word");
+          throw;
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
+          return false;
+        }
+      }
+    }
+    #endregion
+
     #region IPersister functions
+
+    /// <inheritdoc />
+    public async Task MaintenanceAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      try
+      {
+        await DeleteWordIdsIfNoFileIds(connectionFactory, token).ConfigureAwait(false);
+      }
+      catch (OperationCanceledException e)
+      {
+        _logger.Warning("Received cancellation request durring Persister Maintenance.");
+        // is it my token?
+        if (e.CancellationToken != token)
+        {
+          _logger.Exception(e);
+        }
+        throw;
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        throw;
+      }
+    }
+
     /// <inheritdoc/>
     public async Task<IConnectionFactory> BeginRead(CancellationToken token)
     {

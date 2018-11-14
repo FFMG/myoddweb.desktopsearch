@@ -94,10 +94,10 @@ namespace myoddweb.desktopsearch.processor
     /// </summary>
     private async Task EventsProcessorAsync()
     {
-      // process the item ... and when done
-      // restart the timer.
+      // get a factory item
       var factory = await _persister.BeginWrite(_token).ConfigureAwait(false);
 
+      // create all the processor tasks
       var tasks = new List<Task<int>>();
       foreach (var processor in _processors)
       {
@@ -123,10 +123,9 @@ namespace myoddweb.desktopsearch.processor
         factory.Rollback();
         _logger.Exception(e);
       }
-      
+
       // restart the timer ...
-      _timer = null;
-      StartProcessorTimer(EventsProcessorMs);
+      await _timer.StartAsync().ConfigureAwait( false );
     }
 
     /// <summary>

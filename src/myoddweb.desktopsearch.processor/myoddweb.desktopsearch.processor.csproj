@@ -46,6 +46,7 @@
     <Compile Include="processor.cs" />
     <Compile Include="Processors\files.cs" />
     <Compile Include="Processors\folders.cs" />
+    <Compile Include="Processors\maintenance.cs" />
     <Compile Include="Processors\parser.cs" />
     <Compile Include="processortimer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

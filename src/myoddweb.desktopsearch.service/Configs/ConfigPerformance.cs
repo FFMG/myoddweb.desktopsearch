@@ -33,7 +33,7 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public string CategoryHelp { get; protected set; }
 
-    [DefaultValue(true)]
+    [DefaultValue(false)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public bool DeleteStartUp { get; protected set; }
 
