@@ -61,6 +61,7 @@
     <Compile Include="Enums\LogLevel.cs" />
     <Compile Include="Persisters\IConnectionFactory.cs" />
     <Compile Include="Persisters\ICounts.cs" />
+    <Compile Include="Persisters\IParserFilesWords.cs" />
     <Compile Include="Persisters\IParserFilesWordsHelper.cs" />
     <Compile Include="Persisters\IFilesWordsHelper.cs" />
     <Compile Include="Persisters\IFilesWords.cs" />

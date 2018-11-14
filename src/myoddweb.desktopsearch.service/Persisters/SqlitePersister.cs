@@ -75,6 +75,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     public IParts Parts { get; }
 
     /// <inheritdoc />
+    public IParserFilesWords ParserFilesWords { get; }
+
+    /// <inheritdoc />
     public IFilesWords FilesWords { get; }
     
     /// <inheritdoc />
@@ -122,6 +125,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // the parts
       Parts = new SqlitePersisterParts();
+
+      // parser files words
+      ParserFilesWords = new SqlitePersisterParserFilesWords();
     }
 
     /// <inheritdoc />

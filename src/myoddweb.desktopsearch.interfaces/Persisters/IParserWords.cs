@@ -23,12 +23,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <summary>
     /// The name of the words table
     /// </summary>
-    string TableWordName { get; }
-
-    /// <summary>
-    /// The name of the words table
-    /// </summary>
-    string TableFilesName { get; }
+    string TableName { get; }
 
     /// <summary>
     /// Add a word to the list of words for that file id.

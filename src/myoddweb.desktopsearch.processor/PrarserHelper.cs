@@ -67,8 +67,8 @@ namespace myoddweb.desktopsearch.processor
       this(file, persister, 
         new WordsHelper( factory, persister.Words.TableName),
         new FilesWordsHelper(factory, persister.FilesWords.TableName),
-        new ParserWordsHelper(factory, persister.ParserWords.TableWordName), 
-        new ParserFilesWordsHelper(factory, persister.ParserWords.TableFilesName)
+        new ParserWordsHelper(factory, persister.ParserWords.TableName), 
+        new ParserFilesWordsHelper(factory, persister.ParserFilesWords.TableName)
         , fileid )
     {
     }

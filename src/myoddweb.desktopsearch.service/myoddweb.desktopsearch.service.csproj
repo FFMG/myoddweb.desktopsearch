@@ -113,6 +113,7 @@
     <Compile Include="Persisters\SqlitePersisterFilesWords.cs" />
     <Compile Include="Persisters\SqlitePersisterParserWords.cs" />
     <Compile Include="Persisters\SqlitePersisterParts.cs" />
+    <Compile Include="Persisters\SqlitePersisterParserFilesWords.cs" />
     <Compile Include="Persisters\SqlitePersisterWords.cs" />
     <Compile Include="Persisters\SqlitePersisterFiles.cs" />
     <Compile Include="Persisters\SqlitePersisterFileUpdates.cs" />

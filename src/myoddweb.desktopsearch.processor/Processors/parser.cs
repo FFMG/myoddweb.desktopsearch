@@ -82,7 +82,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           using (var partsHelper = new PartsHelper(factory, _persister.Parts.TableName))
           using (var filesWordsHelper = new FilesWordsHelper(factory, _persister.FilesWords.TableName))
           using (var wordsPartsHelper = new WordsPartsHelper(factory, _persister.WordsParts.TableName))
-          using (var parserFilesWordsHelper = new ParserFilesWordsHelper(factory, _persister.ParserWords.TableFilesName))
+          using (var parserFilesWordsHelper = new ParserFilesWordsHelper(factory, _persister.ParserFilesWords.TableName))
           {
             foreach (var pendingParserWordsUpdate in pendingParserWordsUpdates)
             {
