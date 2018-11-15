@@ -13,7 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
@@ -410,18 +409,15 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
 
     /// <inheritdoc />
-    public async Task DeleteAsync(long wordId, IList<long> fileIds, CancellationToken token)
+    public Task DeleteAsync(long wordId, long fileId, CancellationToken token)
     {
       // sanity check
       ThrowIfDisposed();
 
       // insert the word.
       DeleteWordId.Value = wordId;
-      foreach (var fileId in fileIds)
-      {
-        DeleteFileId.Value = fileId;
-        await _factory.ExecuteWriteAsync(DeleteCommand, token).ConfigureAwait(false);
-      }
+      DeleteFileId.Value = fileId;
+      return _factory.ExecuteWriteAsync(DeleteCommand, token);
     }
   }
 }

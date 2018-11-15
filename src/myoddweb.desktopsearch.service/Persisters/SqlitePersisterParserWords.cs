@@ -169,7 +169,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
-        await parserFilesWordsHelper.DeleteAsync(wordId, fileIds, token ).ConfigureAwait(false);
+        var tasks = fileIds.Select(fileId => parserFilesWordsHelper.DeleteAsync(wordId, fileId, token)).ToList();
+        await helper.Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
         return true;
       }
       catch (OperationCanceledException)
