@@ -220,34 +220,35 @@ namespace myoddweb.desktopsearch.service.Persisters
     public DbCommand CreateCommand(string sql)
     {
       ThrowIfNotValid();
+      OpenIfNeeded(default(CancellationToken));
       return OnCreateCommand(sql);
     }
 
     /// <inheritdoc />
-    public async Task<int> ExecuteWriteAsync(IDbCommand command, CancellationToken cancellationToken)
+    public Task<int> ExecuteWriteAsync(IDbCommand command, CancellationToken cancellationToken)
     {
       ThrowIfNotValid();
       OpenIfNeeded(cancellationToken);
-      PepareForWrite();
-      return await ExecuteNonQueryAsync(command, cancellationToken).ConfigureAwait( false );
+      PrepareForWrite();
+      return ExecuteNonQueryAsync(command, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task<IDataReader> ExecuteReadAsync(IDbCommand command, CancellationToken cancellationToken)
+    public Task<IDataReader> ExecuteReadAsync(IDbCommand command, CancellationToken cancellationToken)
     {
       ThrowIfNotValid();
       OpenIfNeeded(cancellationToken);
-      PepareForRead();
-      return await ExecuteReaderAsync(command, cancellationToken).ConfigureAwait(false);
+      PrepareForRead();
+      return ExecuteReaderAsync(command, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task<object> ExecuteReadOneAsync(IDbCommand command, CancellationToken cancellationToken)
+    public Task<object> ExecuteReadOneAsync(IDbCommand command, CancellationToken cancellationToken)
     {
       ThrowIfNotValid();
       OpenIfNeeded( cancellationToken );
-      PepareForRead();
-      return await ExecuteScalarAsync(command, cancellationToken).ConfigureAwait(false);
+      PrepareForRead();
+      return ExecuteScalarAsync(command, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -290,14 +291,19 @@ namespace myoddweb.desktopsearch.service.Persisters
     protected abstract void OnOpened();
 
     /// <summary>
+    /// We are about to close the database.
+    /// </summary>
+    protected abstract void PrepareForClose();
+
+    /// <summary>
     /// Give derived classes a chance to get ready for a read
     /// </summary>
-    protected abstract void PepareForRead();
+    protected abstract void PrepareForRead();
 
     /// <summary>
     /// Give derived classes a chance to get ready for a write
     /// </summary>
-    protected abstract void PepareForWrite();
+    protected abstract void PrepareForWrite();
     #endregion
   }
 }

@@ -8,9 +8,7 @@
   "Loggers": [
     {
       "LogLevels": [
-        "Error",
-        "Warning",
-        "Information"
+        "All"
       ],
       "Type": "Console"
     },
@@ -29,7 +27,7 @@
   },
   "Processors": {
     "UpdatesFilesPerEvent": 50,
-    "UpdatesFolderPerEvent": 10,
+    "UpdatesFolderPerEvent": 50,
     "UpdateWordParsedPerEvent": 50,
     "EventsProcessorMs": 20,
     "MaintenanceProcessorMinutes" :  60,

@@ -47,13 +47,19 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    protected override void PepareForRead()
+    protected override void PrepareForRead()
     {
       //  nothing to do.
     }
 
     /// <inheritdoc />
-    protected override void PepareForWrite()
+    protected override void PrepareForClose()
+    {
+      //  nothing to do.
+    }
+
+    /// <inheritdoc />
+    protected override void PrepareForWrite()
     {
       // we cannot write anything ... 
       throw new InvalidOperationException( "This is a read only operation!");

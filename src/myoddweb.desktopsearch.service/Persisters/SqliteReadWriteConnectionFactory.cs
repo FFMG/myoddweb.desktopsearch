@@ -65,6 +65,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private void Close()
     {
+      // call the derived classes a chance to perform some work.
+      PrepareForClose();
+
       // the database is closed, all we can do now is dispose of the transaction.
       _sqLiteTransaction?.Dispose();
       _sqLiteTransaction = null;
@@ -108,13 +111,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    protected override void PepareForRead()
+    protected override void PrepareForRead()
     {
       //  nothing to do.
     }
 
     /// <inheritdoc />
-    protected override void PepareForWrite()
+    protected override void PrepareForWrite()
     {
       if (_sqLiteTransaction == null)
       {
@@ -123,8 +126,19 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
+    protected override void PrepareForClose()
+    {
+      //  https://www.sqlite.org/pragma.html#pragma_optimize
+      using (var cmd = new SQLiteCommand("PRAGMA optimize;", SqLiteConnection))
+      {
+        ExecuteReadOneAsync(cmd, default(CancellationToken)).GetAwaiter().GetResult();
+      }
+    }
+
+    /// <inheritdoc />
     protected override DbCommand OnCreateCommand(string sql)
     {
+      PrepareForWrite();
       return new SQLiteCommand(sql, SqLiteConnection, _sqLiteTransaction);
     }
   }

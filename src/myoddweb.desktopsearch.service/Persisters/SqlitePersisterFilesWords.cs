@@ -75,8 +75,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       try
       {
-        // then do an inserts.
-        // get the id for this word.
+        // try and insert the word into the words table.
+        // if the word already exists, we will get the id for it.
+        // if the word does not exist, we will add it and get the id for it...
         var wordId = await _words.AddOrUpdateWordAsync(wordsHelper, partsHelper, wordsPartsHelper, pendingUpdate.Word, token ).ConfigureAwait(false);
         if (-1 == wordId)
         {
@@ -84,6 +85,8 @@ namespace myoddweb.desktopsearch.service.Persisters
           return false;
         }
 
+        // we then go around and 'attach' that word id to that file id.
+        // so that when we locate that word, we will have a valid id for it.
         foreach (var fileId in pendingUpdate.FileIds)
         {
           if( !await filesWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false))
