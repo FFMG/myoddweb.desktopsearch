@@ -58,5 +58,12 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
       IWordsPartsHelper wordsPartsHelper,
       IO.IWords words, 
       CancellationToken token);
+
+    /// <summary>
+    /// Check if the given word is valid or not, (and can be added).
+    /// </summary>
+    /// <param name="word"></param>
+    /// <returns></returns>
+    bool IsValidWord( IWord word);
   }
 }

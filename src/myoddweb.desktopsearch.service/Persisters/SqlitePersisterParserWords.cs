@@ -18,6 +18,7 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -30,16 +31,23 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
-    #endregion
 
+    /// <summary>
+    /// The words persister so we can check for valid sizes.
+    /// </summary>
+    private readonly IWords _words;
+    #endregion
 
     /// <inheritdoc />
     public string TableName => Tables.ParserWords;
 
-    public SqlitePersisterParserWords(ILogger logger )
+    public SqlitePersisterParserWords(IWords words, ILogger logger )
     {
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      // the words persiser.
+      _words = words ?? throw new ArgumentNullException(nameof(words));
     }
 
     /// <inheritdoc />
@@ -69,6 +77,12 @@ namespace myoddweb.desktopsearch.service.Persisters
           // get out if needed.
           token.ThrowIfCancellationRequested();
 
+          if (!_words.IsValidWord( new Word(word)))
+          {
+            _logger.Verbose( $"Did not insert word {word} as it is not valid.");
+            continue;
+          }
+          
           // if the word already exists in the Words table
           // then we do not need to add it anymore
           // we just need to add it to the FilesWords Table.
@@ -264,7 +278,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       using (var cmdSelectWord = CreateSelectWordsCommand( limit, connectionFactory ))
       using (var cmdSelectWordId = CreateSelectFileIdCommand(fileIdsLimit, connectionFactory))
-      using (var cmdDeleteFileId = CreateDeleteFileIdCommand(fileIdsLimit, connectionFactory))
+      using (var cmdDeleteFileId = CreateDeleteFileIdCommand( connectionFactory))
       {
         var pWordId = cmdSelectWordId.CreateParameter();
         pWordId.DbType = DbType.Int64;
@@ -305,6 +319,8 @@ namespace myoddweb.desktopsearch.service.Persisters
 
                 if (!fileIds.Any())
                 {
+                  // this word does not have any 'attached' files anymore
+                  // so we want to delete it so it does not get picked up again.
                   pDeleteWordId.Value = id;
                   await connectionFactory.ExecuteWriteAsync(cmdDeleteFileId, token).ConfigureAwait(false);
                   continue;
@@ -337,10 +353,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Create the SelectWordCommand
     /// </summary>
-    /// <param name="limit"></param>
     /// <param name="connectionFactory"></param>
     /// <returns></returns>
-    private static IDbCommand CreateDeleteFileIdCommand(long limit, IConnectionFactory connectionFactory)
+    private static IDbCommand CreateDeleteFileIdCommand(IConnectionFactory connectionFactory)
     {
       var sql = $@"DELETE FROM {Tables.ParserWords}
                    WHERE

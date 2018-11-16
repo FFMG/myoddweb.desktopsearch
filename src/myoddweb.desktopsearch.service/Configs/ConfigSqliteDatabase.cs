@@ -25,9 +25,18 @@ namespace myoddweb.desktopsearch.service.Configs
     /// The cache size.
     /// https://www.sqlite.org/pragma.html#pragma_cache_size
     /// </summary>
-    [DefaultValue(-2000)]
+    [DefaultValue(10000)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public long CacheSize { get; protected set; }
+
+    /// <summary>
+    /// Auto checkpoint
+    /// https://www.sqlite.org/wal.html#automatic_checkpoint
+    /// https://www.sqlite.org/wal.html#checkpointing
+    /// </summary>
+    [DefaultValue(1000)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public long AutoCheckpoint { get; protected set; }
 
     /// <summary>
     /// The source to the database.

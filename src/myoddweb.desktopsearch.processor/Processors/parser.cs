@@ -82,12 +82,23 @@ namespace myoddweb.desktopsearch.processor.Processors
           using (var partsHelper = new PartsHelper(factory, _persister.Parts.TableName))
           using (var filesWordsHelper = new FilesWordsHelper(factory, _persister.FilesWords.TableName))
           using (var wordsPartsHelper = new WordsPartsHelper(factory, _persister.WordsParts.TableName))
+          using (var parserWordsHelper = new ParserWordsHelper(factory, _persister.ParserWords.TableName))
           using (var parserFilesWordsHelper = new ParserFilesWordsHelper(factory, _persister.ParserFilesWords.TableName))
           {
             foreach (var pendingParserWordsUpdate in pendingParserWordsUpdates)
             {
               // thow if needed.
               token.ThrowIfCancellationRequested();
+
+              // is this a valid word?
+              if (!_persister.Words.IsValidWord(pendingParserWordsUpdate.Word))
+              {
+                // no, it is not, so just get rid of it.
+                var id = await parserWordsHelper.GetIdAsync(pendingParserWordsUpdate.Word.Value, token).ConfigureAwait(false);
+                await parserWordsHelper.DeleteWordAsync( id, token).ConfigureAwait(false);
+                await parserFilesWordsHelper.DeleteWordAsync(id, token).ConfigureAwait(false);
+                continue;
+              }
 
               if (!await _persister.FilesWords.AddParserWordsAsync(
                   pendingParserWordsUpdate,
@@ -102,11 +113,12 @@ namespace myoddweb.desktopsearch.processor.Processors
                 continue;
               }
 
-              // delete that part id so we do not do it again.
+              // delete all the file ids that used that parser word id.
+              // because we have just processed them all at once.
               await _persister.ParserWords.DeleteFileIds(pendingParserWordsUpdate.Id, pendingParserWordsUpdate.FileIds, parserFilesWordsHelper, token).ConfigureAwait(false);
 
               // if we found any, log it.
-              _logger.Verbose( $"Processor : {pendingParserWordsUpdate.Word.Value} processed for {pendingParserWordsUpdate.FileIds.Count} file(s).");
+              _logger.Verbose($"Processor : {pendingParserWordsUpdate.Word.Value} processed for {pendingParserWordsUpdate.FileIds.Count} file(s).");
             }
           }
 

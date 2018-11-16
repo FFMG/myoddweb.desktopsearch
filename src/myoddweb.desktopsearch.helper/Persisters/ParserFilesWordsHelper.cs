@@ -216,46 +216,46 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
     #endregion
 
-    #region Delete
+    #region Delete by word and file ids
     /// <summary>
     /// The delete command;
     /// </summary>
-    private IDbCommand _deleteCommand;
+    private IDbCommand _deleteByWordAndFileCommand;
 
     /// <summary>
     /// The word id to delete.
     /// </summary>
-    private IDbDataParameter _deleteWordId;
+    private IDbDataParameter _deleteByWordAndFileWordId;
 
     /// <summary>
     /// The file id to insert.
     /// </summary>
-    private IDbDataParameter _deleteFileId;
+    private IDbDataParameter _deleteByWordAndFileFileId;
 
     /// <summary>
     /// The sql string that we will use to insert an id.
     /// </summary>
-    private string DeleteSql => $"DELETE FROM {_tableName} WHERE wordid=@wordid AND fileid=@fileid";
+    private string DeleteByWordAndFileSql => $"DELETE FROM {_tableName} WHERE wordid=@wordid AND fileid=@fileid";
 
     /// <summary>
     /// Create the delete command if needed.
     /// </summary>
-    private IDbCommand DeleteCommand
+    private IDbCommand DeleteByWordAndFileCommand
     {
       get
       {
-        if (_deleteCommand != null)
+        if (_deleteByWordAndFileCommand != null)
         {
-          return _deleteCommand;
+          return _deleteByWordAndFileCommand;
         }
 
         lock (_lock)
         {
-          if (_deleteCommand == null)
+          if (_deleteByWordAndFileCommand == null)
           {
-            _deleteCommand = _factory.CreateCommand(DeleteSql);
+            _deleteByWordAndFileCommand = _factory.CreateCommand(DeleteByWordAndFileSql);
           }
-          return _deleteCommand;
+          return _deleteByWordAndFileCommand;
         }
       }
     }
@@ -263,25 +263,25 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <summary>
     /// The delete word id parameter.
     /// </summary>
-    private IDbDataParameter DeleteWordId
+    private IDbDataParameter DeleteByWordAndFileWordId
     {
       get
       {
-        if (null != _deleteWordId)
+        if (null != _deleteByWordAndFileWordId)
         {
-          return _deleteWordId;
+          return _deleteByWordAndFileWordId;
         }
 
         lock (_lock)
         {
-          if (null == _deleteWordId)
+          if (null == _deleteByWordAndFileWordId)
           {
-            _deleteWordId = DeleteCommand.CreateParameter();
-            _deleteWordId.DbType = DbType.Int64;
-            _deleteWordId.ParameterName = "@wordid";
-            DeleteCommand.Parameters.Add(_deleteWordId);
+            _deleteByWordAndFileWordId = DeleteByWordAndFileCommand.CreateParameter();
+            _deleteByWordAndFileWordId.DbType = DbType.Int64;
+            _deleteByWordAndFileWordId.ParameterName = "@wordid";
+            DeleteByWordAndFileCommand.Parameters.Add(_deleteByWordAndFileWordId);
           }
-          return _deleteWordId;
+          return _deleteByWordAndFileWordId;
         }
       }
     }
@@ -289,25 +289,91 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <summary>
     /// The delete file id parameter.
     /// </summary>
-    private IDbDataParameter DeleteFileId
+    private IDbDataParameter DeleteByWordAndFileFileId
     {
       get
       {
-        if (null != _deleteFileId)
+        if (null != _deleteByWordAndFileFileId)
         {
-          return _deleteFileId;
+          return _deleteByWordAndFileFileId;
         }
 
         lock (_lock)
         {
-          if (null == _deleteFileId)
+          if (null == _deleteByWordAndFileFileId)
           {
-            _deleteFileId = DeleteCommand.CreateParameter();
-            _deleteFileId.DbType = DbType.Int64;
-            _deleteFileId.ParameterName = "@fileid";
-            DeleteCommand.Parameters.Add(_deleteFileId);
+            _deleteByWordAndFileFileId = DeleteByWordAndFileCommand.CreateParameter();
+            _deleteByWordAndFileFileId.DbType = DbType.Int64;
+            _deleteByWordAndFileFileId.ParameterName = "@fileid";
+            DeleteByWordAndFileCommand.Parameters.Add(_deleteByWordAndFileFileId);
           }
-          return _deleteFileId;
+          return _deleteByWordAndFileFileId;
+        }
+      }
+    }
+    #endregion
+
+    #region Delete by word id
+    /// <summary>
+    /// The delete command;
+    /// </summary>
+    private IDbCommand _deleteByWordIdCommand;
+
+    /// <summary>
+    /// The word id to delete.
+    /// </summary>
+    private IDbDataParameter _deleteByWordIdWordId;
+
+    /// <summary>
+    /// The sql string that we will use to delete by word id.
+    /// </summary>
+    private string DeleteByWordIdSql => $"DELETE FROM {_tableName} WHERE wordid=@wordid";
+
+    /// <summary>
+    /// Create the delete command if needed.
+    /// </summary>
+    private IDbCommand DeleteByWordIdCommand
+    {
+      get
+      {
+        if (_deleteByWordIdCommand != null)
+        {
+          return _deleteByWordIdCommand;
+        }
+
+        lock (_lock)
+        {
+          if (_deleteByWordIdCommand == null)
+          {
+            _deleteByWordIdCommand = _factory.CreateCommand(DeleteByWordIdSql);
+          }
+          return _deleteByWordIdCommand;
+        }
+      }
+    }
+
+    /// <summary>
+    /// The delete word id parameter.
+    /// </summary>
+    private IDbDataParameter DeleteByWordIdWordId
+    {
+      get
+      {
+        if (null != _deleteByWordIdWordId)
+        {
+          return _deleteByWordIdWordId;
+        }
+
+        lock (_lock)
+        {
+          if (null == _deleteByWordIdWordId)
+          {
+            _deleteByWordIdWordId = DeleteByWordIdCommand.CreateParameter();
+            _deleteByWordIdWordId.DbType = DbType.Int64;
+            _deleteByWordIdWordId.ParameterName = "@wordid";
+            DeleteByWordIdCommand.Parameters.Add(_deleteByWordIdWordId);
+          }
+          return _deleteByWordIdWordId;
         }
       }
     }
@@ -370,7 +436,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // dispose of all the commands.
       _existsCommand?.Dispose();
       _insertCommand?.Dispose();
-      _deleteCommand?.Dispose();
+      _deleteByWordAndFileCommand?.Dispose();
     }
 
     /// <inheritdoc />
@@ -414,10 +480,21 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
 
-      // insert the word.
-      DeleteWordId.Value = wordId;
-      DeleteFileId.Value = fileId;
-      return _factory.ExecuteWriteAsync(DeleteCommand, token);
+      // delete by word and file id
+      DeleteByWordAndFileWordId.Value = wordId;
+      DeleteByWordAndFileFileId.Value = fileId;
+      return _factory.ExecuteWriteAsync(DeleteByWordAndFileCommand, token);
+    }
+
+    /// <inheritdoc />
+    public Task DeleteWordAsync(long wordId, CancellationToken token)
+    {
+      // sanity check
+      ThrowIfDisposed();
+
+      // delete by word and file id
+      DeleteByWordIdWordId.Value = wordId;
+      return _factory.ExecuteWriteAsync(DeleteByWordIdCommand, token);
     }
   }
 }

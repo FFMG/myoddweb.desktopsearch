@@ -34,11 +34,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly SqlPerformanceCounter _counterAddOrUpdate;
 
     /// <summary>
-    /// The counter for inserting new words.
-    /// </summary>
-    private readonly SqlPerformanceCounter _counterInsertedWords;
-
-    /// <summary>
     /// The maximum number of characters per words parts...
     /// This is not the max word lenght, but the part lenght
     /// The user cannot enter anything longer in a seatch box.
@@ -78,13 +73,11 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // create the counter,
       _counterAddOrUpdate = new SqlPerformanceCounter(performance, "Database: Add Or Update word", _logger);
-      _counterInsertedWords = new SqlPerformanceCounter(performance, "Database: Inserted new Words", _logger);
     }
 
     public void Dispose()
     {
       _counterAddOrUpdate?.Dispose();
-      _counterInsertedWords?.Dispose();
     }
 
     /// <inheritdoc />
@@ -112,15 +105,29 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       using (_counterAddOrUpdate.Start())
       {
-        using (_counterInsertedWords.Start())
-        {
-          return await InsertWordsAsync(wordsHelper, partsHelper, words, wordsPartsHelper, token).ConfigureAwait(false);
-        }
+        return await InsertWordsAsync(wordsHelper, partsHelper, words, wordsPartsHelper, token).ConfigureAwait(false);
       }
     }
-    
-    #region Private word functions
 
+    /// <inheritdoc />
+    public bool IsValidWord(IWord word)
+    {
+      // the word is crazy long, so we are ignoring it...
+      if (word.Value.Length > _maxNumCharactersPerWords)
+      {
+        return false;
+      }
+
+      if (word.Value.Length == 0 )
+      {
+        return false;
+      }
+
+      // looks good
+      return true;
+    }
+
+    #region Private word functions
     /// <summary>
     /// Given a list of words, re-create the ones that we need to insert.
     /// </summary>
@@ -153,11 +160,12 @@ namespace myoddweb.desktopsearch.service.Persisters
           // get out if needed.
           token.ThrowIfCancellationRequested();
 
-          // the word is crazy long, so we are ignoring it...
-          if (word.Value.Length > _maxNumCharactersPerWords)
+          // if the word is not valid, there isn't much we can do.
+          if (!IsValidWord(word))
           {
             continue;
           }
+
 
           // the word we want to insert.
           var wordId = await InsertWordAsync(word, wordsHelper, partsHelper, wordsPartsHelper, token).ConfigureAwait(false);

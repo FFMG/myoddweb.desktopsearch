@@ -17,7 +17,6 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Data.SQLite;
-using System.Threading;
 using myoddweb.desktopsearch.service.Configs;
 
 namespace myoddweb.desktopsearch.service.Persisters
@@ -35,6 +34,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private readonly long _cacheSize;
 
+    /// <summary>
+    /// The checkpoint size
+    /// https://www.sqlite.org/wal.html#automatic_checkpoint
+    /// https://www.sqlite.org/wal.html#checkpointing
+    /// </summary>
+    private readonly long _autoCheckpoint;
+
     /// <inheritdoc />
     public override bool IsReadOnly => false;
     #endregion
@@ -43,7 +49,12 @@ namespace myoddweb.desktopsearch.service.Persisters
       base( CreateConnection( config ) )
     {
       // save the config value
-      _cacheSize = config?.CacheSize ?? throw new ArgumentNullException(nameof(config));
+      if (null == config)
+      {
+        throw new ArgumentNullException(nameof(config));
+      }
+      _cacheSize = config.CacheSize;
+      _autoCheckpoint = config.AutoCheckpoint;
     }
 
     /// <summary>
@@ -86,8 +97,10 @@ namespace myoddweb.desktopsearch.service.Persisters
       var sqls = new List<string>
       {
         "PRAGMA journal_mode=WAL;",
+        "PRAGMA threads=true;",
         // https://wiki.mozilla.org/Performance/Avoid_SQLite_In_Your_Next_Firefox_Feature
-        "PRAGMA wal_autocheckpoint = 16;",
+        // https://www.sqlite.org/wal.html#automatic_checkpoint
+        $"PRAGMA wal_autocheckpoint = {_autoCheckpoint};",
         "PRAGMA journal_size_limit = 1536;",
         // other little tricks to speed things up...
         // https://www.sqlite.org/pragma.html#pragma_cache_size

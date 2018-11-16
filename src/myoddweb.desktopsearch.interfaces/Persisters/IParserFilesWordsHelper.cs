@@ -47,5 +47,13 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task DeleteAsync(long wordId, long fileId, CancellationToken token);
+
+    /// <summary>
+    /// Delete all the files that are linked to a single word id.
+    /// </summary>
+    /// <param name="wordId"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task DeleteWordAsync(long wordId, CancellationToken token);
   }
 }

@@ -115,7 +115,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       Words = new SqlitePersisterWords( performance, WordsParts, maxNumCharactersPerWords, maxNumCharactersPerParts, logger);
 
       // create the word parser.
-      ParserWords = new SqlitePersisterParserWords(logger);
+      ParserWords = new SqlitePersisterParserWords(Words, logger);
 
       // file words.
       FilesWords = new SqlitePersisterFilesWords(ParserWords, Words, logger );

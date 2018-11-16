@@ -155,6 +155,72 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
     #endregion
 
+    #region Delete by id
+    /// <summary>
+    /// The delete command;
+    /// </summary>
+    private IDbCommand _deleteByIdCommand;
+
+    /// <summary>
+    /// The id to delete.
+    /// </summary>
+    private IDbDataParameter _deleteByIdId;
+
+    /// <summary>
+    /// The sql string that we will use to insert an id.
+    /// </summary>
+    private string DeleteByIdSql => $"DELETE FROM {_tableName} WHERE id=@id";
+
+    /// <summary>
+    /// Create the delete command if needed.
+    /// </summary>
+    private IDbCommand DeleteByIdCommand
+    {
+      get
+      {
+        if (_deleteByIdCommand != null)
+        {
+          return _deleteByIdCommand;
+        }
+
+        lock (_lock)
+        {
+          if (_deleteByIdCommand == null)
+          {
+            _deleteByIdCommand = _factory.CreateCommand(DeleteByIdSql);
+          }
+          return _deleteByIdCommand;
+        }
+      }
+    }
+
+    /// <summary>
+    /// The delete word id parameter.
+    /// </summary>
+    private IDbDataParameter DeleteByIdId
+    {
+      get
+      {
+        if (null != _deleteByIdId)
+        {
+          return _deleteByIdId;
+        }
+
+        lock (_lock)
+        {
+          if (null == _deleteByIdId)
+          {
+            _deleteByIdId = DeleteByIdCommand.CreateParameter();
+            _deleteByIdId.DbType = DbType.Int64;
+            _deleteByIdId.ParameterName = "@id";
+            DeleteByIdCommand.Parameters.Add(_deleteByIdId);
+          }
+          return _deleteByIdId;
+        }
+      }
+    }
+    #endregion
+
     #region Member variables
     /// <summary>
     /// The lock to make sure that we do not create the same thing over and over.
@@ -247,6 +313,17 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // if it existed, get the id
       // if we inserted it, get the id.
       return await GetIdAsync(word, token).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DeleteWordAsync(long id, CancellationToken token)
+    {
+      // sanity check
+      ThrowIfDisposed();
+
+      // delete by word and file id
+      DeleteByIdId.Value = id;
+      return await _factory.ExecuteWriteAsync(DeleteByIdCommand, token).ConfigureAwait(false) == 1;
     }
   }
 }
