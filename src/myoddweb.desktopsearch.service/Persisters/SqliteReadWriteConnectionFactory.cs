@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System;
+using System.Collections.Generic;
 using System.Data.Common;
 using System.Data.SQLite;
 using System.Threading;
@@ -82,18 +83,24 @@ namespace myoddweb.desktopsearch.service.Persisters
       // we now have a connection, if we want to support Write-Ahead Logging then we do it now.
       // @see https://www.sqlite.org/wal.html
       // we call a read function ... so no transactions are created... yet.
-      ExecuteReadOneAsync(CreateCommand("PRAGMA journal_mode=WAL;"), default(CancellationToken)).GetAwaiter().GetResult();
-
-      // https://wiki.mozilla.org/Performance/Avoid_SQLite_In_Your_Next_Firefox_Feature
-      ExecuteReadOneAsync(CreateCommand("PRAGMA wal_autocheckpoint = 16;"), default(CancellationToken)).GetAwaiter().GetResult();
-      ExecuteReadOneAsync(CreateCommand("PRAGMA journal_size_limit = 1536;"), default(CancellationToken)).GetAwaiter().GetResult();
-
-      // other little tricks to speed things up...
-      // https://www.sqlite.org/pragma.html#pragma_cache_size
-      ExecuteReadOneAsync(CreateCommand($"PRAGMA cache_size = {_cacheSize};"), default(CancellationToken)).GetAwaiter().GetResult();
-
-      // https://www.sqlite.org/pragma.html#pragma_temp_store
-      ExecuteReadOneAsync(CreateCommand("PRAGMA temp_store = MEMORY;"), default(CancellationToken)).GetAwaiter().GetResult();
+      var sqls = new List<string>
+      {
+        "PRAGMA journal_mode=WAL;",
+        // https://wiki.mozilla.org/Performance/Avoid_SQLite_In_Your_Next_Firefox_Feature
+        "PRAGMA wal_autocheckpoint = 16;",
+        "PRAGMA journal_size_limit = 1536;",
+        // other little tricks to speed things up...
+        // https://www.sqlite.org/pragma.html#pragma_cache_size
+        $"PRAGMA cache_size = {_cacheSize};",
+        "PRAGMA temp_store = MEMORY;"
+      };
+      foreach (var sql in sqls)
+      {
+        using (var cmd = new SQLiteCommand(sql, SqLiteConnection))
+        {
+          cmd.ExecuteNonQuery();
+        }
+      }
     }
 
     /// <inheritdoc />
@@ -131,7 +138,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       //  https://www.sqlite.org/pragma.html#pragma_optimize
       using (var cmd = new SQLiteCommand("PRAGMA optimize;", SqLiteConnection))
       {
-        ExecuteReadOneAsync(cmd, default(CancellationToken)).GetAwaiter().GetResult();
+        cmd.ExecuteNonQuery();
       }
     }
 
