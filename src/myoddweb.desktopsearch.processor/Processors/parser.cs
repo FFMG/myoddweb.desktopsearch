@@ -97,6 +97,10 @@ namespace myoddweb.desktopsearch.processor.Processors
                 var id = await parserWordsHelper.GetIdAsync(pendingParserWordsUpdate.Word.Value, token).ConfigureAwait(false);
                 await parserWordsHelper.DeleteWordAsync( id, token).ConfigureAwait(false);
                 await parserFilesWordsHelper.DeleteWordAsync(id, token).ConfigureAwait(false);
+
+                // if we found any, log it.
+                _logger.Verbose($"Processor : Deleted word {pendingParserWordsUpdate.Word.Value} for {pendingParserWordsUpdate.FileIds.Count} file(s) as it is not a valid word.");
+
                 continue;
               }
 
