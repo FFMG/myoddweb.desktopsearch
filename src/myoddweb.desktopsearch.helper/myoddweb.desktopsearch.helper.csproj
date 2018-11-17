@@ -44,6 +44,7 @@
     <Compile Include="Collection.cs" />
     <Compile Include="Components\FileParser.cs" />
     <Compile Include="File.cs" />
+    <Compile Include="IO\InternalAsyncTimer.cs" />
     <Compile Include="Persisters\ParserFilesWordsHelper.cs" />
     <Compile Include="Persisters\FilesWordsHelper.cs" />
     <Compile Include="Persisters\ParserWordsHelper.cs" />
