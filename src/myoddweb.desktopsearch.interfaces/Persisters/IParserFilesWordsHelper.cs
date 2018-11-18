@@ -31,6 +31,14 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     Task<bool> ExistsAsync(long wordId, long fileId, CancellationToken token);
 
     /// <summary>
+    /// Get all the word ids for a given file id.
+    /// </summary>
+    /// <param name="fileId"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<IList<long>> GetWordIdsAsync(long fileId, CancellationToken token);
+
+    /// <summary>
     /// Insert a word/file id and return if it worked or not.
     /// </summary>
     /// <param name="wordId"></param>

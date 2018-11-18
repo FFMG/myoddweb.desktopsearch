@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
@@ -379,6 +380,72 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
     #endregion
 
+    #region Select Word Ids
+    /// <summary>
+    /// The select command
+    /// </summary>
+    private IDbCommand _selectWordIdsCommand;
+
+    /// <summary>
+    /// The File Id we are looking for.
+    /// </summary>
+    private IDbDataParameter _selectFileId;
+
+    /// <summary>
+    /// The sql string that we will use to look for an id.
+    /// </summary>
+    private string SelectWordIdSql => $"SELECT wordid FROM {_tableName} WHERE fileid = @fileid";
+
+    /// <summary>
+    /// Create the select command if needed.
+    /// </summary>
+    private IDbCommand SelectWordIdsCommand
+    {
+      get
+      {
+        if (_selectWordIdsCommand != null)
+        {
+          return _selectWordIdsCommand;
+        }
+
+        lock (_lock)
+        {
+          if (_selectWordIdsCommand == null)
+          {
+            _selectWordIdsCommand = _factory.CreateCommand(SelectWordIdSql);
+          }
+          return _selectWordIdsCommand;
+        }
+      }
+    }
+
+    /// <summary>
+    /// The id select parameter.
+    /// </summary>
+    private IDbDataParameter SelectFileId
+    {
+      get
+      {
+        if (null != _selectFileId)
+        {
+          return _selectFileId;
+        }
+
+        lock (_lock)
+        {
+          if (null == _selectFileId)
+          {
+            _selectFileId = SelectWordIdsCommand.CreateParameter();
+            _selectFileId.DbType = DbType.Int64;
+            _selectFileId.ParameterName = "@fileid";
+            SelectWordIdsCommand.Parameters.Add(_selectFileId);
+          }
+          return _selectFileId;
+        }
+      }
+    }
+    #endregion
+
     #region Member variables
     /// <summary>
     /// The lock to make sure that we do not create the same thing over and over.
@@ -437,6 +504,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       _existsCommand?.Dispose();
       _insertCommand?.Dispose();
       _deleteByWordAndFileCommand?.Dispose();
+      _selectWordIdsCommand?.Dispose();
     }
 
     /// <inheritdoc />
@@ -453,6 +521,31 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
       // return if we found a value.
       return null != value && value != DBNull.Value;
+    }
+
+    /// <inheritdoc />
+    public async Task<IList<long>> GetWordIdsAsync(long fileId, CancellationToken token)
+    {
+      // sanity check
+      ThrowIfDisposed();
+      
+      // the word ids
+      var ids = new List<long>();
+
+      // look for that word using the given id.
+      SelectFileId.Value = fileId;
+      using (var reader = await _factory.ExecuteReadAsync(SelectWordIdsCommand, token).ConfigureAwait(false))
+      {
+        while (reader.Read())
+        {
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
+          // add this update
+          ids.Add( (long)reader["wordid"]);
+        }
+      }
+      return ids;
     }
 
     /// <inheritdoc />

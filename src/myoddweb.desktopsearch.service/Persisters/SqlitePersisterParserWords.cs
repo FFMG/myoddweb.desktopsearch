@@ -263,6 +263,34 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
+    public async Task<IList<IPendingParserWordsUpdate>> GetPendingParserWordsForFileIdUpdatesAsync
+    (
+      long limit,
+      long fileId, 
+      IParserWordsHelper parserWordsHelper,
+      IParserFilesWordsHelper parserFilesWordsHelper,
+      CancellationToken token)
+    {
+      var parserWord = new List<IPendingParserWordsUpdate>((int)limit);
+
+      // get all the word ids.
+      var ids = await parserFilesWordsHelper.GetWordIdsAsync(fileId, token).ConfigureAwait(false);
+      foreach (var id in ids.Take((int)limit))
+      {
+        // look for that word and add it to the list.
+        var word = await parserWordsHelper.GetWordAsync(id, token).ConfigureAwait(false);
+        if (word == null)
+        {
+          continue;
+        }
+
+        // add the word to the list.
+        parserWord.Add(new PendingParserWordsUpdate(id, word, new List<long>{fileId}));
+      }
+      return parserWord;
+    }
+
+    /// <inheritdoc />
     public async Task<IList<IPendingParserWordsUpdate>> GetPendingParserWordsUpdatesAsync(long limit, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)

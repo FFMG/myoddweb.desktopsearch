@@ -89,41 +89,41 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
     #endregion
 
-    #region Select
+    #region Select Word Id
     /// <summary>
     /// The select command;
     /// </summary>
-    private IDbCommand _selectCommand;
+    private IDbCommand _selectIdCommand;
 
     /// <summary>
     /// The insert word parameter;
     /// </summary>
-    private IDbDataParameter _selectword;
+    private IDbDataParameter _selectWord;
 
     /// <summary>
     /// The sql string that we will use to look for an id.
     /// </summary>
-    private string SelectSql => $"SELECT id FROM {_tableName} WHERE word = @word";
+    private string SelectIdSql => $"SELECT id FROM {_tableName} WHERE word = @word";
 
     /// <summary>
     /// Create the select command if needed.
     /// </summary>
-    private IDbCommand SelectCommand
+    private IDbCommand SelectIdCommand
     {
       get
       {
-        if (_selectCommand != null)
+        if (_selectIdCommand != null)
         {
-          return _selectCommand;
+          return _selectIdCommand;
         }
 
         lock (_lock)
         {
-          if (_selectCommand == null)
+          if (_selectIdCommand == null)
           {
-            _selectCommand = _factory.CreateCommand(SelectSql);
+            _selectIdCommand = _factory.CreateCommand(SelectIdSql);
           }
-          return _selectCommand;
+          return _selectIdCommand;
         }
       }
     }
@@ -135,21 +135,87 @@ namespace myoddweb.desktopsearch.helper.Persisters
     {
       get
       {
-        if (null != _selectword)
+        if (null != _selectWord)
         {
-          return _selectword;
+          return _selectWord;
         }
 
         lock (_lock)
         {
-          if (null == _selectword)
+          if (null == _selectWord)
           {
-            _selectword = SelectCommand.CreateParameter();
-            _selectword.DbType = DbType.String;
-            _selectword.ParameterName = "@word";
-            SelectCommand.Parameters.Add(_selectword);
+            _selectWord = SelectIdCommand.CreateParameter();
+            _selectWord.DbType = DbType.String;
+            _selectWord.ParameterName = "@word";
+            SelectIdCommand.Parameters.Add(_selectWord);
           }
-          return _selectword;
+          return _selectWord;
+        }
+      }
+    }
+    #endregion
+
+    #region Select Word
+    /// <summary>
+    /// The select command;
+    /// </summary>
+    private IDbCommand _selectWordCommand;
+
+    /// <summary>
+    /// The insert word parameter;
+    /// </summary>
+    private IDbDataParameter _selectId;
+
+    /// <summary>
+    /// The sql string that we will use to look for an id.
+    /// </summary>
+    private string SelectWordSql => $"SELECT word FROM {_tableName} WHERE id = @id";
+
+    /// <summary>
+    /// Create the select command if needed.
+    /// </summary>
+    private IDbCommand SelectWordCommand
+    {
+      get
+      {
+        if (_selectWordCommand != null)
+        {
+          return _selectWordCommand;
+        }
+
+        lock (_lock)
+        {
+          if (_selectWordCommand == null)
+          {
+            _selectWordCommand = _factory.CreateCommand(SelectWordSql);
+          }
+          return _selectWordCommand;
+        }
+      }
+    }
+
+    /// <summary>
+    /// The id select parameter.
+    /// </summary>
+    private IDbDataParameter SelectId
+    {
+      get
+      {
+        if (null != _selectId)
+        {
+          return _selectId;
+        }
+
+        lock (_lock)
+        {
+          if (null == _selectId)
+          {
+            _selectId = SelectWordCommand.CreateParameter();
+            _selectId.DbType = DbType.Int64;
+            _selectId.ParameterName = "@id";
+            SelectWordCommand.Parameters.Add(_selectId);
+          }
+          return _selectId;
         }
       }
     }
@@ -277,7 +343,25 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
       // dispose of the commands if needed.
       _insertCommand?.Dispose();
-      _selectCommand?.Dispose();
+      _selectIdCommand?.Dispose();
+      _selectWordCommand?.Dispose();
+    }
+
+    /// <inheritdoc />
+    public async Task<string> GetWordAsync(long id, CancellationToken token)
+    {
+      // sanity check
+      ThrowIfDisposed();
+
+      // look for that word using the given id.
+      SelectId.Value = id;
+      var value = await _factory.ExecuteReadOneAsync(SelectWordCommand, token).ConfigureAwait(false);
+      if (null == value || value == DBNull.Value)
+      {
+        // we could not find that id
+        return null;
+      }
+      return (string)value;
     }
 
     /// <inheritdoc />
@@ -289,7 +373,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // we are first going to look for that id
       // if it does not exist, then we cannot update the files table.
       SelectWord.Value = word;
-      var value = await _factory.ExecuteReadOneAsync( SelectCommand, token).ConfigureAwait(false);
+      var value = await _factory.ExecuteReadOneAsync( SelectIdCommand, token).ConfigureAwait(false);
       if (null == value || value == DBNull.Value)
       {
         // the word does not exist
