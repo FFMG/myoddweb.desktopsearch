@@ -262,23 +262,27 @@ namespace myoddweb.desktopsearch.service.Persisters
                  $"WHERE f.id = fu.fileid and fo.id = f.folderid ORDER BY fu.ticks DESC LIMIT {limit}";
         using (var cmd = connectionFactory.CreateCommand(sql))
         using (var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
-        { 
+        {
+          var fileIdPos = reader.GetOrdinal("fileid");
+          var typePos = reader.GetOrdinal("type");
+          var pathPos = reader.GetOrdinal("path");
+          var namePos = reader.GetOrdinal("name");
           while (reader.Read())
           {
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
             // the file id
-            var fileid = (long)reader["fileid"];
+            var fileid = (long)reader[fileIdPos];
 
             // the update type
-            var type = (UpdateType)(long)reader["type"];
+            var type = (UpdateType)(long)reader[typePos];
 
             // the folder path
-            var path = (string)reader["path"];
+            var path = (string)reader[pathPos];
 
             // the file name
-            var name = (string)reader["name"];
+            var name = (string)reader[namePos];
 
             // add this update
             pendingUpdates.Add(new PendingFileUpdate(
@@ -298,13 +302,14 @@ namespace myoddweb.desktopsearch.service.Persisters
           using (var cmd = connectionFactory.CreateCommand(sql))
           using (var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
           {
+            var fileIdPos = reader.GetOrdinal("fileid");
             while (reader.Read())
             {
               // get out if needed.
               token.ThrowIfCancellationRequested();
 
               // the file id
-              var fileid = (long)reader["fileid"];
+              var fileid = (long)reader[fileIdPos];
 
               // add this update
               pendingUpdates.Add(new PendingFileUpdate(

@@ -97,15 +97,19 @@ namespace myoddweb.desktopsearch.http.Route
         pSearch.Value = search.What;
         using (var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
         {
+          var wordPos = reader.GetOrdinal("word");
+          var namePos = reader.GetOrdinal("name");
+          var pathPos = reader.GetOrdinal("path");
+
           while (reader.Read())
           {
             // get out if needed.
             token.ThrowIfCancellationRequested();
 
             // add this update
-            var word = (string) reader["word"];
-            var name = (string) reader["name"];
-            var path = (string) reader["path"];
+            var word = (string) reader[wordPos];
+            var name = (string) reader[namePos];
+            var path = (string) reader[pathPos];
             words.Add(new Word
             {
               FullName = System.IO.Path.Combine(path, name),

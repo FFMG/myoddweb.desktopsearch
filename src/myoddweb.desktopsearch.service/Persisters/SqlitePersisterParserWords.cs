@@ -296,7 +296,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
         // add the word to the list.
         parserWord.Add(new PendingParserWordsUpdate(id, word, fileIds ));
-        if (parserWord.Count > limit)
+        if (parserWord.Count >= limit)
         {
           break;
         }
