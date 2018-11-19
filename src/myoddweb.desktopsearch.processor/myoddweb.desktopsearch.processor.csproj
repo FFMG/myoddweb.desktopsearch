@@ -42,7 +42,7 @@
   <ItemGroup>
     <Compile Include="IProcessor.cs" />
     <Compile Include="IO\ProcessorPerformanceCounter.cs" />
-    <Compile Include="PrarserHelper.cs" />
+    <Compile Include="Processors\PrarserHelper.cs" />
     <Compile Include="processor.cs" />
     <Compile Include="Processors\files.cs" />
     <Compile Include="Processors\folders.cs" />

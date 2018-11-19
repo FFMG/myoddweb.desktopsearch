@@ -21,7 +21,7 @@ using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
-namespace myoddweb.desktopsearch.processor
+namespace myoddweb.desktopsearch.processor.Processors
 {
   internal class PrarserHelper : IParserHelper
   {

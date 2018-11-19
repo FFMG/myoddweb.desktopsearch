@@ -170,24 +170,21 @@ namespace myoddweb.desktopsearch.processor.Processors
             throw new ArgumentOutOfRangeException();
         }
 
+        // Make sure that we do not kill the IO 
+        // process 4 files at a time.
         if (tasks.Count < 4 * Environment.ProcessorCount)
         {
           continue;
         }
-
         await helper.Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
-
         tasks.Clear();
       }
 
-      // the 'continuewith' step is to pass all the words that we found.
-      // this will be within it's own transaction
-      // but the parsing has been done already.
+      // finish the last couple of tasks that we have left.
       await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
     }
 
     #region Workers
-
     /// <summary>
     /// A folder was deleted
     /// </summary>
@@ -262,8 +259,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
     #endregion
 
-    #region Processors
-
+    #region File Processors
     /// <summary>
     /// Process a file.
     /// </summary>
@@ -368,15 +364,14 @@ namespace myoddweb.desktopsearch.processor.Processors
     private async Task<IList<IPendingFileUpdate>> GetPendingFileUpdatesAndMarkFileProcessedAsync(IConnectionFactory factory, CancellationToken token)
     {
       var pendingUpdates = await _persister.Folders.Files.FileUpdates.GetPendingFileUpdatesAsync(MaxUpdatesToProcess, factory, token).ConfigureAwait(false);
-      if (null == pendingUpdates)
+      if (null != pendingUpdates)
       {
-        _logger.Error("Unable to get any pending file updates.");
-
-        return null;
+        // return null if we found nothing
+        return !pendingUpdates.Any() ? null : pendingUpdates;
       }
 
-      // return null if we found nothing
-      return !pendingUpdates.Any() ? null : pendingUpdates;
+      _logger.Error("Unable to get any pending file updates.");
+      return null;
     }
     #endregion
   }
