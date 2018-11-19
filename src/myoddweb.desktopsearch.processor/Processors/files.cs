@@ -292,8 +292,17 @@ namespace myoddweb.desktopsearch.processor.Processors
           // thow if needed.
           token.ThrowIfCancellationRequested();
 
-          // process that file id.
-          await parserHelper.ProcessFileIdWordAsync(1000, completedUpdate.FileId, token);
+          // we only want to process 1000 words at a time
+          // and only a toital of 5000 words per files
+          const long limit = 1000;
+          for (var i = 0; i < 5; ++i)
+          {
+            // process that file id but get out if there are no more words to proces.
+            if (limit > await parserHelper.ProcessFileIdWordAsync(limit, completedUpdate.FileId, token))
+            {
+              break;
+            }
+          }
         }
       }
     }

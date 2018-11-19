@@ -44,8 +44,16 @@ namespace myoddweb.desktopsearch.processor.Processors
       _parserFilesWordsHelper.Dispose();
     }
 
-    public async Task ProcessFileIdWordAsync(long limit, long fileId, CancellationToken token )
+    /// <summary>
+    /// Process words for a given file id.
+    /// </summary>
+    /// <param name="limit"></param>
+    /// <param name="fileId"></param>
+    /// <param name="token"></param>
+    /// <returns>The number of words actually processed.</returns>
+    public async Task<long> ProcessFileIdWordAsync(long limit, long fileId, CancellationToken token )
     {
+      // get some pending words for that file id.
       var pendingParserWordsUpdates = await _persister.ParserWords.GetPendingParserWordsForFileIdUpdatesAsync(
         limit,
         fileId,
@@ -60,6 +68,9 @@ namespace myoddweb.desktopsearch.processor.Processors
         // process it...
         await ProcessPendingParserWordAsync(pendingParserWordsUpdate, token).ConfigureAwait(false);
       }
+
+      // return how many we actualy did.
+      return pendingParserWordsUpdates.Count;
     }
 
     /// <summary>

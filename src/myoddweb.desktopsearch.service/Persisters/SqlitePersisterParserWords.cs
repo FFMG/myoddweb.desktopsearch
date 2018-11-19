@@ -19,6 +19,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.IO;
+using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -275,8 +276,17 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // get all the word ids.
       var ids = await parserFilesWordsHelper.GetWordIdsAsync(fileId, token).ConfigureAwait(false);
-      foreach (var id in ids.Take((int)limit))
+      foreach (var id in ids)
       {
+        // get the file ids, there is an outside chance that this 
+        // file id does not exist anymore
+        // in case another parser takes it over.
+        var fileIds = await parserFilesWordsHelper.GetFileIdsAsync(id, token).ConfigureAwait(false);
+        if (!fileIds.Any())
+        {
+          continue;
+        }
+
         // look for that word and add it to the list.
         var word = await parserWordsHelper.GetWordAsync(id, token).ConfigureAwait(false);
         if (word == null)
@@ -285,7 +295,11 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
 
         // add the word to the list.
-        parserWord.Add(new PendingParserWordsUpdate(id, word, new List<long>{fileId}));
+        parserWord.Add(new PendingParserWordsUpdate(id, word, fileIds ));
+        if (parserWord.Count > limit)
+        {
+          break;
+        }
       }
       return parserWord;
     }
@@ -298,25 +312,14 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
       }
 
-      // get the files ids we can flag as proccessed.
-      // we get a large number of them
-      // but we do not let the user set the number so they don't set a crazy number.
-      // we don't want to kill the process doing one simple/common word.
-      const int fileIdsLimit = 10000;
-
       using (var cmdSelectWord = CreateSelectWordsCommand( connectionFactory ))
-      using (var cmdSelectWordId = CreateSelectFileIdCommand(fileIdsLimit, connectionFactory))
-      using (var cmdDeleteFileId = CreateDeleteFileIdCommand( connectionFactory))
+      using (var parserFilesWordsHelper = new ParserFilesWordsHelper(connectionFactory, Tables.ParserFilesWords))
+      using (var cmdDeleteFileId = CreateDeleteFileIdCommand(connectionFactory))
       {
         var pLimit = cmdSelectWord.CreateParameter();
         pLimit.DbType = DbType.Int64;
         pLimit.ParameterName = "@limit";
         cmdSelectWord.Parameters.Add(pLimit);
-
-        var pWordId = cmdSelectWordId.CreateParameter();
-        pWordId.DbType = DbType.Int64;
-        pWordId.ParameterName = "@wordid";
-        cmdSelectWordId.Parameters.Add(pWordId);
 
         var pDeleteWordId = cmdDeleteFileId.CreateParameter();
         pDeleteWordId.DbType = DbType.Int64;
@@ -327,7 +330,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         try
         {
           var numberOfUpdatesToGet = limit;
-          while(numberOfUpdatesToGet > 0 )
+          while (numberOfUpdatesToGet > 0)
           {
             // set the limit
             pLimit.Value = numberOfUpdatesToGet;
@@ -342,43 +345,31 @@ namespace myoddweb.desktopsearch.service.Persisters
                 token.ThrowIfCancellationRequested();
 
                 // the word
-                var id = (long) readerWord["id"];
+                var id = (long)readerWord["id"];
 
-                // then look for some file ids.
-                pWordId.Value = id;
-                using (var readerFileIds =
-                  await connectionFactory.ExecuteReadAsync(cmdSelectWordId, token).ConfigureAwait(false))
+                // look for some file ids
+                var fileIds = await parserFilesWordsHelper.GetFileIdsAsync(id, token ).ConfigureAwait(false);
+                if (!fileIds.Any())
                 {
-                  var fileIds = new List<long>(fileIdsLimit);
-                  while (readerFileIds.Read())
-                  {
-                    // get out if needed.
-                    token.ThrowIfCancellationRequested();
-
-                    // add this item to the list of file ids.
-                    fileIds.Add((long) readerFileIds["fileid"]);
-                  }
-
-                  if (!fileIds.Any())
-                  {
-                    // this word does not have any 'attached' files anymore
-                    // so we want to delete it so it does not get picked up again.
-                    pDeleteWordId.Value = id;
-                    await connectionFactory.ExecuteWriteAsync(cmdDeleteFileId, token).ConfigureAwait(false);
-                    ++numberOfUpdatesToGet;
-                    continue;
-                  }
-
-                  // get the word value.
-                  var word = (string) readerWord["word"];
-
-                  // add the word to the list.
-                  parserWord.Add(new PendingParserWordsUpdate(id, word, fileIds));
+                  // this word does not have any 'attached' files anymore
+                  // so we want to delete it so it does not get picked up again.
+                  pDeleteWordId.Value = id;
+                  await connectionFactory.ExecuteWriteAsync(cmdDeleteFileId, token).ConfigureAwait(false);
+                  ++numberOfUpdatesToGet;
+                  continue;
                 }
+
+                // get the word value.
+                var word = (string)readerWord["word"];
+
+                // add the word to the list.
+                parserWord.Add(new PendingParserWordsUpdate(id, word, fileIds));
               }
             }
 
             // go around again if we need to get more data.
+            // if we do not need to get any more we will
+            // break out of the while loop.
           }
           return parserWord;
         }
@@ -416,21 +407,6 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // create the comment
       return connectionFactory.CreateCommand(sql);
-    }
-
-    /// <summary>
-    /// Create the SelectWordCommand
-    /// </summary>
-    /// <param name="limit"></param>
-    /// <param name="connectionFactory"></param>
-    /// <returns></returns>
-    private static IDbCommand CreateSelectFileIdCommand(long limit, IConnectionFactory connectionFactory)
-    {
-      // then we can look for the file ids.
-      var sqlSelectWordId = $"SELECT fileid FROM {Tables.ParserFilesWords} where wordid=@wordid LIMIT {limit}";  //  make sure we don't get to many,.
-
-      // create the comment
-      return connectionFactory.CreateCommand(sqlSelectWordId);
     }
 
     /// <summary>

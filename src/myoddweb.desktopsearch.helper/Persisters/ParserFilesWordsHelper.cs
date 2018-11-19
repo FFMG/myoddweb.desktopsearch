@@ -446,6 +446,72 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
     #endregion
 
+    #region Select File Ids
+    /// <summary>
+    /// The select command
+    /// </summary>
+    private IDbCommand _selectFileIdsCommand;
+
+    /// <summary>
+    /// The Word Id we are looking for.
+    /// </summary>
+    private IDbDataParameter _selectWordId;
+
+    /// <summary>
+    /// The sql string that we will use to look for an id.
+    /// </summary>
+    private string SelectFileIdSql => $"SELECT fileid FROM {_tableName} WHERE wordid = @wordid";
+
+    /// <summary>
+    /// Create the select command if needed.
+    /// </summary>
+    private IDbCommand SelectFileIdsCommand
+    {
+      get
+      {
+        if (_selectFileIdsCommand != null)
+        {
+          return _selectFileIdsCommand;
+        }
+
+        lock (_lock)
+        {
+          if (_selectFileIdsCommand == null)
+          {
+            _selectFileIdsCommand = _factory.CreateCommand(SelectFileIdSql);
+          }
+          return _selectFileIdsCommand;
+        }
+      }
+    }
+
+    /// <summary>
+    /// The id select parameter.
+    /// </summary>
+    private IDbDataParameter SelectWordId
+    {
+      get
+      {
+        if (null != _selectWordId)
+        {
+          return _selectWordId;
+        }
+
+        lock (_lock)
+        {
+          if (null == _selectWordId)
+          {
+            _selectWordId = SelectWordIdsCommand.CreateParameter();
+            _selectWordId.DbType = DbType.Int64;
+            _selectWordId.ParameterName = "@wordid";
+            SelectFileIdsCommand.Parameters.Add(_selectWordId);
+          }
+          return _selectWordId;
+        }
+      }
+    }
+    #endregion
+
     #region Member variables
     /// <summary>
     /// The lock to make sure that we do not create the same thing over and over.
@@ -505,6 +571,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       _insertCommand?.Dispose();
       _deleteByWordAndFileCommand?.Dispose();
       _selectWordIdsCommand?.Dispose();
+      _selectFileIdsCommand?.Dispose();
     }
 
     /// <inheritdoc />
@@ -529,23 +596,52 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
       
-      // the word ids
-      var ids = new List<long>();
-
       // look for that word using the given id.
       SelectFileId.Value = fileId;
       using (var reader = await _factory.ExecuteReadAsync(SelectWordIdsCommand, token).ConfigureAwait(false))
       {
+        // the word ids
+        var ids = new List<long>();
+
+        var wordIdPos = reader.GetOrdinal("wordid");
         while (reader.Read())
         {
           // get out if needed.
           token.ThrowIfCancellationRequested();
 
           // add this update
-          ids.Add( (long)reader["wordid"]);
+          ids.Add( (long)reader[wordIdPos]);
         }
+
+        return ids;
       }
-      return ids;
+    }
+
+    /// <inheritdoc />
+    public async Task<IList<long>> GetFileIdsAsync(long wordId, CancellationToken token)
+    {
+      // sanity check
+      ThrowIfDisposed();
+
+      // look for that files using the given id.
+      SelectWordId.Value = wordId;
+      using (var reader = await _factory.ExecuteReadAsync(SelectFileIdsCommand, token).ConfigureAwait(false))
+      {
+        // the file ids
+        var ids = new List<long>();
+
+        // get the data
+        var fileIdPos = reader.GetOrdinal("fileid");
+        while (reader.Read())
+        {
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
+          // add this update
+          ids.Add((long)reader[fileIdPos]);
+        }
+        return ids;
+      }
     }
 
     /// <inheritdoc />

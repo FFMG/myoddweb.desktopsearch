@@ -25,7 +25,7 @@ namespace myoddweb.desktopsearch.service.Configs
   internal class ConfigProcessor : IProcessors
   {
     /// <inheritdoc />
-    [DefaultValue(20)]
+    [DefaultValue(200)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int EventsProcessorMs { get; protected set; }
 
