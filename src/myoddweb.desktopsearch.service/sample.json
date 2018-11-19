@@ -64,7 +64,7 @@
   "Database": {
     "Source": ".\\database.db",
     "IgnoredPaths": [ ".\\" ],
-    "CacheSize": -2000,
+    "CacheSize": 10000,
     "AutoCheckpoint": 65536
   },
   "Performance": {

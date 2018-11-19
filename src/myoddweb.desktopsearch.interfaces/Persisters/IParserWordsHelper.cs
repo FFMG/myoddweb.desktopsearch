@@ -29,6 +29,14 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     Task<long> GetIdAsync(string word, CancellationToken token);
 
     /// <summary>
+    /// Get the word for a given id, return null if it does not exit.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<string> GetWordAsync(long id, CancellationToken token);
+
+    /// <summary>
     /// Insert a word and return the ID.
     /// </summary>
     /// <param name="word"></param>
