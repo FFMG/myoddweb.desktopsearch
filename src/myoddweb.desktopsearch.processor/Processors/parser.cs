@@ -64,7 +64,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<int> WorkAsync(IConnectionFactory factory, CancellationToken token)
+    public async Task<long> WorkAsync(IConnectionFactory factory, CancellationToken token)
     {
       // get the number of file ids we want to work on.
       var pendingParserWordsUpdates = await GetPendingParserWordsUpdatesAsync(factory, token).ConfigureAwait( false );

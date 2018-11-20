@@ -45,7 +45,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<int> WorkAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<long> WorkAsync(IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {

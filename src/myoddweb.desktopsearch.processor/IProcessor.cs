@@ -31,7 +31,7 @@ namespace myoddweb.desktopsearch.processor
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<int> WorkAsync(IConnectionFactory connectionFactory, CancellationToken token );
+    Task<long> WorkAsync(IConnectionFactory connectionFactory, CancellationToken token );
 
     /// <summary>
     /// Stop all processing and cleanup

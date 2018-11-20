@@ -98,7 +98,7 @@ namespace myoddweb.desktopsearch.processor
       var factory = await _persister.BeginWrite(_token).ConfigureAwait(false);
 
       // create all the processor tasks
-      var tasks = new List<Task<int>>();
+      var tasks = new List<Task<long>>();
       foreach (var processor in _processors)
       {
         tasks.Add( processor.WorkAsync(factory, _token) );

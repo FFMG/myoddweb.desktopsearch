@@ -26,11 +26,11 @@
     "EventsParserMs": 30000
   },
   "Processors": {
-    "UpdatesFilesPerEvent": 50,
+    "UpdatesWordsPerFilesPerEvent": 10000,
     "UpdatesFolderPerEvent": 10,
     "UpdateWordParsedPerEvent": 50,
     "EventsProcessorMs": 200,
-    "MaintenanceProcessorMinutes" :  60,
+    "MaintenanceProcessorMinutes": 60,
     "IgnoreFiles": [
       {
         "Pattern": "*.*",

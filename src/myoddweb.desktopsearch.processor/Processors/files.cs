@@ -57,14 +57,22 @@ namespace myoddweb.desktopsearch.processor.Processors
     public int MaxUpdatesToProcess { get; }
 
     /// <summary>
+    /// The number of files we want to do per processing events.
+    /// Don't make that number too small as it will take forever to parse
+    /// But also not too big as it blocks the database when/if there is work to do.
+    /// </summary>
+    private int UpdatesFilesPerEvent { get; }
+
+    /// <summary>
     /// The performance counter.
     /// </summary>
     private readonly ICounter _counter;
     #endregion
 
     public Files(
-      ICounter counter, 
-      int updatesPerEvent, 
+      ICounter counter,
+      int updatesFilesPerEvent,
+      int updatesWordsPerFilesPerEvent, 
       IList<IFileParser> parsers, 
       IList<IIgnoreFile> ignoreFiles, 
       IPersister persister, 
@@ -73,11 +81,17 @@ namespace myoddweb.desktopsearch.processor.Processors
       // save the counter
       _counter = counter ?? throw new ArgumentNullException(nameof(counter));
 
-      if (updatesPerEvent <= 0)
+      if (updatesWordsPerFilesPerEvent <= 0)
       {
-        throw new ArgumentException( $"The number of files to try per events cannot be -ve or zero, ({updatesPerEvent})");
+        throw new ArgumentException( $"The number of files to try per events cannot be -ve or zero, ({updatesWordsPerFilesPerEvent})");
       }
-      MaxUpdatesToProcess = updatesPerEvent;
+      MaxUpdatesToProcess = updatesWordsPerFilesPerEvent;
+
+      if (updatesFilesPerEvent <= 0)
+      {
+        throw new ArgumentException($"The total number of words for all files to try per events cannot be -ve or zero, ({updatesFilesPerEvent})");
+      }
+      UpdatesFilesPerEvent = updatesFilesPerEvent;
 
       // make sure that the parsers are valid.
       _parsers = parsers ?? throw new ArgumentNullException(nameof(parsers));
@@ -99,23 +113,31 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<int> WorkAsync( IConnectionFactory factory, CancellationToken token)
+    public async Task<long> WorkAsync( IConnectionFactory factory, CancellationToken token)
     {
       try
       {
-        // then get _all_ the file updates that we want to do.
-        var pendingUpdates = await GetPendingFileUpdatesAndMarkFileProcessedAsync(factory, token).ConfigureAwait(false);
-        if (null == pendingUpdates)
+        const long mumberOfFiles = 50;
+        long totalnumberOfWordsProcessed = 0;
+        for (long fileEvents = 0; fileEvents < UpdatesFilesPerEvent; fileEvents += mumberOfFiles )
         {
-          //  probably was canceled.
-          return 0;
+          // then get _all_ the file updates that we want to do.
+          var pendingUpdates = await GetPendingFileUpdatesAndMarkFileProcessedAsync(mumberOfFiles, factory, token).ConfigureAwait(false);
+          if (null == pendingUpdates)
+          {
+            // no more words...
+            break;
+          }
+          
+          // process those words.
+          var numberOfWordsProcessed = await ProcessFileAndWordsUpdates(pendingUpdates, factory, token).ConfigureAwait(false);
+          totalnumberOfWordsProcessed += numberOfWordsProcessed;
+          if (totalnumberOfWordsProcessed >= MaxUpdatesToProcess)
+          {
+            break;
+          }
         }
-
-        // process the updates.
-        await ProcessFileUpdates(factory, pendingUpdates, token).ConfigureAwait(false);
-
-        // return how many updates we did.
-        return pendingUpdates.Count;
+        return totalnumberOfWordsProcessed;
       }
       catch (OperationCanceledException)
       {
@@ -129,6 +151,15 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
     }
 
+    private async Task<long> ProcessFileAndWordsUpdates(ICollection<IPendingFileUpdate> pendingFileUpdates, IConnectionFactory factory, CancellationToken token)
+    {
+      // process the files
+      var completedUpdates = await ProcessFileUpdates(factory, pendingFileUpdates, token).ConfigureAwait(false);
+
+      // process the words and return the number of words.
+      return await ProcessCompletedFileUpdates(factory, completedUpdates, token).ConfigureAwait(false);
+    }
+
     /// <summary>
     /// Process a single list update
     /// </summary>
@@ -136,15 +167,13 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="pendingFileUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task ProcessFileUpdates(IConnectionFactory factory,
-      ICollection<IPendingFileUpdate> pendingFileUpdates, CancellationToken token)
+    private async Task<ICollection<IPendingFileUpdate>> ProcessFileUpdates(IConnectionFactory factory, ICollection<IPendingFileUpdate> pendingFileUpdates, CancellationToken token)
     {
       // the first thing we will do is mark the file as processed.
       // if anything goes wrong _after_ that we will try and 'touch' it again.
       // by doing it that way around we ensure that we never keep the transaction.
       // and we don't run the risk of someone else trying to process this again.
-      await _persister.Folders.Files.FileUpdates
-        .MarkFilesProcessedAsync(pendingFileUpdates.Select(p => p.FileId), factory, token).ConfigureAwait(false);
+      await _persister.Folders.Files.FileUpdates.MarkFilesProcessedAsync(pendingFileUpdates.Select(p => p.FileId), factory, token).ConfigureAwait(false);
 
       var tasks = new List<Task<IPendingFileUpdate>>(pendingFileUpdates.Count);
       foreach (var pendingFileUpdate in pendingFileUpdates)
@@ -183,13 +212,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
 
       // finish the last couple of tasks that we have left.
-      await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
-
-      // the 'continuewith' step is to pass all the words that we found.
-      // this will be within it's own transaction
-      // but the parsing has been done already.
-      var completedUpdates = await helper.Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
-      await ProcessCompletedFileUpdates( factory, completedUpdates, token).ConfigureAwait(false);
+      return await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
     }
 
     #region Workers
@@ -280,13 +303,13 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <param name="completedUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task ProcessCompletedFileUpdates(IConnectionFactory factory,
-      IEnumerable<IPendingFileUpdate> completedUpdates,
-      CancellationToken token)
+    private async Task<long> ProcessCompletedFileUpdates(IConnectionFactory factory, IEnumerable<IPendingFileUpdate> completedUpdates,CancellationToken token)
     {
       // The word parser
       using (var parserHelper = new ParserWordsAndFilesHelper(factory, _persister, _logger))
       {
+        // keep track of the total number of words we processed.
+        long numberOfWordsProcessed = 0;
         foreach (var completedUpdate in completedUpdates.Where(p => p != null))
         {
           // thow if needed.
@@ -298,12 +321,17 @@ namespace myoddweb.desktopsearch.processor.Processors
           for (var i = 0; i < 10; ++i)
           {
             // process that file id but get out if there are no more words to proces.
-            if (limit > await parserHelper.ProcessFileIdWordAsync(limit, completedUpdate.FileId, token))
+            var processed = await parserHelper.ProcessFileIdWordAsync(limit, completedUpdate.FileId, token);
+            numberOfWordsProcessed += processed;
+            if (processed < limit )
             {
               break;
             }
           }
         }
+
+        // return what was done.
+        return numberOfWordsProcessed;
       }
     }
 
@@ -403,15 +431,17 @@ namespace myoddweb.desktopsearch.processor.Processors
     #endregion
 
     #region Database calls.
+
     /// <summary>
     /// Get the pending update
     /// </summary>
+    /// <param name="numberOfIles">The number of files we will check at a time.</param>
     /// <param name="factory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<IList<IPendingFileUpdate>> GetPendingFileUpdatesAndMarkFileProcessedAsync(IConnectionFactory factory, CancellationToken token)
+    private async Task<IList<IPendingFileUpdate>> GetPendingFileUpdatesAndMarkFileProcessedAsync(long numberOfIles, IConnectionFactory factory, CancellationToken token)
     {
-      var pendingUpdates = await _persister.Folders.Files.FileUpdates.GetPendingFileUpdatesAsync(MaxUpdatesToProcess, factory, token).ConfigureAwait(false);
+      var pendingUpdates = await _persister.Folders.Files.FileUpdates.GetPendingFileUpdatesAsync(numberOfIles, factory, token).ConfigureAwait(false);
       if (null != pendingUpdates)
       {
         // return null if we found nothing

@@ -88,7 +88,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<int> WorkAsync(IConnectionFactory factory, CancellationToken token)
+    public async Task<long> WorkAsync(IConnectionFactory factory, CancellationToken token)
     {
       using (_counter.Start())
       { 

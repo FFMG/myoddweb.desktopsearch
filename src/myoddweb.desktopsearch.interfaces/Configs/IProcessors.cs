@@ -36,6 +36,11 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     int UpdatesFilesPerEvent { get; }
 
     /// <summary>
+    /// The number of words we want parse per file events.
+    /// </summary>
+    int UpdatesWordsPerFilesPerEvent { get; }
+
+    /// <summary>
     /// The number of folders we want to do per processing events.
     /// Don't make that number too small as it will take forever to parse
     /// But also not too big as it blocks the database when/if there is work to do.
