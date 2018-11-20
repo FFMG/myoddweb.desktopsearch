@@ -295,7 +295,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           // we only want to process 1000 words at a time
           // and only a toital of 5000 words per files
           const long limit = 1000;
-          for (var i = 0; i < 5; ++i)
+          for (var i = 0; i < 10; ++i)
           {
             // process that file id but get out if there are no more words to proces.
             if (limit > await parserHelper.ProcessFileIdWordAsync(limit, completedUpdate.FileId, token))
