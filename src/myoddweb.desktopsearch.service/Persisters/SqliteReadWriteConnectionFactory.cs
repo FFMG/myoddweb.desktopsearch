@@ -15,6 +15,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
 using myoddweb.desktopsearch.service.Configs;
@@ -101,6 +102,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         // https://wiki.mozilla.org/Performance/Avoid_SQLite_In_Your_Next_Firefox_Feature
         // https://www.sqlite.org/wal.html#automatic_checkpoint
         $"PRAGMA wal_autocheckpoint = {_autoCheckpoint};",
+        "PRAGMA synchronous = NORMAL;",
         "PRAGMA journal_size_limit = 1536;",
         // other little tricks to speed things up...
         // https://www.sqlite.org/pragma.html#pragma_cache_size
@@ -149,9 +151,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     protected override void PrepareForClose()
     {
       //  https://www.sqlite.org/pragma.html#pragma_optimize
-      using (var cmd = new SQLiteCommand("PRAGMA optimize;", SqLiteConnection))
+      if (SqLiteConnection?.State == ConnectionState.Open)
       {
-        cmd.ExecuteNonQuery();
+        using (var cmd = new SQLiteCommand("PRAGMA optimize;", SqLiteConnection))
+        {
+          cmd.ExecuteNonQuery();
+        }
       }
     }
 
