@@ -34,10 +34,15 @@ namespace myoddweb.desktopsearch.helper.Persisters
     private IDbDataParameter _insertWord;
 
     /// <summary>
+    /// The insert len parameter;
+    /// </summary>
+    private IDbDataParameter _insertLen;
+
+    /// <summary>
     /// The sql string that we will use to insert a word.
     /// We will only insert if there are no duplicates.
     /// </summary>
-    private string InsertSql => $"INSERT OR IGNORE INTO {_tableName} (word) VALUES (@word)";
+    private string InsertSql => $"INSERT OR IGNORE INTO {_tableName} (word, len) VALUES (@word, @len)";
 
     /// <summary>
     /// Create the Insert command if needed.
@@ -84,6 +89,31 @@ namespace myoddweb.desktopsearch.helper.Persisters
             InsertCommand.Parameters.Add(_insertWord);
           }
           return _insertWord;
+        }
+      }
+    }
+    /// <summary>
+    /// The lenght Insert parameter.
+    /// </summary>
+    private IDbDataParameter InsertLen
+    {
+      get
+      {
+        if (null != _insertLen)
+        {
+          return _insertLen;
+        }
+
+        lock (_lock)
+        {
+          if (null == _insertLen)
+          {
+            _insertLen = InsertCommand.CreateParameter();
+            _insertLen.DbType = DbType.Int64;
+            _insertLen.ParameterName = "@len";
+            InsertCommand.Parameters.Add(_insertLen);
+          }
+          return _insertLen;
         }
       }
     }
@@ -345,6 +375,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       _insertCommand?.Dispose();
       _selectIdCommand?.Dispose();
       _selectWordCommand?.Dispose();
+      _deleteByIdCommand?.Dispose();
     }
 
     /// <inheritdoc />
@@ -391,6 +422,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
       // insert the word.
       InsertWord.Value = word;
+      InsertLen.Value = word.Length;
       await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false);
 
       // regardless of the result, get the id

@@ -209,21 +209,9 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // first we delete all the 
-      var sqlDelete = $"DELETE FROM {TableName} WHERE id=@id";
-      var sqlDeleteWordAndFileId = $"DELETE FROM {Tables.ParserFilesWords} WHERE wordid=@wordid";
-      using (var cmdDeleteWord = connectionFactory.CreateCommand(sqlDelete))
-      using (var cmdDeleteWordAndFile = connectionFactory.CreateCommand(sqlDeleteWordAndFileId))
+      using (var parserWordHelper = new ParserWordsHelper(connectionFactory, TableName))
+      using (var parserFilesWordsHelper = new ParserFilesWordsHelper(connectionFactory, Tables.ParserFilesWords))
       {
-        var pIdWord = cmdDeleteWord.CreateParameter();
-        pIdWord.DbType = DbType.Int64;
-        pIdWord.ParameterName = "@id";
-        cmdDeleteWord.Parameters.Add(pIdWord);
-
-        var pIdWordAndFile = cmdDeleteWordAndFile.CreateParameter();
-        pIdWordAndFile.DbType = DbType.Int64;
-        pIdWordAndFile.ParameterName = "@wordid";
-        cmdDeleteWordAndFile.Parameters.Add(pIdWordAndFile);
-        
         try
         {
           foreach (var wordid in wordids)
@@ -232,16 +220,14 @@ namespace myoddweb.desktopsearch.service.Persisters
             token.ThrowIfCancellationRequested();
 
             // delete the word itself.
-            pIdWord.Value = wordid;
-            if (0 == await connectionFactory.ExecuteWriteAsync(cmdDeleteWord, token).ConfigureAwait(false))
+            if (!await parserWordHelper.DeleteWordAsync(wordid, token).ConfigureAwait(false))
             {
               _logger.Warning($"Could not delete parser words, word id: {wordid}, does it still exist?");
               continue;
             }
 
             // then delete the words/files ids.
-            pIdWordAndFile.Value = wordid;
-            if (0 == await connectionFactory.ExecuteWriteAsync(cmdDeleteWordAndFile, token).ConfigureAwait(false))
+            if (0 == await parserFilesWordsHelper.DeleteWordAsync(wordid, token).ConfigureAwait(false))
             {
               _logger.Warning($"Could not delete parser files and words id for word id: {wordid}.");
             }
@@ -417,7 +403,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private IDbCommand CreateSelectWordsCommand(IConnectionFactory connectionFactory)
     {
       // get the older words.
-      var sqlSelectWord = $"SELECT id, word FROM {TableName} LIMIT @limit";
+      var sqlSelectWord = $"SELECT id, word FROM {TableName} ORDER BY len DESC LIMIT @limit";
 
       // create the comment
       return connectionFactory.CreateCommand(sqlSelectWord);

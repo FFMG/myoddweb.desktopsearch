@@ -70,6 +70,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="wordId"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task DeleteWordAsync(long wordId, CancellationToken token);
+    Task<int> DeleteWordAsync(long wordId, CancellationToken token);
   }
 }

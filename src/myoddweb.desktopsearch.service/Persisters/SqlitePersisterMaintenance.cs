@@ -244,11 +244,19 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateParserWordsAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {Tables.ParserWords} (id integer PRIMARY KEY, word TEXT UNIQUE)", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.ParserWords} (id integer PRIMARY KEY, word TEXT UNIQUE, len integer)", connectionFactory)
           .ConfigureAwait(false))
       {
         return false;
       }
+
+      if (
+        !await
+          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.ParserWords}_length ON {Tables.ParserWords}(len);", connectionFactory).ConfigureAwait(false))
+      {
+        return false;
+      }
+
 
       // done 
       return true;

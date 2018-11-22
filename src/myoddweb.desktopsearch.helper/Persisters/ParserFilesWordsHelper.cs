@@ -570,6 +570,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       _existsCommand?.Dispose();
       _insertCommand?.Dispose();
       _deleteByWordAndFileCommand?.Dispose();
+      _deleteByWordIdCommand?.Dispose();
       _selectWordIdsCommand?.Dispose();
       _selectFileIdsCommand?.Dispose();
     }
@@ -676,7 +677,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
 
     /// <inheritdoc />
-    public Task DeleteWordAsync(long wordId, CancellationToken token)
+    public Task<int> DeleteWordAsync(long wordId, CancellationToken token)
     {
       // sanity check
       ThrowIfDisposed();
