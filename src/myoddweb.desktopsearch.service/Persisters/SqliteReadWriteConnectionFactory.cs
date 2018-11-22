@@ -107,7 +107,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         // other little tricks to speed things up...
         // https://www.sqlite.org/pragma.html#pragma_cache_size
         $"PRAGMA cache_size = {_cacheSize};",
-        "PRAGMA temp_store = MEMORY;"
+        "PRAGMA temp_store = MEMORY;",
+        "PRAGMA automatic_index = false;",
       };
       foreach (var sql in sqls)
       {
