@@ -103,7 +103,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         // https://www.sqlite.org/wal.html#automatic_checkpoint
         $"PRAGMA wal_autocheckpoint = {_autoCheckpoint};",
         "PRAGMA synchronous = NORMAL;",
-        "PRAGMA journal_size_limit = 1536;",
+        "PRAGMA journal_size_limit = -1;",
         // other little tricks to speed things up...
         // https://www.sqlite.org/pragma.html#pragma_cache_size
         $"PRAGMA cache_size = {_cacheSize};",
