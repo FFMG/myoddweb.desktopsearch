@@ -325,13 +325,15 @@ namespace myoddweb.desktopsearch.service.Persisters
             numberOfUpdatesToGet = 0;
             using (var readerWord = await connectionFactory.ExecuteReadAsync(cmdSelectWord, token).ConfigureAwait(false))
             {
+              var idPos = readerWord.GetOrdinal("id");
+              var wordPos = readerWord.GetOrdinal("word"); 
               while (readerWord.Read())
               {
                 // get out if needed.
                 token.ThrowIfCancellationRequested();
 
                 // the word
-                var id = (long)readerWord["id"];
+                var id = (long)readerWord[idPos];
 
                 // look for some file ids
                 var fileIds = await parserFilesWordsHelper.GetFileIdsAsync(id, token ).ConfigureAwait(false);
@@ -346,7 +348,7 @@ namespace myoddweb.desktopsearch.service.Persisters
                 }
 
                 // get the word value.
-                var word = (string)readerWord["word"];
+                var word = (string)readerWord[wordPos];
 
                 // add the word to the list.
                 parserWord.Add(new PendingParserWordsUpdate(id, word, fileIds));
