@@ -117,7 +117,9 @@ namespace myoddweb.desktopsearch.processor.Processors
     {
       try
       {
-        const long mumberOfFiles = 50;
+        // Make sure that we do not kill the IO 
+        // process '4* Environment.ProcessorCount' files at a time.
+        var mumberOfFiles = 4 * Environment.ProcessorCount;
         long totalnumberOfWordsProcessed = 0;
         for (long fileEvents = 0; fileEvents < UpdatesFilesPerEvent; fileEvents += mumberOfFiles )
         {
@@ -200,19 +202,10 @@ namespace myoddweb.desktopsearch.processor.Processors
           default:
             throw new ArgumentOutOfRangeException();
         }
-
-        // Make sure that we do not kill the IO 
-        // process 4 files at a time.
-        if (tasks.Count < 4 * Environment.ProcessorCount)
-        {
-          continue;
-        }
-        await helper.Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
-        tasks.Clear();
       }
 
-      // finish the last couple of tasks that we have left.
-      return await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
+      // and return the completed updates.
+      return await helper.Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
     }
 
     #region Workers
