@@ -97,6 +97,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // we call a read function ... so no transactions are created... yet.
       var sqls = new List<string>
       {
+        "PRAGMA auto_vacuum=NONE;",
         "PRAGMA journal_mode=WAL;",
         "PRAGMA threads=true;",
         // https://wiki.mozilla.org/Performance/Avoid_SQLite_In_Your_Next_Firefox_Feature
