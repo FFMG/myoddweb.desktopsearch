@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using IParts = myoddweb.desktopsearch.interfaces.IO.IParts;
 
 namespace myoddweb.desktopsearch.processor.Processors
 {
@@ -117,13 +120,6 @@ namespace myoddweb.desktopsearch.processor.Processors
         return;
       }
 
-//      foreach (var part in word.Parts(12))
-//      {
-//        // if this part exists as a word ...
-//        // then we can add it 
-//        var wordId = await _parserWordsHelper.GetIdAsync(part, token ).ConfigureAwait(false);
-//      }
-
       // get the id of this word.
       var parserWordId = await _parserWordsHelper.GetIdAsync(word.Value, token).ConfigureAwait(false);
 
@@ -131,8 +127,45 @@ namespace myoddweb.desktopsearch.processor.Processors
       // because we have just processed them all at once.
       await _persister.ParserWords.DeleteFileIds(parserWordId, fileIds, _parserFilesWordsHelper, token).ConfigureAwait(false);
 
+      // process the parts.
+      await ProcessPartsAsync(word, token).ConfigureAwait(false);
+
       // if we found any, log it.
       _logger.Verbose($"Processor : {word.Value} processed for {fileIds.Count} file(s).");
+    }
+
+    private async Task ProcessPartsAsync(IWord word, CancellationToken token)
+    {
+      foreach (var part in word.Parts)
+      {
+        // do do the word we are currently working on...
+        if (part == word.Value)
+        {
+          continue;
+        }
+
+        // if this part exists as a word ... then we can add it 
+        var wordId = await _parserWordsHelper.GetIdAsync(part, token).ConfigureAwait(false);
+        if (-1 == wordId)
+        {
+          continue;
+        }
+
+        // that word does exist... so we can add it to the words list.
+        var fileIds = await _parserFilesWordsHelper.GetFileIdsAsync(wordId, token).ConfigureAwait(false);
+        if (!fileIds.Any())
+        {
+          await _parserWordsHelper.DeleteWordAsync(wordId, token).ConfigureAwait(false);
+          _logger.Verbose($"Processor : Deleted word {word.Value} as we found no file ids for it.");
+          continue;
+        }
+
+        // go back around again.
+        // NB: We know that this is a part of a larger word.
+        //     So, "maxNumCharactersPerParts", (second param of Word(...))
+        //     Cannot be longer than the word itself.
+        await ProcessPendingParserWordAsync(new Word( part, part.Length ), fileIds, token).ConfigureAwait(false);
+      }
     }
   }
 }
