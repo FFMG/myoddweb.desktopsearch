@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.Persisters;
+using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -66,7 +68,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         token.ThrowIfCancellationRequested();
 
         // process it...
-        await ProcessPendingParserWordAsync(pendingParserWordsUpdate, token).ConfigureAwait(false);
+        await ProcessPendingParserWordAsync(pendingParserWordsUpdate.Word, pendingParserWordsUpdate.FileIds, token).ConfigureAwait(false);
       }
 
       // return how many we actualy did.
@@ -76,31 +78,34 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// Process a single parser word
     /// </summary>
-    /// <param name="pendingParserWordsUpdate"></param>
+    /// <param name="word"></param>
+    /// <param name="fileIds"></param>
     /// <param name="token"></param>
     /// <returns></returns>
     public async Task ProcessPendingParserWordAsync
     (
-      IPendingParserWordsUpdate pendingParserWordsUpdate,
+      IWord word,
+      IList<long> fileIds, 
       CancellationToken token
     )
     {
       // is this a valid word?
-      if (!_persister.Words.IsValidWord(pendingParserWordsUpdate.Word))
+      if (!_persister.Words.IsValidWord(word))
       {
         // no, it is not, so just get rid of it.
-        var id = await _parserWordsHelper.GetIdAsync(pendingParserWordsUpdate.Word.Value, token).ConfigureAwait(false);
+        var id = await _parserWordsHelper.GetIdAsync(word.Value, token).ConfigureAwait(false);
         await _parserWordsHelper.DeleteWordAsync(id, token).ConfigureAwait(false);
         await _parserFilesWordsHelper.DeleteWordAsync(id, token).ConfigureAwait(false);
 
         // if we found any, log it.
-        _logger.Verbose($"Processor : Deleted word {pendingParserWordsUpdate.Word.Value} for {pendingParserWordsUpdate.FileIds.Count} file(s) as it is not a valid word.");
+        _logger.Verbose($"Processor : Deleted word {word.Value} for {fileIds.Count} file(s) as it is not a valid word.");
 
         return;
       }
 
       if (!await _persister.FilesWords.AddParserWordsAsync(
-          pendingParserWordsUpdate,
+          word,
+          fileIds,
           _wordsHelper,
           _filesWordsHelper,
           _partsHelper,
@@ -112,12 +117,22 @@ namespace myoddweb.desktopsearch.processor.Processors
         return;
       }
 
+      foreach (var part in word.Parts(12))
+      {
+        // if this part exists as a word ...
+        // then we can add it 
+        var wordId = await _parserWordsHelper.GetIdAsync(part, token ).ConfigureAwait(false);
+      }
+
+      // get the id of this word.
+      var parserWordId = await _parserWordsHelper.GetIdAsync(word.Value, token).ConfigureAwait(false);
+
       // delete all the file ids that used that parser word id.
       // because we have just processed them all at once.
-      await _persister.ParserWords.DeleteFileIds(pendingParserWordsUpdate.Id, pendingParserWordsUpdate.FileIds, _parserFilesWordsHelper, token).ConfigureAwait(false);
+      await _persister.ParserWords.DeleteFileIds(parserWordId, fileIds, _parserFilesWordsHelper, token).ConfigureAwait(false);
 
       // if we found any, log it.
-      _logger.Verbose($"Processor : {pendingParserWordsUpdate.Word.Value} processed for {pendingParserWordsUpdate.FileIds.Count} file(s).");
+      _logger.Verbose($"Processor : {word.Value} processed for {fileIds.Count} file(s).");
     }
   }
 }

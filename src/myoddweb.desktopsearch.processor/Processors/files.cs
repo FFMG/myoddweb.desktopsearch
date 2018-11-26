@@ -320,6 +320,11 @@ namespace myoddweb.desktopsearch.processor.Processors
             {
               break;
             }
+
+            if (numberOfWordsProcessed >= MaxUpdatesToProcess)
+            {
+              break;
+            }
           }
         }
 

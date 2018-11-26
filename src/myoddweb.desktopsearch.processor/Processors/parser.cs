@@ -85,7 +85,10 @@ namespace myoddweb.desktopsearch.processor.Processors
               token.ThrowIfCancellationRequested();
 
               // process it...
-              await parserHelper.ProcessPendingParserWordAsync( pendingParserWordsUpdate, token).ConfigureAwait(false);
+              await parserHelper.ProcessPendingParserWordAsync( 
+                pendingParserWordsUpdate.Word,
+                pendingParserWordsUpdate.FileIds,
+                token).ConfigureAwait(false);
             }
           }
 

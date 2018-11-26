@@ -15,6 +15,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.IO;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
@@ -28,15 +29,17 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <summary>
     /// Add multiple words to a single file id
     /// </summary>
+    /// <param name="wordToAdd">The words we want to add to the list of words.</param>
+    /// <param name="fileIdsToAddWordTo">Once the word is added, the files we will add it to.</param>
     /// <param name="wordsHelper"></param>
     /// <param name="fileWordsHelper"></param>
     /// <param name="partsHelper"></param>
     /// <param name="wordsPartsHelper"></param>
-    /// <param name="pendingUpdates">The words we want to add to the list of words./</param>
     /// <param name="token"></param>
     /// <returns></returns>
     Task<bool> AddParserWordsAsync(
-      IPendingParserWordsUpdate pendingUpdate,
+      IWord wordToAdd,
+      IList<long> fileIdsToAddWordTo, 
       IWordsHelper wordsHelper,
       IFilesWordsHelper fileWordsHelper,
       IPartsHelper partsHelper,

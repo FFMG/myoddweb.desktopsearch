@@ -18,8 +18,10 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using IWords = myoddweb.desktopsearch.interfaces.Persisters.IWords;
 
 namespace myoddweb.desktopsearch.service.Persisters
 {
@@ -59,18 +61,18 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     /// <inheritdoc />
     public async Task<bool> AddParserWordsAsync(
-      IPendingParserWordsUpdate pendingUpdate,
+      IWord wordToAdd,
+      IList<long> fileIdsToAddWordTo,
       IWordsHelper wordsHelper, 
       IFilesWordsHelper filesWordsHelper,
       IPartsHelper partsHelper,
       IWordsPartsHelper wordsPartsHelper,
       CancellationToken token)
     {
-      // get some words from the parser so we can add them here now.
-      if (pendingUpdate == null)
+      // if we have no files, we don't actually want to add the word.
+      if (!fileIdsToAddWordTo.Any())
       {
-        // there was nothing to add.
-        return true;
+        return false;
       }
 
       try
@@ -78,20 +80,20 @@ namespace myoddweb.desktopsearch.service.Persisters
         // try and insert the word into the words table.
         // if the word already exists, we will get the id for it.
         // if the word does not exist, we will add it and get the id for it...
-        var wordId = await _words.AddOrUpdateWordAsync(wordsHelper, partsHelper, wordsPartsHelper, pendingUpdate.Word, token ).ConfigureAwait(false);
+        var wordId = await _words.AddOrUpdateWordAsync(wordsHelper, partsHelper, wordsPartsHelper, wordToAdd, token ).ConfigureAwait(false);
         if (-1 == wordId)
         {
-          _logger.Error($"There was an issue inserting/finding the word : {pendingUpdate.Word.Value}.");
+          _logger.Error($"There was an issue inserting/finding the word : {wordToAdd.Value}.");
           return false;
         }
 
         // we then go around and 'attach' that word id to that file id.
         // so that when we locate that word, we will have a valid id for it.
-        foreach (var fileId in pendingUpdate.FileIds)
+        foreach (var fileId in fileIdsToAddWordTo)
         {
           if( !await filesWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false))
           {
-            _logger.Error( $"There was an issue inserting word : {pendingUpdate.Word.Value}({wordId}) for file : {fileId}");
+            _logger.Error( $"There was an issue inserting word : {wordToAdd.Value}({wordId}) for file : {fileId}");
           }
         }
 
