@@ -23,17 +23,19 @@ namespace myoddweb.desktopsearch.parser.test
   [TestFixture]
   internal class WordTest
   {
+    private const int MaxNumCharactersPerParts = 255;
+
     [Test]
     public void ValueCannotBeNull()
     {
-      Assert.Throws<ArgumentNullException>(() =>{ var _ = new Word(null); });
+      Assert.Throws<ArgumentNullException>(() =>{ var _ = new Word(null, MaxNumCharactersPerParts); });
     }
 
     [Test]
     public void ValueCannotBeNullString()
     {
       const string value = null;
-      Assert.Throws<ArgumentNullException>(() => { var _ = new Word(value); });
+      Assert.Throws<ArgumentNullException>(() => { var _ = new Word(value, MaxNumCharactersPerParts); });
     }
 
     [TestCase("Mix", new [] {"M", "Mi", "Mix", "i", "ix", "x"})]
@@ -49,41 +51,40 @@ namespace myoddweb.desktopsearch.parser.test
     })]
     public void SimpleParts( string value, string[] expected )
     {
-      var w = new Word(value);
-      Assert.That(w.Parts( 128 ), Is.EquivalentTo(expected));
+      var w = new Word(value, MaxNumCharactersPerParts);
+      Assert.That(w.Parts, Is.EquivalentTo(expected));
     }
 
     [TestCase("ooo", new[] { "o", "ooo", "oo" })]
     [TestCase("Ooo", new[] { "O", "Oo", "Ooo", "o", "oo" })]
     public void RepeatLetters(string value, string[] expected)
     {
-      var w = new Word(value);
-      Assert.That(w.Parts(128), Is.EquivalentTo(expected));
+      var w = new Word(value, MaxNumCharactersPerParts);
+      Assert.That(w.Parts, Is.EquivalentTo(expected));
     }
 
     [Test]
     public void PartsCannotBeZero()
     {
       const string value = "Hello";
-      var w = new Word(value);
-      Assert.Throws<ArgumentException>(() => { var _ = w.Parts(0); });
+      Assert.Throws<ArgumentException>(() => { var _ = new Word(value, 0); });
     }
 
-    [Test]
-    public void PartsCannotBeNegative()
+    [TestCase(-1)]
+    [TestCase(-42)]
+    [TestCase(int.MinValue)]
+    public void PartsCannotBeNegative( int number )
     {
       const string value = "Hello";
-      var w = new Word(value);
-      Assert.Throws<ArgumentException>(() => { var _ = w.Parts(-1); });
-      Assert.Throws<ArgumentException>(() => { var _ = w.Parts(-42); });
+      Assert.Throws<ArgumentException>(() => { var _ = new Word(value, number); });
     }
 
     [Test]
     public void TheMaxPartLenIsUsedProperly()
     {
       const string value = "Hello";
-      var w = new Word(value);
-      var p = w.Parts(1);
+      var w = new Word(value, 1);
+      var p = w.Parts;
       Assert.AreEqual( new []{"H", "e", "l", "o" }, p.ToArray() );
     }
 
@@ -91,32 +92,17 @@ namespace myoddweb.desktopsearch.parser.test
     public void IfThePartsizeIsTheSameAsTheWordLenItDoesNotMatter()
     {
       const string value = "Cat";
-      var w = new Word(value);
-      var p = w.Parts(3);
+      var w = new Word(value, 3);
+      var p = w.Parts;
       Assert.AreEqual(new[] { "C", "Ca", "Cat", "a", "at", "t" }, p.ToArray());
-    }
-
-    [Test]
-    public void UpdatingThePartsLenChangesTheList()
-    {
-      const string value = "Cat";
-      var w = new Word(value);
-      var p = w.Parts(1);
-      Assert.AreEqual(new [] { "C", "a", "t" }, p.ToArray());
-
-      p = w.Parts(2);
-      Assert.AreEqual(new[] { "C", "Ca", "a", "at", "t" }, p.ToArray());
-
-      p = w.Parts(1);
-      Assert.AreEqual(new[] { "C", "a", "t" }, p.ToArray());
     }
 
     [Test]
     public void TheMaxPartLeIsLongerThanTheWordItself()
     {
       const string value = "Hi";
-      var w = new Word(value);
-      var p = w.Parts(20);
+      var w = new Word(value, MaxNumCharactersPerParts);
+      var p = w.Parts;
       Assert.AreEqual(new [] { "H", "Hi", "i" }, p.ToArray());
     }
   }

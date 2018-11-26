@@ -24,8 +24,7 @@ namespace myoddweb.desktopsearch.interfaces.IO
 
     /// <summary>
     /// Get all the parts of our word.
-    /// <param name="maxNumMeaningfulCharacters"></param>
     /// </summary>
-    IParts Parts(int maxNumMeaningfulCharacters);
+    IParts Parts { get; }
   }
 }

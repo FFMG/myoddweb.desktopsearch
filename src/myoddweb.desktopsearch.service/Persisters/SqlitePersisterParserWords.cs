@@ -29,6 +29,14 @@ namespace myoddweb.desktopsearch.service.Persisters
   {
     #region Member variables
     /// <summary>
+    /// The maximum number of characters per words parts...
+    /// This is not the max word lenght, but the part lenght
+    /// The user cannot enter anything longer in a seatch box.
+    /// So search queries longer than that... are ignored.
+    /// </summary>
+    private readonly int _maxNumCharactersPerParts;
+
+    /// <summary>
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
@@ -42,13 +50,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public string TableName => Tables.ParserWords;
 
-    public SqlitePersisterParserWords(IWords words, ILogger logger )
+    public SqlitePersisterParserWords(IWords words, int maxNumCharactersPerParts, ILogger logger )
     {
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
       // the words persiser.
       _words = words ?? throw new ArgumentNullException(nameof(words));
+
+      // the number of characters per parts.
+      _maxNumCharactersPerParts = maxNumCharactersPerParts;
     }
 
     /// <inheritdoc />
@@ -78,7 +89,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           // get out if needed.
           token.ThrowIfCancellationRequested();
 
-          if (!_words.IsValidWord( new Word(word)))
+          if (!_words.IsValidWord( new Word(word, _maxNumCharactersPerParts)))
           {
             _logger.Verbose( $"Did not insert word {word} as it is not valid.");
             continue;
@@ -281,7 +292,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
 
         // add the word to the list.
-        parserWord.Add(new PendingParserWordsUpdate(id, word, fileIds ));
+        parserWord.Add(new PendingParserWordsUpdate(id, new Word(word, _maxNumCharactersPerParts), fileIds ));
         if (parserWord.Count >= limit)
         {
           break;
@@ -351,7 +362,7 @@ namespace myoddweb.desktopsearch.service.Persisters
                 var word = (string)readerWord[wordPos];
 
                 // add the word to the list.
-                parserWord.Add(new PendingParserWordsUpdate(id, word, fileIds));
+                parserWord.Add(new PendingParserWordsUpdate(id, new Word(word, _maxNumCharactersPerParts), fileIds));
               }
             }
 

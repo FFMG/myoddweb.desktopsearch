@@ -34,14 +34,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly SqlPerformanceCounter _counterAddOrUpdate;
 
     /// <summary>
-    /// The maximum number of characters per words parts...
-    /// This is not the max word lenght, but the part lenght
-    /// The user cannot enter anything longer in a seatch box.
-    /// So search queries longer than that... are ignored.
-    /// </summary>
-    private readonly int _maxNumCharactersPerParts;
-
-    /// <summary>
     /// The maximum word size, words that are longer ... are ignored.
     /// </summary>
     private readonly int _maxNumCharactersPerWords;
@@ -57,11 +49,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     private readonly ILogger _logger;
     #endregion
 
-    public SqlitePersisterWords(IPerformance performance, IWordsParts wordsParts, int maxNumCharactersPerWords, int maxNumCharactersPerParts, ILogger logger)
+    public SqlitePersisterWords(IPerformance performance, IWordsParts wordsParts, int maxNumCharactersPerWords, ILogger logger)
     {
-      // the number of characters per parts.
-      _maxNumCharactersPerParts = maxNumCharactersPerParts;
-
       // the maximum word len
       _maxNumCharactersPerWords = maxNumCharactersPerWords;
 
@@ -234,7 +223,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       CancellationToken token)
     {
       // get the parts.
-      var parts = word.Parts(_maxNumCharactersPerParts);
+      var parts = word.Parts;
 
       // if we have not words... then move on.
       if (!parts.Any())

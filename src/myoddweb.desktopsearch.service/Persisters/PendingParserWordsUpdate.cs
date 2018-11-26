@@ -31,11 +31,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public long Id { get; }
 
-    public PendingParserWordsUpdate(long id, string word, IList<long> wordIdsAndFileIds) :
-      this( id, new helper.IO.Word(word), wordIdsAndFileIds)
-    {
-    }
-
     public PendingParserWordsUpdate( long id, IWord word, IList<long> fileIds)
     {
       // set the id

@@ -36,7 +36,7 @@ namespace myoddweb.desktopsearch.helper.IO
     /// Constructor with a single word.
     /// </summary>
     /// <param name="word"></param>
-    public Words(IWord word ) : this()
+    public Words(IWord word) : this()
     {
       // just add this word.
       Add(word);
@@ -47,7 +47,7 @@ namespace myoddweb.desktopsearch.helper.IO
     /// Constructor with a list of words.
     /// </summary>
     /// <param name="words"></param>
-    public Words(IWords[] words ) : this()
+    public Words(IWords[] words) : this()
     {
       // Add all he words into one.
       Add(words);
@@ -59,10 +59,10 @@ namespace myoddweb.desktopsearch.helper.IO
       Add(words);
     }
 
-    public Words(IReadOnlyCollection<string> words) : this()
+    public Words(IReadOnlyCollection<string> words, int maxNumCharactersPerParts) : this()
     {
       // Add all he words into one.
-      Add(words);
+      Add(words, maxNumCharactersPerParts );
     }
     #endregion
 
@@ -109,13 +109,14 @@ namespace myoddweb.desktopsearch.helper.IO
     /// Add a single string word to our list.
     /// </summary>
     /// <param name="word"></param>
-    public void Add(string word)
+    /// <param name="maxNumCharactersPerParts"></param>
+    public void Add(string word, int maxNumCharactersPerParts)
     {
       if (null == word)
       {
         return;
       }
-      Add(new Word(word));
+      Add(new Word(word, maxNumCharactersPerParts));
     }
 
     /// <summary>
@@ -152,8 +153,9 @@ namespace myoddweb.desktopsearch.helper.IO
     /// Join multiple list of words together.
     /// </summary>
     /// <param name="words"></param>
+    /// <param name="maxNumCharactersPerParts"></param>
     /// <param name="token"></param>
-    public void Add(IReadOnlyCollection<string> words, CancellationToken token = default(CancellationToken))
+    public void Add(IReadOnlyCollection<string> words, int maxNumCharactersPerParts, CancellationToken token = default(CancellationToken))
     {
       var sum = words?.Count ?? 0;
       if (sum == 0 || words == null)
@@ -173,7 +175,7 @@ namespace myoddweb.desktopsearch.helper.IO
         }
 
         // add this item
-        base.Add(new Word(w));
+        base.Add(new Word(w, maxNumCharactersPerParts));
       }
     }
     #endregion

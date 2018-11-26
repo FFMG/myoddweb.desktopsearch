@@ -23,6 +23,8 @@ namespace myoddweb.desktopsearch.parser.test
   [TestFixture]
   internal class WordsTest
   {
+    private const int MaxNumCharactersPerParts = 255;
+
     [Test]
     public void CreateEmptyList()
     {
@@ -44,7 +46,7 @@ namespace myoddweb.desktopsearch.parser.test
     {
       var words = new Words();
       Assert.That(words.Count == 0);
-      words.Add(new Word("Test"));
+      words.Add(new Word("Test", MaxNumCharactersPerParts));
       Assert.That(words.Count == 1);
       Assert.AreEqual("Test", words[0].Value);
     }
@@ -52,7 +54,7 @@ namespace myoddweb.desktopsearch.parser.test
     [Test]
     public void CreateWithSingleWord()
     {
-      var words = new Words( new Word("Test"));
+      var words = new Words( new Word("Test", MaxNumCharactersPerParts));
       Assert.That(words.Count == 1);
       Assert.AreEqual("Test", words[0].Value);
     }
@@ -61,7 +63,7 @@ namespace myoddweb.desktopsearch.parser.test
     public void CreateWithSingleNullWord()
     {
       // word not really added.
-      var words = new Words( (Word)null );
+      var words = new Words( (Word)null);
       Assert.That(words.Count == 0);
     }
 
@@ -69,7 +71,7 @@ namespace myoddweb.desktopsearch.parser.test
     public void CreateWithArrayOfWord()
     {
       // word not really added.
-      var words = new Words( new []{ new Word("a"), new Word("b") });
+      var words = new Words( new []{ new Word("a", MaxNumCharactersPerParts), new Word("b", MaxNumCharactersPerParts) });
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
@@ -103,7 +105,7 @@ namespace myoddweb.desktopsearch.parser.test
     public void CreateWithArrayOfWordWithSomeNulls()
     {
       // word not really added.
-      var words = new Words(new[] { new Word("a"), null, new Word("b"), null });
+      var words = new Words(new[] { new Word("a", MaxNumCharactersPerParts), null, new Word("b", MaxNumCharactersPerParts), null });
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
@@ -122,9 +124,9 @@ namespace myoddweb.desktopsearch.parser.test
       var words = new Words(
         new[]
         {
-          new Words( new Word("a")),
-          new Words( new Word("b")),
-          new Words( new Word("c"))
+          new Words( new Word("a", MaxNumCharactersPerParts)),
+          new Words( new Word("b", MaxNumCharactersPerParts)),
+          new Words( new Word("c", MaxNumCharactersPerParts))
         }
       );
       Assert.That(words.Count == 3);
@@ -136,9 +138,9 @@ namespace myoddweb.desktopsearch.parser.test
       var words = new Words(
         new[]
         {
-          new Words( new Word("a")),
+          new Words( new Word("a", MaxNumCharactersPerParts)),
           null,
-          new Words( new Word("b")),
+          new Words( new Word("b", MaxNumCharactersPerParts)),
           null
         }
       );
@@ -163,16 +165,14 @@ namespace myoddweb.desktopsearch.parser.test
     [Test]
     public void CreateEmptyArrayOfWords()
     {
-      var words = new Words(
-        new Words[] {}
-      );
+      var words = new Words(new Words[] {});
       Assert.That(words.Count == 0);
     }
 
     [Test]
     public void CreateNullReadOnlyCollection()
     {
-      var words = new Words( (IReadOnlyCollection<string>)null);
+      var words = new Words( (IReadOnlyCollection<string>)null, MaxNumCharactersPerParts);
       Assert.That(words.Count == 0);
     }
 
@@ -182,7 +182,7 @@ namespace myoddweb.desktopsearch.parser.test
       var words = new Words( new List<string>
       {
         "a", "b"
-      });
+      }, MaxNumCharactersPerParts);
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
@@ -194,7 +194,7 @@ namespace myoddweb.desktopsearch.parser.test
       var words = new Words(new List<string>
       {
         "a", null, "b", null
-      });
+      }, MaxNumCharactersPerParts);
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
@@ -206,14 +206,14 @@ namespace myoddweb.desktopsearch.parser.test
       var words = new Words(new List<string>
       {
         null, null
-      });
+      }, MaxNumCharactersPerParts);
       Assert.That(words.Count == 0);
     }
 
     [Test]
     public void CreateEmptyCollectionOfStrings()
     {
-      var words = new Words(new List<string>());
+      var words = new Words(new List<string>(), MaxNumCharactersPerParts);
       Assert.That(words.Count == 0);
     }
 
@@ -224,7 +224,7 @@ namespace myoddweb.desktopsearch.parser.test
       // ReSharper disable once UseObjectOrCollectionInitializer
       var words = new Words();
       #pragma warning restore IDE0028 // Simplify collection initialization
-      words.Add( (string) null );
+      words.Add( (string) null, MaxNumCharactersPerParts);
       Assert.That(words.Count == 0);
     }
 
@@ -235,11 +235,11 @@ namespace myoddweb.desktopsearch.parser.test
       // ReSharper disable once UseObjectOrCollectionInitializer
       var words = new Words();
 #pragma warning restore IDE0028 // Simplify collection initialization
-      words.Add("a");
+      words.Add("a", MaxNumCharactersPerParts);
       Assert.That(words.Count == 1);
       Assert.AreEqual("a", words[0].Value);
 
-      words.Add("b");
+      words.Add("b", MaxNumCharactersPerParts);
       Assert.That(words.Count == 2);
       Assert.AreEqual("b", words[1].Value);
     }
@@ -265,7 +265,7 @@ namespace myoddweb.desktopsearch.parser.test
       // ReSharper disable once UseObjectOrCollectionInitializer
       var words = new Words();
 #pragma warning restore IDE0028 // Simplify collection initialization
-      words.Add(new[] { new Word("a"), null, new Word("b"), null });
+      words.Add(new[] { new Word("a", MaxNumCharactersPerParts), null, new Word("b", MaxNumCharactersPerParts), null });
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
@@ -278,7 +278,7 @@ namespace myoddweb.desktopsearch.parser.test
       // ReSharper disable once UseObjectOrCollectionInitializer
       var words = new Words();
 #pragma warning restore IDE0028 // Simplify collection initialization
-      words.Add(new[] { new Word("a"), new Word("b") });
+      words.Add(new[] { new Word("a", MaxNumCharactersPerParts), new Word("b", MaxNumCharactersPerParts) });
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
@@ -291,7 +291,7 @@ namespace myoddweb.desktopsearch.parser.test
       // ReSharper disable once UseObjectOrCollectionInitializer
       var words = new Words();
 #pragma warning restore IDE0028 // Simplify collection initialization
-      words.Add(new[] { "a", "b", "a" });
+      words.Add(new[] { "a", "b", "a" }, MaxNumCharactersPerParts);
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
@@ -304,7 +304,7 @@ namespace myoddweb.desktopsearch.parser.test
       // ReSharper disable once UseObjectOrCollectionInitializer
       var words = new Words();
 #pragma warning restore IDE0028 // Simplify collection initialization
-      words.Add(new[] { "a", "b", null });
+      words.Add(new[] { "a", "b", null }, MaxNumCharactersPerParts);
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
@@ -313,7 +313,7 @@ namespace myoddweb.desktopsearch.parser.test
     [Test]
     public void CreateArrayOfStringDoesNotAllowDuplicates()
     {
-      var words = new Words( new[] { "a", "b", "a" });
+      var words = new Words( new[] { "a", "b", "a" }, MaxNumCharactersPerParts);
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
@@ -322,13 +322,13 @@ namespace myoddweb.desktopsearch.parser.test
     [Test]
     public void CreateArrayOfStringAndTryToAddDuplicates()
     {
-      var words = new Words(new[] { "a", "b", "a" });
+      var words = new Words(new[] { "a", "b", "a" }, MaxNumCharactersPerParts);
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
 
       // add more words
-      words.Add(new[] { "a", "b", null });
+      words.Add(new[] { "a", "b", null }, MaxNumCharactersPerParts);
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
@@ -340,10 +340,10 @@ namespace myoddweb.desktopsearch.parser.test
       var words = new Words(
         new[]
         {
-          new Words( new Word("a")),
-          new Words( new Word("a")),
-          new Words( new Word("b")),
-          new Words( new Word("a"))
+          new Words( new Word("a", MaxNumCharactersPerParts)),
+          new Words( new Word("a", MaxNumCharactersPerParts)),
+          new Words( new Word("b", MaxNumCharactersPerParts)),
+          new Words( new Word("a", MaxNumCharactersPerParts))
         }
       );
       Assert.That(words.Count == 2);
@@ -358,7 +358,7 @@ namespace myoddweb.desktopsearch.parser.test
       // ReSharper disable once UseObjectOrCollectionInitializer
       var words = new Words();
 #pragma warning restore IDE0028 // Simplify collection initialization
-      words.Add( new Word("a"));
+      words.Add( new Word("a", MaxNumCharactersPerParts));
       Assert.That(words.Count == 1);
     }
 
@@ -367,12 +367,12 @@ namespace myoddweb.desktopsearch.parser.test
     {
 #pragma warning disable IDE0028 // Simplify collection initialization
       // ReSharper disable once UseObjectOrCollectionInitializer
-      var words = new Words();
+      var words = new Words( );
 #pragma warning restore IDE0028 // Simplify collection initialization
-      words.Add(new Word("a"));
-      words.Add(new Word("a"));
-      words.Add(new Word("b"));
-      words.Add(new Word("a"));
+      words.Add(new Word("a", MaxNumCharactersPerParts));
+      words.Add(new Word("a", MaxNumCharactersPerParts));
+      words.Add(new Word("b", MaxNumCharactersPerParts));
+      words.Add(new Word("a", MaxNumCharactersPerParts));
       Assert.That(words.Count == 2);
       Assert.AreEqual("a", words[0].Value);
       Assert.AreEqual("b", words[1].Value);
@@ -385,7 +385,7 @@ namespace myoddweb.desktopsearch.parser.test
       // ReSharper disable once UseObjectOrCollectionInitializer
       var words = new Words();
 #pragma warning restore IDE0028 // Simplify collection initialization
-      words.Add(new[] { new Word("a"), new Word("b") });
+      words.Add(new[] { new Word("a", MaxNumCharactersPerParts), new Word("b", MaxNumCharactersPerParts) });
       Assert.That(words.Count == 2);
 
       Assert.Throws<IndexOutOfRangeException>( () =>

@@ -19,6 +19,8 @@ namespace myoddweb.desktopsearch.helper.IO
 {
   public class Word : IWord
   {
+    private readonly int _maxNumCharactersPerParts;
+
     /// <inheritdoc />
     public string Value { get; }
 
@@ -28,31 +30,36 @@ namespace myoddweb.desktopsearch.helper.IO
     private Parts _parts;
 
     /// <inheritdoc />
-    public IParts Parts(int maxNumMeaningfulCharacters)
+    public IParts Parts
     {
-      if (maxNumMeaningfulCharacters <= 0)
+      get
       {
-        throw new ArgumentException("The number of meaningful characters cannot be zero or -ve");
-      }
+        if (_parts != null && _parts.MaxPartLength == _maxNumCharactersPerParts)
+        {
+          return _parts;
+        }
 
-      if (_parts != null && _parts.MaxPartLength == maxNumMeaningfulCharacters )
-      {
+        // save the parts.
+        _parts = new Parts(Value, _maxNumCharactersPerParts);
+
+        // then return the value.
         return _parts;
       }
-
-      // save the parts.
-      _parts = new Parts(Value, maxNumMeaningfulCharacters);
-      
-      // then return the value.
-      return _parts;
     }
 
     /// <summary>
     /// The word we are adding.
     /// </summary>
     /// <param name="value"></param>
-    public Word(string value)
+    /// <param name="maxNumCharactersPerParts"></param>
+    public Word(string value, int maxNumCharactersPerParts)
     {
+      if (maxNumCharactersPerParts <= 0)
+      {
+        throw new ArgumentException("The number of meaningful characters cannot be zero or -ve");
+      }
+      _maxNumCharactersPerParts = maxNumCharactersPerParts;
+
       // the name cannot be null
       Value = value ?? throw new ArgumentNullException(nameof(value));
     }
