@@ -117,12 +117,12 @@ namespace myoddweb.desktopsearch.processor.Processors
         return;
       }
 
-      foreach (var part in word.Parts(12))
-      {
-        // if this part exists as a word ...
-        // then we can add it 
-        var wordId = await _parserWordsHelper.GetIdAsync(part, token ).ConfigureAwait(false);
-      }
+//      foreach (var part in word.Parts(12))
+//      {
+//        // if this part exists as a word ...
+//        // then we can add it 
+//        var wordId = await _parserWordsHelper.GetIdAsync(part, token ).ConfigureAwait(false);
+//      }
 
       // get the id of this word.
       var parserWordId = await _parserWordsHelper.GetIdAsync(word.Value, token).ConfigureAwait(false);
