@@ -27,7 +27,7 @@
   },
   "Processors": {
     "UpdatesWordsPerFilesPerEvent": 20000,
-    "UpdatesFilesPerEvent" : 500,
+    "UpdatesFilesPerEvent" : 50,
     "UpdatesFolderPerEvent": 10,
     "UpdateWordParsedPerEvent": 50,
     "EventsProcessorMs": 200,
