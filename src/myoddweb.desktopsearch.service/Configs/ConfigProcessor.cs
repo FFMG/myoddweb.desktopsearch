@@ -34,7 +34,7 @@ namespace myoddweb.desktopsearch.service.Configs
     public int MaintenanceProcessorMinutes { get; protected set; }
 
     /// <inheritdoc />
-    [DefaultValue(50)]
+    [DefaultValue(1000)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int UpdatesFilesPerEvent { get; protected set; }
 
