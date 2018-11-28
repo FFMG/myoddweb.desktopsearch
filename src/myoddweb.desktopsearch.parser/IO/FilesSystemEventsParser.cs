@@ -82,7 +82,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {e.FullName} (Created)");
+      Logger.Verbose($"File event: {e.FullName} (Created)");
 
       // just add the file.
       await Files.AddOrUpdateFileAsync( file, factory, token).ConfigureAwait(false);
@@ -103,7 +103,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {e.FullName} (Deleted)");
+      Logger.Verbose($"File event: {e.FullName} (Deleted)");
 
       // do we have the file on record?
       if (await Files.FileExistsAsync(file, factory, token).ConfigureAwait(false))
@@ -123,7 +123,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {e.FullName} (Changed)");
+      Logger.Verbose($"File event: {e.FullName} (Changed)");
 
       // just add the file.
       await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false);
@@ -140,7 +140,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // if both are null then we cannot do anything with it
       if (null == file && null == oldFile)
       {
-        Logger.Error($"I was unable to use the renamed files, (old:{e.PreviousFullName} / new:{e.FullName})");
+        Logger.Error($"File event: I was unable to use the renamed files, (old:{e.PreviousFullName} / new:{e.FullName})");
         return;
       }
 
@@ -157,7 +157,7 @@ namespace myoddweb.desktopsearch.parser.IO
         // just add the new directly.
         if (!await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false))
         {
-          Logger.Error( $"Unable to add file {e.FullName} during rename.");
+          Logger.Error( $"File event: Unable to add file {e.FullName} during rename.");
         }
         return;
       }
@@ -183,13 +183,13 @@ namespace myoddweb.desktopsearch.parser.IO
         // delete the old folder only, in case it did exist.
         if (!await Files.DeleteFileAsync(oldFile, factory, token).ConfigureAwait(false))
         {
-          Logger.Error( $"Unable to remove old file {e.PreviousFullName} durring rename");
+          Logger.Error( $"File event: Unable to remove old file {e.PreviousFullName} durring rename");
         }
         return;
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {e.PreviousFullName} > {e.FullName} (Renamed)");
+      Logger.Verbose($"File event: {e.PreviousFullName} > {e.FullName} (Renamed)");
 
       // at this point we know we have a new file that we can use
       // and an old file that we could also use.
@@ -201,7 +201,7 @@ namespace myoddweb.desktopsearch.parser.IO
         // just add the new directly.
         if (!await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false))
         {
-          Logger.Error($"Unable to add file {e.FullName} during rename.");
+          Logger.Error($"File event: Unable to add file {e.FullName} during rename.");
         }
         return;
       }
@@ -211,7 +211,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // something that already exists.
       if (-1 == await Files.RenameOrAddFileAsync(file, oldFile, factory, token).ConfigureAwait(false))
       {
-        Logger.Error( $"Unable to rename file {e.PreviousFullName} > {e.FullName}");
+        Logger.Error( $"File event: Unable to rename file {e.PreviousFullName} > {e.FullName}");
       }
     }
     #endregion
