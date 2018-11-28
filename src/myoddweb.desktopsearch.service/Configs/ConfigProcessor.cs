@@ -44,7 +44,7 @@ namespace myoddweb.desktopsearch.service.Configs
     public int UpdatesWordsPerFilesPerEvent { get; protected set; }
 
     /// <inheritdoc />
-    [DefaultValue(10)]
+    [DefaultValue(1000)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int UpdatesFolderPerEvent { get; protected set; }
 
