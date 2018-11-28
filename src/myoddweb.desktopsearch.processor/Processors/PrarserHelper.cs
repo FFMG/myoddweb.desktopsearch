@@ -66,17 +66,20 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// The max number of words we want to add at a time.
     /// </summary>
-    private readonly long _updatesFilesPerEvent;
+    private readonly long _maxNumberOfWordsToDo;
 
+    /// <summary>
+    /// The lock to allow us to update the word counter.
+    /// </summary>
     private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
     #endregion
 
     public PrarserHelper(
-      long updatesFilesPerEvent,
+      long maxNumberOfWordsToDo,
       FileSystemInfo file, IPersister persister, IConnectionFactory factory, long fileid) :
       this
       (
-        updatesFilesPerEvent,
+        maxNumberOfWordsToDo,
         file, 
         persister.ParserWords, 
         new WordsHelper( factory, persister.Words.TableName),
@@ -89,7 +92,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     public PrarserHelper(
-      long updatesFilesPerEvent,
+      long maxNumberOfWordsToDo,
       FileSystemInfo file, 
       IParserWords parserWords,
       IWordsHelper wordsHelper,
@@ -99,7 +102,13 @@ namespace myoddweb.desktopsearch.processor.Processors
       long fileid 
     )
     {
-      _updatesFilesPerEvent = updatesFilesPerEvent;
+      if (maxNumberOfWordsToDo < 0)
+      {
+        // the number _could_ be zero if we do not want to add _any_ words to the 
+        // words table directly.
+        throw new ArgumentException( $"The number of words to process, {maxNumberOfWordsToDo}, cannot be -ve");
+      }
+      _maxNumberOfWordsToDo = maxNumberOfWordsToDo;
       _fileId = fileid;
 
       // set the perister and the transaction.
@@ -126,6 +135,43 @@ namespace myoddweb.desktopsearch.processor.Processors
       _parserWordsHelper?.Dispose();
     }
 
+    /// <inheritdoc /> 
+    public async Task<long> AddWordsAsync(IReadOnlyList<string> words, CancellationToken token)
+    {
+      if (Count < _maxNumberOfWordsToDo)
+      {
+        return await AddWordsDirectlyAsync(words, token).ConfigureAwait(false);
+      }
+
+      return await AddWordsToParsersAsync(words, token).ConfigureAwait(false);
+    }
+
+    #region Private Functions
+    /// <summary>
+    /// Add a number to the counter making sure that we are within lock
+    /// </summary>
+    /// <param name="added"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task SafeAddAsync(long added, CancellationToken token)
+    {
+      await _semaphoreSlim.WaitAsync(token).ConfigureAwait(false);
+      try
+      {
+        Count += added;
+      }
+      finally
+      {
+        _semaphoreSlim.Release();
+      }
+    }
+
+    /// <summary>
+    /// Add a word to the words table
+    /// </summary>
+    /// <param name="words"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
     private async Task<long> AddWordsDirectlyAsync(IEnumerable<string> words, CancellationToken token)
     {
       var added = 0;
@@ -146,7 +192,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           fileIds = new List<long> { _fileId };
         }
 
-        foreach (var fileId in fileIds)
+        foreach (var fileId in fileIds.Distinct())
         {
           // link the id to that file.
           await _filesWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false);
@@ -158,35 +204,16 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       // we 'added' the word.
       // technically the word might already exist.
-      await SafeAddAsync( added, token ).ConfigureAwait(false);
+      await SafeAddAsync(added, token).ConfigureAwait(false);
       return added;
     }
 
-    private async Task SafeAddAsync(long added, CancellationToken token)
-    {
-      await _semaphoreSlim.WaitAsync(token).ConfigureAwait(false);
-      try
-      {
-        Count += added;
-      }
-      finally
-      {
-        _semaphoreSlim.Release();
-      }
-    }
-
-    /// <inheritdoc /> 
-    public async Task<long> AddWordsAsync(IReadOnlyList<string> words, CancellationToken token)
-    {
-      if (Count < _updatesFilesPerEvent)
-      {
-        return await AddWordsDirectlyAsync(words, token).ConfigureAwait(false);
-      }
-
-      return await AddWordsToParsersAsync(words, token).ConfigureAwait(false);
-    }
-
-
+    /// <summary>
+    /// Add a word to the parser table.
+    /// </summary>
+    /// <param name="words"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
     private async Task<long> AddWordsToParsersAsync(IReadOnlyList<string> words, CancellationToken token)
     {
       // then we just try and add the word.
@@ -204,5 +231,6 @@ namespace myoddweb.desktopsearch.processor.Processors
       // success.
       return added;
     }
+    #endregion
   }
 }

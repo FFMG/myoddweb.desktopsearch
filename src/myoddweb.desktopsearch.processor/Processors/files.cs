@@ -361,7 +361,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       long[] totalWords;
 
       // create the helper.
-      using (var parserHelper = new PrarserHelper(UpdatesFilesPerEvent, pendingFileUpdate.File, _persister, factory, pendingFileUpdate.FileId))
+      using (var parserHelper = new PrarserHelper(MaxUpdatesToProcess, pendingFileUpdate.File, _persister, factory, pendingFileUpdate.FileId))
       {
         tasks.AddRange(_parsers.Select(parser => ProcessFile(parserHelper, parser, pendingFileUpdate.File, token)));
 
