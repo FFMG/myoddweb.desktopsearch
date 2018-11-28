@@ -72,7 +72,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"Directory: {directory?.FullName} (Created)");
+      Logger.Verbose($"Directory event: {directory?.FullName} (Created)");
 
       // just add the directory.
       await Folders.AddOrUpdateDirectoryAsync(directory, factory, token).ConfigureAwait(false);
@@ -94,7 +94,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // the given file is going to be processed.
-      Logger.Verbose($"File: {directory.FullName} (Deleted)");
+      Logger.Verbose($"Directory event: {directory.FullName} (Deleted)");
 
       // do we have the directory on record?
       if (await Folders.DirectoryExistsAsync(directory, factory, token).ConfigureAwait(false))
@@ -119,7 +119,7 @@ namespace myoddweb.desktopsearch.parser.IO
         for (;;)
         {
           // add the directory
-          Logger.Verbose($"Directory: {e.FullName} (Changed - But not on file)");
+          Logger.Verbose($"Directory event: {e.FullName} (Changed - But not on file)");
 
           // just add the directory.
           await Folders.AddOrUpdateDirectoryAsync(directory, factory, token).ConfigureAwait(false);
@@ -141,7 +141,7 @@ namespace myoddweb.desktopsearch.parser.IO
       }
 
       // the given directory is going to be processed.
-      Logger.Verbose($"Directory: {e.FullName} (Changed)");
+      Logger.Verbose($"Directory event: {e.FullName} (Changed)");
 
       // then make sure to touch the folder accordingly
       await Folders.FolderUpdates.TouchDirectoriesAsync( new []{directory}, UpdateType.Changed, factory, token).ConfigureAwait(false);
@@ -158,7 +158,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // if both are null then we cannot do anything with it
       if (null == directory && null == oldDirectory)
       {
-        Logger.Error($"I was unable to use the renamed drectories, (old:{e.FullName} / new:{e.FullName})");
+        Logger.Error($"Directory event: I was unable to use the renamed drectories, (old:{e.FullName} / new:{e.FullName})");
         return;
       }
 
@@ -175,7 +175,7 @@ namespace myoddweb.desktopsearch.parser.IO
         // just add the new directly.
         if (!await Folders.AddOrUpdateDirectoryAsync(directory, factory, token).ConfigureAwait(false))
         {
-          Logger.Error($"Unable to add directory {e.FullName} during rename.");
+          Logger.Error($"Directory event: Unable to add directory {e.FullName} during rename.");
         }
         return;
       }
@@ -188,13 +188,13 @@ namespace myoddweb.desktopsearch.parser.IO
         // delete the old folder only, in case it did exist.
         if (!await Folders.DeleteDirectoryAsync(oldDirectory, factory, token).ConfigureAwait(false))
         {
-          Logger.Error($"Unable to remove old file {e.PreviousFullName} durring rename");
+          Logger.Error($"Directory event: Unable to remove old file {e.PreviousFullName} durring rename");
         }
         return;
       }
 
       // the given directory is going to be processed.
-      Logger.Verbose($"Directory: {e.PreviousFullName} > {e.FullName} (Renamed)");
+      Logger.Verbose($"Directory event: {e.PreviousFullName} > {e.FullName} (Renamed)");
 
       // at this point we know we have a new directory that we can use
       // and an old directory that we could also use.
@@ -206,7 +206,7 @@ namespace myoddweb.desktopsearch.parser.IO
         // just add the new directly.
         if (!await Folders.AddOrUpdateDirectoryAsync( directory, factory, token).ConfigureAwait(false))
         {
-          Logger.Error($"Unable to add directory {e.FullName} during rename.");
+          Logger.Error($"Directory event: Unable to add directory {e.FullName} during rename.");
         }
         return;
       }
@@ -216,7 +216,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // something that already exists.
       if (-1 == await Folders.RenameOrAddDirectoryAsync( directory, oldDirectory, factory, token).ConfigureAwait(false))
       {
-        Logger.Error($"Unable to rename directory {e.PreviousFullName} > {e.FullName}");
+        Logger.Error($"Directory event: Unable to rename directory {e.PreviousFullName} > {e.FullName}");
       }
     }
     #endregion
