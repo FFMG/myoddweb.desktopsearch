@@ -37,7 +37,10 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// </summary>
     private readonly IPersister _persister;
 
-    public int MaxUpdatesToProcess { get; }
+    /// <summary>
+    /// The number of words we want to parse at a time.
+    /// </summary>
+    public int MaxNumberOfWordsToProcess { get; }
 
     /// <summary>
     /// The performance counter.
@@ -45,16 +48,16 @@ namespace myoddweb.desktopsearch.processor.Processors
     private readonly ICounter _counter;
     #endregion
 
-    public Parser(ICounter counter, int numberOfFilesToUpdates, IPersister persister, ILogger logger)
+    public Parser(ICounter counter, int maxNumberOfWordsToProcess, IPersister persister, ILogger logger)
     {
       // save the counter
       _counter = counter ?? throw new ArgumentNullException(nameof(counter));
 
-      if (numberOfFilesToUpdates <= 0)
+      if (maxNumberOfWordsToProcess <= 0)
       {
-        throw new ArgumentException($"The number of file ids to try per events cannot be -ve or zero, ({numberOfFilesToUpdates})");
+        throw new ArgumentException($"The number of file ids to try per events cannot be -ve or zero, ({maxNumberOfWordsToProcess})");
       }
-      MaxUpdatesToProcess = numberOfFilesToUpdates;
+      MaxNumberOfWordsToProcess = maxNumberOfWordsToProcess;
 
       // set the persister.
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
@@ -122,7 +125,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       {
         // we will assume one word per file
         // so just get them all at once :)
-        var pendingParserWordsUpdates = await _persister.ParserWords.GetPendingParserWordsUpdatesAsync( MaxUpdatesToProcess, factory, token ).ConfigureAwait(false);
+        var pendingParserWordsUpdates = await _persister.ParserWords.GetPendingParserWordsUpdatesAsync( MaxNumberOfWordsToProcess, factory, token ).ConfigureAwait(false);
         return pendingParserWordsUpdates != null ? (pendingParserWordsUpdates.Any() ? pendingParserWordsUpdates : null)  : null;
       }
       catch (OperationCanceledException e)

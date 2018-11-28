@@ -21,11 +21,6 @@ namespace myoddweb.desktopsearch.processor
   internal interface IProcessor
   {
     /// <summary>
-    /// The maximum number of items we will process.
-    /// </summary>
-    int MaxUpdatesToProcess { get; }
-
-    /// <summary>
     /// We are telling the processor to do some work.
     /// </summary>
     /// <param name="connectionFactory"></param>

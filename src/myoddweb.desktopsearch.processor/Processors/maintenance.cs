@@ -24,9 +24,6 @@ namespace myoddweb.desktopsearch.processor.Processors
   internal class Maintenance : IProcessor
   {
     #region Member Variables
-    /// <inheritdoc />
-    public int MaxUpdatesToProcess => 0;
-
     /// <summary>
     /// The logger that we will be using to log messages.
     /// </summary>

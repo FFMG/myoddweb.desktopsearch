@@ -44,11 +44,10 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// </summary>
     private readonly IPersister _persister;
 
-    /// <inheritdoc />
     /// <summary>
     /// The number of updates we want to try and do at a time.
     /// </summary>
-    public int MaxUpdatesToProcess { get; }
+    public int MaxNumberFoldersToProcess { get; }
 
     /// <summary>
     /// The performance counter.
@@ -57,16 +56,16 @@ namespace myoddweb.desktopsearch.processor.Processors
     #endregion
 
     public Folders(ICounter counter,
-      int updatesPerEvent,
+      int maxNumberFoldersToProcess,
       IPersister persister, 
       ILogger logger, 
       IDirectory directory)
     {
-      if (updatesPerEvent <= 0)
+      if (maxNumberFoldersToProcess <= 0)
       {
-        throw new ArgumentException($"The number of folders to try per events cannot be -ve or zero, ({updatesPerEvent})");
+        throw new ArgumentException($"The number of folders to try per events cannot be -ve or zero, ({maxNumberFoldersToProcess})");
       }
-      MaxUpdatesToProcess = updatesPerEvent;
+      MaxNumberFoldersToProcess = maxNumberFoldersToProcess;
 
       // save the counter
       _counter = counter ?? throw new ArgumentNullException(nameof(counter));
@@ -303,7 +302,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private async Task<IList<IPendingFolderUpdate>> GetPendingFolderUpdatesAndMarkDirectoryProcessedAsync(IConnectionFactory factory, CancellationToken token)
     {
-      var pendingUpdates = await _persister.Folders.FolderUpdates.GetPendingFolderUpdatesAsync(MaxUpdatesToProcess, factory, token).ConfigureAwait(false);
+      var pendingUpdates = await _persister.Folders.FolderUpdates.GetPendingFolderUpdatesAsync(MaxNumberFoldersToProcess, factory, token).ConfigureAwait(false);
       if (null == pendingUpdates)
       {
         _logger.Error("Unable to get any pending folder updates.");

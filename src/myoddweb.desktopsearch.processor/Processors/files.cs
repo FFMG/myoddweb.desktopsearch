@@ -50,11 +50,10 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// </summary>
     private readonly IList<IIgnoreFile> _ignoreFiles;
 
-    /// <inheritdoc />
     /// <summary>
-    /// The number of updates we want to try and do at a time.
+    /// The maximum number of words to process.
     /// </summary>
-    public int MaxUpdatesToProcess { get; }
+    public int MaxNumberOfWordsToProcess { get; }
 
     /// <summary>
     /// The number of files we want to do per processing events.
@@ -72,7 +71,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     public Files(
       ICounter counter,
       int updatesFilesPerEvent,
-      int updatesWordsPerFilesPerEvent, 
+      int maxNumberOfWordsToProcess, 
       IList<IFileParser> parsers, 
       IList<IIgnoreFile> ignoreFiles, 
       IPersister persister, 
@@ -81,11 +80,12 @@ namespace myoddweb.desktopsearch.processor.Processors
       // save the counter
       _counter = counter ?? throw new ArgumentNullException(nameof(counter));
 
-      if (updatesWordsPerFilesPerEvent <= 0)
+      // the number can be zero, if we want to force all the words to be passed to the parsed table.
+      if (maxNumberOfWordsToProcess < 0)
       {
-        throw new ArgumentException( $"The number of files to try per events cannot be -ve or zero, ({updatesWordsPerFilesPerEvent})");
+        throw new ArgumentException( $"The maximum number of words to process cannot be -ve, ({maxNumberOfWordsToProcess})");
       }
-      MaxUpdatesToProcess = updatesWordsPerFilesPerEvent;
+      MaxNumberOfWordsToProcess = maxNumberOfWordsToProcess;
 
       if (updatesFilesPerEvent <= 0)
       {
@@ -120,7 +120,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         // Make sure that we do not kill the IO 
         // process '4* Environment.ProcessorCount' files at a time.
         var mumberOfFiles = 4 * Environment.ProcessorCount;
-        long totalnumberOfWordsProcessed = 0;
+        long totalnumberOfFilesProcessed = 0;
         for (long fileEvents = 0; fileEvents < UpdatesFilesPerEvent; fileEvents += mumberOfFiles )
         {
           // then get _all_ the file updates that we want to do.
@@ -130,16 +130,11 @@ namespace myoddweb.desktopsearch.processor.Processors
             // no more words...
             break;
           }
-          
+
           // process those words.
-          var numberOfWordsProcessed = await ProcessFileAndWordsUpdates(pendingUpdates, factory, token).ConfigureAwait(false);
-          totalnumberOfWordsProcessed += numberOfWordsProcessed;
-          if (totalnumberOfWordsProcessed >= MaxUpdatesToProcess)
-          {
-            break;
-          }
+          totalnumberOfFilesProcessed += await ProcessFileAndWordsUpdates(pendingUpdates, factory, token).ConfigureAwait(false);
         }
-        return totalnumberOfWordsProcessed;
+        return totalnumberOfFilesProcessed;
       }
       catch (OperationCanceledException)
       {
@@ -315,7 +310,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       long[] totalWords;
 
       // create the helper.
-      using (var parserHelper = new PrarserHelper(MaxUpdatesToProcess, pendingFileUpdate.File, _persister, factory, pendingFileUpdate.FileId))
+      using (var parserHelper = new PrarserHelper(MaxNumberOfWordsToProcess, pendingFileUpdate.File, _persister, factory, pendingFileUpdate.FileId))
       {
         tasks.AddRange(_parsers.Select(parser => ProcessFile(parserHelper, parser, pendingFileUpdate.File, token)));
 
