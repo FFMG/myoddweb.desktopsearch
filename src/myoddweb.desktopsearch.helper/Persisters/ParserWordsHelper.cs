@@ -58,11 +58,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
         lock (_lock)
         {
-          if (_insertCommand == null)
-          {
-            _insertCommand = _factory.CreateCommand(InsertSql);
-          }
-          return _insertCommand;
+          return _insertCommand ?? (_insertCommand = _factory.CreateCommand(InsertSql));
         }
       }
     }
@@ -149,11 +145,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
         lock (_lock)
         {
-          if (_selectIdCommand == null)
-          {
-            _selectIdCommand = _factory.CreateCommand(SelectIdSql);
-          }
-          return _selectIdCommand;
+          return _selectIdCommand ?? (_selectIdCommand = _factory.CreateCommand(SelectIdSql));
         }
       }
     }
@@ -215,11 +207,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
         lock (_lock)
         {
-          if (_selectWordCommand == null)
-          {
-            _selectWordCommand = _factory.CreateCommand(SelectWordSql);
-          }
-          return _selectWordCommand;
+          return _selectWordCommand ?? (_selectWordCommand = _factory.CreateCommand(SelectWordSql));
         }
       }
     }
@@ -263,9 +251,18 @@ namespace myoddweb.desktopsearch.helper.Persisters
     private IDbDataParameter _deleteByIdId;
 
     /// <summary>
-    /// The sql string that we will use to insert an id.
+    /// The sql string that we will use to delete a word, (if it has no other files linked to it).
     /// </summary>
-    private string DeleteByIdSql => $"DELETE FROM {_tableName} WHERE id=@id";
+    private string DeleteByIdSql => $@"DELETE FROM {_tableName} 
+                                       WHERE
+                                         id IN
+                                       (
+                                         SELECT ID 
+                                         FROM   {_tableName} 
+                                         WHERE 
+                                         id = @id AND
+                                         ID NOT IN (SELECT wordid FROM {_filesTableName})
+                                       )";
 
     /// <summary>
     /// Create the delete command if needed.
@@ -337,12 +334,20 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// The name of the table.
     /// </summary>
     private readonly string _tableName;
+
+    /// <summary>
+    /// The files table name;
+    /// </summary>
+    private readonly string _filesTableName;
     #endregion
 
-    public ParserWordsHelper(IConnectionFactory factory, string tableName )
+    public ParserWordsHelper(IConnectionFactory factory, string tableName, string filesTableName )
     {
       // the table name
       _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
+
+      // the files table name
+      _filesTableName = filesTableName ?? throw new ArgumentNullException(nameof(filesTableName));
 
       // save the factory.
       _factory = factory ?? throw new ArgumentNullException(nameof(factory));

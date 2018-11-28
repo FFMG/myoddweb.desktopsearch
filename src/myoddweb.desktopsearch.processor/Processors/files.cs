@@ -158,8 +158,8 @@ namespace myoddweb.desktopsearch.processor.Processors
       // process the files
       var completedUpdates = await ProcessFileUpdates(factory, pendingFileUpdates, token).ConfigureAwait(false);
 
-      // process the words and return the number of words.
-      return await ProcessCompletedFileUpdates(factory, completedUpdates, token).ConfigureAwait(false);
+      // how many files did we process, (that are not null)
+      return completedUpdates.Count( p => p != null );
     }
 
     /// <summary>
@@ -288,52 +288,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     #endregion
 
     #region Processors
-    /// <summary>
-    /// Try and process _some_ of the words for the file.
-    /// This will help in the long run to speed things up.
-    /// </summary>
-    /// <param name="factory"></param>
-    /// <param name="completedUpdates"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<long> ProcessCompletedFileUpdates(IConnectionFactory factory, IEnumerable<IPendingFileUpdate> completedUpdates,CancellationToken token)
-    {
-      // The word parser
-      using (var parserHelper = new ParserWordsAndFilesHelper(factory, _persister, _logger))
-      {
-        // keep track of the total number of words we processed.
-        long numberOfWordsProcessed = 0;
-        foreach (var completedUpdate in completedUpdates.Where(p => p != null))
-        {
-          // thow if needed.
-          token.ThrowIfCancellationRequested();
-
-          // we only want to process 1000 words at a time
-          // and only a toital of 5000 words per files
-          const long limit = 1000;
-          for (var i = 0; i < 10; ++i)
-          {
-            // process that file id but get out if there are no more words to proces.
-            var processed = await parserHelper.ProcessFileIdWordAsync(limit, completedUpdate.FileId, token);
-            numberOfWordsProcessed += processed;
-            if (processed < limit )
-            {
-              break;
-            }
-
-            if (numberOfWordsProcessed >= MaxUpdatesToProcess)
-            {
-              break;
-            }
-          }
-        }
-
-        // return what was done.
-        return numberOfWordsProcessed;
-      }
-    }
-
-
     /// <summary>
     /// Process a file.
     /// </summary>

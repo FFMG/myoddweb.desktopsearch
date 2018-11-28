@@ -201,7 +201,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // first we delete all the 
-      using (var parserWordHelper = new ParserWordsHelper(connectionFactory, TableName))
+      using (var parserWordHelper = new ParserWordsHelper(connectionFactory, TableName, Tables.ParserFilesWords))
       using (var parserFilesWordsHelper = new ParserFilesWordsHelper(connectionFactory, Tables.ParserFilesWords))
       {
         try
@@ -242,47 +242,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<IList<IPendingParserWordsUpdate>> GetPendingParserWordsForFileIdUpdatesAsync
-    (
-      long limit,
-      long fileId, 
-      IParserWordsHelper parserWordsHelper,
-      IParserFilesWordsHelper parserFilesWordsHelper,
-      CancellationToken token)
-    {
-      var parserWord = new List<IPendingParserWordsUpdate>((int)limit);
-
-      // get all the word ids.
-      var ids = await parserFilesWordsHelper.GetWordIdsAsync(fileId, token).ConfigureAwait(false);
-      foreach (var id in ids)
-      {
-        // get the file ids, there is an outside chance that this 
-        // file id does not exist anymore
-        // in case another parser takes it over.
-        var fileIds = await parserFilesWordsHelper.GetFileIdsAsync(id, token).ConfigureAwait(false);
-        if (!fileIds.Any())
-        {
-          continue;
-        }
-
-        // look for that word and add it to the list.
-        var word = await parserWordsHelper.GetWordAsync(id, token).ConfigureAwait(false);
-        if (word == null)
-        {
-          continue;
-        }
-
-        // add the word to the list.
-        parserWord.Add(new PendingParserWordsUpdate(id, new Word(word, _maxNumCharactersPerParts), fileIds ));
-        if (parserWord.Count >= limit)
-        {
-          break;
-        }
-      }
-      return parserWord;
-    }
-
-    /// <inheritdoc />
     public async Task<IList<IPendingParserWordsUpdate>> GetPendingParserWordsUpdatesAsync(long limit, IConnectionFactory connectionFactory, CancellationToken token)
     {
       if (null == connectionFactory)
@@ -292,17 +251,12 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       using (var cmdSelectWord = CreateSelectWordsCommand( connectionFactory ))
       using (var parserFilesWordsHelper = new ParserFilesWordsHelper(connectionFactory, Tables.ParserFilesWords))
-      using (var cmdDeleteFileId = CreateDeleteFileIdCommand(connectionFactory))
+      using (var parserWordHelper = new ParserWordsHelper(connectionFactory, TableName, Tables.ParserFilesWords))
       {
         var pLimit = cmdSelectWord.CreateParameter();
         pLimit.DbType = DbType.Int64;
         pLimit.ParameterName = "@limit";
         cmdSelectWord.Parameters.Add(pLimit);
-
-        var pDeleteWordId = cmdDeleteFileId.CreateParameter();
-        pDeleteWordId.DbType = DbType.Int64;
-        pDeleteWordId.ParameterName = "@id";
-        cmdDeleteFileId.Parameters.Add(pDeleteWordId);
 
         var parserWord = new List<IPendingParserWordsUpdate>((int)limit);
         try
@@ -333,8 +287,7 @@ namespace myoddweb.desktopsearch.service.Persisters
                 {
                   // this word does not have any 'attached' files anymore
                   // so we want to delete it so it does not get picked up again.
-                  pDeleteWordId.Value = id;
-                  await connectionFactory.ExecuteWriteAsync(cmdDeleteFileId, token).ConfigureAwait(false);
+                  await parserWordHelper.DeleteWordAsync( id, token).ConfigureAwait(false);
                   ++numberOfUpdatesToGet;
                   continue;
                 }
@@ -367,28 +320,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     #region Private functions
-    /// <summary>
-    /// Create the SelectWordCommand
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <returns></returns>
-    private static IDbCommand CreateDeleteFileIdCommand(IConnectionFactory connectionFactory)
-    {
-      var sql = $@"DELETE FROM {Tables.ParserWords}
-                   WHERE
-                     id IN
-                   (
-                     SELECT ID 
-                     FROM   {Tables.ParserWords} 
-                     WHERE 
-                     id = @id AND
-                     ID NOT IN (SELECT wordid FROM {Tables.ParserFilesWords})
-                   )";
-
-      // create the comment
-      return connectionFactory.CreateCommand(sql);
-    }
-
     /// <summary>
     /// Create the SelectWordCommand
     /// </summary>

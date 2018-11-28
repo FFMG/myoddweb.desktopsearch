@@ -77,21 +77,5 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<IList<IPendingParserWordsUpdate>> GetPendingParserWordsUpdatesAsync(long limit, IConnectionFactory connectionFactory, CancellationToken token);
-
-    /// <summary>
-    /// Get a list of pending file supdates for a certain file id.
-    /// </summary>
-    /// <param name="limit">The maximum number of words we want to process at a time.</param>
-    /// <param name="fileId"></param>
-    /// <param name="parserWordsHelper"></param>
-    /// <param name="token"></param>
-    /// <param name="parserFilesWordsHelper"></param>
-    /// <returns></returns>
-    Task<IList<IPendingParserWordsUpdate>> GetPendingParserWordsForFileIdUpdatesAsync(
-      long limit,
-      long fileId, 
-      IParserWordsHelper parserWordsHelper,
-      IParserFilesWordsHelper parserFilesWordsHelper,
-      CancellationToken token);
   }
 }

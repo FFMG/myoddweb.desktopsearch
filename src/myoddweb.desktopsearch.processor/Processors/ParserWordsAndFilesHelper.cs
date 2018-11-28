@@ -35,7 +35,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       _partsHelper = new PartsHelper(factory, persister.Parts.TableName);
       _filesWordsHelper = new FilesWordsHelper(factory, persister.FilesWords.TableName);
       _wordsPartsHelper = new WordsPartsHelper(factory, persister.WordsParts.TableName);
-      _parserWordsHelper = new ParserWordsHelper(factory, persister.ParserWords.TableName);
+      _parserWordsHelper = new ParserWordsHelper(factory, persister.ParserWords.TableName, persister.ParserFilesWords.TableName);
       _parserFilesWordsHelper = new ParserFilesWordsHelper(factory, persister.ParserFilesWords.TableName);
     }
 
@@ -48,36 +48,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       _parserWordsHelper.Dispose();
       _parserFilesWordsHelper.Dispose();
     }
-
-    /// <summary>
-    /// Process words for a given file id.
-    /// </summary>
-    /// <param name="limit"></param>
-    /// <param name="fileId"></param>
-    /// <param name="token"></param>
-    /// <returns>The number of words actually processed.</returns>
-    public async Task<long> ProcessFileIdWordAsync(long limit, long fileId, CancellationToken token )
-    {
-      // get some pending words for that file id.
-      var pendingParserWordsUpdates = await _persister.ParserWords.GetPendingParserWordsForFileIdUpdatesAsync(
-        limit,
-        fileId,
-        _parserWordsHelper,
-        _parserFilesWordsHelper,
-        token).ConfigureAwait(false);
-      foreach (var pendingParserWordsUpdate in pendingParserWordsUpdates)
-      {
-        // thow if needed.
-        token.ThrowIfCancellationRequested();
-
-        // process it...
-        await ProcessPendingParserWordAsync(pendingParserWordsUpdate.Word, pendingParserWordsUpdate.FileIds, token).ConfigureAwait(false);
-      }
-
-      // return how many we actualy did.
-      return pendingParserWordsUpdates.Count;
-    }
-
+    
     /// <summary>
     /// Process a single parser word
     /// </summary>
