@@ -109,12 +109,12 @@ namespace myoddweb.desktopsearch.processor.Processors
         }
         catch (OperationCanceledException)
         {
-          _logger.Warning("Received cancellation request - Directories Processor - Work");
+          _logger.Warning("Directory processor: Received cancellation request - Directories Processor - Work");
           throw;
         }
         catch (Exception e)
         {
-          _logger.Exception(e);
+          _logger.Exception("Directory processor: ", e);
           throw;
         }
       }
@@ -195,7 +195,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       if (files == null)
       {
         // there is nothing to add to this directory so we are done.
-        _logger.Verbose($"Did not find any files in the new directory: {directory.FullName}.");
+        _logger.Verbose($"Directory processor: Did not find any files in the new directory: {directory.FullName}.");
         return;
       }
 
@@ -203,11 +203,11 @@ namespace myoddweb.desktopsearch.processor.Processors
       if (await _persister.Folders.Files.AddOrUpdateFilesAsync(files, factory, token).ConfigureAwait(false))
       {
         // log what we just did
-        _logger.Verbose($"Found {files.Count} file(s) in the new directory: {directory.FullName}.");
+        _logger.Verbose($"Directory processor: Found {files.Count} file(s) in the new directory: {directory.FullName}.");
       }
       else
       {
-        _logger.Error($"Unable to add {files.Count} file(s) from the new directory: {directory.FullName}.");
+        _logger.Error($"Directory processor: Unable to add {files.Count} file(s) from the new directory: {directory.FullName}.");
       }
     }
 
@@ -230,10 +230,10 @@ namespace myoddweb.desktopsearch.processor.Processors
       // using the foler id is the fastest.
       if (!await _persister.Folders.Files.DeleteFilesAsync(pendingUpdate.FolderId, factory, token))
       {
-        _logger.Verbose($"Unable to delete directory: {directory.FullName}.");
+        _logger.Verbose($"Directory processor: Unable to delete directory: {directory.FullName}.");
         return;
       }
-      _logger.Verbose($"Directory: {directory.FullName} was deleted.");
+      _logger.Verbose($"Directory processor: {directory.FullName} was deleted.");
     }
 
     /// <summary>
@@ -272,7 +272,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       // if we have nothing to do... then get out
       if (!filesToRemove.Any() && !filesToAdd.Any())
       {
-        _logger.Verbose($"Directory: {directory.FullName} was changed but no files were changed.");
+        _logger.Verbose($"Directory processor: {directory.FullName} was changed but no files were changed.");
         return;
       }
 
@@ -288,7 +288,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         await _persister.Folders.Files.AddOrUpdateFilesAsync(filesToAdd, factory, token).ConfigureAwait(false);
       }
 
-      _logger.Verbose($"Directory: {directory.FullName} was changed {filesToRemove.Count} file(s) removed and {filesToAdd.Count} file(s) added.");
+      _logger.Verbose($"Directory processor: {directory.FullName} was changed {filesToRemove.Count} file(s) removed and {filesToAdd.Count} file(s) added.");
     }
     #endregion
 
@@ -305,7 +305,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       var pendingUpdates = await _persister.Folders.FolderUpdates.GetPendingFolderUpdatesAsync(MaxNumberFoldersToProcess, factory, token).ConfigureAwait(false);
       if (null == pendingUpdates)
       {
-        _logger.Error("Unable to get any pending folder updates.");
+        _logger.Error("Directory processor: Unable to get any pending folder updates.");
         return null;
       }
 
