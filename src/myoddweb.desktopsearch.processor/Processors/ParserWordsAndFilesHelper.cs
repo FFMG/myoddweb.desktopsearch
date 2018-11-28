@@ -8,7 +8,6 @@ using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
-using IParts = myoddweb.desktopsearch.interfaces.IO.IParts;
 
 namespace myoddweb.desktopsearch.processor.Processors
 {
@@ -72,7 +71,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         await _parserFilesWordsHelper.DeleteWordAsync(id, token).ConfigureAwait(false);
 
         // if we found any, log it.
-        _logger.Verbose($"Processor : Deleted word {word.Value} for {fileIds.Count} file(s) as it is not a valid word.");
+        _logger.Verbose($"Parser processor: Deleted word {word.Value} for {fileIds.Count} file(s) as it is not a valid word.");
 
         return;
       }
@@ -102,7 +101,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       await ProcessPartsAsync(word, token).ConfigureAwait(false);
 
       // if we found any, log it.
-      _logger.Verbose($"Processor : {word.Value} processed for {fileIds.Count} file(s).");
+      _logger.Verbose($"Parser processor: {word.Value} processed for {fileIds.Count} file(s).");
     }
 
     private async Task ProcessPartsAsync(IWord word, CancellationToken token)
@@ -127,7 +126,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         if (!fileIds.Any())
         {
           await _parserWordsHelper.DeleteWordAsync(wordId, token).ConfigureAwait(false);
-          _logger.Verbose($"Processor : Deleted word {word.Value} as we found no file ids for it.");
+          _logger.Verbose($"Parser processor: Deleted word {word.Value} as we found no file ids for it.");
           continue;
         }
 
