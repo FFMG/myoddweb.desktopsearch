@@ -138,12 +138,12 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
       catch (OperationCanceledException)
       {
-        _logger.Warning("Received cancellation request - Files Processor - Work");
+        _logger.Warning("Files processor: Received cancellation request - Files Processor - Work");
         throw;
       }
       catch (Exception e)
       {
-        _logger.Exception(e);
+        _logger.Exception("Files processor: ", e);
         throw;
       }
     }
@@ -243,7 +243,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       var file = pendingFileUpdate.File;
       if (null == file)
       {
-        _logger.Warning( $"Unable to find, and process created file id: {pendingFileUpdate.FileId}.");
+        _logger.Warning( $"Files processor: Unable to find, and process created file id: {pendingFileUpdate.FileId}.");
         return null;
       }
 
@@ -266,7 +266,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       var file = pendingFileUpdate.File;
       if (null == file)
       {
-        _logger.Warning($"Unable to find, and process changed id: {pendingFileUpdate.FileId}.");
+        _logger.Warning($"Files processor: Unable to find, and process changed id: {pendingFileUpdate.FileId}.");
         return null;
       }
 
@@ -299,7 +299,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       // is this file ignored?
       if (IsIgnored(pendingFileUpdate))
       {
-        _logger.Information( $"Ignoring file: {pendingFileUpdate.File.FullName} as per IgnoreFiles rule(s).");
+        _logger.Information( $"Files processor: Ignoring file: {pendingFileUpdate.File.FullName} as per IgnoreFiles rule(s).");
         return null;
       }
 
@@ -368,7 +368,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         if (numberOfWords > 0)
         {
           // if we found any, log it.
-          _logger.Verbose($"Parser : {parser.Name} processed {helper.Count} words in {file.FullName}.");
+          _logger.Verbose($"Files processor: {parser.Name} processed {helper.Count} words in {file.FullName}.");
         }
 
         // null values are ignored.
@@ -395,7 +395,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         return !pendingUpdates.Any() ? null : pendingUpdates;
       }
 
-      _logger.Error("Unable to get any pending file updates.");
+      _logger.Error("Files processor: Unable to get any pending file updates.");
       return null;
     }
     #endregion
