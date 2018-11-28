@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.Persisters;
@@ -40,7 +41,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// The persister so we can save the words.
     /// </summary>
-    private readonly IPersister _persister;
+    private readonly IParserWords _parserWords;
 
     /// <summary>
     /// The words helper.
@@ -61,21 +62,36 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// The file words helper
     /// </summary>
     private readonly IParserFilesWordsHelper _parserFilesWordsHelper;
+
+    /// <summary>
+    /// The max number of words we want to add at a time.
+    /// </summary>
+    private readonly long _updatesFilesPerEvent;
+
+    private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
     #endregion
 
-    public PrarserHelper(FileSystemInfo file, IPersister persister, IConnectionFactory factory, long fileid) :
-      this(file, persister, 
+    public PrarserHelper(
+      long updatesFilesPerEvent,
+      FileSystemInfo file, IPersister persister, IConnectionFactory factory, long fileid) :
+      this
+      (
+        updatesFilesPerEvent,
+        file, 
+        persister.ParserWords, 
         new WordsHelper( factory, persister.Words.TableName),
         new FilesWordsHelper(factory, persister.FilesWords.TableName),
         new ParserWordsHelper(factory, persister.ParserWords.TableName), 
-        new ParserFilesWordsHelper(factory, persister.ParserFilesWords.TableName)
-        , fileid )
+        new ParserFilesWordsHelper(factory, persister.ParserFilesWords.TableName), 
+        fileid 
+      )
     {
     }
 
     public PrarserHelper(
+      long updatesFilesPerEvent,
       FileSystemInfo file, 
-      IPersister persister,
+      IParserWords parserWords,
       IWordsHelper wordsHelper,
       IFilesWordsHelper filesWordsHelper,
       IParserWordsHelper parserWordsHelper,
@@ -83,10 +99,11 @@ namespace myoddweb.desktopsearch.processor.Processors
       long fileid 
     )
     {
+      _updatesFilesPerEvent = updatesFilesPerEvent;
       _fileId = fileid;
 
       // set the perister and the transaction.
-      _persister = persister ?? throw new ArgumentNullException(nameof(persister));
+      _parserWords = parserWords ?? throw new ArgumentNullException(nameof(parserWords));
       _wordsHelper = wordsHelper ?? throw new ArgumentNullException(nameof(wordsHelper));
       _filesWordsHelper = filesWordsHelper ?? throw new ArgumentNullException(nameof(filesWordsHelper));
       _parserWordsHelper = parserWordsHelper ?? throw new ArgumentNullException(nameof(parserWordsHelper));
@@ -109,22 +126,80 @@ namespace myoddweb.desktopsearch.processor.Processors
       _parserWordsHelper?.Dispose();
     }
 
+    private async Task<long> AddWordsDirectlyAsync(IEnumerable<string> words, CancellationToken token)
+    {
+      var added = 0;
+      foreach (var word in words)
+      {
+        // get the id
+        var wordId = await _wordsHelper.InsertAndGetIdAsync(word, token).ConfigureAwait(false);
+
+        // get the other files.
+        var fileIds = await _parserFilesWordsHelper.GetFileIdsAsync(wordId, token);
+
+        if (fileIds != null && fileIds.Any())
+        {
+          fileIds.Add(_fileId);
+        }
+        else
+        {
+          fileIds = new List<long> { _fileId };
+        }
+
+        foreach (var fileId in fileIds)
+        {
+          // link the id to that file.
+          await _filesWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false);
+        }
+
+        // we only added one word.
+        ++added;
+      }
+
+      // we 'added' the word.
+      // technically the word might already exist.
+      await SafeAddAsync( added, token ).ConfigureAwait(false);
+      return added;
+    }
+
+    private async Task SafeAddAsync(long added, CancellationToken token)
+    {
+      await _semaphoreSlim.WaitAsync(token).ConfigureAwait(false);
+      try
+      {
+        Count += added;
+      }
+      finally
+      {
+        _semaphoreSlim.Release();
+      }
+    }
+
     /// <inheritdoc /> 
     public async Task<long> AddWordsAsync(IReadOnlyList<string> words, CancellationToken token)
     {
+      if (Count < _updatesFilesPerEvent)
+      {
+        return await AddWordsDirectlyAsync(words, token).ConfigureAwait(false);
+      }
+
+      return await AddWordsToParsersAsync(words, token).ConfigureAwait(false);
+    }
+
+
+    private async Task<long> AddWordsToParsersAsync(IReadOnlyList<string> words, CancellationToken token)
+    {
       // then we just try and add the word.
-      var added = await _persister.ParserWords.AddWordsAsync(
+      var added = await _parserWords.AddWordsAsync(
         _fileId, 
         words,
-        _wordsHelper,
-        _filesWordsHelper,
         _parserWordsHelper,
         _parserFilesWordsHelper,
         token).ConfigureAwait(false);
 
       // we 'added' the word.
       // technically the word might already exist.
-      Count += added;
+      await SafeAddAsync( added, token ).ConfigureAwait(false);
 
       // success.
       return added;

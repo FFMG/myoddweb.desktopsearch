@@ -66,8 +66,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     public async Task<long> AddWordsAsync(
       long fileid, 
       IReadOnlyList<string> words,
-      IWordsHelper wordsHelper,
-      IFilesWordsHelper filesWordsHelper,
       IParserWordsHelper parserWordsHelper,
       IParserFilesWordsHelper parserFilesWordsHelper,
       CancellationToken token
@@ -95,23 +93,6 @@ namespace myoddweb.desktopsearch.service.Persisters
             continue;
           }
           
-          // if the word already exists in the Words table
-          // then we do not need to add it anymore
-          // we just need to add it to the FilesWords Table.
-          if (await TryInsertFilesWords(
-            fileid,
-            word,
-            wordsHelper,
-            filesWordsHelper,
-            token).ConfigureAwait(false))
-          {
-            // the word was not added to the parser table
-            // we bypassed the entire process by adding the word id
-            // and the file id to the files table.
-            ++added;
-            continue;
-          }
-
           // try and add the word to the 
           var wordid = await InsertOrGetWord(word, parserWordsHelper, token).ConfigureAwait(false);
           if (-1 == wordid)
@@ -446,41 +427,6 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // something did not work.
       _logger.Error($"There was an issue inserting word {wordId} for file : {fileId}");
-      return false;
-    }
-
-    /// <summary>
-    /// Try and insert the word inf the FilesWords table if the word has been parsed already
-    /// If it has already been parsed, then there is no need to add it again.
-    /// </summary>
-    /// <param name="fileId"></param>
-    /// <param name="word"></param>
-    /// <param name="filesWordsHelper"></param>
-    /// <param name="wordsHelper"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<bool> TryInsertFilesWords(
-      long fileId,
-      string word,
-      IWordsHelper wordsHelper,
-      IFilesWordsHelper filesWordsHelper,
-      CancellationToken token)
-    {
-      // try and get the id, if it does not exist, we cannot add it.
-      var wordId = await wordsHelper.GetIdAsync(word, token).ConfigureAwait(false);
-      if (-1 == wordId)
-      {
-        return false;
-      }
-
-      // now that we have a fileid/wordid we can then try and insert the value 
-      if (await filesWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false))
-      {
-        return true;
-      }
-
-      // something did not work.
-      _logger.Error($"There was an issue inserting word : {word}({wordId}) for file : {fileId}");
       return false;
     }
 

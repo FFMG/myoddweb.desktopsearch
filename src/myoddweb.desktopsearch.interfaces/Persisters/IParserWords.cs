@@ -30,8 +30,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// </summary>
     /// <param name="fileid"></param>
     /// <param name="words"></param>
-    /// <param name="wordsHelper"></param>
-    /// <param name="filesWordsHelper"></param>
     /// <param name="parserWordsHelper"></param>
     /// <param name="parserFilesWordsHelper"></param>
     /// <param name="token"></param>
@@ -39,8 +37,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     Task<long> AddWordsAsync( 
       long fileid, 
       IReadOnlyList<string> words, 
-      IWordsHelper wordsHelper, 
-      IFilesWordsHelper filesWordsHelper,
       IParserWordsHelper parserWordsHelper,
       IParserFilesWordsHelper parserFilesWordsHelper,
       CancellationToken token);
