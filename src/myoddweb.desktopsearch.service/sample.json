@@ -26,10 +26,10 @@
     "EventsParserMs": 30000
   },
   "Processors": {
-    "UpdatesWordsPerFilesPerEvent": 20000,
+    "UpdatesWordsPerFilesPerEvent": 100000,
     "UpdatesFilesPerEvent" : 1000,
     "UpdatesFolderPerEvent": 1000,
-    "UpdateWordParsedPerEvent": 50,
+    "UpdateWordParsedPerEvent": 1000,
     "EventsProcessorMs": 200,
     "MaintenanceProcessorMinutes": 60,
     "IgnoreFiles": [
