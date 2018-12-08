@@ -51,9 +51,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task Initialise(IConnectionFactory connectionFactory, CancellationToken token)
+    public Task Initialise(IConnectionFactory connectionFactory, CancellationToken token)
     {
-      await InitialiserCountersAsync(connectionFactory, token).ConfigureAwait(false);
+      return InitialiserCountersAsync(connectionFactory, token);
     }
 
     /// <inheritdoc />
