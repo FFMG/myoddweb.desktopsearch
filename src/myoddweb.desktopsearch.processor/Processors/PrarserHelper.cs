@@ -15,9 +15,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -39,9 +39,9 @@ namespace myoddweb.desktopsearch.processor.Processors
     private readonly long _fileId;
 
     /// <summary>
-    /// The persister so we can save the words.
+    /// The persister
     /// </summary>
-    private readonly IParserWords _parserWords;
+    private readonly IPersister _persister;
 
     /// <summary>
     /// The words helper.
@@ -54,19 +54,14 @@ namespace myoddweb.desktopsearch.processor.Processors
     private readonly IFilesWordsHelper _filesWordsHelper;
 
     /// <summary>
-    /// The parser words helper.
+    /// The parts helper when/if we add a word
     /// </summary>
-    private readonly IParserWordsHelper _parserWordsHelper;
+    private readonly IPartsHelper _partsHelper;
 
     /// <summary>
-    /// The file words helper
+    /// The parts words helper for when/if we add a word.
     /// </summary>
-    private readonly IParserFilesWordsHelper _parserFilesWordsHelper;
-
-    /// <summary>
-    /// The max number of words we want to add at a time.
-    /// </summary>
-    private readonly long _maxNumberOfWordsToDo;
+    private readonly IWordsPartsHelper _wordsPartsHelper;
 
     /// <summary>
     /// The lock to allow us to update the word counter.
@@ -75,48 +70,40 @@ namespace myoddweb.desktopsearch.processor.Processors
     #endregion
 
     public PrarserHelper(
-      long maxNumberOfWordsToDo,
       FileSystemInfo file, IPersister persister, IConnectionFactory factory, long fileid) :
       this
       (
-        maxNumberOfWordsToDo,
         file, 
-        persister.ParserWords, 
+        persister,
         new WordsHelper( factory, persister.Words.TableName),
         new FilesWordsHelper(factory, persister.FilesWords.TableName),
-        new ParserWordsHelper(factory, persister.ParserWords.TableName, persister.ParserFilesWords.TableName), 
-        new ParserFilesWordsHelper(factory, persister.ParserFilesWords.TableName), 
-        fileid 
+        new PartsHelper(factory, persister.Parts.TableName), 
+        new WordsPartsHelper(factory, persister.WordsParts.TableName), 
+        fileid
       )
     {
     }
 
     public PrarserHelper(
-      long maxNumberOfWordsToDo,
       FileSystemInfo file, 
-      IParserWords parserWords,
+      IPersister persister,
       IWordsHelper wordsHelper,
       IFilesWordsHelper filesWordsHelper,
-      IParserWordsHelper parserWordsHelper,
-      IParserFilesWordsHelper parserFilesWordsHelper, 
+      IPartsHelper partsHelper,
+      IWordsPartsHelper wordsPartsHelper,
       long fileid 
     )
     {
-      if (maxNumberOfWordsToDo < 0)
-      {
-        // the number _could_ be zero if we do not want to add _any_ words to the 
-        // words table directly.
-        throw new ArgumentException( $"The number of words to process, {maxNumberOfWordsToDo}, cannot be -ve");
-      }
-      _maxNumberOfWordsToDo = maxNumberOfWordsToDo;
       _fileId = fileid;
 
+      // save the persister
+      _persister = persister ?? throw new ArgumentNullException(nameof(persister));
+
       // set the perister and the transaction.
-      _parserWords = parserWords ?? throw new ArgumentNullException(nameof(parserWords));
       _wordsHelper = wordsHelper ?? throw new ArgumentNullException(nameof(wordsHelper));
       _filesWordsHelper = filesWordsHelper ?? throw new ArgumentNullException(nameof(filesWordsHelper));
-      _parserWordsHelper = parserWordsHelper ?? throw new ArgumentNullException(nameof(parserWordsHelper));
-      _parserFilesWordsHelper = parserFilesWordsHelper ?? throw new ArgumentNullException(nameof(parserFilesWordsHelper));
+      _partsHelper = partsHelper ?? throw new ArgumentNullException(nameof(partsHelper));
+      _wordsPartsHelper = wordsPartsHelper ?? throw new ArgumentNullException(nameof(wordsPartsHelper));
 
       // set the file being worked on.
       File = file ?? throw new ArgumentNullException(nameof(file));
@@ -131,19 +118,34 @@ namespace myoddweb.desktopsearch.processor.Processors
       // dispose of word helper.
       _wordsHelper?.Dispose();
       _filesWordsHelper?.Dispose();
-      _parserFilesWordsHelper?.Dispose();
-      _parserWordsHelper?.Dispose();
+      _partsHelper?.Dispose();
+      _wordsPartsHelper?.Dispose();
     }
 
     /// <inheritdoc /> 
     public async Task<long> AddWordsAsync(IReadOnlyList<string> words, CancellationToken token)
     {
-      if (Count < _maxNumberOfWordsToDo)
+      // add all the words
+      var wordIds = await _persister.Words.AddOrGetWordsAsync(new Words(words, _persister.Parts.MaxNumCharactersPerParts ),
+        _wordsHelper,
+        _partsHelper,
+        _wordsPartsHelper,
+        token
+      ).ConfigureAwait(false);
+      var added = 0;
+      foreach (var wordId in wordIds)
       {
-        return await AddWordsDirectlyAsync(words, token).ConfigureAwait(false);
+        // link the id to that file.
+        await _filesWordsHelper.InsertAsync(wordId, _fileId, token).ConfigureAwait(false);
+
+        // we only added one word.
+        ++added;
       }
 
-      return await AddWordsToParsersAsync(words, token).ConfigureAwait(false);
+      // we 'added' the word.
+      // technically the word might already exist.
+      await SafeAddAsync(added, token).ConfigureAwait(false);
+      return added;
     }
 
     #region Private Functions
@@ -164,72 +166,6 @@ namespace myoddweb.desktopsearch.processor.Processors
       {
         _semaphoreSlim.Release();
       }
-    }
-
-    /// <summary>
-    /// Add a word to the words table
-    /// </summary>
-    /// <param name="words"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<long> AddWordsDirectlyAsync(IEnumerable<string> words, CancellationToken token)
-    {
-      var added = 0;
-      foreach (var word in words)
-      {
-        // get the id
-        var wordId = await _wordsHelper.InsertAndGetIdAsync(word, token).ConfigureAwait(false);
-
-        // get the other files.
-        var fileIds = await _parserFilesWordsHelper.GetFileIdsAsync(wordId, token);
-
-        if (fileIds != null && fileIds.Any())
-        {
-          fileIds.Add(_fileId);
-        }
-        else
-        {
-          fileIds = new List<long> { _fileId };
-        }
-
-        foreach (var fileId in fileIds.Distinct())
-        {
-          // link the id to that file.
-          await _filesWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false);
-        }
-
-        // we only added one word.
-        ++added;
-      }
-
-      // we 'added' the word.
-      // technically the word might already exist.
-      await SafeAddAsync(added, token).ConfigureAwait(false);
-      return added;
-    }
-
-    /// <summary>
-    /// Add a word to the parser table.
-    /// </summary>
-    /// <param name="words"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<long> AddWordsToParsersAsync(IReadOnlyList<string> words, CancellationToken token)
-    {
-      // then we just try and add the word.
-      var added = await _parserWords.AddWordsAsync(
-        _fileId, 
-        words,
-        _parserWordsHelper,
-        _parserFilesWordsHelper,
-        token).ConfigureAwait(false);
-
-      // we 'added' the word.
-      // technically the word might already exist.
-      await SafeAddAsync( added, token ).ConfigureAwait(false);
-
-      // success.
-      return added;
     }
     #endregion
   }

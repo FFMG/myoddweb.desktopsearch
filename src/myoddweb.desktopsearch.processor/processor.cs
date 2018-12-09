@@ -63,21 +63,18 @@ namespace myoddweb.desktopsearch.processor
 
       const string directoryCounterName = "Processor: Average time processing Directories";
       const string fileCounterName = "Processor: Average time processing Files";
-      const string parserCounterName = "Processor: Average time processing Words";
 
       // Create the various processors, they will not start doing anything just yet
       // or at least, they shouldn't
       var directoriesCounter = new ProcessorPerformanceCounter(performance, directoryCounterName, logger);
       var filesCounter = new ProcessorPerformanceCounter(performance, fileCounterName, logger);
-      var parserCounter = new ProcessorPerformanceCounter(performance, parserCounterName, logger);
 
       _eventTimer = new ProcessorTimer(
         persister,
         new List<IProcessor>
         {
           new Folders(directoriesCounter, config.UpdatesFolderPerEvent, persister, logger, directory),
-          new Files(filesCounter, config.UpdatesFilesPerEvent, config.UpdatesWordsPerFilesPerEvent, fileParsers, config.IgnoreFiles, persister, logger),
-          new Parser(parserCounter, config.UpdateWordParsedPerEvent, persister, logger)
+          new Files(filesCounter, config.UpdatesFilesPerEvent, fileParsers, config.IgnoreFiles, persister, logger)
         },
         _logger, config.EventsProcessorMs);
 

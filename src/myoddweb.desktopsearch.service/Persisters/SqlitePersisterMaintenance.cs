@@ -84,19 +84,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return false;
       }
-
-      // the prarser words table.
-      if (!await CreateParserWordsAsync(connectionFactory).ConfigureAwait(false))
-      {
-        return false;
-      }
-
-      // the wordid/fileid
-      if(!await CreateParserFilesWordsAsync(connectionFactory).ConfigureAwait(false))
-      {
-        return false;
-      }
-
       return true;
     }
 
@@ -231,75 +218,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // done 
-      return true;
-    }
-
-    /// <summary>
-    /// Create the parser words table.
-    /// Those are the unprocessed words, we want to remove all those words into the words table.
-    /// And move all the file ids to the file ids table.
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <returns></returns>
-    private async Task<bool> CreateParserWordsAsync(IConnectionFactory connectionFactory)
-    {
-      if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {Tables.ParserWords} (id integer PRIMARY KEY, word TEXT UNIQUE, len integer)", connectionFactory)
-          .ConfigureAwait(false))
-      {
-        return false;
-      }
-
-      if (
-        !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.ParserWords}_length ON {Tables.ParserWords}(len);", connectionFactory).ConfigureAwait(false))
-      {
-        return false;
-      }
-
-
-      // done 
-      return true;
-    }
-
-    /// <summary>
-    /// Create the parser file words table.
-    /// The word id links to the parser word table, once we have parsed the word and moved it to the actual words table
-    /// We can link all those file ids to the actual files id table.
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <returns></returns>
-    private async Task<bool> CreateParserFilesWordsAsync(IConnectionFactory connectionFactory)
-    {
-      if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {Tables.ParserFilesWords} (wordid integer, fileid integer)", connectionFactory)
-          .ConfigureAwait(false))
-      {
-        return false;
-      }
-
-      // there can only be one word and one id.
-      if (
-        !await
-          ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{Tables.ParserFilesWords}_wordid_fileid ON {Tables.ParserFilesWords}(wordid, fileid);", connectionFactory).ConfigureAwait(false))
-      {
-        return false;
-      }
-
-      if (
-        !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.ParserFilesWords}_fileid ON {Tables.ParserFilesWords}(fileid);", connectionFactory).ConfigureAwait(false))
-      {
-        return false;
-      }
-
-      if (
-        !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.ParserFilesWords}_wordid ON {Tables.ParserFilesWords}(wordid);", connectionFactory).ConfigureAwait(false))
-      {
-        return false;
-      }
-
       return true;
     }
 

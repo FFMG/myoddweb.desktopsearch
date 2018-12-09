@@ -80,21 +80,21 @@ namespace myoddweb.desktopsearch.service.Persisters
       IWord word, 
       CancellationToken token)
     {
-      var ids = await AddOrUpdateWordsAsync( wordsHelper, partsHelper, wordsPartsHelper, new Words(word), token ).ConfigureAwait(false);
+      var ids = await AddOrGetWordsAsync(new Words(word), wordsHelper, partsHelper, wordsPartsHelper, token ).ConfigureAwait(false);
       return ids.Any() ? ids.First() : -1;
     }
 
     /// <inheritdoc />
-    public async Task<IList<long>> AddOrUpdateWordsAsync(
+    public async Task<IList<long>> AddOrGetWordsAsync(
+      interfaces.IO.IWords words,
       IWordsHelper wordsHelper,
       IPartsHelper partsHelper,
       IWordsPartsHelper wordsPartsHelper,
-      interfaces.IO.IWords words, 
       CancellationToken token)
     {
       using (_counterAddOrUpdate.Start())
       {
-        return await InsertWordsAsync(wordsHelper, partsHelper, words, wordsPartsHelper, token).ConfigureAwait(false);
+        return await InsertWordsAsync(words, wordsHelper, partsHelper, wordsPartsHelper, token).ConfigureAwait(false);
       }
     }
 
@@ -127,9 +127,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     private async Task<IList<long>> InsertWordsAsync(
+      interfaces.IO.IWords words,
       IWordsHelper wordsHelper,
       IPartsHelper partsHelper,
-      interfaces.IO.IWords words,
       IWordsPartsHelper wordsPartsHelper, 
       CancellationToken token)
     {
@@ -154,7 +154,6 @@ namespace myoddweb.desktopsearch.service.Persisters
           {
             continue;
           }
-
 
           // the word we want to insert.
           var wordId = await InsertWordAsync(word, wordsHelper, partsHelper, wordsPartsHelper, token).ConfigureAwait(false);
@@ -199,7 +198,15 @@ namespace myoddweb.desktopsearch.service.Persisters
       IWordsPartsHelper wordsPartsHelper,
       CancellationToken token)
     {
-      var wordId = await wordsHelper.InsertAndGetIdAsync(word.Value, token).ConfigureAwait(false);
+      var wordId = await wordsHelper.GetIdAsync(word.Value, token).ConfigureAwait(false);
+      if (wordId != -1)
+      {
+        //  already exists
+        return wordId;
+      }
+
+      // then insert it.
+      wordId = await wordsHelper.InsertAndGetIdAsync(word.Value, token).ConfigureAwait(false);
       if ( wordId == -1 )
       {
         _logger.Error($"There was an issue getting the word id: {word.Value} from the persister");

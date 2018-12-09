@@ -38,17 +38,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private readonly IWords _words;
 
-    /// <summary>
-    /// The parser words we are working with.
-    /// </summary>
-    private readonly IParserWords _parserWords;
     #endregion
 
-    public SqlitePersisterFilesWords(IParserWords parserWords, IWords words, ILogger logger)
+    public SqlitePersisterFilesWords( IWords words, ILogger logger)
     {
-      // the parsers word.
-      _parserWords = parserWords ?? throw new ArgumentException(nameof(parserWords));
-
       // the words manager
       _words = words ?? throw new ArgumentNullException(nameof(words));
 
@@ -117,9 +110,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
-        // remove all the words we might still need to parse
-        await _parserWords.DeleteFileId(fileId, connectionFactory, token).ConfigureAwait(false);
-
         // then remove the ones we might have done already.
         var sqlDelete = $"DELETE FROM {TableName} WHERE fileid=@fileid";
         using (var cmd = connectionFactory.CreateCommand(sqlDelete))

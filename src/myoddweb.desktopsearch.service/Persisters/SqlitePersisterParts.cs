@@ -12,6 +12,8 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.service.Persisters
@@ -20,5 +22,17 @@ namespace myoddweb.desktopsearch.service.Persisters
   {
     /// <inheritdoc />
     public string TableName => Tables.Parts;
+
+    /// <inheritdoc />
+    public int MaxNumCharactersPerParts { get; }
+
+    public SqlitePersisterParts(int maxNumCharactersPerParts)
+    {
+      if (maxNumCharactersPerParts <= 0)
+      {
+        throw new ArgumentException( $"The max number of charaters per parts cannot be -ve or zero, ({maxNumCharactersPerParts})!");
+      }
+      MaxNumCharactersPerParts = maxNumCharactersPerParts;
+    }
   }
 }

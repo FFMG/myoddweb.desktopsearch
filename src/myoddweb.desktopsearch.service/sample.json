@@ -26,10 +26,8 @@
     "EventsParserMs": 30000
   },
   "Processors": {
-    "UpdatesWordsPerFilesPerEvent": 100000,
-    "UpdatesFilesPerEvent" : 1000,
-    "UpdatesFolderPerEvent": 1000,
-    "UpdateWordParsedPerEvent": 1000,
+    "UpdatesFilesPerEvent" : 50,
+    "UpdatesFolderPerEvent": 50,
     "EventsProcessorMs": 200,
     "MaintenanceProcessorMinutes": 60,
     "IgnoreFiles": [
@@ -66,7 +64,7 @@
     "Source": ".\\database.db",
     "IgnoredPaths": [ ".\\" ],
     "CacheSize": 10000,
-    "AutoCheckpoint": 65536
+    "AutoCheckpoint": 16384
   },
   "Performance": {
     "CategoryName": "myoddweb.desktopsearch",

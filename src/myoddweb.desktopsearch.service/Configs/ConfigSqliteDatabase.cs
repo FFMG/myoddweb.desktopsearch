@@ -33,9 +33,9 @@ namespace myoddweb.desktopsearch.service.Configs
     /// Auto checkpoint
     /// https://www.sqlite.org/wal.html#automatic_checkpoint
     /// https://www.sqlite.org/wal.html#checkpointing
-    /// The default size is 64x1024 ... or ~300Mb
+    /// The default size is 16x1024 ... or ~75Mb
     /// </summary>
-    [DefaultValue(65536)]
+    [DefaultValue(16384)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public long AutoCheckpoint { get; protected set; }
 

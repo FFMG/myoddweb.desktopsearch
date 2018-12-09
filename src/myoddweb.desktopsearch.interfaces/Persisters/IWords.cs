@@ -52,11 +52,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="words"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IList<long>> AddOrUpdateWordsAsync(
+    Task<IList<long>> AddOrGetWordsAsync(
+      IO.IWords words,
       IWordsHelper wordsHelper,
       IPartsHelper partsHelper,
       IWordsPartsHelper wordsPartsHelper,
-      IO.IWords words, 
       CancellationToken token);
 
     /// <summary>

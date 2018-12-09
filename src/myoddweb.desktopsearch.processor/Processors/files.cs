@@ -51,11 +51,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     private readonly IList<IIgnoreFile> _ignoreFiles;
 
     /// <summary>
-    /// The maximum number of words to process.
-    /// </summary>
-    public int MaxNumberOfWordsToProcess { get; }
-
-    /// <summary>
     /// The number of files we want to do per processing events.
     /// Don't make that number too small as it will take forever to parse
     /// But also not too big as it blocks the database when/if there is work to do.
@@ -71,7 +66,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     public Files(
       ICounter counter,
       int updatesFilesPerEvent,
-      int maxNumberOfWordsToProcess, 
       IList<IFileParser> parsers, 
       IList<IIgnoreFile> ignoreFiles, 
       IPersister persister, 
@@ -79,13 +73,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     {
       // save the counter
       _counter = counter ?? throw new ArgumentNullException(nameof(counter));
-
-      // the number can be zero, if we want to force all the words to be passed to the parsed table.
-      if (maxNumberOfWordsToProcess < 0)
-      {
-        throw new ArgumentException( $"The maximum number of words to process cannot be -ve, ({maxNumberOfWordsToProcess})");
-      }
-      MaxNumberOfWordsToProcess = maxNumberOfWordsToProcess;
 
       if (updatesFilesPerEvent <= 0)
       {
@@ -310,7 +297,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       long[] totalWords;
 
       // create the helper.
-      using (var parserHelper = new PrarserHelper(MaxNumberOfWordsToProcess, pendingFileUpdate.File, _persister, factory, pendingFileUpdate.FileId))
+      using (var parserHelper = new PrarserHelper( pendingFileUpdate.File, _persister, factory, pendingFileUpdate.FileId))
       {
         tasks.AddRange(_parsers.Select(parser => ProcessFile(parserHelper, parser, pendingFileUpdate.File, token)));
 

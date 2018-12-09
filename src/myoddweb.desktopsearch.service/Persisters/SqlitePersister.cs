@@ -75,16 +75,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     public IParts Parts { get; }
 
     /// <inheritdoc />
-    public IParserFilesWords ParserFilesWords { get; }
-
-    /// <inheritdoc />
     public IFilesWords FilesWords { get; }
     
     /// <inheritdoc />
     public IFolders Folders { get; }
-
-    /// <inheritdoc />
-    public IParserWords ParserWords { get; }
     #endregion
 
     public SqlitePersister(IPerformance performance, IList<IFileParser> parsers, ILogger logger, 
@@ -114,20 +108,14 @@ namespace myoddweb.desktopsearch.service.Persisters
       // create the words
       Words = new SqlitePersisterWords( performance, WordsParts, maxNumCharactersPerWords, logger);
 
-      // create the word parser.
-      ParserWords = new SqlitePersisterParserWords(Words, maxNumCharactersPerParts, logger);
-
       // file words.
-      FilesWords = new SqlitePersisterFilesWords(ParserWords, Words, logger );
+      FilesWords = new SqlitePersisterFilesWords( Words, logger );
 
       // create the files / Folders.
       Folders = new SqlitePersisterFolders( Counts, parsers, logger );
 
       // the parts
-      Parts = new SqlitePersisterParts();
-
-      // parser files words
-      ParserFilesWords = new SqlitePersisterParserFilesWords();
+      Parts = new SqlitePersisterParts( maxNumCharactersPerParts );
     }
 
     /// <inheritdoc />
@@ -205,61 +193,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     #endregion
 
     #region Private
-    /// <summary>
-    /// Delete all the words that do not have any files attached to it.
-    /// </summary>
-    /// <param name="connectionFactory"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<bool> DeleteWordIdsIfNoFileIds(IConnectionFactory connectionFactory, CancellationToken token)
-    {
-      if (null == connectionFactory)
-      {
-        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
-      }
-
-      var sql = $@"DELETE FROM {Tables.ParserWords}
-                   WHERE
-                     ID IN
-                     (
-                       SELECT ID 
-                       FROM  {Tables.ParserWords}
-                       WHERE ID NOT IN (SELECT wordid FROM {Tables.ParserFilesWords})
-                     )";
-
-      using (var cmd = connectionFactory.CreateCommand(sql))
-      {
-        try
-        {
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-
-          await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false);
-
-          return true;
-        }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Parser words - Delete word");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-          return false;
-        }
-      }
-    }
     #endregion
 
     #region IPersister functions
 
     /// <inheritdoc />
-    public async Task MaintenanceAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    public Task MaintenanceAsync(IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {
-        await DeleteWordIdsIfNoFileIds(connectionFactory, token).ConfigureAwait(false);
+        return Task.FromResult<object>(null);
       }
       catch (OperationCanceledException e)
       {
