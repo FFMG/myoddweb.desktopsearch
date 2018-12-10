@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IWordsParts
+  public interface IWordsParts : ITransaction
   {
     /// <summary>
     /// Get the table name.
@@ -31,9 +31,8 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// </summary>
     /// <param name="wordId"></param>
     /// <param name="partIds"></param>
-    /// <param name="wordsPartsHelper"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task AddOrUpdateWordParts( long wordId, HashSet<long> partIds, IWordsPartsHelper wordsPartsHelper, CancellationToken token);
+    Task AddOrUpdateWordParts( long wordId, HashSet<long> partIds, CancellationToken token);
   }
 }

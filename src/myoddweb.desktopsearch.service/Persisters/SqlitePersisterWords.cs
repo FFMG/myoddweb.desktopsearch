@@ -30,7 +30,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     #region Member variable
     private IWordsHelper _wordsHelper;
     private IPartsHelper _partsHelper;
-    private IWordsPartsHelper _wordsPartsHelper;
 
     /// <summary>
     /// The counter for adding new words
@@ -118,11 +117,9 @@ namespace myoddweb.desktopsearch.service.Persisters
       // sanity check.
       Contract.Assert(_wordsHelper == null);
       Contract.Assert(_partsHelper == null);
-      Contract.Assert(_wordsPartsHelper == null);
 
-      _wordsHelper = new WordsHelper(factory, persister.Words.TableName);
+      _wordsHelper = new WordsHelper(factory, TableName);
       _partsHelper = new PartsHelper(factory, persister.Parts.TableName);
-      _wordsPartsHelper = new WordsPartsHelper(factory, persister.WordsParts.TableName);
     }
 
     /// <inheritdoc />
@@ -130,10 +127,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       _partsHelper?.Dispose();
       _wordsHelper?.Dispose();
-      _wordsPartsHelper?.Dispose();
 
       _partsHelper = null;
-      _wordsPartsHelper = null;
       _wordsHelper = null;
     }
 
@@ -210,7 +205,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       // sanity check.
       Contract.Assert(_wordsHelper != null);
       Contract.Assert( _partsHelper != null );
-      Contract.Assert(_wordsPartsHelper != null);
 
       var wordId = await _wordsHelper.GetIdAsync(word.Value, token).ConfigureAwait(false);
       if (wordId != -1)
@@ -232,7 +226,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // marry the word id, (that we just added).
       // with the partIds, (that we just added).
-      await _wordsParts.AddOrUpdateWordParts(wordId, new HashSet<long>(partIds), _wordsPartsHelper, token).ConfigureAwait(false);
+      await _wordsParts.AddOrUpdateWordParts(wordId, new HashSet<long>(partIds), token).ConfigureAwait(false);
 
       // all done return the id of the word.
       return wordId;

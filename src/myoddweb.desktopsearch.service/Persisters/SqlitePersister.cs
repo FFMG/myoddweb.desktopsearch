@@ -200,6 +200,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private void PrepareTransaction(IConnectionFactory factory)
     {
       Words.Prepare(this, factory);
+      WordsParts.Prepare( this, factory );
     }
 
     /// <summary>
@@ -209,6 +210,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private void CompleteTransaction(bool success )
     {
       Words.Complete(success);
+      WordsParts.Complete( success );
     }
     #endregion
 
