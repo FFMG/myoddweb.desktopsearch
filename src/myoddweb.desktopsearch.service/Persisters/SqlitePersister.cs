@@ -193,6 +193,23 @@ namespace myoddweb.desktopsearch.service.Persisters
     #endregion
 
     #region Private
+    /// <summary>
+    /// Prepare the transactions.
+    /// </summary>
+    /// <param name="factory"></param>
+    private void PrepareTransaction(IConnectionFactory factory)
+    {
+      Words.Prepare(this, factory);
+    }
+
+    /// <summary>
+    /// Complete the transactions.
+    /// </summary>
+    /// <param name="success"></param>
+    private void CompleteTransaction(bool success )
+    {
+      Words.Complete(success);
+    }
     #endregion
 
     #region IPersister functions
@@ -231,7 +248,9 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        return await _transactionSpinner.BeginRead(token).ConfigureAwait(false);
+        var factory = await _transactionSpinner.BeginRead(token).ConfigureAwait(false);
+        PrepareTransaction(factory);
+        return factory;
       }
       catch (OperationCanceledException e)
       {
@@ -259,7 +278,9 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        return await _transactionSpinner.BeginWrite(token).ConfigureAwait(false);
+        var factory = await _transactionSpinner.BeginWrite(token).ConfigureAwait(false);
+        PrepareTransaction( factory );
+        return factory;
       }
       catch (OperationCanceledException e)
       {
@@ -292,6 +313,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
         _transactionSpinner.Rollback(connectionFactory);
+        CompleteTransaction(false);
         return true;
       }
       catch (Exception rollbackException)
@@ -315,6 +337,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
         _transactionSpinner.Commit(connectionFactory);
+        CompleteTransaction(true);
         return true;
       }
       catch (Exception commitException)

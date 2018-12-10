@@ -14,10 +14,10 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.helper.IO;
+using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -28,6 +28,10 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlitePersisterWords : interfaces.Persisters.IWords, IDisposable
   {
     #region Member variable
+    private IWordsHelper _wordsHelper;
+    private IPartsHelper _partsHelper;
+    private IWordsPartsHelper _wordsPartsHelper;
+
     /// <summary>
     /// The counter for adding new words
     /// </summary>
@@ -73,28 +77,20 @@ namespace myoddweb.desktopsearch.service.Persisters
     public string TableName => Tables.Words;
 
     /// <inheritdoc />
-    public async Task<long> AddOrUpdateWordAsync(
-      IWordsHelper wordsHelper,
-      IPartsHelper partsHelper,
-      IWordsPartsHelper wordsPartsHelper,
-      IWord word, 
-      CancellationToken token)
-    {
-      var ids = await AddOrGetWordsAsync(new Words(word), wordsHelper, partsHelper, wordsPartsHelper, token ).ConfigureAwait(false);
-      return ids.Any() ? ids.First() : -1;
-    }
-
-    /// <inheritdoc />
-    public async Task<IList<long>> AddOrGetWordsAsync(
-      interfaces.IO.IWords words,
-      IWordsHelper wordsHelper,
-      IPartsHelper partsHelper,
-      IWordsPartsHelper wordsPartsHelper,
-      CancellationToken token)
+    public async Task<long> AddOrUpdateWordAsync( IWord word, CancellationToken token)
     {
       using (_counterAddOrUpdate.Start())
       {
-        return await InsertWordsAsync(words, wordsHelper, partsHelper, wordsPartsHelper, token).ConfigureAwait(false);
+        return await InsertWordAsync(word, token).ConfigureAwait(false);
+      }
+    }
+
+    /// <inheritdoc />
+    public async Task<IList<long>> AddOrGetWordsAsync( interfaces.IO.IWords words, CancellationToken token)
+    {
+      using (_counterAddOrUpdate.Start())
+      {
+        return await InsertWordsAsync(words, token).ConfigureAwait(false);
       }
     }
 
@@ -116,21 +112,40 @@ namespace myoddweb.desktopsearch.service.Persisters
       return true;
     }
 
+    /// <inheritdoc />
+    public void Prepare(IPersister persister, IConnectionFactory factory)
+    {
+      // sanity check.
+      Contract.Assert(_wordsHelper == null);
+      Contract.Assert(_partsHelper == null);
+      Contract.Assert(_wordsPartsHelper == null);
+
+      _wordsHelper = new WordsHelper(factory, persister.Words.TableName);
+      _partsHelper = new PartsHelper(factory, persister.Parts.TableName);
+      _wordsPartsHelper = new WordsPartsHelper(factory, persister.WordsParts.TableName);
+    }
+
+    /// <inheritdoc />
+    public void Complete(bool success)
+    {
+      _partsHelper?.Dispose();
+      _wordsHelper?.Dispose();
+      _wordsPartsHelper?.Dispose();
+
+      _partsHelper = null;
+      _wordsPartsHelper = null;
+      _wordsHelper = null;
+    }
+
     #region Private word functions
     /// <summary>
     /// Given a list of words, re-create the ones that we need to insert.
     /// </summary>
-    /// <param name="wordsHelper"></param>
-    /// <param name="partsHelper"></param>
     /// <param name="words"></param>
-    /// <param name="wordsPartsHelper"></param>
     /// <param name="token"></param>
     /// <returns></returns>
     private async Task<IList<long>> InsertWordsAsync(
       interfaces.IO.IWords words,
-      IWordsHelper wordsHelper,
-      IPartsHelper partsHelper,
-      IWordsPartsHelper wordsPartsHelper, 
       CancellationToken token)
     {
       // if we have nothing to do... we are done.
@@ -156,7 +171,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           }
 
           // the word we want to insert.
-          var wordId = await InsertWordAsync(word, wordsHelper, partsHelper, wordsPartsHelper, token).ConfigureAwait(false);
+          var wordId = await InsertWordAsync(word, token).ConfigureAwait(false);
           if (-1 == wordId)
           {
             // we log errors in the insert function
@@ -186,19 +201,18 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Insert a word in the database and then insert all the parts
     /// </summary>
     /// <param name="word"></param>
-    /// <param name="wordsHelper"></param>
-    /// <param name="partsHelper"></param>
-    /// <param name="wordsPartsHelper"></param>
     /// <param name="token"></param>
     /// <returns></returns>
     private async Task<long> InsertWordAsync(
       IWord word,
-      IWordsHelper wordsHelper,
-      IPartsHelper partsHelper,
-      IWordsPartsHelper wordsPartsHelper,
       CancellationToken token)
     {
-      var wordId = await wordsHelper.GetIdAsync(word.Value, token).ConfigureAwait(false);
+      // sanity check.
+      Contract.Assert(_wordsHelper != null);
+      Contract.Assert( _partsHelper != null );
+      Contract.Assert(_wordsPartsHelper != null);
+
+      var wordId = await _wordsHelper.GetIdAsync(word.Value, token).ConfigureAwait(false);
       if (wordId != -1)
       {
         //  already exists
@@ -206,7 +220,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // then insert it.
-      wordId = await wordsHelper.InsertAndGetIdAsync(word.Value, token).ConfigureAwait(false);
+      wordId = await _wordsHelper.InsertAndGetIdAsync(word.Value, token).ConfigureAwait(false);
       if ( wordId == -1 )
       {
         _logger.Error($"There was an issue getting the word id: {word.Value} from the persister");
@@ -214,11 +228,11 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // we now can add/find the parts for that word.
-      var partIds = await GetOrInsertParts( word, partsHelper, token).ConfigureAwait(false);
+      var partIds = await GetOrInsertParts( word, _partsHelper, token).ConfigureAwait(false);
 
       // marry the word id, (that we just added).
       // with the partIds, (that we just added).
-      await _wordsParts.AddOrUpdateWordParts(wordId, new HashSet<long>(partIds), wordsPartsHelper, token).ConfigureAwait(false);
+      await _wordsParts.AddOrUpdateWordParts(wordId, new HashSet<long>(partIds), _wordsPartsHelper, token).ConfigureAwait(false);
 
       // all done return the id of the word.
       return wordId;

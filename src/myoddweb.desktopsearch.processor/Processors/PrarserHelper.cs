@@ -44,24 +44,9 @@ namespace myoddweb.desktopsearch.processor.Processors
     private readonly IPersister _persister;
 
     /// <summary>
-    /// The words helper.
-    /// </summary>
-    private readonly IWordsHelper _wordsHelper;
-
-    /// <summary>
     /// The files words helper.
     /// </summary>
     private readonly IFilesWordsHelper _filesWordsHelper;
-
-    /// <summary>
-    /// The parts helper when/if we add a word
-    /// </summary>
-    private readonly IPartsHelper _partsHelper;
-
-    /// <summary>
-    /// The parts words helper for when/if we add a word.
-    /// </summary>
-    private readonly IWordsPartsHelper _wordsPartsHelper;
 
     /// <summary>
     /// The lock to allow us to update the word counter.
@@ -75,10 +60,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       (
         file, 
         persister,
-        new WordsHelper( factory, persister.Words.TableName),
         new FilesWordsHelper(factory, persister.FilesWords.TableName),
-        new PartsHelper(factory, persister.Parts.TableName), 
-        new WordsPartsHelper(factory, persister.WordsParts.TableName), 
         fileid
       )
     {
@@ -87,10 +69,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     public PrarserHelper(
       FileSystemInfo file, 
       IPersister persister,
-      IWordsHelper wordsHelper,
       IFilesWordsHelper filesWordsHelper,
-      IPartsHelper partsHelper,
-      IWordsPartsHelper wordsPartsHelper,
       long fileid 
     )
     {
@@ -100,10 +79,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
 
       // set the perister and the transaction.
-      _wordsHelper = wordsHelper ?? throw new ArgumentNullException(nameof(wordsHelper));
       _filesWordsHelper = filesWordsHelper ?? throw new ArgumentNullException(nameof(filesWordsHelper));
-      _partsHelper = partsHelper ?? throw new ArgumentNullException(nameof(partsHelper));
-      _wordsPartsHelper = wordsPartsHelper ?? throw new ArgumentNullException(nameof(wordsPartsHelper));
 
       // set the file being worked on.
       File = file ?? throw new ArgumentNullException(nameof(file));
@@ -115,11 +91,8 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <inheritdoc /> 
     public void Dispose()
     {
-      // dispose of word helper.
-      _wordsHelper?.Dispose();
+      // dispose of the helper.
       _filesWordsHelper?.Dispose();
-      _partsHelper?.Dispose();
-      _wordsPartsHelper?.Dispose();
     }
 
     /// <inheritdoc /> 
@@ -127,9 +100,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     {
       // add all the words
       var wordIds = await _persister.Words.AddOrGetWordsAsync(new Words(words, _persister.Parts.MaxNumCharactersPerParts ),
-        _wordsHelper,
-        _partsHelper,
-        _wordsPartsHelper,
         token
       ).ConfigureAwait(false);
       var added = 0;

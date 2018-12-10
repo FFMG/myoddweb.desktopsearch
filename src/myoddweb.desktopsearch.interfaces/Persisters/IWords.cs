@@ -20,7 +20,7 @@ using myoddweb.desktopsearch.interfaces.IO;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IWords
+  public interface IWords: ITransaction
   {
     /// <summary>
     /// The name of the words table
@@ -30,34 +30,18 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <summary>
     /// Add or update a single word.
     /// </summary>
-    /// <param name="wordsHelper"></param>
-    /// <param name="partsHelper"></param>
-    /// <param name="wordsPartsHelper"></param>
     /// <param name="word"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<long> AddOrUpdateWordAsync(
-      IWordsHelper wordsHelper,
-      IPartsHelper partsHelper,
-      IWordsPartsHelper wordsPartsHelper,
-      IWord word, 
-      CancellationToken token);
+    Task<long> AddOrUpdateWordAsync( IWord word, CancellationToken token);
 
     /// <summary>
     /// Add or update multiple word.
     /// </summary>
-    /// <param name="wordsHelper"></param>
-    /// <param name="partsHelper"></param>
-    /// <param name="wordsPartsHelper"></param>
     /// <param name="words"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IList<long>> AddOrGetWordsAsync(
-      IO.IWords words,
-      IWordsHelper wordsHelper,
-      IPartsHelper partsHelper,
-      IWordsPartsHelper wordsPartsHelper,
-      CancellationToken token);
+    Task<IList<long>> AddOrGetWordsAsync( IO.IWords words, CancellationToken token);
 
     /// <summary>
     /// Check if the given word is valid or not, (and can be added).

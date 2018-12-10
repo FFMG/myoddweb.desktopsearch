@@ -73,7 +73,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         // try and insert the word into the words table.
         // if the word already exists, we will get the id for it.
         // if the word does not exist, we will add it and get the id for it...
-        var wordId = await _words.AddOrUpdateWordAsync(wordsHelper, partsHelper, wordsPartsHelper, wordToAdd, token ).ConfigureAwait(false);
+        var wordId = await _words.AddOrUpdateWordAsync( wordToAdd, token ).ConfigureAwait(false);
         if (-1 == wordId)
         {
           _logger.Error($"There was an issue inserting/finding the word : {wordToAdd.Value}.");
