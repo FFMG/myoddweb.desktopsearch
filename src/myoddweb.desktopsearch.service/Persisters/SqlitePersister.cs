@@ -201,6 +201,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       Words.Prepare(this, factory);
       WordsParts.Prepare( this, factory );
+      FilesWords.Prepare( this, factory );
     }
 
     /// <summary>
@@ -211,6 +212,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       Words.Complete(success);
       WordsParts.Complete( success );
+      FilesWords.Complete(success);
     }
     #endregion
 

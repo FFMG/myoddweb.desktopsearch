@@ -19,7 +19,7 @@ using myoddweb.desktopsearch.interfaces.IO;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IFilesWords
+  public interface IFilesWords : ITransaction
   {
     /// <summary>
     /// Get the table name.
@@ -31,20 +31,9 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// </summary>
     /// <param name="wordToAdd">The words we want to add to the list of words.</param>
     /// <param name="fileIdsToAddWordTo">Once the word is added, the files we will add it to.</param>
-    /// <param name="wordsHelper"></param>
-    /// <param name="fileWordsHelper"></param>
-    /// <param name="partsHelper"></param>
-    /// <param name="wordsPartsHelper"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddParserWordsAsync(
-      IWord wordToAdd,
-      IList<long> fileIdsToAddWordTo, 
-      IWordsHelper wordsHelper,
-      IFilesWordsHelper fileWordsHelper,
-      IPartsHelper partsHelper,
-      IWordsPartsHelper wordsPartsHelper,
-      CancellationToken token);
+    Task<bool> AddParserWordsAsync( IWord wordToAdd, IList<long> fileIdsToAddWordTo, CancellationToken token);
 
     /// <summary>
     /// Remove a file id from the FilesWords table.

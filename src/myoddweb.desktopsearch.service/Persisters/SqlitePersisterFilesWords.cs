@@ -15,9 +15,11 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -28,6 +30,12 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlitePersisterFilesWords : IFilesWords
   {
     #region Member variables
+
+    /// <summary>
+    /// The files helper per transaction.
+    /// </summary>
+    private IFilesWordsHelper _fileWordsHelper;
+
     /// <summary>
     /// The logger
     /// </summary>
@@ -56,10 +64,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     public async Task<bool> AddParserWordsAsync(
       IWord wordToAdd,
       IList<long> fileIdsToAddWordTo,
-      IWordsHelper wordsHelper, 
-      IFilesWordsHelper filesWordsHelper,
-      IPartsHelper partsHelper,
-      IWordsPartsHelper wordsPartsHelper,
       CancellationToken token)
     {
       // if we have no files, we don't actually want to add the word.
@@ -84,7 +88,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         // so that when we locate that word, we will have a valid id for it.
         foreach (var fileId in fileIdsToAddWordTo)
         {
-          if( !await filesWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false))
+          if( !await _fileWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false))
           {
             _logger.Error( $"There was an issue inserting word : {wordToAdd.Value}({wordId}) for file : {fileId}");
           }
@@ -144,6 +148,22 @@ namespace myoddweb.desktopsearch.service.Persisters
         _logger.Exception(e);
         return false;
       }
+    }
+
+    /// <inheritdoc />
+    public void Prepare(IPersister persister, IConnectionFactory factory)
+    {
+      // sanity check.
+      Contract.Assert(_fileWordsHelper == null);
+
+      _fileWordsHelper = new FilesWordsHelper(factory, TableName);
+    }
+
+    /// <inheritdoc />
+    public void Complete(bool success)
+    {
+      _fileWordsHelper?.Dispose();
+      _fileWordsHelper = null;
     }
   }
 }
