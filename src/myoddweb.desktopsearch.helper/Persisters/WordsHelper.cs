@@ -51,7 +51,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _insertCommand;
         }
 
-        lock (_lock)
+        using (_lock.Try())
         {
           if (_insertCommand == null)
           {
@@ -74,7 +74,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _insertWord;
         }
 
-        lock (_lock)
+        using (_lock.Try())
         {
           if (null == _insertWord)
           {
@@ -117,7 +117,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _selectCommand;
         }
 
-        lock (_lock)
+        using (_lock.Try())
         {
           if (_selectCommand == null)
           {
@@ -140,7 +140,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _selectword;
         }
 
-        lock (_lock)
+        using (_lock.Try())
         {
           if (null == _selectword)
           {
@@ -157,9 +157,9 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     #region Member variables
     /// <summary>
-    /// The lock to make sure that we do not create the same thing over and over.
+    /// The async await lock
     /// </summary>
-    private readonly object _lock = new object();
+    private readonly Lock.Lock _lock = new Lock.Lock();
 
     /// <summary>
     /// Check if this item has been disposed or not.
@@ -217,36 +217,42 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <inheritdoc />
     public async Task<long> GetIdAsync(string word, CancellationToken token)
     {
-      // sanity check
-      ThrowIfDisposed();
-
-      // we are first going to look for that id
-      // if it does not exist, then we cannot update the files table.
-      SelectWord.Value = word;
-      var value = await _factory.ExecuteReadOneAsync( SelectCommand, token).ConfigureAwait(false);
-      if (null == value || value == DBNull.Value)
+      using (await _lock.TryAsync().ConfigureAwait(false))
       {
-        // the word does not exist
-        // so we cannot really go any further here.
-        return -1;
+        // sanity check
+        ThrowIfDisposed();
+
+        // we are first going to look for that id
+        // if it does not exist, then we cannot update the files table.
+        SelectWord.Value = word;
+        var value = await _factory.ExecuteReadOneAsync(SelectCommand, token).ConfigureAwait(false);
+        if (null == value || value == DBNull.Value)
+        {
+          // the word does not exist
+          // so we cannot really go any further here.
+          return -1;
+        }
+        return (long) value;
       }
-      return (long) value;
     }
 
     /// <inheritdoc />
     public async Task<long> InsertAndGetIdAsync(string word, CancellationToken token)
     {
-      // sanity check
-      ThrowIfDisposed();
+      using (await _lock.TryAsync().ConfigureAwait( false ) )
+      {
+        // sanity check
+        ThrowIfDisposed();
 
-      // insert the word.
-      InsertWord.Value = word;
-      await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false);
+        // insert the word.
+        InsertWord.Value = word;
+        await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false);
 
-      // regardless of the result, get the id
-      // if it existed, get the id
-      // if we inserted it, get the id.
-      return await GetIdAsync(word, token).ConfigureAwait(false);
+        // regardless of the result, get the id
+        // if it existed, get the id
+        // if we inserted it, get the id.
+        return await GetIdAsync(word, token).ConfigureAwait(false);
+      }
     }
   }
 }

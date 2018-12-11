@@ -50,6 +50,7 @@
     <Compile Include="DirectoryInfoComparerTest.cs" />
     <Compile Include="FileInfoComparerTest.cs" />
     <Compile Include="FileTests.cs" />
+    <Compile Include="LockTest.cs" />
     <Compile Include="NameMatchTests.cs" />
     <Compile Include="PartsTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

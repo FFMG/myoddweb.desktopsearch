@@ -212,23 +212,36 @@ namespace myoddweb.desktopsearch.service.Persisters
         return wordId;
       }
 
-      // then insert it.
-      wordId = await _wordsHelper.InsertAndGetIdAsync(word.Value, token).ConfigureAwait(false);
-      if ( wordId == -1 )
+      try
       {
-        _logger.Error($"There was an issue getting the word id: {word.Value} from the persister");
-        return -1;
+        // then insert it.
+        wordId = await _wordsHelper.InsertAndGetIdAsync(word.Value, token).ConfigureAwait(false);
+        if ( wordId == -1 )
+        {
+          _logger.Error($"There was an issue getting the word id: {word.Value} from the persister");
+          return -1;
+        }
+
+        // we now can add/find the parts for that word.
+        var partIds = await GetOrInsertParts( word, token).ConfigureAwait(false);
+
+        // marry the word id, (that we just added).
+        // with the partIds, (that we just added).
+        await _wordsParts.AddOrUpdateWordParts(wordId, new HashSet<long>(partIds), token).ConfigureAwait(false);
+
+        // all done return the id of the word.
+        return wordId;
       }
-
-      // we now can add/find the parts for that word.
-      var partIds = await GetOrInsertParts( word, token).ConfigureAwait(false);
-
-      // marry the word id, (that we just added).
-      // with the partIds, (that we just added).
-      await _wordsParts.AddOrUpdateWordParts(wordId, new HashSet<long>(partIds), token).ConfigureAwait(false);
-
-      // all done return the id of the word.
-      return wordId;
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Insert single word");
+        throw;
+      }
+      catch (Exception ex)
+      {
+        _logger.Exception(ex);
+        throw;
+      }
     }
 
     private async Task<IList<long>> GetOrInsertParts( IWord word, CancellationToken token)
