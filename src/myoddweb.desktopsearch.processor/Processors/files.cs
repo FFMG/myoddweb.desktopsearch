@@ -169,16 +169,16 @@ namespace myoddweb.desktopsearch.processor.Processors
         {
           case UpdateType.Created:
             // only add the pending updates where there are actual words to add.
-            tasks.Add(WorkCreatedAsync(factory, pendingFileUpdate, token));
+            tasks.Add(WorkCreatedAsync( pendingFileUpdate, token));
             break;
 
           case UpdateType.Deleted:
-            tasks.Add(WorkDeletedAsync(factory, pendingFileUpdate, token));
+            tasks.Add(WorkDeletedAsync( pendingFileUpdate, token));
             break;
 
           case UpdateType.Changed:
             // renamed or content/settingss changed
-            tasks.Add(WorkChangedAsync(factory, pendingFileUpdate, token));
+            tasks.Add(WorkChangedAsync( pendingFileUpdate, token));
             break;
 
           default:
@@ -194,20 +194,17 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// A folder was deleted
     /// </summary>
-    /// <param name="factory"></param>
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<IPendingFileUpdate> WorkDeletedAsync(
-      IConnectionFactory factory,
-      IPendingFileUpdate pendingFileUpdate, CancellationToken token)
+    public async Task<IPendingFileUpdate> WorkDeletedAsync( IPendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
       var fileId = pendingFileUpdate.FileId;
 
       // because the file was deleted from the db we must remove the words for it.
       // we could technically end up with orphan words, (words with no file ids for it)
       // but that's not really that important, maybe one day we will vacuum those words?.
-      if (!await _persister.FilesWords.DeleteWordsAsync(fileId, factory, token).ConfigureAwait(false))
+      if (!await _persister.FilesWords.DeleteFileAsync(fileId, token).ConfigureAwait(false))
       {
         return null;
       }
@@ -217,14 +214,10 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// A folder was created
     /// </summary>
-    /// <param name="factory"></param>
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task<IPendingFileUpdate> WorkCreatedAsync(
-      IConnectionFactory factory,
-      IPendingFileUpdate pendingFileUpdate, 
-      CancellationToken token)
+    public Task<IPendingFileUpdate> WorkCreatedAsync(IPendingFileUpdate pendingFileUpdate, CancellationToken token)
     {
       // get the file we just created.
       var file = pendingFileUpdate.File;
@@ -235,18 +228,16 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
 
       //  process it...
-      return ProcessFile( factory, pendingFileUpdate, token );
+      return ProcessFile( pendingFileUpdate, token );
     }
 
     /// <summary>
     /// A folder was changed
     /// </summary>
-    /// <param name="factory"></param>
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
     public async Task<IPendingFileUpdate> WorkChangedAsync(
-      IConnectionFactory factory,
       IPendingFileUpdate pendingFileUpdate, 
       CancellationToken token)
     {
@@ -262,10 +253,10 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       // before we process the file, we need to delete all
       // the words that are attached to it.
-      await _persister.FilesWords.DeleteWordsAsync(fileId, factory, token).ConfigureAwait(false);
+      await _persister.FilesWords.DeleteFileAsync(fileId, token).ConfigureAwait(false);
 
       // then we can process it...
-      return await ProcessFile(factory, pendingFileUpdate, token).ConfigureAwait(false);
+      return await ProcessFile( pendingFileUpdate, token).ConfigureAwait(false);
     }
     #endregion
 
@@ -273,15 +264,10 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// Process a file.
     /// </summary>
-    /// <param name="factory"></param>
     /// <param name="pendingFileUpdate"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<IPendingFileUpdate> ProcessFile(
-      IConnectionFactory factory,
-      IPendingFileUpdate pendingFileUpdate, 
-      CancellationToken token
-    )
+    private async Task<IPendingFileUpdate> ProcessFile( IPendingFileUpdate pendingFileUpdate, CancellationToken token )
     {
       // is this file ignored?
       if (IsIgnored(pendingFileUpdate))
@@ -297,7 +283,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       long[] totalWords;
 
       // create the helper.
-      using (var parserHelper = new PrarserHelper( pendingFileUpdate.File, _persister, factory, pendingFileUpdate.FileId))
+      using (var parserHelper = new PrarserHelper( pendingFileUpdate.File, _persister, pendingFileUpdate.FileId))
       {
         tasks.AddRange(_parsers.Select(parser => ProcessFile(parserHelper, parser, pendingFileUpdate.File, token)));
 

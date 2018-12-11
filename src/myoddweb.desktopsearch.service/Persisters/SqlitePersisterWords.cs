@@ -28,6 +28,9 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlitePersisterWords : interfaces.Persisters.IWords, IDisposable
   {
     #region Member variable
+    /// <summary>
+    /// The word helper durring a transaction.
+    /// </summary>
     private IWordsHelper _wordsHelper;
     private IPartsHelper _partsHelper;
 

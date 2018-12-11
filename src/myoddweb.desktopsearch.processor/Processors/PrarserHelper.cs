@@ -18,7 +18,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.IO;
-using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -44,42 +43,17 @@ namespace myoddweb.desktopsearch.processor.Processors
     private readonly IPersister _persister;
 
     /// <summary>
-    /// The files words helper.
-    /// </summary>
-    private readonly IFilesWordsHelper _filesWordsHelper;
-
-    /// <summary>
     /// The lock to allow us to update the word counter.
     /// </summary>
     private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
     #endregion
 
-    public PrarserHelper(
-      FileSystemInfo file, IPersister persister, IConnectionFactory factory, long fileid) :
-      this
-      (
-        file, 
-        persister,
-        new FilesWordsHelper(factory, persister.FilesWords.TableName),
-        fileid
-      )
-    {
-    }
-
-    public PrarserHelper(
-      FileSystemInfo file, 
-      IPersister persister,
-      IFilesWordsHelper filesWordsHelper,
-      long fileid 
-    )
+    public PrarserHelper( FileSystemInfo file, IPersister persister, long fileid )
     {
       _fileId = fileid;
 
       // save the persister
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
-
-      // set the perister and the transaction.
-      _filesWordsHelper = filesWordsHelper ?? throw new ArgumentNullException(nameof(filesWordsHelper));
 
       // set the file being worked on.
       File = file ?? throw new ArgumentNullException(nameof(file));
@@ -91,8 +65,6 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <inheritdoc /> 
     public void Dispose()
     {
-      // dispose of the helper.
-      _filesWordsHelper?.Dispose();
     }
 
     /// <inheritdoc /> 
@@ -106,7 +78,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       foreach (var wordId in wordIds)
       {
         // link the id to that file.
-        await _filesWordsHelper.InsertAsync(wordId, _fileId, token).ConfigureAwait(false);
+        await _persister.FilesWords.AddWordToFilesAsync( wordId, new []{_fileId}, token).ConfigureAwait(false);
 
         // we only added one word.
         ++added;

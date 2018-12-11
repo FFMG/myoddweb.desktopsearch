@@ -61,10 +61,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     public string TableName => Tables.FilesWords;
 
     /// <inheritdoc />
-    public async Task<bool> AddParserWordsAsync(
-      IWord wordToAdd,
-      IList<long> fileIdsToAddWordTo,
-      CancellationToken token)
+    public async Task<bool> AddWordToFilesAsync( IWord wordToAdd, IList<long> fileIdsToAddWordTo, CancellationToken token)
     {
       // if we have no files, we don't actually want to add the word.
       if (!fileIdsToAddWordTo.Any())
@@ -84,18 +81,8 @@ namespace myoddweb.desktopsearch.service.Persisters
           return false;
         }
 
-        // we then go around and 'attach' that word id to that file id.
-        // so that when we locate that word, we will have a valid id for it.
-        foreach (var fileId in fileIdsToAddWordTo)
-        {
-          if( !await _fileWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false))
-          {
-            _logger.Error( $"There was an issue inserting word : {wordToAdd.Value}({wordId}) for file : {fileId}");
-          }
-        }
-
-        // we are done
-        return true;
+        // then add the id to the files.
+        return await AddWordToFilesAsync(wordId, fileIdsToAddWordTo, token).ConfigureAwait(false);
       }
       catch (OperationCanceledException)
       {
@@ -110,33 +97,53 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteWordsAsync(long fileId, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> AddWordToFilesAsync(long wordId, IList<long> fileIdsToAddWordTo, CancellationToken token)
+    {
+      Contract.Assert(_fileWordsHelper != null );
+
+      // if we have no files, we don't actually want to add the word.
+      if (!fileIdsToAddWordTo.Any())
+      {
+        return false;
+      }
+
+      try
+      {
+
+        // we then go around and 'attach' that word id to that file id.
+        // so that when we locate that word, we will have a valid id for it.
+        foreach (var fileId in fileIdsToAddWordTo)
+        {
+          if (!await _fileWordsHelper.InsertAsync(wordId, fileId, token).ConfigureAwait(false))
+          {
+            _logger.Error($"There was an issue inserting word : {wordId} for file : {fileId}");
+          }
+        }
+
+        // we are done
+        return true;
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Add pending parser words");
+        throw;
+      }
+      catch (Exception ex)
+      {
+        _logger.Exception("There was an exception adding parser words", ex);
+        throw;
+      }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DeleteFileAsync(long fileId, CancellationToken token)
     {
       try
       {
-        // then remove the ones we might have done already.
-        var sqlDelete = $"DELETE FROM {TableName} WHERE fileid=@fileid";
-        using (var cmd = connectionFactory.CreateCommand(sqlDelete))
-        {
-          var pFId = cmd.CreateParameter();
-          pFId.DbType = DbType.Int64;
-          pFId.ParameterName = "@fileid";
-          cmd.Parameters.Add(pFId);
-
-          pFId.Value = fileId;
-
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-
-          // it is very posible that this file had no words at all
-          // in fact most files are never parsed.
-          // so we don't want to log a message for this.
-          // if there is an error it will throw and this will be logged that way
-          await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false);
-        }
+        Contract.Assert(_fileWordsHelper != null);
 
         // all good.
-        return true;
+        return await _fileWordsHelper.DeleteFileAsync( fileId, token ).ConfigureAwait( false );
       }
       catch (OperationCanceledException)
       {

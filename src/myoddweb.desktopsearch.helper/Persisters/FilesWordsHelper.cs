@@ -216,6 +216,72 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
     #endregion
 
+    #region Delete
+    /// <summary>
+    /// The delete command
+    /// </summary>
+    private IDbCommand _deleteCommand;
+
+    /// <summary>
+    /// The file id to delete.
+    /// </summary>
+    private IDbDataParameter _deleteFileId;
+
+    /// <summary>
+    /// The sql string that we will use to delete the id
+    /// </summary>
+    private string DeletetSql => $"DELETE FROM {_tableName} WHERE fileid=@fileid";
+
+    /// <summary>
+    /// Create the delete command if needed.
+    /// </summary>
+    private IDbCommand DeleteCommand
+    {
+      get
+      {
+        if (_deleteCommand != null)
+        {
+          return _deleteCommand;
+        }
+
+        lock (_lock)
+        {
+          if (_deleteCommand == null)
+          {
+            _deleteCommand = _factory.CreateCommand(DeletetSql);
+          }
+          return _deleteCommand;
+        }
+      }
+    }
+
+    /// <summary>
+    /// The delete file id parameter.
+    /// </summary>
+    private IDbDataParameter DeleteFileId
+    {
+      get
+      {
+        if (null != _deleteFileId)
+        {
+          return _deleteFileId;
+        }
+
+        lock (_lock)
+        {
+          if (null == _deleteFileId)
+          {
+            _deleteFileId = InsertCommand.CreateParameter();
+            _deleteFileId.DbType = DbType.Int64;
+            _deleteFileId.ParameterName = "@fileid";
+            DeleteCommand.Parameters.Add(_deleteFileId);
+          }
+          return _deleteFileId;
+        }
+      }
+    }
+    #endregion
+
     #region Member variables
     /// <summary>
     /// The lock to make sure that we do not create the same thing over and over.
@@ -307,6 +373,16 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
       // was there an error ... or is it a duplicate.
       return await ExistsAsync(wordId, fileId, token).ConfigureAwait(false);
+    }
+
+    public async Task<bool> DeleteFileAsync(long fileId, CancellationToken token)
+    {
+      // sanity check
+      ThrowIfDisposed();
+
+      // delete the file
+      DeleteFileId.Value = fileId;
+      return (1 == await _factory.ExecuteWriteAsync(DeleteCommand, token).ConfigureAwait(false));
     }
   }
 }

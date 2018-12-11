@@ -27,22 +27,30 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     string TableName { get; }
 
     /// <summary>
-    /// Add multiple words to a single file id
+    /// Add a word to a list of files.
     /// </summary>
-    /// <param name="wordToAdd">The words we want to add to the list of words.</param>
+    /// <param name="wordToAdd">The word we want to add to the list of words.</param>
     /// <param name="fileIdsToAddWordTo">Once the word is added, the files we will add it to.</param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddParserWordsAsync( IWord wordToAdd, IList<long> fileIdsToAddWordTo, CancellationToken token);
+    Task<bool> AddWordToFilesAsync( IWord wordToAdd, IList<long> fileIdsToAddWordTo, CancellationToken token);
+
+    /// <summary>
+    /// Add multiple words to a single file id
+    /// </summary>
+    /// <param name="wordId">The word id we want to add this to.</param>
+    /// <param name="fileIdsToAddWordTo">Once the word is added, the files we will add it to.</param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> AddWordToFilesAsync(long wordId, IList<long> fileIdsToAddWordTo, CancellationToken token);
 
     /// <summary>
     /// Remove a file id from the FilesWords table.
     /// So when we are looking for a word, by id, this file will not come up.
     /// </summary>
     /// <param name="fileId"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteWordsAsync( long fileId, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> DeleteFileAsync( long fileId, CancellationToken token);
   }
 }
