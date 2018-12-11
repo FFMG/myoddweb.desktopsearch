@@ -198,9 +198,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="word"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> InsertWordAsync(
-      IWord word,
-      CancellationToken token)
+    private async Task<long> InsertWordAsync( IWord word, CancellationToken token)
     {
       // sanity check.
       Contract.Assert(_wordsHelper != null);
@@ -222,7 +220,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // we now can add/find the parts for that word.
-      var partIds = await GetOrInsertParts( word, _partsHelper, token).ConfigureAwait(false);
+      var partIds = await GetOrInsertParts( word, token).ConfigureAwait(false);
 
       // marry the word id, (that we just added).
       // with the partIds, (that we just added).
@@ -232,10 +230,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       return wordId;
     }
 
-    private async Task<IList<long>> GetOrInsertParts(
-      IWord word,
-      IPartsHelper partsHelper,
-      CancellationToken token)
+    private async Task<IList<long>> GetOrInsertParts( IWord word, CancellationToken token)
     {
       // get the parts.
       var parts = word.Parts;
@@ -245,6 +240,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       {
         return new List<long>();
       }
+
+      Contract.Assert( _partsHelper != null );
 
       // the ids of all the parts, (added or otherwise).
       var partIds = new List<long>(parts.Count);
@@ -257,7 +254,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         // we will do an insert regadless if the value exists or not.
         // this is because we don't just insert if the value exist.
         // there is no point in just geting the value.
-        var partId = await partsHelper.InsertAndGetIdAsync(part, token).ConfigureAwait(false);
+        var partId = await _partsHelper.InsertAndGetIdAsync(part, token).ConfigureAwait(false);
         if (-1 != partId)
         {
           partIds.Add(partId);

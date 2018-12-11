@@ -86,8 +86,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     public void Prepare(IPersister persister, IConnectionFactory factory)
     {
       // sanity check.
-      Contract.Assert(_wordsPartsHelper != null);
-
+      Contract.Assert(_wordsPartsHelper == null);
+    
       _wordsPartsHelper = new WordsPartsHelper(factory, TableName);
     }
 
