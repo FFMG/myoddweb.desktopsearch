@@ -29,7 +29,7 @@ namespace myoddweb.desktopsearch.service.Persisters
   {
     #region Member variable
     /// <summary>
-    /// The word helper durring a transaction.
+    /// The word helper durring a transaction. 
     /// </summary>
     private IWordsHelper _wordsHelper;
     private IPartsHelper _partsHelper;
@@ -205,8 +205,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       // sanity check.
       Contract.Assert(_wordsHelper != null);
-      Contract.Assert( _partsHelper != null );
-
       var wordId = await _wordsHelper.GetIdAsync(word.Value, token).ConfigureAwait(false);
       if (wordId != -1)
       {
