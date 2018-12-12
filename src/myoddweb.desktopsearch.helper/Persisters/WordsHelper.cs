@@ -223,12 +223,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
         // insert the word.
         InsertWord.Value = word;
         await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false);
-
-        // regardless of the result, get the id
-        // if it existed, get the id
-        // if we inserted it, get the id.
-        return await GetIdAsync(word, token).ConfigureAwait(false);
       }
+      // regardless of the result, get the id
+      // if it existed, get the id
+      // if we inserted it, get the id.
+      return await GetIdAsync(word, token).ConfigureAwait(false);
     }
   }
 }

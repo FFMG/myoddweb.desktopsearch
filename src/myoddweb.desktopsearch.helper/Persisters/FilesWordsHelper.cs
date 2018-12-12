@@ -327,10 +327,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           // the insert woked.
           return true;
         }
-
-        // was there an error ... or is it a duplicate.
-        return await ExistsAsync(wordId, fileId, token).ConfigureAwait(false);
       }
+
+      // was there an error ... or is it a duplicate.
+      // we have to check outside the lock
+      return await ExistsAsync(wordId, fileId, token).ConfigureAwait(false);
     }
 
     public async Task<bool> DeleteFileAsync(long fileId, CancellationToken token)

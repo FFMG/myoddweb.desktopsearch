@@ -419,11 +419,10 @@ namespace myoddweb.desktopsearch.helper.Persisters
         {
           return true;
         }
-
-        // we could not insert it
-        // so we have to check if the reason was because this exists already.
-        return await ExistsAsync(wordId, partId, token).ConfigureAwait(false);
       }
+      // we could not insert it
+      // so we have to check if the reason was because this exists already.
+      return await ExistsAsync(wordId, partId, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

@@ -218,12 +218,12 @@ namespace myoddweb.desktopsearch.helper.Persisters
         // insert the word.
         InsertPart.Value = part;
         await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false);
-
-        // regardless of the result, get the id
-        // if it existed, get the id
-        // if we inserted it, get the id.
-        return await GetIdAsync(part, token).ConfigureAwait(false);
       }
+      // regardless of the result, get the id
+      // if it existed, get the id
+      // if we inserted it, get the id.
+      // we have to check outside the lock
+      return await GetIdAsync(part, token).ConfigureAwait(false);
     }
   }
 }
