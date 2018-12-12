@@ -56,14 +56,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _existsCommand;
         }
 
-        lock (_lock)
-        {
-          if (_existsCommand == null)
-          {
-            _existsCommand = _factory.CreateCommand(ExistsSql);
-          }
-          return _existsCommand;
-        }
+        _existsCommand = _factory.CreateCommand(ExistsSql);
+        return _existsCommand;
       }
     }
 
@@ -79,17 +73,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _existsWordId;
         }
 
-        lock (_lock)
-        {
-          if (null == _existsWordId)
-          {
-            _existsWordId = ExistsCommand.CreateParameter();
-            _existsWordId.DbType = DbType.Int64;
-            _existsWordId.ParameterName = "@wordid";
-            ExistsCommand.Parameters.Add(_existsWordId);
-          }
-          return _existsWordId;
-        }
+        _existsWordId = ExistsCommand.CreateParameter();
+        _existsWordId.DbType = DbType.Int64;
+        _existsWordId.ParameterName = "@wordid";
+        ExistsCommand.Parameters.Add(_existsWordId);
+        return _existsWordId;
       }
     }
 
@@ -105,17 +93,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _existsPartId;
         }
 
-        lock (_lock)
-        {
-          if (null == _existsPartId)
-          {
-            _existsPartId = ExistsCommand.CreateParameter();
-            _existsPartId.DbType = DbType.Int64;
-            _existsPartId.ParameterName = "@partid";
-            ExistsCommand.Parameters.Add(_existsPartId);
-          }
-          return _existsPartId;
-        }
+        _existsPartId = ExistsCommand.CreateParameter();
+        _existsPartId.DbType = DbType.Int64;
+        _existsPartId.ParameterName = "@partid";
+        ExistsCommand.Parameters.Add(_existsPartId);
+        return _existsPartId;
       }
     }
     #endregion
@@ -154,14 +136,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _insertCommand;
         }
 
-        lock (_lock)
-        {
-          if (_insertCommand == null)
-          {
-            _insertCommand = _factory.CreateCommand(InsertSql);
-          }
-          return _insertCommand;
-        }
+        _insertCommand = _factory.CreateCommand(InsertSql);
+        return _insertCommand;
       }
     }
 
@@ -177,17 +153,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _insertWordId;
         }
 
-        lock (_lock)
-        {
-          if (null == _insertWordId)
-          {
-            _insertWordId = InsertCommand.CreateParameter();
-            _insertWordId.DbType = DbType.Int64;
-            _insertWordId.ParameterName = "@wordId";
-            InsertCommand.Parameters.Add(_insertWordId);
-          }
-          return _insertWordId;
-        }
+        _insertWordId = InsertCommand.CreateParameter();
+        _insertWordId.DbType = DbType.Int64;
+        _insertWordId.ParameterName = "@wordId";
+        InsertCommand.Parameters.Add(_insertWordId);
+        return _insertWordId;
       }
     }
 
@@ -203,17 +173,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _insertPartId;
         }
 
-        lock (_lock)
-        {
-          if (null == _insertPartId)
-          {
-            _insertPartId = InsertCommand.CreateParameter();
-            _insertPartId.DbType = DbType.Int64;
-            _insertPartId.ParameterName = "@partId";
-            InsertCommand.Parameters.Add(_insertPartId);
-          }
-          return _insertPartId;
-        }
+        _insertPartId = InsertCommand.CreateParameter();
+        _insertPartId.DbType = DbType.Int64;
+        _insertPartId.ParameterName = "@partId";
+        InsertCommand.Parameters.Add(_insertPartId);
+        return _insertPartId;
       }
     }
     #endregion
@@ -251,14 +215,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _deleteCommand;
         }
 
-        lock (_lock)
-        {
-          if (_deleteCommand == null)
-          {
-            _deleteCommand = _factory.CreateCommand(DeleteSql);
-          }
-          return _deleteCommand;
-        }
+        _deleteCommand = _factory.CreateCommand(DeleteSql);
+        return _deleteCommand;
       }
     }
 
@@ -274,17 +232,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _deleteWordId;
         }
 
-        lock (_lock)
-        {
-          if (null == _deleteWordId)
-          {
-            _deleteWordId = DeleteCommand.CreateParameter();
-            _deleteWordId.DbType = DbType.Int64;
-            _deleteWordId.ParameterName = "@wordId";
-            DeleteCommand.Parameters.Add(_deleteWordId);
-          }
-          return _deleteWordId;
-        }
+        _deleteWordId = DeleteCommand.CreateParameter();
+        _deleteWordId.DbType = DbType.Int64;
+        _deleteWordId.ParameterName = "@wordId";
+        DeleteCommand.Parameters.Add(_deleteWordId);
+        return _deleteWordId;
       }
     }
 
@@ -300,17 +252,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _deletePartId;
         }
 
-        lock (_lock)
-        {
-          if (null == _deletePartId)
-          {
-            _deletePartId = DeleteCommand.CreateParameter();
-            _deletePartId.DbType = DbType.Int64;
-            _deletePartId.ParameterName = "@partId";
-            DeleteCommand.Parameters.Add(_insertPartId);
-          }
-          return _deletePartId;
-        }
+        _deletePartId = DeleteCommand.CreateParameter();
+        _deletePartId.DbType = DbType.Int64;
+        _deletePartId.ParameterName = "@partId";
+        DeleteCommand.Parameters.Add(_insertPartId);
+        return _deletePartId;
       }
     }
     #endregion
@@ -343,14 +289,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _selectIdsCommand;
         }
 
-        lock (_lock)
-        {
-          if (_selectIdsCommand == null)
-          {
-            _selectIdsCommand = _factory.CreateCommand(SelectPartIdsSql);
-          }
-          return _selectIdsCommand;
-        }
+        _selectIdsCommand = _factory.CreateCommand(SelectPartIdsSql);
+        return _selectIdsCommand;
       }
     }
 
@@ -366,17 +306,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _selectPartIdsWordId;
         }
 
-        lock (_lock)
-        {
-          if (null == _selectPartIdsWordId)
-          {
-            _selectPartIdsWordId = SelectPartIdsCommand.CreateParameter();
-            _selectPartIdsWordId.DbType = DbType.Int64;
-            _selectPartIdsWordId.ParameterName = "@wordid";
-            SelectPartIdsCommand.Parameters.Add(_selectPartIdsWordId);
-          }
-          return _selectPartIdsWordId;
-        }
+        _selectPartIdsWordId = SelectPartIdsCommand.CreateParameter();
+        _selectPartIdsWordId.DbType = DbType.Int64;
+        _selectPartIdsWordId.ParameterName = "@wordid";
+        SelectPartIdsCommand.Parameters.Add(_selectPartIdsWordId);
+        return _selectPartIdsWordId;
       }
     }
     #endregion
@@ -385,7 +319,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <summary>
     /// The lock to make sure that we do not create the same thing over and over.
     /// </summary>
-    private readonly object _lock = new object();
+    private readonly Lock.Lock _lock = new Lock.Lock();
 
     /// <summary>
     /// Check if this item has been disposed or not.
@@ -444,75 +378,87 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <inheritdoc />
     public async Task<IList<long>> GetPartIdsAsync(long wordid, CancellationToken token )
     {
-      // sanity check
-      ThrowIfDisposed();
-
-      // select all the ids that belong to that word.
-      SelectPartIdsWordId.Value = wordid;
-      using (var reader = await _factory.ExecuteReadAsync(SelectPartIdsCommand, token).ConfigureAwait(false))
+      using (await _lock.TryAsync().ConfigureAwait(false))
       {
-        var partIds = new List<long>();
-        while (reader.Read())
+        // sanity check
+        ThrowIfDisposed();
+
+        // select all the ids that belong to that word.
+        SelectPartIdsWordId.Value = wordid;
+        using (var reader = await _factory.ExecuteReadAsync(SelectPartIdsCommand, token).ConfigureAwait(false))
         {
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
+          var partIds = new List<long>();
+          while (reader.Read())
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
 
-          // add this part
-          partIds.Add(reader.GetInt64(0));
+            // add this part
+            partIds.Add(reader.GetInt64(0));
+          }
+
+          //  return all the part ids we found.
+          return partIds;
         }
-
-        //  return all the part ids we found.
-        return partIds;
       }
     }
 
     /// <inheritdoc />
     public async Task<bool> InsertAsync(long wordId, long partId, CancellationToken token)
     {
-      // sanity check
-      ThrowIfDisposed();
-
-      InsertWordId.Value = wordId;
-      InsertPartId.Value = partId;
-
-      // select all the ids that belong to that word.
-      if (1 == await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false))
+      using (await _lock.TryAsync().ConfigureAwait(false))
       {
-        return true;
-      }
+        // sanity check
+        ThrowIfDisposed();
 
-      // we could not insert it
-      // so we have to check if the reason was because this exists already.
-      return await ExistsAsync(wordId, partId, token).ConfigureAwait(false);
+        InsertWordId.Value = wordId;
+        InsertPartId.Value = partId;
+
+        // select all the ids that belong to that word.
+        if (1 == await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false))
+        {
+          return true;
+        }
+
+        // we could not insert it
+        // so we have to check if the reason was because this exists already.
+        return await ExistsAsync(wordId, partId, token).ConfigureAwait(false);
+      }
     }
 
     /// <inheritdoc />
     public async Task<bool> DeleteAsync(long wordId, long partId, CancellationToken token)
     {
-      // sanity check
-      ThrowIfDisposed();
+      using (await _lock.TryAsync().ConfigureAwait(false))
+      {
+        // sanity check
+        ThrowIfDisposed();
 
-      DeleteWordId.Value = wordId;
-      DeletePartId.Value = partId;
+        DeleteWordId.Value = wordId;
+        DeletePartId.Value = partId;
 
-      // select all the ids that belong to that word.
-      return 0 != await _factory.ExecuteWriteAsync(DeleteCommand, token).ConfigureAwait(false);
+        // select all the ids that belong to that word.
+        return 0 != await _factory.ExecuteWriteAsync(DeleteCommand, token).ConfigureAwait(false);
+      }
     }
 
     /// <inheritdoc />
     public async Task<bool> ExistsAsync(long wordId, long partId, CancellationToken token)
     {
-      // sanity check
-      ThrowIfDisposed();
+      using (await _lock.TryAsync().ConfigureAwait(false))
+      {
+        // sanity check
+        ThrowIfDisposed();
 
-      // we are first going to look for that id
-      // if it does not exist, then we cannot update the files table.
-      ExistsWordId.Value = wordId;
-      ExistsPartId.Value = partId;
-      var value = await _factory.ExecuteReadOneAsync(ExistsCommand, token).ConfigureAwait(false);
+        // we are first going to look for that id
+        // if it does not exist, then we cannot update the files table.
+        ExistsWordId.Value = wordId;
+        ExistsPartId.Value = partId;
+        var value = await _factory.ExecuteReadOneAsync(ExistsCommand, token).ConfigureAwait(false);
 
-      // return if we found a value.
-      return null != value && value != DBNull.Value;
+        // return if we found a value.
+        return null != value && value != DBNull.Value;
+      }
     }
   }
 }

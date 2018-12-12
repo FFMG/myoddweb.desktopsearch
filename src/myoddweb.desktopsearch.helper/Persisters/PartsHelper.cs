@@ -51,14 +51,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _insertCommand;
         }
 
-        lock (_lock)
-        {
-          if (_insertCommand == null)
-          {
-            _insertCommand = _factory.CreateCommand(InsertSql);
-          }
-          return _insertCommand;
-        }
+        _insertCommand = _factory.CreateCommand(InsertSql);
+        return _insertCommand;
       }
     }
 
@@ -74,17 +68,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _insertPart;
         }
 
-        lock (_lock)
-        {
-          if (null == _insertPart)
-          {
-            _insertPart = InsertCommand.CreateParameter();
-            _insertPart.DbType = DbType.String;
-            _insertPart.ParameterName = "@part";
-            InsertCommand.Parameters.Add(_insertPart);
-          }
-          return _insertPart;
-        }
+        _insertPart = InsertCommand.CreateParameter();
+        _insertPart.DbType = DbType.String;
+        _insertPart.ParameterName = "@part";
+        InsertCommand.Parameters.Add(_insertPart);
+        return _insertPart;
       }
     }
     #endregion
@@ -117,14 +105,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _selectCommand;
         }
 
-        lock (_lock)
-        {
-          if (_selectCommand == null)
-          {
-            _selectCommand = _factory.CreateCommand(SelectSql);
-          }
-          return _selectCommand;
-        }
+        _selectCommand = _factory.CreateCommand(SelectSql);
+        return _selectCommand;
       }
     }
 
@@ -139,27 +121,20 @@ namespace myoddweb.desktopsearch.helper.Persisters
         {
           return _selectPart;
         }
-
-        lock (_lock)
-        {
-          if (null == _selectPart)
-          {
-            _selectPart = SelectCommand.CreateParameter();
-            _selectPart.DbType = DbType.String;
-            _selectPart.ParameterName = "@part";
-            SelectCommand.Parameters.Add(_selectPart);
-          }
-          return _selectPart;
-        }
+        _selectPart = SelectCommand.CreateParameter();
+        _selectPart.DbType = DbType.String;
+        _selectPart.ParameterName = "@part";
+        SelectCommand.Parameters.Add(_selectPart);
+        return _selectPart;
       }
     }
     #endregion
 
     #region Member variables
     /// <summary>
-    /// The lock to make sure that we do not create the same thing over and over.
+    /// The async await lock
     /// </summary>
-    private readonly object _lock = new object();
+    private readonly Lock.Lock _lock = new Lock.Lock();
 
     /// <summary>
     /// Check if this item has been disposed or not.
@@ -216,32 +191,39 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <inheritdoc />
     public async Task<long> GetIdAsync(string part, CancellationToken token)
     {
-      // sanity check
-      ThrowIfDisposed();
-
-      // we are first going to look for that id
-      // if it does not exist, then we cannot update the files table.
-      SelectPart.Value = part;
-      var value = await _factory.ExecuteReadOneAsync(SelectCommand, token).ConfigureAwait(false);
-      if (null == value || value == DBNull.Value)
+      using (await _lock.TryAsync().ConfigureAwait(false))
       {
-        // we could not find this word.
-        return -1;
+        // sanity check
+        ThrowIfDisposed();
+
+        // we are first going to look for that id
+        // if it does not exist, then we cannot update the files table.
+        SelectPart.Value = part;
+        var value = await _factory.ExecuteReadOneAsync(SelectCommand, token).ConfigureAwait(false);
+        if (null == value || value == DBNull.Value)
+        {
+          // we could not find this word.
+          return -1;
+        }
+
+        return (long) value;
       }
-      return (long)value;
     }
 
     /// <inheritdoc />
     public async Task<long> InsertAndGetIdAsync(string part, CancellationToken token)
     {
-      // insert the word.
-      InsertPart.Value = part;
-      await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false);
+      using (await _lock.TryAsync().ConfigureAwait(false))
+      {
+        // insert the word.
+        InsertPart.Value = part;
+        await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false);
 
-      // regardless of the result, get the id
-      // if it existed, get the id
-      // if we inserted it, get the id.
-      return await GetIdAsync(part, token).ConfigureAwait(false);
+        // regardless of the result, get the id
+        // if it existed, get the id
+        // if we inserted it, get the id.
+        return await GetIdAsync(part, token).ConfigureAwait(false);
+      }
     }
   }
 }

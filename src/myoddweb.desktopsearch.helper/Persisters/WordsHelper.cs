@@ -51,14 +51,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _insertCommand;
         }
 
-        using (_lock.Try())
-        {
-          if (_insertCommand == null)
-          {
-            _insertCommand = _factory.CreateCommand(InsertSql);
-          }
-          return _insertCommand;
-        }
+        _insertCommand = _factory.CreateCommand(InsertSql);
+        return _insertCommand;
       }
     }
 
@@ -74,17 +68,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _insertWord;
         }
 
-        using (_lock.Try())
-        {
-          if (null == _insertWord)
-          {
-            _insertWord = InsertCommand.CreateParameter();
-            _insertWord.DbType = DbType.String;
-            _insertWord.ParameterName = "@word";
-            InsertCommand.Parameters.Add(_insertWord);
-          }
-          return _insertWord;
-        }
+        _insertWord = InsertCommand.CreateParameter();
+        _insertWord.DbType = DbType.String;
+        _insertWord.ParameterName = "@word";
+        InsertCommand.Parameters.Add(_insertWord);
+        return _insertWord;
       }
     }
     #endregion
@@ -117,14 +105,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _selectCommand;
         }
 
-        using (_lock.Try())
-        {
-          if (_selectCommand == null)
-          {
-            _selectCommand = _factory.CreateCommand(SelectSql);
-          }
-          return _selectCommand;
-        }
+        _selectCommand = _factory.CreateCommand(SelectSql);
+        return _selectCommand;
       }
     }
 
@@ -140,17 +122,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _selectword;
         }
 
-        using (_lock.Try())
-        {
-          if (null == _selectword)
-          {
-            _selectword = SelectCommand.CreateParameter();
-            _selectword.DbType = DbType.String;
-            _selectword.ParameterName = "@word";
-            SelectCommand.Parameters.Add(_selectword);
-          }
-          return _selectword;
-        }
+        _selectword = SelectCommand.CreateParameter();
+        _selectword.DbType = DbType.String;
+        _selectword.ParameterName = "@word";
+        SelectCommand.Parameters.Add(_selectword);
+        return _selectword;
       }
     }
     #endregion

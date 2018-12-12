@@ -55,14 +55,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _existsCommand;
         }
 
-        lock (_lock)
-        {
-          if (_existsCommand == null)
-          {
-            _existsCommand = _factory.CreateCommand(ExistsSql);
-          }
-          return _existsCommand;
-        }
+        _existsCommand = _factory.CreateCommand(ExistsSql);
+        return _existsCommand;
       }
     }
 
@@ -78,17 +72,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _existsWordId;
         }
 
-        lock (_lock)
-        {
-          if (null == _existsWordId)
-          {
-            _existsWordId = ExistsCommand.CreateParameter();
-            _existsWordId.DbType = DbType.Int64;
-            _existsWordId.ParameterName = "@wordid";
-            ExistsCommand.Parameters.Add(_existsWordId);
-          }
-          return _existsWordId;
-        }
+        _existsWordId = ExistsCommand.CreateParameter();
+        _existsWordId.DbType = DbType.Int64;
+        _existsWordId.ParameterName = "@wordid";
+        ExistsCommand.Parameters.Add(_existsWordId);
+        return _existsWordId;
       }
     }
 
@@ -104,17 +92,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _existsFileId;
         }
 
-        lock (_lock)
-        {
-          if (null == _existsFileId)
-          {
-            _existsFileId = ExistsCommand.CreateParameter();
-            _existsFileId.DbType = DbType.Int64;
-            _existsFileId.ParameterName = "@fileid";
-            ExistsCommand.Parameters.Add(_existsFileId);
-          }
-          return _existsFileId;
-        }
+        _existsFileId = ExistsCommand.CreateParameter();
+        _existsFileId.DbType = DbType.Int64;
+        _existsFileId.ParameterName = "@fileid";
+        ExistsCommand.Parameters.Add(_existsFileId);
+        return _existsFileId;
       }
     }
     #endregion
@@ -152,14 +134,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _insertCommand;
         }
 
-        lock (_lock)
-        {
-          if (_insertCommand == null)
-          {
-            _insertCommand = _factory.CreateCommand(InsertSql);
-          }
-          return _insertCommand;
-        }
+        _insertCommand = _factory.CreateCommand(InsertSql);
+        return _insertCommand;
       }
     }
 
@@ -175,17 +151,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _insertWordId;
         }
 
-        lock (_lock)
-        {
-          if (null == _insertWordId)
-          {
-            _insertWordId = InsertCommand.CreateParameter();
-            _insertWordId.DbType = DbType.Int64;
-            _insertWordId.ParameterName = "@wordid";
-            InsertCommand.Parameters.Add(_insertWordId);
-          }
-          return _insertWordId;
-        }
+        _insertWordId = InsertCommand.CreateParameter();
+        _insertWordId.DbType = DbType.Int64;
+        _insertWordId.ParameterName = "@wordid";
+        InsertCommand.Parameters.Add(_insertWordId);
+        return _insertWordId;
       }
     }
 
@@ -201,17 +171,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _insertFileId;
         }
 
-        lock (_lock)
-        {
-          if (null == _insertFileId)
-          {
-            _insertFileId = InsertCommand.CreateParameter();
-            _insertFileId.DbType = DbType.Int64;
-            _insertFileId.ParameterName = "@fileid";
-            InsertCommand.Parameters.Add(_insertFileId);
-          }
-          return _insertFileId;
-        }
+        _insertFileId = InsertCommand.CreateParameter();
+        _insertFileId.DbType = DbType.Int64;
+        _insertFileId.ParameterName = "@fileid";
+        InsertCommand.Parameters.Add(_insertFileId);
+        return _insertFileId;
       }
     }
     #endregion
@@ -244,14 +208,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _deleteCommand;
         }
 
-        lock (_lock)
-        {
-          if (_deleteCommand == null)
-          {
-            _deleteCommand = _factory.CreateCommand(DeletetSql);
-          }
-          return _deleteCommand;
-        }
+        _deleteCommand = _factory.CreateCommand(DeletetSql);
+        return _deleteCommand;
       }
     }
 
@@ -267,17 +225,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return _deleteFileId;
         }
 
-        lock (_lock)
-        {
-          if (null == _deleteFileId)
-          {
-            _deleteFileId = InsertCommand.CreateParameter();
-            _deleteFileId.DbType = DbType.Int64;
-            _deleteFileId.ParameterName = "@fileid";
-            DeleteCommand.Parameters.Add(_deleteFileId);
-          }
-          return _deleteFileId;
-        }
+        _deleteFileId = InsertCommand.CreateParameter();
+        _deleteFileId.DbType = DbType.Int64;
+        _deleteFileId.ParameterName = "@fileid";
+        DeleteCommand.Parameters.Add(_deleteFileId);
+        return _deleteFileId;
       }
     }
     #endregion
@@ -286,7 +238,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <summary>
     /// The lock to make sure that we do not create the same thing over and over.
     /// </summary>
-    private readonly object _lock = new object();
+    private readonly Lock.Lock _lock = new Lock.Lock();
 
     /// <summary>
     /// Check if this item has been disposed or not.
@@ -343,46 +295,55 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <inheritdoc />
     public async Task<bool> ExistsAsync(long wordId, long fileId, CancellationToken token)
     {
-      // sanity check
-      ThrowIfDisposed();
+      using (await _lock.TryAsync().ConfigureAwait(false))
+      {
+        // sanity check
+        ThrowIfDisposed();
 
-      // we are first going to look for that id
-      // if it does not exist, then we cannot update the files table.
-      ExistsWordId.Value = wordId;
-      ExistsFileId.Value = fileId;
-      var value = await _factory.ExecuteReadOneAsync(ExistsCommand, token).ConfigureAwait(false);
+        // we are first going to look for that id
+        // if it does not exist, then we cannot update the files table.
+        ExistsWordId.Value = wordId;
+        ExistsFileId.Value = fileId;
+        var value = await _factory.ExecuteReadOneAsync(ExistsCommand, token).ConfigureAwait(false);
 
-      // return if we found a value.
-      return null != value && value != DBNull.Value;
+        // return if we found a value.
+        return null != value && value != DBNull.Value;
+      }
     }
 
     /// <inheritdoc />
     public async Task<bool> InsertAsync(long wordId, long fileId, CancellationToken token)
     {
-      // sanity check
-      ThrowIfDisposed();
-
-      // insert the word.
-      InsertWordId.Value = wordId;
-      InsertFileId.Value = fileId;
-      if (1 == await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false))
+      using (await _lock.TryAsync().ConfigureAwait(false))
       {
-        // the insert woked.
-        return true;
-      }
+        // sanity check
+        ThrowIfDisposed();
 
-      // was there an error ... or is it a duplicate.
-      return await ExistsAsync(wordId, fileId, token).ConfigureAwait(false);
+        // insert the word.
+        InsertWordId.Value = wordId;
+        InsertFileId.Value = fileId;
+        if (1 == await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false))
+        {
+          // the insert woked.
+          return true;
+        }
+
+        // was there an error ... or is it a duplicate.
+        return await ExistsAsync(wordId, fileId, token).ConfigureAwait(false);
+      }
     }
 
     public async Task<bool> DeleteFileAsync(long fileId, CancellationToken token)
     {
-      // sanity check
-      ThrowIfDisposed();
+      using (await _lock.TryAsync().ConfigureAwait(false))
+      {
+        // sanity check
+        ThrowIfDisposed();
 
-      // delete the file
-      DeleteFileId.Value = fileId;
-      return (1 == await _factory.ExecuteWriteAsync(DeleteCommand, token).ConfigureAwait(false));
+        // delete the file
+        DeleteFileId.Value = fileId;
+        return (1 == await _factory.ExecuteWriteAsync(DeleteCommand, token).ConfigureAwait(false));
+      }
     }
   }
 }
