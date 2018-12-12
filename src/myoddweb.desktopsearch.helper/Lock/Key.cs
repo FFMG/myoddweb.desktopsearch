@@ -18,37 +18,28 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.helper.Lock
 {
-  public class Lock
+  internal class Key : IDisposable
   {
     #region Member Variables
+    private readonly Lock _parent;
 
-    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(0, 1);
+    private readonly long _id = (long)(((ulong)Thread.CurrentThread.ManagedThreadId) << 32) | ((uint)(Task.CurrentId ?? 0));
     #endregion
 
-    public Lock()
+    public Key(Lock parent)
     {
-    }
-    
-    public Task<IDisposable> TryAsync()
-    {
-      var key = new Key( this );
-      return key.TryAsync();
+      _parent = parent;
     }
 
-    public IDisposable Try()
+    public void Dispose()
     {
-      var key = new Key(this);
-      return key.TryAsync().GetAwaiter().GetResult();
+      _parent.Exit(_id);
     }
 
-    internal async Task EnterAsync(long id)
+    public async Task<IDisposable> TryAsync()
     {
-      await _semaphore.WaitAsync().ConfigureAwait(false);
-    }
-
-    internal void Exit( long id )
-    {
-      _semaphore.Release();
+      await _parent.EnterAsync(Task.CurrentId ?? 0).ConfigureAwait(false);
+      return this;
     }
   }
 }

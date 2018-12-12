@@ -378,16 +378,19 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <inheritdoc />
     public async Task<IList<long>> GetPartIdsAsync(long wordid, CancellationToken token )
     {
+      // sanity check
+      ThrowIfDisposed();
+
+      // quickly lock and get the data
       using (await _lock.TryAsync().ConfigureAwait(false))
       {
-        // sanity check
-        ThrowIfDisposed();
-
         // select all the ids that belong to that word.
         SelectPartIdsWordId.Value = wordid;
         using (var reader = await _factory.ExecuteReadAsync(SelectPartIdsCommand, token).ConfigureAwait(false))
         {
           var partIds = new List<long>();
+
+          // now read the part ids as needed.
           while (reader.Read())
           {
             // get out if needed.
@@ -406,11 +409,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <inheritdoc />
     public async Task<bool> InsertAsync(long wordId, long partId, CancellationToken token)
     {
+      // sanity check
+      ThrowIfDisposed();
+
       using (await _lock.TryAsync().ConfigureAwait(false))
       {
-        // sanity check
-        ThrowIfDisposed();
-
         InsertWordId.Value = wordId;
         InsertPartId.Value = partId;
 
@@ -420,6 +423,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
           return true;
         }
       }
+
       // we could not insert it
       // so we have to check if the reason was because this exists already.
       return await ExistsAsync(wordId, partId, token).ConfigureAwait(false);
@@ -428,11 +432,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <inheritdoc />
     public async Task<bool> DeleteAsync(long wordId, long partId, CancellationToken token)
     {
+      // sanity check
+      ThrowIfDisposed();
+
       using (await _lock.TryAsync().ConfigureAwait(false))
       {
-        // sanity check
-        ThrowIfDisposed();
-
         DeleteWordId.Value = wordId;
         DeletePartId.Value = partId;
 
@@ -444,11 +448,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <inheritdoc />
     public async Task<bool> ExistsAsync(long wordId, long partId, CancellationToken token)
     {
+      // sanity check
+      ThrowIfDisposed();
+
       using (await _lock.TryAsync().ConfigureAwait(false))
       {
-        // sanity check
-        ThrowIfDisposed();
-
         // we are first going to look for that id
         // if it does not exist, then we cannot update the files table.
         ExistsWordId.Value = wordId;

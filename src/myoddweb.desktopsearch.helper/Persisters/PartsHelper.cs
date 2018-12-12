@@ -191,11 +191,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <inheritdoc />
     public async Task<long> GetIdAsync(string part, CancellationToken token)
     {
+      // sanity check
+      ThrowIfDisposed();
+
       using (await _lock.TryAsync().ConfigureAwait(false))
       {
-        // sanity check
-        ThrowIfDisposed();
-
         // we are first going to look for that id
         // if it does not exist, then we cannot update the files table.
         SelectPart.Value = part;
@@ -213,6 +213,9 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <inheritdoc />
     public async Task<long> InsertAndGetIdAsync(string part, CancellationToken token)
     {
+      // sanity check
+      ThrowIfDisposed();
+
       using (await _lock.TryAsync().ConfigureAwait(false))
       {
         // insert the word.

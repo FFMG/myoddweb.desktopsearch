@@ -295,11 +295,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <inheritdoc />
     public async Task<bool> ExistsAsync(long wordId, long fileId, CancellationToken token)
     {
+      // sanity check
+      ThrowIfDisposed();
+
       using (await _lock.TryAsync().ConfigureAwait(false))
       {
-        // sanity check
-        ThrowIfDisposed();
-
         // we are first going to look for that id
         // if it does not exist, then we cannot update the files table.
         ExistsWordId.Value = wordId;
@@ -314,11 +314,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <inheritdoc />
     public async Task<bool> InsertAsync(long wordId, long fileId, CancellationToken token)
     {
+      // sanity check
+      ThrowIfDisposed();
+
       using (await _lock.TryAsync().ConfigureAwait(false))
       {
-        // sanity check
-        ThrowIfDisposed();
-
         // insert the word.
         InsertWordId.Value = wordId;
         InsertFileId.Value = fileId;
@@ -336,11 +336,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<bool> DeleteFileAsync(long fileId, CancellationToken token)
     {
+      // sanity check
+      ThrowIfDisposed();
+
       using (await _lock.TryAsync().ConfigureAwait(false))
       {
-        // sanity check
-        ThrowIfDisposed();
-
         // delete the file
         DeleteFileId.Value = fileId;
         return (1 == await _factory.ExecuteWriteAsync(DeleteCommand, token).ConfigureAwait(false));

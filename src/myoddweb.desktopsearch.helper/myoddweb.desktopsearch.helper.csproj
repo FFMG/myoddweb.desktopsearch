@@ -45,6 +45,7 @@
     <Compile Include="Components\FileParser.cs" />
     <Compile Include="File.cs" />
     <Compile Include="IO\InternalAsyncTimer.cs" />
+    <Compile Include="Lock\Key.cs" />
     <Compile Include="Lock\Lock.cs" />
     <Compile Include="Persisters\FilesWordsHelper.cs" />
     <Compile Include="Persisters\PartsHelper.cs" />
