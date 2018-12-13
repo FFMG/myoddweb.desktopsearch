@@ -172,7 +172,7 @@ namespace myoddweb.desktopsearch.helper
         {
           // just do a small single yield the first time.
           // if we only have one processor, and no one else is waiting, this will return straight back.
-          await Task.Factory.StartNew(() => { /* noop*/ }, token, TaskCreationOptions.PreferFairness, TaskScheduler.Current).ConfigureAwait( false );
+          await Task.Yield();
         }
         else if (numProcessors == 1)
         {
