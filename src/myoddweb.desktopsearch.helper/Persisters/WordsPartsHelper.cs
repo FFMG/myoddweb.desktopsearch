@@ -25,6 +25,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
   {
     #region Exists
     /// <summary>
+    /// The lock to make sure that we do not create the same thing over and over.
+    /// </summary>
+    private readonly Lock.Lock _lockExists = new Lock.Lock();
+
+    /// <summary>
     /// The select command;
     /// </summary>
     private IDbCommand _existsCommand;
@@ -103,6 +108,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
     #endregion
 
     #region Insert
+    /// <summary>
+    /// The lock to make sure that we do not create the same thing over and over.
+    /// </summary>
+    private readonly Lock.Lock _lockInsert = new Lock.Lock();
+
     /// <summary>
     /// The insert command;
     /// </summary>
@@ -184,6 +194,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     #region Delete
     /// <summary>
+    /// The lock to make sure that we do not create the same thing over and over.
+    /// </summary>
+    private readonly Lock.Lock _lockDelete = new Lock.Lock();
+
+    /// <summary>
     /// The delete command;
     /// </summary>
     private IDbCommand _deleteCommand;
@@ -263,6 +278,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     #region Select Ids
     /// <summary>
+    /// The lock to make sure that we do not create the same thing over and over.
+    /// </summary>
+    private readonly Lock.Lock _lockSelect = new Lock.Lock();
+
+    /// <summary>
     /// The select command;
     /// </summary>
     private IDbCommand _selectIdsCommand;
@@ -316,11 +336,6 @@ namespace myoddweb.desktopsearch.helper.Persisters
     #endregion
 
     #region Member variables
-    /// <summary>
-    /// The lock to make sure that we do not create the same thing over and over.
-    /// </summary>
-    private readonly Lock.Lock _lock = new Lock.Lock();
-
     /// <summary>
     /// Check if this item has been disposed or not.
     /// </summary>
@@ -382,7 +397,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       ThrowIfDisposed();
 
       // quickly lock and get the data
-      using (await _lock.TryAsync().ConfigureAwait(false))
+      using (await _lockSelect.TryAsync().ConfigureAwait(false))
       {
         // select all the ids that belong to that word.
         SelectPartIdsWordId.Value = wordid;
@@ -412,7 +427,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lock.TryAsync().ConfigureAwait(false))
+      using (await _lockInsert.TryAsync().ConfigureAwait(false))
       {
         InsertWordId.Value = wordId;
         InsertPartId.Value = partId;
@@ -435,7 +450,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lock.TryAsync().ConfigureAwait(false))
+      using (await _lockDelete.TryAsync().ConfigureAwait(false))
       {
         DeleteWordId.Value = wordId;
         DeletePartId.Value = partId;
@@ -451,7 +466,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lock.TryAsync().ConfigureAwait(false))
+      using (await _lockExists.TryAsync().ConfigureAwait(false))
       {
         // we are first going to look for that id
         // if it does not exist, then we cannot update the files table.

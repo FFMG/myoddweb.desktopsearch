@@ -24,6 +24,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
   {
     #region Insert
     /// <summary>
+    /// The async await lock
+    /// </summary>
+    private readonly Lock.Lock _lockInsert = new Lock.Lock();
+
+    /// <summary>
     /// The insert command;
     /// </summary>
     private IDbCommand _insertCommand;
@@ -79,6 +84,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     #region Select
     /// <summary>
+    /// The async await lock
+    /// </summary>
+    private readonly Lock.Lock _lockSelect = new Lock.Lock();
+
+    /// <summary>
     /// The select command;
     /// </summary>
     private IDbCommand _selectCommand;
@@ -132,11 +142,6 @@ namespace myoddweb.desktopsearch.helper.Persisters
     #endregion
 
     #region Member variables
-    /// <summary>
-    /// The async await lock
-    /// </summary>
-    private readonly Lock.Lock _lock = new Lock.Lock();
-
     /// <summary>
     /// Check if this item has been disposed or not.
     /// </summary>
@@ -196,7 +201,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lock.TryAsync().ConfigureAwait(false))
+      using (await _lockSelect.TryAsync().ConfigureAwait(false))
       {
         // we are first going to look for that id
         // if it does not exist, then we cannot update the files table.
@@ -204,8 +209,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
         var value = await _factory.ExecuteReadOneAsync(SelectCommand, token).ConfigureAwait(false);
         if (null == value || value == DBNull.Value)
         {
-          // the word does not exist
-          // so we cannot really go any further here.
+          // could not find the word.
+          // so we can get out.
           return -1;
         }
         return (long) value;
@@ -218,7 +223,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lock.TryAsync().ConfigureAwait( false ) )
+      using (await _lockInsert.TryAsync().ConfigureAwait( false ) )
       {
         // insert the word.
         InsertWord.Value = word;

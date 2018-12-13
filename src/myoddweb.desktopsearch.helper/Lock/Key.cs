@@ -22,7 +22,10 @@ namespace myoddweb.desktopsearch.helper.Lock
   {
     #region Member Variables
     private readonly Lock _parent;
-
+    /// <summary>
+    /// Get a unique Id ... it is kind of unique.
+    /// If the process is truelly syncronious then we will allow the lock to re-enter.
+    /// </summary>
     private readonly long _id = (long)(((ulong)Thread.CurrentThread.ManagedThreadId) << 32) | ((uint)(Task.CurrentId ?? 0));
     #endregion
 
@@ -38,7 +41,7 @@ namespace myoddweb.desktopsearch.helper.Lock
 
     public async Task<IDisposable> TryAsync()
     {
-      await _parent.EnterAsync(Task.CurrentId ?? 0).ConfigureAwait(false);
+      await _parent.EnterAsync(_id).ConfigureAwait(false);
       return this;
     }
   }

@@ -24,6 +24,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
   {
     #region Exists
     /// <summary>
+    /// The lock to make sure that we do not create the same thing over and over.
+    /// </summary>
+    private readonly Lock.Lock _lockExists = new Lock.Lock();
+
+    /// <summary>
     /// The select command;
     /// </summary>
     private IDbCommand _existsCommand;
@@ -102,6 +107,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
     #endregion
 
     #region Insert
+    /// <summary>
+    /// The lock to make sure that we do not create the same thing over and over.
+    /// </summary>
+    private readonly Lock.Lock _lockInsert = new Lock.Lock();
+
     /// <summary>
     /// The insert command;
     /// </summary>
@@ -182,6 +192,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     #region Delete
     /// <summary>
+    /// The lock to make sure that we do not create the same thing over and over.
+    /// </summary>
+    private readonly Lock.Lock _lockDelete = new Lock.Lock();
+
+    /// <summary>
     /// The delete command
     /// </summary>
     private IDbCommand _deleteCommand;
@@ -235,11 +250,6 @@ namespace myoddweb.desktopsearch.helper.Persisters
     #endregion
 
     #region Member variables
-    /// <summary>
-    /// The lock to make sure that we do not create the same thing over and over.
-    /// </summary>
-    private readonly Lock.Lock _lock = new Lock.Lock();
-
     /// <summary>
     /// Check if this item has been disposed or not.
     /// </summary>
@@ -298,7 +308,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lock.TryAsync().ConfigureAwait(false))
+      using (await _lockExists.TryAsync().ConfigureAwait(false))
       {
         // we are first going to look for that id
         // if it does not exist, then we cannot update the files table.
@@ -317,7 +327,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lock.TryAsync().ConfigureAwait(false))
+      using (await _lockInsert.TryAsync().ConfigureAwait(false))
       {
         // insert the word.
         InsertWordId.Value = wordId;
@@ -339,7 +349,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lock.TryAsync().ConfigureAwait(false))
+      using (await _lockDelete.TryAsync().ConfigureAwait(false))
       {
         // delete the file
         DeleteFileId.Value = fileId;

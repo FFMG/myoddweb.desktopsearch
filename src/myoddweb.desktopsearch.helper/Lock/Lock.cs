@@ -13,7 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.helper.Lock
@@ -21,34 +20,72 @@ namespace myoddweb.desktopsearch.helper.Lock
   public class Lock
   {
     #region Member Variables
+    private const long NoOwner = -1;
 
-    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(0, 1);
+    private readonly object _lock = new object();
+    private long _owningId = NoOwner;
     #endregion
 
-    public Lock()
-    {
-    }
-    
+    /// <summary>
+    /// Try and get the lock async
+    /// </summary>
+    /// <returns></returns>
     public Task<IDisposable> TryAsync()
     {
       var key = new Key( this );
       return key.TryAsync();
     }
 
+    /// <summary>
+    /// Try and get the lock, (non-async)
+    /// </summary>
+    /// <returns></returns>
     public IDisposable Try()
     {
       var key = new Key(this);
       return key.TryAsync().GetAwaiter().GetResult();
     }
 
+    /// <summary>
+    /// Enter the locks.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
     internal async Task EnterAsync(long id)
     {
-      await _semaphore.WaitAsync().ConfigureAwait(false);
+      // wait until we can get the lock
+      // we do not want to hold the lock
+      // so the lock ownwe can release it.
+      await Wait.UntilAsync(() =>
+      {
+        lock (_lock)
+        {
+          if (_owningId != NoOwner)
+          {
+            return false;
+          }
+
+          // we are the owner.
+          _owningId = id;
+          return true;
+        }
+      }).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Exit/Release the lock
+    /// </summary>
+    /// <param name="id"></param>
     internal void Exit( long id )
     {
-      _semaphore.Release();
+      lock (_lock)
+      {
+        if (_owningId != id)
+        {
+          throw new ArgumentException($"An id: {id} is trying to release a lock it does not have.");
+        }
+        _owningId = NoOwner;
+      }
     }
   }
 }
