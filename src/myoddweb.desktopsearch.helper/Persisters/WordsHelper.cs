@@ -20,151 +20,125 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.helper.Persisters
 {
+  internal class PersisterInsertWordHelper : PersisterHelper
+  {
+    /// <summary>
+    /// The insert word parameter;
+    /// </summary>
+    private IDbDataParameter _word;
+
+    /// <summary>
+    /// The insert word parameter;
+    /// </summary>
+    public IDbDataParameter Word
+    {
+      get
+      {
+        if (null != _word)
+        {
+          return _word;
+        }
+
+        _word = Command.CreateParameter();
+        _word.DbType = DbType.String;
+        _word.ParameterName = "@word";
+        Command.Parameters.Add(_word);
+        return _word;
+      }
+    }
+
+    public PersisterInsertWordHelper(IConnectionFactory factory, string sql) : base(factory, sql)
+    {
+    }
+
+    public async Task InsertAsync(string word, CancellationToken token)
+    {
+      using (await Lock.TryAsync().ConfigureAwait(false))
+      {
+        // insert the word.
+        Word.Value = word;
+        await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false);
+      }
+    }
+  }
+
+  internal class PersisterSelectWordHelper : PersisterHelper
+  {
+    /// <summary>
+    /// The insert word parameter;
+    /// </summary>
+    private IDbDataParameter _word;
+
+    /// <summary>
+    /// The insert word parameter;
+    /// </summary>
+    public IDbDataParameter Word
+    {
+      get
+      {
+        if (null != _word)
+        {
+          return _word;
+        }
+
+        _word = Command.CreateParameter();
+        _word.DbType = DbType.String;
+        _word.ParameterName = "@word";
+        Command.Parameters.Add(_word);
+        return _word;
+      }
+    }
+
+    public PersisterSelectWordHelper(IConnectionFactory factory, string sql) : base(factory, sql)
+    {
+    }
+
+    public async Task<long> GetIdAsync(string word, CancellationToken token)
+    {
+      using (await Lock.TryAsync().ConfigureAwait(false))
+      {
+        // we are first going to look for that id
+        // if it does not exist, then we cannot update the files table.
+        Word.Value = word;
+        var value = await Factory.ExecuteReadOneAsync(Command, token).ConfigureAwait(false);
+        if (null == value || value == DBNull.Value)
+        {
+          // could not find the word.
+          // so we can get out.
+          return -1;
+        }
+        return (long)value;
+      }
+    }
+  }
+
   public class WordsHelper : IWordsHelper
   {
-    #region Insert
-    /// <summary>
-    /// The async await lock
-    /// </summary>
-    private readonly Lock.Lock _lockInsert = new Lock.Lock();
-
-    /// <summary>
-    /// The insert command;
-    /// </summary>
-    private IDbCommand _insertCommand;
-
-    /// <summary>
-    /// The insert word parameter;
-    /// </summary>
-    private IDbDataParameter _insertWord;
-
-    /// <summary>
-    /// The sql string that we will use to insert a word.
-    /// We will only insert if there are no duplicates.
-    /// </summary>
-    private string InsertSql => $"INSERT OR IGNORE INTO {_tableName} (word) VALUES (@word)";
-
-    /// <summary>
-    /// Create the Insert command if needed.
-    /// </summary>
-    private IDbCommand InsertCommand
-    {
-      get
-      {
-        if (_insertCommand != null)
-        {
-          return _insertCommand;
-        }
-
-        _insertCommand = _factory.CreateCommand(InsertSql);
-        return _insertCommand;
-      }
-    }
-
-    /// <summary>
-    /// The word Insert parameter.
-    /// </summary>
-    private IDbDataParameter InsertWord
-    {
-      get
-      {
-        if (null != _insertWord)
-        {
-          return _insertWord;
-        }
-
-        _insertWord = InsertCommand.CreateParameter();
-        _insertWord.DbType = DbType.String;
-        _insertWord.ParameterName = "@word";
-        InsertCommand.Parameters.Add(_insertWord);
-        return _insertWord;
-      }
-    }
-    #endregion
-
-    #region Select
-    /// <summary>
-    /// The async await lock
-    /// </summary>
-    private readonly Lock.Lock _lockSelect = new Lock.Lock();
-
-    /// <summary>
-    /// The select command;
-    /// </summary>
-    private IDbCommand _selectCommand;
-
-    /// <summary>
-    /// The insert word parameter;
-    /// </summary>
-    private IDbDataParameter _selectword;
-
-    /// <summary>
-    /// The sql string that we will use to look for an id.
-    /// </summary>
-    private string SelectSql => $"SELECT id FROM {_tableName} WHERE word = @word";
-
-    /// <summary>
-    /// Create the select command if needed.
-    /// </summary>
-    private IDbCommand SelectCommand
-    {
-      get
-      {
-        if (_selectCommand != null)
-        {
-          return _selectCommand;
-        }
-
-        _selectCommand = _factory.CreateCommand(SelectSql);
-        return _selectCommand;
-      }
-    }
-
-    /// <summary>
-    /// The word select parameter.
-    /// </summary>
-    private IDbDataParameter SelectWord
-    {
-      get
-      {
-        if (null != _selectword)
-        {
-          return _selectword;
-        }
-
-        _selectword = SelectCommand.CreateParameter();
-        _selectword.DbType = DbType.String;
-        _selectword.ParameterName = "@word";
-        SelectCommand.Parameters.Add(_selectword);
-        return _selectword;
-      }
-    }
-    #endregion
-
     #region Member variables
+
+    /// <summary>
+    /// The words helper.
+    /// </summary>
+    private readonly PersisterInsertWordHelper _insert;
+
+    /// <summary>
+    /// Select a single word id.
+    /// </summary>
+    private readonly PersisterSelectWordHelper _select;
+
     /// <summary>
     /// Check if this item has been disposed or not.
     /// </summary>
     private bool _disposed;
-
-    /// <summary>
-    /// The connection factory.
-    /// </summary>
-    private readonly IConnectionFactory _factory;
-
-    /// <summary>
-    /// The name of the table.
-    /// </summary>
-    private readonly string _tableName;
     #endregion
 
     public WordsHelper(IConnectionFactory factory, string tableName )
     {
-      // the table name
-      _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
+      // create the word command.
+      _insert = new PersisterInsertWordHelper(factory, $"INSERT OR IGNORE INTO {tableName} (word) VALUES (@word)" );
 
-      // save the factory.
-      _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+      // create the select
+      _select = new PersisterSelectWordHelper( factory, $"SELECT id FROM {tableName} WHERE word = @word" );
     }
 
     /// <summary>
@@ -191,30 +165,18 @@ namespace myoddweb.desktopsearch.helper.Persisters
       _disposed = true;
 
       // dispose of the commands if needed.
-      _insertCommand?.Dispose();
-      _selectCommand?.Dispose();
+      _insert?.Dispose();
+      _select?.Dispose();
     }
 
     /// <inheritdoc />
-    public async Task<long> GetIdAsync(string word, CancellationToken token)
+    public Task<long> GetIdAsync(string word, CancellationToken token)
     {
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lockSelect.TryAsync().ConfigureAwait(false))
-      {
-        // we are first going to look for that id
-        // if it does not exist, then we cannot update the files table.
-        SelectWord.Value = word;
-        var value = await _factory.ExecuteReadOneAsync(SelectCommand, token).ConfigureAwait(false);
-        if (null == value || value == DBNull.Value)
-        {
-          // could not find the word.
-          // so we can get out.
-          return -1;
-        }
-        return (long) value;
-      }
+      // then return the value.
+      return _select.GetIdAsync(word, token);
     }
 
     /// <inheritdoc />
@@ -223,12 +185,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lockInsert.TryAsync().ConfigureAwait( false ) )
-      {
-        // insert the word.
-        InsertWord.Value = word;
-        await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false);
-      }
+      // just add it.
+      await _insert.InsertAsync(word, token).ConfigureAwait(false);
 
       // regardless of the result, get the id
       // if it existed, get the id
