@@ -13,7 +13,9 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.helper.Persisters
@@ -60,6 +62,45 @@ namespace myoddweb.desktopsearch.helper.Persisters
     public virtual void Dispose()
     {
       _command?.Dispose();
+    }
+  }
+
+  internal class MultiplePersisterHelper<T> where T : PersisterHelper, IDisposable
+  {
+    private readonly IList<T> _ph = new List<T>();
+
+    private readonly Random _rnd = new Random();
+
+    public MultiplePersisterHelper( Func<T> func, int count )
+    {
+      for (var i = 0; i < count; i++)
+      {
+        Add( func() );
+      }
+    }
+
+    protected MultiplePersisterHelper()
+    {
+    }
+
+    public T Next()
+    {
+      var r = _rnd.Next(_ph.Count);
+      return _ph[r];
+    }
+
+    public void Add(T ph)
+    {
+      _ph.Add(ph);
+    }
+
+    public virtual void Dispose()
+    {
+      foreach (var persisterHelper in _ph)
+      {
+        persisterHelper.Dispose();
+      }
+      _ph.Clear();
     }
   }
 }

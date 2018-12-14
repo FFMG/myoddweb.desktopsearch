@@ -119,12 +119,12 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <summary>
     /// The words helper.
     /// </summary>
-    private readonly PersisterInsertWordHelper _insert;
+    private readonly MultiplePersisterHelper<PersisterInsertWordHelper> _insert;
 
     /// <summary>
     /// Select a single word id.
     /// </summary>
-    private readonly PersisterSelectWordHelper _select;
+    private readonly MultiplePersisterHelper<PersisterSelectWordHelper> _select;
 
     /// <summary>
     /// Check if this item has been disposed or not.
@@ -134,11 +134,13 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public WordsHelper(IConnectionFactory factory, string tableName )
     {
+      const int numberOfItems = 10;
+
       // create the word command.
-      _insert = new PersisterInsertWordHelper(factory, $"INSERT OR IGNORE INTO {tableName} (word) VALUES (@word)" );
+      _insert = new MultiplePersisterHelper<PersisterInsertWordHelper>(() => new PersisterInsertWordHelper(factory, $"INSERT OR IGNORE INTO {tableName} (word) VALUES (@word)" ), numberOfItems);
 
       // create the select
-      _select = new PersisterSelectWordHelper( factory, $"SELECT id FROM {tableName} WHERE word = @word" );
+      _select = new MultiplePersisterHelper<PersisterSelectWordHelper>(() => new PersisterSelectWordHelper( factory, $"SELECT id FROM {tableName} WHERE word = @word" ), numberOfItems);
     }
 
     /// <summary>
@@ -176,7 +178,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       ThrowIfDisposed();
 
       // then return the value.
-      return _select.GetIdAsync(word, token);
+      return _select.Next().GetIdAsync(word, token);
     }
 
     /// <inheritdoc />
@@ -186,7 +188,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       ThrowIfDisposed();
 
       // just add it.
-      await _insert.InsertAsync(word, token).ConfigureAwait(false);
+      await _insert.Next().InsertAsync(word, token).ConfigureAwait(false);
 
       // regardless of the result, get the id
       // if it existed, get the id

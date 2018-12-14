@@ -296,17 +296,17 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <summary>
     /// The insert helper.
     /// </summary>
-    private readonly PersisterInsertWordPartsHelper _insert;
+    private readonly MultiplePersisterHelper<PersisterInsertWordPartsHelper> _insert;
 
     /// <summary>
     /// Check if a word/part exists.
     /// </summary>
-    private readonly PersisterExistsWordPartsHelper _exists;
+    private readonly MultiplePersisterHelper<PersisterExistsWordPartsHelper> _exists;
 
     /// <summary>
     /// Get the value by id.
     /// </summary>
-    private readonly PersisterSelectWordPartsHelper _select;
+    private readonly MultiplePersisterHelper<PersisterSelectWordPartsHelper> _select;
 
     /// <summary>
     /// Delete by word/part
@@ -321,14 +321,16 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public WordsPartsHelper(IConnectionFactory factory, string tableName)
     {
+      const int numberOfItems = 10;
+
       // the insert command.
-      _insert = new PersisterInsertWordPartsHelper( factory, $"INSERT OR IGNORE INTO {tableName} (wordid, partid) VALUES (@wordid, @partid)");
+      _insert = new MultiplePersisterHelper<PersisterInsertWordPartsHelper>( () => new PersisterInsertWordPartsHelper(factory, $"INSERT OR IGNORE INTO {tableName} (wordid, partid) VALUES (@wordid, @partid)"), numberOfItems);
 
       // exists?
-      _exists = new PersisterExistsWordPartsHelper( factory, $"SELECT 1 FROM {tableName} WHERE wordid=@wordid and partid=@partid" );
+      _exists = new MultiplePersisterHelper<PersisterExistsWordPartsHelper>(() => new PersisterExistsWordPartsHelper( factory, $"SELECT 1 FROM {tableName} WHERE wordid=@wordid and partid=@partid" ), numberOfItems);
 
       // select by word id.
-      _select = new PersisterSelectWordPartsHelper( factory, $"SELECT partid FROM {tableName} WHERE wordid = @wordid");
+      _select = new MultiplePersisterHelper<PersisterSelectWordPartsHelper>(() => new PersisterSelectWordPartsHelper( factory, $"SELECT partid FROM {tableName} WHERE wordid = @wordid"), numberOfItems);
 
       // delete by word/part id.
       _delete = new PersisterDeleteWordPartsHelper(factory, $"DELETE FROM {tableName} WHERE wordid=@wordid AND partid=@partid");
@@ -370,7 +372,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       ThrowIfDisposed();
 
       // return if it exists.
-      return _exists.ExistAsync(wordId, partId, token);
+      return _exists.Next().ExistAsync(wordId, partId, token);
     }
 
     /// <inheritdoc />
@@ -380,7 +382,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       ThrowIfDisposed();
 
       // get the data
-      return _select.GetAsync(wordid, token);
+      return _select.Next().GetAsync(wordid, token);
     }
 
     /// <inheritdoc />
@@ -389,7 +391,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
 
-      if (await _insert.InsertAsync(wordId, partId, token).ConfigureAwait(false))
+      if (await _insert.Next().InsertAsync(wordId, partId, token).ConfigureAwait(false))
       {
         return true;
       }
