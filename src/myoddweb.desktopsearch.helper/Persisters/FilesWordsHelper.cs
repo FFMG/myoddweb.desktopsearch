@@ -195,12 +195,9 @@ namespace myoddweb.desktopsearch.helper.Persisters
     {
       using (await Lock.TryAsync().ConfigureAwait(false))
       {
-        using (await Lock.TryAsync().ConfigureAwait(false))
-        {
-          // delete the file
-          FileId.Value = fileId;
-          return (1 == await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false));
-        }
+        // delete the file
+        FileId.Value = fileId;
+        return (1 == await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false));
       }
     }
   }
