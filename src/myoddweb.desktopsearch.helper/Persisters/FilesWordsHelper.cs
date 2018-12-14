@@ -20,259 +20,227 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.helper.Persisters
 {
+  internal class PersisterExistsFilesWordsHelper : PersisterHelper
+  {
+    /// <summary>
+    /// The file id
+    /// </summary>
+    private IDbDataParameter _fileId;
+
+    /// <summary>
+    /// The word id.
+    /// </summary>
+    private IDbDataParameter _wordId;
+
+    /// <summary>
+    /// The insert word parameter;
+    /// </summary>
+    public IDbDataParameter FileId
+    {
+      get
+      {
+        if (null != _fileId)
+        {
+          return _fileId;
+        }
+
+        _fileId = Command.CreateParameter();
+        _fileId.DbType = DbType.Int64;
+        _fileId.ParameterName = "@fileid";
+        Command.Parameters.Add(_fileId);
+        return _fileId;
+      }
+    }
+
+    /// <summary>
+    /// The part id Insert parameter.
+    /// </summary>
+    private IDbDataParameter WordId
+    {
+      get
+      {
+        if (null != _wordId )
+        {
+          return _wordId;
+        }
+
+        _wordId = Command.CreateParameter();
+        _wordId.DbType = DbType.Int64;
+        _wordId.ParameterName = "@wordid";
+        Command.Parameters.Add(_wordId);
+        return _wordId;
+      }
+    }
+
+    public PersisterExistsFilesWordsHelper(IConnectionFactory factory, string sql) : base(factory, sql)
+    {
+    }
+
+    public async Task<bool> ExistAsync(long wordId, long fileId, CancellationToken token)
+    {
+      using (await Lock.TryAsync().ConfigureAwait(false))
+      {
+        // we are first going to look for that id
+        // if it does not exist, then we cannot update the files table.
+        WordId.Value = wordId;
+        FileId.Value = fileId;
+        var value = await Factory.ExecuteReadOneAsync(Command, token).ConfigureAwait(false);
+
+        // return if we found a value.
+        return null != value && value != DBNull.Value;
+      }
+    }
+  }
+
+  internal class PersisterInsertFilesWordsHelper : PersisterHelper
+  {
+    /// <summary>
+    /// The file id
+    /// </summary>
+    private IDbDataParameter _fileId;
+
+    /// <summary>
+    /// The word id.
+    /// </summary>
+    private IDbDataParameter _wordId;
+
+    /// <summary>
+    /// The insert word parameter;
+    /// </summary>
+    public IDbDataParameter FileId
+    {
+      get
+      {
+        if (null != _fileId)
+        {
+          return _fileId;
+        }
+
+        _fileId = Command.CreateParameter();
+        _fileId.DbType = DbType.Int64;
+        _fileId.ParameterName = "@fileid";
+        Command.Parameters.Add(_fileId);
+        return _fileId;
+      }
+    }
+
+    /// <summary>
+    /// The part id Insert parameter.
+    /// </summary>
+    private IDbDataParameter WordId
+    {
+      get
+      {
+        if (null != _wordId)
+        {
+          return _wordId;
+        }
+
+        _wordId = Command.CreateParameter();
+        _wordId.DbType = DbType.Int64;
+        _wordId.ParameterName = "@wordid";
+        Command.Parameters.Add(_wordId);
+        return _wordId;
+      }
+    }
+
+    public PersisterInsertFilesWordsHelper(IConnectionFactory factory, string sql) : base(factory, sql)
+    {
+    }
+
+    public async Task<bool> InsertAsync(long wordId, long fileId, CancellationToken token)
+    {
+      using (await Lock.TryAsync().ConfigureAwait(false))
+      {
+        // insert the word.
+        WordId.Value = wordId;
+        FileId.Value = fileId;
+        return (1 == await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false));
+      }
+    }
+  }
+
+  internal class PersisterDeleteFilesWordsHelper : PersisterHelper
+  {
+    /// <summary>
+    /// The file id
+    /// </summary>
+    private IDbDataParameter _fileId;
+
+    /// <summary>
+    /// The insert word parameter;
+    /// </summary>
+    public IDbDataParameter FileId
+    {
+      get
+      {
+        if (null != _fileId)
+        {
+          return _fileId;
+        }
+
+        _fileId = Command.CreateParameter();
+        _fileId.DbType = DbType.Int64;
+        _fileId.ParameterName = "@fileid";
+        Command.Parameters.Add(_fileId);
+        return _fileId;
+      }
+    }
+    
+    public PersisterDeleteFilesWordsHelper(IConnectionFactory factory, string sql) : base(factory, sql)
+    {
+    }
+
+    public async Task<bool> DeleteAsync(long fileId, CancellationToken token)
+    {
+      using (await Lock.TryAsync().ConfigureAwait(false))
+      {
+        using (await Lock.TryAsync().ConfigureAwait(false))
+        {
+          // delete the file
+          FileId.Value = fileId;
+          return (1 == await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false));
+        }
+      }
+    }
+  }
+
   public class FilesWordsHelper : IFilesWordsHelper
   {
-    #region Exists
-    /// <summary>
-    /// The lock to make sure that we do not create the same thing over and over.
-    /// </summary>
-    private readonly Lock.Lock _lockExists = new Lock.Lock();
-
-    /// <summary>
-    /// The select command;
-    /// </summary>
-    private IDbCommand _existsCommand;
-
-    /// <summary>
-    /// The parameters to check if a word id exists.
-    /// </summary>
-    private IDbDataParameter _existsWordId;
-
-    /// <summary>
-    /// The parameters to check if a file id exists.
-    /// </summary>
-    private IDbDataParameter _existsFileId;
-
-    /// <summary>
-    /// The sql string that we will use to look for an id.
-    /// </summary>
-    private string ExistsSql => $"SELECT 1 FROM {_tableName} where wordid=@wordid AND fileid=@fileid";
-
-    /// <summary>
-    /// Create the exists command if needed.
-    /// </summary>
-    private IDbCommand ExistsCommand
-    {
-      get
-      {
-        if (_existsCommand != null)
-        {
-          return _existsCommand;
-        }
-
-        _existsCommand = _factory.CreateCommand(ExistsSql);
-        return _existsCommand;
-      }
-    }
-
-    /// <summary>
-    /// The exists word id parameter.
-    /// </summary>
-    private IDbDataParameter ExistsWordId
-    {
-      get
-      {
-        if (null != _existsWordId)
-        {
-          return _existsWordId;
-        }
-
-        _existsWordId = ExistsCommand.CreateParameter();
-        _existsWordId.DbType = DbType.Int64;
-        _existsWordId.ParameterName = "@wordid";
-        ExistsCommand.Parameters.Add(_existsWordId);
-        return _existsWordId;
-      }
-    }
-
-    /// <summary>
-    /// The exists file id parameter.
-    /// </summary>
-    private IDbDataParameter ExistsFileId
-    {
-      get
-      {
-        if (null != _existsFileId)
-        {
-          return _existsFileId;
-        }
-
-        _existsFileId = ExistsCommand.CreateParameter();
-        _existsFileId.DbType = DbType.Int64;
-        _existsFileId.ParameterName = "@fileid";
-        ExistsCommand.Parameters.Add(_existsFileId);
-        return _existsFileId;
-      }
-    }
-    #endregion
-
-    #region Insert
-    /// <summary>
-    /// The lock to make sure that we do not create the same thing over and over.
-    /// </summary>
-    private readonly Lock.Lock _lockInsert = new Lock.Lock();
-
-    /// <summary>
-    /// The insert command;
-    /// </summary>
-    private IDbCommand _insertCommand;
-
-    /// <summary>
-    /// The word id to insert.
-    /// </summary>
-    private IDbDataParameter _insertWordId;
-
-    /// <summary>
-    /// The file id to insert.
-    /// </summary>
-    private IDbDataParameter _insertFileId;
-
-    /// <summary>
-    /// The sql string that we will use to insert an id.
-    /// </summary>
-    private string InsertSql => $"INSERT OR IGNORE INTO {_tableName} (wordid, fileid) VALUES (@wordid, @fileid)";
-
-    /// <summary>
-    /// Create the exists command if needed.
-    /// </summary>
-    private IDbCommand InsertCommand
-    {
-      get
-      {
-        if (_insertCommand != null)
-        {
-          return _insertCommand;
-        }
-
-        _insertCommand = _factory.CreateCommand(InsertSql);
-        return _insertCommand;
-      }
-    }
-
-    /// <summary>
-    /// The insert word id parameter.
-    /// </summary>
-    private IDbDataParameter InsertWordId
-    {
-      get
-      {
-        if (null != _insertWordId)
-        {
-          return _insertWordId;
-        }
-
-        _insertWordId = InsertCommand.CreateParameter();
-        _insertWordId.DbType = DbType.Int64;
-        _insertWordId.ParameterName = "@wordid";
-        InsertCommand.Parameters.Add(_insertWordId);
-        return _insertWordId;
-      }
-    }
-
-    /// <summary>
-    /// The insert file id parameter.
-    /// </summary>
-    private IDbDataParameter InsertFileId
-    {
-      get
-      {
-        if (null != _insertFileId)
-        {
-          return _insertFileId;
-        }
-
-        _insertFileId = InsertCommand.CreateParameter();
-        _insertFileId.DbType = DbType.Int64;
-        _insertFileId.ParameterName = "@fileid";
-        InsertCommand.Parameters.Add(_insertFileId);
-        return _insertFileId;
-      }
-    }
-    #endregion
-
-    #region Delete
-    /// <summary>
-    /// The lock to make sure that we do not create the same thing over and over.
-    /// </summary>
-    private readonly Lock.Lock _lockDelete = new Lock.Lock();
-
-    /// <summary>
-    /// The delete command
-    /// </summary>
-    private IDbCommand _deleteCommand;
-
-    /// <summary>
-    /// The file id to delete.
-    /// </summary>
-    private IDbDataParameter _deleteFileId;
-
-    /// <summary>
-    /// The sql string that we will use to delete the id
-    /// </summary>
-    private string DeletetSql => $"DELETE FROM {_tableName} WHERE fileid=@fileid";
-
-    /// <summary>
-    /// Create the delete command if needed.
-    /// </summary>
-    private IDbCommand DeleteCommand
-    {
-      get
-      {
-        if (_deleteCommand != null)
-        {
-          return _deleteCommand;
-        }
-
-        _deleteCommand = _factory.CreateCommand(DeletetSql);
-        return _deleteCommand;
-      }
-    }
-
-    /// <summary>
-    /// The delete file id parameter.
-    /// </summary>
-    private IDbDataParameter DeleteFileId
-    {
-      get
-      {
-        if (null != _deleteFileId)
-        {
-          return _deleteFileId;
-        }
-
-        _deleteFileId = InsertCommand.CreateParameter();
-        _deleteFileId.DbType = DbType.Int64;
-        _deleteFileId.ParameterName = "@fileid";
-        DeleteCommand.Parameters.Add(_deleteFileId);
-        return _deleteFileId;
-      }
-    }
-    #endregion
-
     #region Member variables
+    /// <summary>
+    /// Insert a FileId/WordId
+    /// </summary>
+    private readonly MultiplePersisterHelper<PersisterInsertFilesWordsHelper> _insert;
+
+    /// <summary>
+    /// Check if a word/file exists.
+    /// </summary>
+    private readonly MultiplePersisterHelper<PersisterExistsFilesWordsHelper> _exists;
+
+    /// <summary>
+    /// Delete by file id.
+    /// </summary>
+    private readonly MultiplePersisterHelper<PersisterDeleteFilesWordsHelper> _delete;
+
     /// <summary>
     /// Check if this item has been disposed or not.
     /// </summary>
     private bool _disposed;
-
-    /// <summary>
-    /// The connection factory.
-    /// </summary>
-    private readonly IConnectionFactory _factory;
-
-    /// <summary>
-    /// The name of the table.
-    /// </summary>
-    private readonly string _tableName;
     #endregion
 
     public FilesWordsHelper(IConnectionFactory factory, string tableName)
     {
-      // the table name
-      _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
+      const int numberOfItems = 10;
 
-      // save the factory.
-      _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+      // check if a file exists.
+      _exists = new MultiplePersisterHelper<PersisterExistsFilesWordsHelper>( () => new PersisterExistsFilesWordsHelper(factory, $"SELECT 1 FROM {tableName} where wordid=@wordid AND fileid=@fileid" ), numberOfItems);
+
+      // delete
+      _delete = new MultiplePersisterHelper<PersisterDeleteFilesWordsHelper>(() => new PersisterDeleteFilesWordsHelper(factory, $"DELETE FROM {tableName} WHERE fileid=@fileid"), numberOfItems);
+
+      // insert
+      _insert = new MultiplePersisterHelper<PersisterInsertFilesWordsHelper>(() => new PersisterInsertFilesWordsHelper(factory, $"INSERT OR IGNORE INTO {tableName} (wordid, fileid) VALUES (@wordid, @fileid)"), numberOfItems);
     }
 
     /// <summary>
@@ -298,27 +266,18 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // we are now done.
       _disposed = true;
 
-      _existsCommand?.Dispose();
-      _insertCommand?.Dispose();
+      _exists?.Dispose();
+      _insert?.Dispose();
+      _delete?.Dispose();
     }
 
     /// <inheritdoc />
-    public async Task<bool> ExistsAsync(long wordId, long fileId, CancellationToken token)
+    public Task<bool> ExistsAsync(long wordId, long fileId, CancellationToken token)
     {
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lockExists.TryAsync().ConfigureAwait(false))
-      {
-        // we are first going to look for that id
-        // if it does not exist, then we cannot update the files table.
-        ExistsWordId.Value = wordId;
-        ExistsFileId.Value = fileId;
-        var value = await _factory.ExecuteReadOneAsync(ExistsCommand, token).ConfigureAwait(false);
-
-        // return if we found a value.
-        return null != value && value != DBNull.Value;
-      }
+      return _exists.Next().ExistAsync(wordId, fileId, token);
     }
 
     /// <inheritdoc />
@@ -327,34 +286,21 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lockInsert.TryAsync().ConfigureAwait(false))
-      {
-        // insert the word.
-        InsertWordId.Value = wordId;
-        InsertFileId.Value = fileId;
-        if (1 == await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false))
-        {
-          // the insert woked.
-          return true;
-        }
-      }
+      // try and insert the id
+      await _insert.Next().InsertAsync(wordId, fileId, token).ConfigureAwait(false);
 
       // was there an error ... or is it a duplicate.
       // we have to check outside the lock
       return await ExistsAsync(wordId, fileId, token).ConfigureAwait(false);
     }
 
-    public async Task<bool> DeleteFileAsync(long fileId, CancellationToken token)
+    /// <inheritdoc />
+    public Task<bool> DeleteFileAsync(long fileId, CancellationToken token)
     {
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lockDelete.TryAsync().ConfigureAwait(false))
-      {
-        // delete the file
-        DeleteFileId.Value = fileId;
-        return (1 == await _factory.ExecuteWriteAsync(DeleteCommand, token).ConfigureAwait(false));
-      }
+      return _delete.Next().DeleteAsync(fileId, token);
     }
   }
 }

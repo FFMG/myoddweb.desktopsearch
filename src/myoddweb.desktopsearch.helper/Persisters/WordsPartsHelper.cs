@@ -311,7 +311,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <summary>
     /// Delete by word/part
     /// </summary>
-    private readonly PersisterDeleteWordPartsHelper _delete;
+    private readonly MultiplePersisterHelper<PersisterDeleteWordPartsHelper> _delete;
 
     /// <summary>
     /// Check if this item has been disposed or not.
@@ -333,7 +333,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       _select = new MultiplePersisterHelper<PersisterSelectWordPartsHelper>(() => new PersisterSelectWordPartsHelper( factory, $"SELECT partid FROM {tableName} WHERE wordid = @wordid"), numberOfItems);
 
       // delete by word/part id.
-      _delete = new PersisterDeleteWordPartsHelper(factory, $"DELETE FROM {tableName} WHERE wordid=@wordid AND partid=@partid");
+      _delete = new MultiplePersisterHelper<PersisterDeleteWordPartsHelper>(() => new PersisterDeleteWordPartsHelper(factory, $"DELETE FROM {tableName} WHERE wordid=@wordid AND partid=@partid"), numberOfItems);
     }
 
     /// <summary>
@@ -407,7 +407,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       ThrowIfDisposed();
 
       // delete the word/part/
-      return _delete.DeleteAsync(wordId, partId, token);
+      return _delete.Next().DeleteAsync(wordId, partId, token);
     }
   }
 }
