@@ -21,344 +21,317 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.helper.Persisters
 {
-  public class WordsPartsHelper : IWordsPartsHelper
+  internal class PersisterSelectWordPartsHelper : PersisterHelper
   {
-    #region Exists
     /// <summary>
-    /// The lock to make sure that we do not create the same thing over and over.
+    /// The insert word parameter;
     /// </summary>
-    private readonly Lock.Lock _lockExists = new Lock.Lock();
+    private IDbDataParameter _wordId;
 
     /// <summary>
-    /// The select command;
+    /// The insert word parameter;
     /// </summary>
-    private IDbCommand _existsCommand;
-
-    /// <summary>
-    /// The parameters to check if a word id exists.
-    /// </summary>
-    private IDbDataParameter _existsWordId;
-
-    /// <summary>
-    /// The parameters to check if a part id exists.
-    /// </summary>
-    private IDbDataParameter _existsPartId;
-
-    /// <summary>
-    /// The sql string that we will use to look for an id.
-    /// </summary>
-    private string ExistsSql => $"SELECT 1 FROM {_tableName} WHERE wordid=@wordid and partid=@partid";
-
-    /// <summary>
-    /// Create the exists command if needed.
-    /// </summary>
-    private IDbCommand ExistsCommand
+    public IDbDataParameter WordId
     {
       get
       {
-        if (_existsCommand != null)
+        if (null != _wordId)
         {
-          return _existsCommand;
+          return _wordId;
         }
 
-        _existsCommand = _factory.CreateCommand(ExistsSql);
-        return _existsCommand;
+        _wordId = Command.CreateParameter();
+        _wordId.DbType = DbType.Int64;
+        _wordId.ParameterName = "@wordId";
+        Command.Parameters.Add(_wordId);
+        return _wordId;
       }
     }
 
-    /// <summary>
-    /// The exists word id parameter.
-    /// </summary>
-    private IDbDataParameter ExistsWordId
+    public PersisterSelectWordPartsHelper(IConnectionFactory factory, string sql) : base(factory, sql)
     {
-      get
-      {
-        if (null != _existsWordId)
-        {
-          return _existsWordId;
-        }
-
-        _existsWordId = ExistsCommand.CreateParameter();
-        _existsWordId.DbType = DbType.Int64;
-        _existsWordId.ParameterName = "@wordid";
-        ExistsCommand.Parameters.Add(_existsWordId);
-        return _existsWordId;
-      }
     }
 
-    /// <summary>
-    /// The exists file id parameter.
-    /// </summary>
-    private IDbDataParameter ExistsPartId
+    public async Task<IList<long>> GetAsync(long wordId, CancellationToken token)
     {
-      get
+      using (await Lock.TryAsync().ConfigureAwait(false))
       {
-        if (null != _existsPartId)
+        // select all the ids that belong to that word.
+        WordId.Value = wordId;
+        using (var reader = await Factory.ExecuteReadAsync( Command, token).ConfigureAwait(false))
         {
-          return _existsPartId;
-        }
+          var partIds = new List<long>();
 
-        _existsPartId = ExistsCommand.CreateParameter();
-        _existsPartId.DbType = DbType.Int64;
-        _existsPartId.ParameterName = "@partid";
-        ExistsCommand.Parameters.Add(_existsPartId);
-        return _existsPartId;
+          // now read the part ids as needed.
+          while (reader.Read())
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            // add this part
+            partIds.Add(reader.GetInt64(0));
+          }
+
+          //  return all the part ids we found.
+          return partIds;
+        }
       }
     }
-    #endregion
+  }
 
-    #region Insert
+  internal class PersisterInsertWordPartsHelper : PersisterHelper
+  {
     /// <summary>
-    /// The lock to make sure that we do not create the same thing over and over.
+    /// The insert word parameter;
     /// </summary>
-    private readonly Lock.Lock _lockInsert = new Lock.Lock();
-
-    /// <summary>
-    /// The insert command;
-    /// </summary>
-    private IDbCommand _insertCommand;
+    private IDbDataParameter _wordId;
 
     /// <summary>
-    /// The insert word id parameter;
+    /// The part id.
     /// </summary>
-    private IDbDataParameter _insertWordId;
+    private IDbDataParameter _partId; 
 
     /// <summary>
-    /// The insert part id parameter;
+    /// The insert word parameter;
     /// </summary>
-    private IDbDataParameter _insertPartId;
-
-    /// <summary>
-    /// The sql string that we will use to insert a word.
-    /// We will only insert if there are no duplicates.
-    /// </summary>
-    private string InsertSql => $"INSERT OR IGNORE INTO {_tableName} (wordid, partid) VALUES (@wordid, @partid)";
-
-    /// <summary>
-    /// Create the Insert command if needed.
-    /// </summary>
-    private IDbCommand InsertCommand
+    public IDbDataParameter WordId
     {
       get
       {
-        if (_insertCommand != null)
+        if (null != _wordId)
         {
-          return _insertCommand;
+          return _wordId;
         }
 
-        _insertCommand = _factory.CreateCommand(InsertSql);
-        return _insertCommand;
-      }
-    }
-
-    /// <summary>
-    /// The word id Insert parameter.
-    /// </summary>
-    private IDbDataParameter InsertWordId
-    {
-      get
-      {
-        if (null != _insertWordId)
-        {
-          return _insertWordId;
-        }
-
-        _insertWordId = InsertCommand.CreateParameter();
-        _insertWordId.DbType = DbType.Int64;
-        _insertWordId.ParameterName = "@wordId";
-        InsertCommand.Parameters.Add(_insertWordId);
-        return _insertWordId;
+        _wordId = Command.CreateParameter();
+        _wordId.DbType = DbType.Int64;
+        _wordId.ParameterName = "@wordId";
+        Command.Parameters.Add(_wordId);
+        return _wordId;
       }
     }
 
     /// <summary>
     /// The part id Insert parameter.
     /// </summary>
-    private IDbDataParameter InsertPartId
+    private IDbDataParameter PartId
     {
       get
       {
-        if (null != _insertPartId)
+        if (null != _partId)
         {
-          return _insertPartId;
+          return _partId;
         }
 
-        _insertPartId = InsertCommand.CreateParameter();
-        _insertPartId.DbType = DbType.Int64;
-        _insertPartId.ParameterName = "@partId";
-        InsertCommand.Parameters.Add(_insertPartId);
-        return _insertPartId;
+        _partId = Command.CreateParameter();
+        _partId.DbType = DbType.Int64;
+        _partId.ParameterName = "@partId";
+        Command.Parameters.Add(_partId);
+        return _partId;
       }
     }
-    #endregion
-
-    #region Delete
-    /// <summary>
-    /// The lock to make sure that we do not create the same thing over and over.
-    /// </summary>
-    private readonly Lock.Lock _lockDelete = new Lock.Lock();
-
-    /// <summary>
-    /// The delete command;
-    /// </summary>
-    private IDbCommand _deleteCommand;
-
-    /// <summary>
-    /// The delete word id parameter;
-    /// </summary>
-    private IDbDataParameter _deleteWordId;
-
-    /// <summary>
-    /// The delete part id parameter;
-    /// </summary>
-    private IDbDataParameter _deletePartId;
-
-    /// <summary>
-    /// The sql string that we will use to delete a word/part.
-    /// </summary>
-    private string DeleteSql => $"DELETE FROM {_tableName} WHERE wordid=@wordid AND partid=@partid";
-
-    /// <summary>
-    /// Create the Delete command if needed.
-    /// </summary>
-    private IDbCommand DeleteCommand
+    
+    public PersisterInsertWordPartsHelper(IConnectionFactory factory, string sql) : base(factory, sql)
     {
-      get
-      {
-        if (_deleteCommand != null)
-        {
-          return _deleteCommand;
-        }
-
-        _deleteCommand = _factory.CreateCommand(DeleteSql);
-        return _deleteCommand;
-      }
     }
 
-    /// <summary>
-    /// The word id delete parameter.
-    /// </summary>
-    private IDbDataParameter DeleteWordId
+    public async Task<bool> InsertAsync(long wordId, long partId, CancellationToken token)
     {
-      get
+      using (await Lock.TryAsync().ConfigureAwait(false))
       {
-        if (null != _deleteWordId)
-        {
-          return _deleteWordId;
-        }
-
-        _deleteWordId = DeleteCommand.CreateParameter();
-        _deleteWordId.DbType = DbType.Int64;
-        _deleteWordId.ParameterName = "@wordId";
-        DeleteCommand.Parameters.Add(_deleteWordId);
-        return _deleteWordId;
+        // insert the word.
+        WordId.Value = wordId;
+        PartId.Value = partId;
+        return (1 == await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false));
       }
     }
+  }
+
+  internal class PersisterExistsWordPartsHelper : PersisterHelper
+  {
+    /// <summary>
+    /// The insert word parameter;
+    /// </summary>
+    private IDbDataParameter _wordId;
 
     /// <summary>
-    /// The part id Delete parameter.
+    /// The part id.
     /// </summary>
-    private IDbDataParameter DeletePartId
-    {
-      get
-      {
-        if (null != _deletePartId)
-        {
-          return _deletePartId;
-        }
-
-        _deletePartId = DeleteCommand.CreateParameter();
-        _deletePartId.DbType = DbType.Int64;
-        _deletePartId.ParameterName = "@partId";
-        DeleteCommand.Parameters.Add(_insertPartId);
-        return _deletePartId;
-      }
-    }
-    #endregion
-
-    #region Select Ids
-    /// <summary>
-    /// The lock to make sure that we do not create the same thing over and over.
-    /// </summary>
-    private readonly Lock.Lock _lockSelect = new Lock.Lock();
-
-    /// <summary>
-    /// The select command;
-    /// </summary>
-    private IDbCommand _selectIdsCommand;
+    private IDbDataParameter _partId;
 
     /// <summary>
     /// The insert word parameter;
     /// </summary>
-    private IDbDataParameter _selectPartIdsWordId;
-
-    /// <summary>
-    /// The sql string that we will use to look for an id.
-    /// </summary>
-    private string SelectPartIdsSql => $"SELECT partid FROM {_tableName} WHERE wordid = @wordid";
-
-    /// <summary>
-    /// Create the select command if needed.
-    /// </summary>
-    private IDbCommand SelectPartIdsCommand
+    public IDbDataParameter WordId
     {
       get
       {
-        if (_selectIdsCommand != null)
+        if (null != _wordId)
         {
-          return _selectIdsCommand;
+          return _wordId;
         }
 
-        _selectIdsCommand = _factory.CreateCommand(SelectPartIdsSql);
-        return _selectIdsCommand;
+        _wordId = Command.CreateParameter();
+        _wordId.DbType = DbType.Int64;
+        _wordId.ParameterName = "@wordId";
+        Command.Parameters.Add(_wordId);
+        return _wordId;
       }
     }
 
     /// <summary>
-    /// The word select parameter.
+    /// The part id Insert parameter.
     /// </summary>
-    private IDbDataParameter SelectPartIdsWordId
+    private IDbDataParameter PartId
     {
       get
       {
-        if (null != _selectPartIdsWordId)
+        if (null != _partId)
         {
-          return _selectPartIdsWordId;
+          return _partId;
         }
 
-        _selectPartIdsWordId = SelectPartIdsCommand.CreateParameter();
-        _selectPartIdsWordId.DbType = DbType.Int64;
-        _selectPartIdsWordId.ParameterName = "@wordid";
-        SelectPartIdsCommand.Parameters.Add(_selectPartIdsWordId);
-        return _selectPartIdsWordId;
+        _partId = Command.CreateParameter();
+        _partId.DbType = DbType.Int64;
+        _partId.ParameterName = "@partId";
+        Command.Parameters.Add(_partId);
+        return _partId;
       }
     }
-    #endregion
 
+    public PersisterExistsWordPartsHelper(IConnectionFactory factory, string sql) : base(factory, sql)
+    {
+    }
+
+    public async Task<bool> ExistAsync(long wordId, long partId, CancellationToken token)
+    {
+      using (await Lock.TryAsync().ConfigureAwait(false))
+      {
+        // insert the word.
+        WordId.Value = wordId;
+        PartId.Value = partId;
+
+        // get the value if we have one
+        var value = await Factory.ExecuteReadOneAsync(Command, token).ConfigureAwait(false);
+        
+        // return if we found a value.
+        return null != value && value != DBNull.Value;
+      }
+    }
+  }
+
+  internal class PersisterDeleteWordPartsHelper : PersisterHelper
+  {
+    /// <summary>
+    /// The insert word parameter;
+    /// </summary>
+    private IDbDataParameter _wordId;
+
+    /// <summary>
+    /// The part id.
+    /// </summary>
+    private IDbDataParameter _partId;
+
+    /// <summary>
+    /// The insert word parameter;
+    /// </summary>
+    public IDbDataParameter WordId
+    {
+      get
+      {
+        if (null != _wordId)
+        {
+          return _wordId;
+        }
+
+        _wordId = Command.CreateParameter();
+        _wordId.DbType = DbType.Int64;
+        _wordId.ParameterName = "@wordId";
+        Command.Parameters.Add(_wordId);
+        return _wordId;
+      }
+    }
+
+    /// <summary>
+    /// The part id Insert parameter.
+    /// </summary>
+    private IDbDataParameter PartId
+    {
+      get
+      {
+        if (null != _partId)
+        {
+          return _partId;
+        }
+
+        _partId = Command.CreateParameter();
+        _partId.DbType = DbType.Int64;
+        _partId.ParameterName = "@partId";
+        Command.Parameters.Add(_partId);
+        return _partId;
+      }
+    }
+
+    public PersisterDeleteWordPartsHelper(IConnectionFactory factory, string sql) : base(factory, sql)
+    {
+    }
+
+    public async Task<bool> DeleteAsync(long wordId, long partId, CancellationToken token)
+    {
+      using (await Lock.TryAsync().ConfigureAwait(false))
+      {
+        // insert the word.
+        WordId.Value = wordId;
+        PartId.Value = partId;
+
+        // select all the ids that belong to that word.
+        return 0 != await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false);
+      }
+    }
+  }
+
+  public class WordsPartsHelper : IWordsPartsHelper
+  {
     #region Member variables
+    /// <summary>
+    /// The insert helper.
+    /// </summary>
+    private readonly PersisterInsertWordPartsHelper _insert;
+
+    /// <summary>
+    /// Check if a word/part exists.
+    /// </summary>
+    private readonly PersisterExistsWordPartsHelper _exists;
+
+    /// <summary>
+    /// Get the value by id.
+    /// </summary>
+    private readonly PersisterSelectWordPartsHelper _select;
+
+    /// <summary>
+    /// Delete by word/part
+    /// </summary>
+    private readonly PersisterDeleteWordPartsHelper _delete;
+
     /// <summary>
     /// Check if this item has been disposed or not.
     /// </summary>
     private bool _disposed;
-
-    /// <summary>
-    /// The connection factory.
-    /// </summary>
-    private readonly IConnectionFactory _factory;
-
-    /// <summary>
-    /// The name of the table.
-    /// </summary>
-    private readonly string _tableName;
     #endregion
 
     public WordsPartsHelper(IConnectionFactory factory, string tableName)
     {
-      // the table name
-      _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
+      // the insert command.
+      _insert = new PersisterInsertWordPartsHelper( factory, $"INSERT OR IGNORE INTO {tableName} (wordid, partid) VALUES (@wordid, @partid)");
 
-      // save the factory.
-      _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+      // exists?
+      _exists = new PersisterExistsWordPartsHelper( factory, $"SELECT 1 FROM {tableName} WHERE wordid=@wordid and partid=@partid" );
+
+      // select by word id.
+      _select = new PersisterSelectWordPartsHelper( factory, $"SELECT partid FROM {tableName} WHERE wordid = @wordid");
+
+      // delete by word/part id.
+      _delete = new PersisterDeleteWordPartsHelper(factory, $"DELETE FROM {tableName} WHERE wordid=@wordid AND partid=@partid");
     }
 
     /// <summary>
@@ -384,41 +357,30 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // we are now done.
       _disposed = true;
 
-      _selectIdsCommand?.Dispose();
-      _insertCommand?.Dispose();
-      _existsCommand?.Dispose();
-      _deleteCommand?.Dispose();
+      _insert?.Dispose();
+      _exists?.Dispose();
+      _select?.Dispose();
+      _delete?.Dispose();
     }
 
     /// <inheritdoc />
-    public async Task<IList<long>> GetPartIdsAsync(long wordid, CancellationToken token )
+    public Task<bool> ExistsAsync(long wordId, long partId, CancellationToken token)
     {
       // sanity check
       ThrowIfDisposed();
 
-      // quickly lock and get the data
-      using (await _lockSelect.TryAsync().ConfigureAwait(false))
-      {
-        // select all the ids that belong to that word.
-        SelectPartIdsWordId.Value = wordid;
-        using (var reader = await _factory.ExecuteReadAsync(SelectPartIdsCommand, token).ConfigureAwait(false))
-        {
-          var partIds = new List<long>();
+      // return if it exists.
+      return _exists.ExistAsync(wordId, partId, token);
+    }
 
-          // now read the part ids as needed.
-          while (reader.Read())
-          {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
+    /// <inheritdoc />
+    public Task<IList<long>> GetPartIdsAsync(long wordid, CancellationToken token )
+    {
+      // sanity check
+      ThrowIfDisposed();
 
-            // add this part
-            partIds.Add(reader.GetInt64(0));
-          }
-
-          //  return all the part ids we found.
-          return partIds;
-        }
-      }
+      // get the data
+      return _select.GetAsync(wordid, token);
     }
 
     /// <inheritdoc />
@@ -427,56 +389,23 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lockInsert.TryAsync().ConfigureAwait(false))
+      if (await _insert.InsertAsync(wordId, partId, token).ConfigureAwait(false))
       {
-        InsertWordId.Value = wordId;
-        InsertPartId.Value = partId;
-
-        // select all the ids that belong to that word.
-        if (1 == await _factory.ExecuteWriteAsync(InsertCommand, token).ConfigureAwait(false))
-        {
-          return true;
-        }
+        return true;
       }
 
-      // we could not insert it
-      // so we have to check if the reason was because this exists already.
+      // we could not insert it, so we have to check if the reason was because this exists already.
       return await ExistsAsync(wordId, partId, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteAsync(long wordId, long partId, CancellationToken token)
+    public Task<bool> DeleteAsync(long wordId, long partId, CancellationToken token)
     {
       // sanity check
       ThrowIfDisposed();
 
-      using (await _lockDelete.TryAsync().ConfigureAwait(false))
-      {
-        DeleteWordId.Value = wordId;
-        DeletePartId.Value = partId;
-
-        // select all the ids that belong to that word.
-        return 0 != await _factory.ExecuteWriteAsync(DeleteCommand, token).ConfigureAwait(false);
-      }
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> ExistsAsync(long wordId, long partId, CancellationToken token)
-    {
-      // sanity check
-      ThrowIfDisposed();
-
-      using (await _lockExists.TryAsync().ConfigureAwait(false))
-      {
-        // we are first going to look for that id
-        // if it does not exist, then we cannot update the files table.
-        ExistsWordId.Value = wordId;
-        ExistsPartId.Value = partId;
-        var value = await _factory.ExecuteReadOneAsync(ExistsCommand, token).ConfigureAwait(false);
-
-        // return if we found a value.
-        return null != value && value != DBNull.Value;
-      }
+      // delete the word/part/
+      return _delete.DeleteAsync(wordId, partId, token);
     }
   }
 }

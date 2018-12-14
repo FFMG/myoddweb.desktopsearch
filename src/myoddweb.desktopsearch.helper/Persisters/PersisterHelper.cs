@@ -37,7 +37,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <summary>
     /// Create the command on request.
     /// </summary>
-    public IDbCommand Command
+    protected IDbCommand Command
     {
       get
       {
@@ -51,7 +51,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       }
     }
 
-    public PersisterHelper(IConnectionFactory factory, string sql)
+    protected PersisterHelper(IConnectionFactory factory, string sql)
     {
       Factory = factory ?? throw new ArgumentNullException(nameof(factory));
       Sql = sql ?? throw new ArgumentNullException(nameof(sql));
