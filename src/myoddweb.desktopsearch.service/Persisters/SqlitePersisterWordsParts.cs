@@ -164,14 +164,10 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         Contract.Assert(_wordsPartsHelper != null);
-        foreach (var partId in partIds)
+        var errors = await _wordsPartsHelper.InsertAsync(wordId, partIds, token).ConfigureAwait(false);
+        if( errors.Any() )
         {
-          token.ThrowIfCancellationRequested();
-          if (await _wordsPartsHelper.InsertAsync(wordId, partId, token).ConfigureAwait(false))
-          {
-            continue;
-          }
-          _logger.Error($"There was an issue adding part to word: {partId}/{wordId} to persister");
+          _logger.Error($"There was an issue adding parts to word: {wordId} to persister");
         }
       }
       catch (OperationCanceledException e)

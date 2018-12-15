@@ -25,10 +25,10 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// Check if a wordid/partid exists.
     /// </summary>
     /// <param name="wordId"></param>
-    /// <param name="partId"></param>
+    /// <param name="partIds"></param>
     /// <param name="token"></param>
-    /// <returns></returns>
-    Task<bool> ExistsAsync(long wordId, long partId, CancellationToken token);
+    /// <returns>The list of ids that do not exist</returns>
+    Task<IList<long>> ExistsAsync(long wordId, IReadOnlyCollection<long> partIds, CancellationToken token);
 
     /// <summary>
     /// Get all the parts that are linked to a word.
@@ -39,13 +39,14 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     Task<IList<long>> GetPartIdsAsync(long wordid, CancellationToken token);
 
     /// <summary>
-    /// Insert a part id and return if it worked or not.
+    /// Insert all the parts of a word.
+    /// Return the ids that do not exist.
     /// </summary>
     /// <param name="wordId"></param>
-    /// <param name="partId"></param>
+    /// <param name="partIds"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> InsertAsync(long wordId, long partId, CancellationToken token);
+    Task<IList<long>> InsertAsync(long wordId, IReadOnlyCollection<long> partIds, CancellationToken token);
 
     /// <summary>
     /// Delete a word/part id.

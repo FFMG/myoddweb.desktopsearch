@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -135,14 +136,33 @@ namespace myoddweb.desktopsearch.helper.Persisters
     {
     }
 
-    public async Task<bool> InsertAsync(long wordId, long partId, CancellationToken token)
+    /// <summary>
+    /// Try and insert id, return the ids we could not insert.
+    /// </summary>
+    /// <param name="wordId"></param>
+    /// <param name="partIds"></param>
+    /// <param name="token"></param>
+    /// <returns>The list of ids we could not insert, for whatever reason.</returns>
+    public async Task<IList<long>> InsertAsync(long wordId, IReadOnlyCollection<long> partIds, CancellationToken token)
     {
       using (await Lock.TryAsync().ConfigureAwait(false))
       {
+        var invalidIds = new List<long>();
         // insert the word.
         WordId.Value = wordId;
-        PartId.Value = partId;
-        return (1 == await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false));
+        foreach (var partId in partIds)
+        {
+          // check if we must get out
+          token.ThrowIfCancellationRequested();
+
+          // try and insert the id.
+          PartId.Value = partId;
+          if (1 != await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false))
+          {
+            invalidIds.Add(partId);
+          }
+        }
+        return invalidIds;
       }
     }
   }
@@ -203,19 +223,48 @@ namespace myoddweb.desktopsearch.helper.Persisters
     {
     }
 
-    public async Task<bool> ExistAsync(long wordId, long partId, CancellationToken token)
+    /// <summary>
+    /// Check if the given ids exist, return the list of ids that do not exist.
+    /// </summary>
+    /// <param name="wordId"></param>
+    /// <param name="partIds"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public async Task<IList<long>> ExistAsync(long wordId, IReadOnlyCollection<long> partIds, CancellationToken token)
     {
+      if (!partIds.Any())
+      {
+        return new List<long>();
+      }
+
       using (await Lock.TryAsync().ConfigureAwait(false))
       {
         // insert the word.
         WordId.Value = wordId;
-        PartId.Value = partId;
 
-        // get the value if we have one
-        var value = await Factory.ExecuteReadOneAsync(Command, token).ConfigureAwait(false);
-        
-        // return if we found a value.
-        return null != value && value != DBNull.Value;
+        var unknownIds = new List<long>();
+        foreach (var partId in partIds)
+        {
+          // get out if needed
+          token.ThrowIfCancellationRequested();
+
+          // the part we are checking
+          PartId.Value = partId;
+
+          // get the value if we have one
+          var value = await Factory.ExecuteReadOneAsync(Command, token).ConfigureAwait(false);
+
+          // return if we found a value.
+          if (null != value && value != DBNull.Value)
+          {
+            continue;
+          }
+
+          // this id does not exist
+          unknownIds.Add(partId);
+        }
+
+        return unknownIds;
       }
     }
   }
@@ -366,13 +415,13 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
 
     /// <inheritdoc />
-    public Task<bool> ExistsAsync(long wordId, long partId, CancellationToken token)
+    public Task<IList<long>> ExistsAsync(long wordId, IReadOnlyCollection<long> partIds, CancellationToken token)
     {
       // sanity check
       ThrowIfDisposed();
 
       // return if it exists.
-      return _exists.Next().ExistAsync(wordId, partId, token);
+      return _exists.Next().ExistAsync(wordId, partIds, token);
     }
 
     /// <inheritdoc />
@@ -386,18 +435,16 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> InsertAsync(long wordId, long partId, CancellationToken token)
+    public async Task<IList<long>> InsertAsync(long wordId, IReadOnlyCollection<long> partIds, CancellationToken token)
     {
       // sanity check
       ThrowIfDisposed();
 
-      if (await _insert.Next().InsertAsync(wordId, partId, token).ConfigureAwait(false))
-      {
-        return true;
-      }
+      // try and insert the ids
+      var invalidInsertIds = await _insert.Next().InsertAsync(wordId, partIds, token).ConfigureAwait(false);
 
-      // we could not insert it, so we have to check if the reason was because this exists already.
-      return await ExistsAsync(wordId, partId, token).ConfigureAwait(false);
+      // now check the invalid ids to check if they exist.
+      return await ExistsAsync(wordId, invalidInsertIds.ToList(), token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
