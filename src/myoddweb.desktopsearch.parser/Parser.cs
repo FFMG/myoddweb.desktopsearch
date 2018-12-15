@@ -268,7 +268,7 @@ namespace myoddweb.desktopsearch.parser
         try
         {
           // try and persist this one directory.
-          switch (await GetDirectoryUpdateType(directory, lastAccessTimeUtc, transaction, token).ConfigureAwait(false))
+          switch (await GetDirectoryUpdateType(directory, lastAccessTimeUtc, token).ConfigureAwait(false))
           {
             case UpdateType.None:
               //  ignore
@@ -327,14 +327,13 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     /// <param name="directory"></param>
     /// <param name="lastAccessTimeUtc"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<UpdateType> GetDirectoryUpdateType(DirectoryInfo directory, DateTime lastAccessTimeUtc, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<UpdateType> GetDirectoryUpdateType(DirectoryInfo directory, DateTime lastAccessTimeUtc, CancellationToken token)
     {
       // if the directory exist... and it was flaged as newer than the last time
       // we checked the directory, then all we need to do is touch it.
-      if (await _persister.Folders.DirectoryExistsAsync(directory, connectionFactory, token).ConfigureAwait(false))
+      if (await _persister.Folders.DirectoryExistsAsync(directory, token).ConfigureAwait(false))
       {
         if (directory.LastAccessTimeUtc < lastAccessTimeUtc)
         {
@@ -372,7 +371,7 @@ namespace myoddweb.desktopsearch.parser
       try
       {
         // the file has changed.
-        await _persister.Folders.FolderUpdates.TouchDirectoriesAsync(directories, UpdateType.Changed, transaction, token).ConfigureAwait(false);
+        await _persister.Folders.FolderUpdates.TouchDirectoriesAsync(directories, UpdateType.Changed, token).ConfigureAwait(false);
 
         // all done
         _persister.Commit(transaction);
@@ -428,7 +427,7 @@ namespace myoddweb.desktopsearch.parser
         // we can now process everything in on single go.
 
         // do all the directories at once.
-        await _persister.Folders.AddOrUpdateDirectoriesAsync(directoriesAndFiles.Keys.ToList(), transaction, token)
+        await _persister.Folders.AddOrUpdateDirectoriesAsync(directoriesAndFiles.Keys.ToList(), token)
           .ConfigureAwait(false);
 
         // then do the files.
@@ -443,7 +442,7 @@ namespace myoddweb.desktopsearch.parser
         }
 
         // all the folders have been processed.
-        await _persister.Folders.FolderUpdates.MarkDirectoriesProcessedAsync(directoriesAndFiles.Keys.ToList(), transaction, token).ConfigureAwait(false);
+        await _persister.Folders.FolderUpdates.MarkDirectoriesProcessedAsync(directoriesAndFiles.Keys.ToList(), token).ConfigureAwait(false);
 
         // all done
         _persister.Commit(transaction);

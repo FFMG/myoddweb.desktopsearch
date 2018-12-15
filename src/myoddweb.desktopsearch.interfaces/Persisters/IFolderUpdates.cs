@@ -20,62 +20,56 @@ using myoddweb.desktopsearch.interfaces.Enums;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IFolderUpdates
+  public interface IFolderUpdates : ITransaction
   {
     /// <summary>
     /// Flag a bunch of folders to the same type.
     /// </summary>
     /// <param name="directories"></param>
     /// <param name="type"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<DirectoryInfo> directories, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<DirectoryInfo> directories, UpdateType type, CancellationToken token);
 
     /// <summary>
     /// Flag a bunch of folders to the same type.
     /// </summary>
     /// <param name="directories"></param>
     /// <param name="type"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<long> directories, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> TouchDirectoriesAsync(IReadOnlyCollection<long> directories, UpdateType type, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given directory
     /// </summary>
     /// <param name="directories"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkDirectoriesProcessedAsync(IReadOnlyCollection<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> MarkDirectoriesProcessedAsync(IReadOnlyCollection<DirectoryInfo> directories, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given directory
     /// </summary>
     /// <param name="folderId"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkDirectoryProcessedAsync(long folderId, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> MarkDirectoryProcessedAsync(long folderId, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given directory
     /// </summary>
     /// <param name="folderIds"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkDirectoriesProcessedAsync(IEnumerable<long> folderIds, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> MarkDirectoriesProcessedAsync(IEnumerable<long> folderIds, CancellationToken token);
 
     /// <summary>
     /// Get a number of pending updates.
     /// </summary>
     /// <param name="limit">The maximum number of pending updates we are looking for.</param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IList<IPendingFolderUpdate>> GetPendingFolderUpdatesAsync( long limit, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<IList<IPendingFolderUpdate>> GetPendingFolderUpdatesAsync( long limit, CancellationToken token);
   }
 }

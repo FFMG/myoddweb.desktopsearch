@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IFolders
+  public interface IFolders : ITransaction
   {
     /// <summary>
     /// The files interface
@@ -36,83 +36,74 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// </summary>
     /// <param name="directory"></param>
     /// <param name="oldDirectory"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<long> RenameOrAddDirectoryAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<long> RenameOrAddDirectoryAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, CancellationToken token);
 
     /// <summary>
     /// Add or update an existing directory.
     /// </summary>
     /// <param name="directory"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, CancellationToken token);
 
     /// <summary>
     /// Update multiple directories at once.
     /// </summary>
     /// <param name="directories"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> AddOrUpdateDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, CancellationToken token);
 
     /// <summary>
     /// Delete a single folder.
     /// </summary>
     /// <param name="directory"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteDirectoryAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> DeleteDirectoryAsync(DirectoryInfo directory, CancellationToken token);
 
     /// <summary>
     /// Delete multiple folders.
     /// </summary>
     /// <param name="directories"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> DeleteDirectoriesAsync(IReadOnlyList<DirectoryInfo> directories, CancellationToken token);
 
     /// <summary>
     /// Check that we have the directory on record.
     /// </summary>
     /// <param name="directory"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DirectoryExistsAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> DirectoryExistsAsync(DirectoryInfo directory, CancellationToken token);
 
     /// <summary>
     /// Get the directory info if posible, otherwise return null if we have no record of it.
     /// </summary>
     /// <param name="directoryId"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<DirectoryInfo> GetDirectoryAsync(long directoryId, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<DirectoryInfo> GetDirectoryAsync(long directoryId, CancellationToken token);
 
     /// <summary>
     /// Get the id of a list of directories
     /// </summary>
     /// <param name="directories"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    Task<List<long>> GetDirectoriesIdAsync(IReadOnlyCollection<DirectoryInfo> directories, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound);
+    Task<List<long>> GetDirectoriesIdAsync(IReadOnlyCollection<DirectoryInfo> directories, CancellationToken token, bool createIfNotFound);
 
     /// <summary>
     /// Get the id of a folder or -1.
     /// </summary>
     /// <param name="directory"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    Task<long> GetDirectoryIdAsync(DirectoryInfo directory, IConnectionFactory connectionFactory,CancellationToken token, bool createIfNotFound);
+    Task<long> GetDirectoryIdAsync(DirectoryInfo directory,CancellationToken token, bool createIfNotFound);
   }
 }

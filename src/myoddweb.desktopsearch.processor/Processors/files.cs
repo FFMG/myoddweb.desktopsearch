@@ -336,16 +336,43 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       using (_counter.Start() )
       {
-        // look for the words
-        var numberOfWords = await parser.ParseAsync(helper, _logger, token).ConfigureAwait(false);
-        if (numberOfWords > 0)
+        try
         {
-          // if we found any, log it.
-          _logger.Verbose($"Files processor: {parser.Name} processed {helper.Count} words in {file.FullName}.");
-        }
+          // look for the words
+          var numberOfWords = await parser.ParseAsync(helper, _logger, token).ConfigureAwait(false);
+          if (numberOfWords > 0)
+          {
+            // if we found any, log it.
+            _logger.Verbose($"Files processor: {parser.Name} processed {helper.Count} words in {file.FullName}.");
+          }
 
-        // null values are ignored.
-        return numberOfWords;
+          // null values are ignored.
+          return numberOfWords;
+        }
+        catch (DirectoryNotFoundException)
+        {
+          // the directory does not exist anymore
+          var directory = Path.GetDirectoryName(file.FullName);
+          if (directory != null)
+          {
+            var directoryInfo = new DirectoryInfo(directory);
+            await _persister.Folders.FolderUpdates.TouchDirectoriesAsync( new []{directoryInfo}, UpdateType.Deleted, token).ConfigureAwait(false);
+          }
+          _logger.Warning( $"The directory {directory} does not exist" );
+
+          // in any case, we found nothing in that file
+          return 0;
+        }
+        catch (FileNotFoundException)
+        {
+          // file does not exist anymore...
+          //_persister.Folders.Files.FileUpdates.TouchFileAsync(file as FileInfo, UpdateType.Deleted, token)
+          //  .ConfigureAwait(false);
+          _logger.Warning($"The file {file.FullName} does not exist");
+
+          // in any case, we found nothing in that file
+          return 0;
+        }
       }
     }
     #endregion

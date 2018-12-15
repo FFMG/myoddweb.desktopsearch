@@ -94,7 +94,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         try
         {
           // then get _all_ the file updates that we want to do.
-          var pendingUpdates = await GetPendingFolderUpdatesAndMarkDirectoryProcessedAsync(factory, token).ConfigureAwait(false);
+          var pendingUpdates = await GetPendingFolderUpdatesAndMarkDirectoryProcessedAsync(token).ConfigureAwait(false);
           if (null == pendingUpdates)
           {
             //  probably was canceled.
@@ -126,7 +126,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       // if anything goes wrong _after_ that we will try and 'touch' it again.
       // by doing it that way around we ensure that we never keep the transaction.
       // and we don't run the risk of someone else trying to process this again.
-      await _persister.Folders.FolderUpdates.MarkDirectoriesProcessedAsync(pendingFolderUpdates.Select( f => f.FolderId ), factory, token).ConfigureAwait(false);
+      await _persister.Folders.FolderUpdates.MarkDirectoriesProcessedAsync(pendingFolderUpdates.Select( f => f.FolderId ), token).ConfigureAwait(false);
 
       var tasks = new List<Task>(pendingFolderUpdates.Count);
       foreach (var pendingFolderUpdate in pendingFolderUpdates)
@@ -297,12 +297,11 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// Get the folder updates
     /// </summary>
-    /// <param name="factory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<IList<IPendingFolderUpdate>> GetPendingFolderUpdatesAndMarkDirectoryProcessedAsync(IConnectionFactory factory, CancellationToken token)
+    private async Task<IList<IPendingFolderUpdate>> GetPendingFolderUpdatesAndMarkDirectoryProcessedAsync( CancellationToken token)
     {
-      var pendingUpdates = await _persister.Folders.FolderUpdates.GetPendingFolderUpdatesAsync(MaxNumberFoldersToProcess, factory, token).ConfigureAwait(false);
+      var pendingUpdates = await _persister.Folders.FolderUpdates.GetPendingFolderUpdatesAsync(MaxNumberFoldersToProcess, token).ConfigureAwait(false);
       if (null == pendingUpdates)
       {
         _logger.Error("Directory processor: Unable to get any pending folder updates.");
