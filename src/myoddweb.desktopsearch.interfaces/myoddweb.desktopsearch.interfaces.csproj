@@ -63,6 +63,7 @@
     <Compile Include="Persisters\ICounts.cs" />
     <Compile Include="Persisters\IFilesWordsHelper.cs" />
     <Compile Include="Persisters\IFilesWords.cs" />
+    <Compile Include="Persisters\IPart.cs" />
     <Compile Include="Persisters\IParts.cs" />
     <Compile Include="Persisters\IPartsHelper.cs" />
     <Compile Include="Persisters\IPendingParserWordsUpdate.cs" />

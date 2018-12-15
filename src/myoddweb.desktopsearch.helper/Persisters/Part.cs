@@ -14,28 +14,22 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using myoddweb.desktopsearch.interfaces.Persisters;
 
-namespace myoddweb.desktopsearch.interfaces.Persisters
+namespace myoddweb.desktopsearch.helper.Persisters
 {
-  public interface IPartsHelper : IDisposable
+  public class Part : IPart
   {
-    /// <summary>
-    /// Get the ids for parts.
-    /// </summary>
-    /// <param name="parts"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    Task<IList<IPart>> GetIdsAsync(IReadOnlyCollection<string> parts, CancellationToken token);
+    /// <inheritdoc />
+    public long Id { get; }
 
-    /// <summary>
-    /// Insert a part to the table and return the id for it.
-    /// </summary>
-    /// <param name="parts"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    Task<IList<IPart>> InsertAndGetAsync( IReadOnlyCollection<string> parts, CancellationToken token);
+    /// <inheritdoc />
+    public string Value { get; }
+
+    public Part(string value, long id)
+    {
+      Value = value ?? throw new ArgumentNullException( nameof(value) );
+      Id = id;
+    }
   }
 }

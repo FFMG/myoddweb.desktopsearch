@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.Persisters;
@@ -244,6 +245,13 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
+    /// <summary>
+    /// Get all the ids for the parts of this word.
+    /// If the part already exists, get the id, otherwise we will insert and then get the id.
+    /// </summary>
+    /// <param name="word"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
     private async Task<IList<long>> GetOrInsertParts( IWord word, CancellationToken token)
     {
       // get the parts.
@@ -257,25 +265,18 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       Contract.Assert( _partsHelper != null );
 
-      // the ids of all the parts, (added or otherwise).
-      var partIds = new List<long>(parts.Count);
+      // try and insert the values and get the ids.
+      // the return values are string+id
+      // if the id is -1, then we had an error
+      var partValuesAndIds = await _partsHelper.InsertAndGetAsync(parts.ToList(), token).ConfigureAwait(false);
 
-      foreach (var part in parts)
+      // get all the non -1 ids
+      var partIds = partValuesAndIds.Where( v => v.Id != -1 ).Select(p => p.Id).ToList();
+
+      // and log all the ids that did not work.
+      foreach (var partValue in partValuesAndIds.Where(v => v.Id == -1).Select( p => p.Value))
       {
-        // get out if needed.
-        token.ThrowIfCancellationRequested();
-
-        // we will do an insert regadless if the value exists or not.
-        // this is because we don't just insert if the value exist.
-        // there is no point in just geting the value.
-        var partId = await _partsHelper.InsertAndGetIdAsync(part, token).ConfigureAwait(false);
-        if (-1 != partId)
-        {
-          partIds.Add(partId);
-          continue;
-        }
-
-        _logger.Error($"There was an issue adding part: {part} to persister");
+        _logger.Error($"There was an issue adding part: {partValue} to persister");
       }
 
       // return all the ids that we either

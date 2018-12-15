@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
@@ -51,13 +52,16 @@ namespace myoddweb.desktopsearch.helper.Persisters
     {
     }
 
-    public async Task<bool> InsertAsync(string part, CancellationToken token)
+    public async Task InsertAsync(IReadOnlyCollection<string> parts, CancellationToken token)
     {
       using (await Lock.TryAsync().ConfigureAwait(false))
       {
-        // insert the word.
-        Part.Value = part;
-        return (1 == await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false));
+        foreach (var part in parts)
+        {
+          // insert the word.
+          Part.Value = part;
+          await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false);
+        }
       }
     }
   }
@@ -93,20 +97,28 @@ namespace myoddweb.desktopsearch.helper.Persisters
     {
     }
 
-    public async Task<long> GetAsync(string part, CancellationToken token)
+    public async Task<IList<IPart>> GetAsync(IReadOnlyCollection<string> parts, CancellationToken token)
     {
       using (await Lock.TryAsync().ConfigureAwait(false))
       {
-        // we are first going to look for that id
-        // if it does not exist, then we cannot update the files table.
-        Part.Value = part;
-        var value = await Factory.ExecuteReadOneAsync(Command, token).ConfigureAwait(false);
-        if (null == value || value == DBNull.Value)
+        var partsAndIds = new List<IPart>();
+
+        foreach (var part in parts)
         {
-          // we could not find this word.
-          return -1;
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
+          Part.Value = part;
+          var value = await Factory.ExecuteReadOneAsync(Command, token).ConfigureAwait(false);
+          if (null == value || value == DBNull.Value)
+          {
+            // we could not find this word.
+            partsAndIds.Add(new Part(part, -1));
+            continue;
+          }
+          partsAndIds.Add( new Part(part, (long)value));
         }
-        return (long)value;
+        return partsAndIds;
       }
     }
   }
@@ -169,26 +181,26 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
 
     /// <inheritdoc />
-    public Task<long> GetIdAsync(string part, CancellationToken token)
+    public Task<IList<IPart>> GetIdsAsync(IReadOnlyCollection<string> parts, CancellationToken token)
     {
       // sanity check
       ThrowIfDisposed();
 
-      return _select.Next().GetAsync(part, token);
+      return _select.Next().GetAsync(parts, token);
     }
 
     /// <inheritdoc />
-    public async Task<long> InsertAndGetIdAsync(string part, CancellationToken token)
+    public async Task<IList<IPart>> InsertAndGetAsync(IReadOnlyCollection<string> parts, CancellationToken token)
     {
       // sanity check
       ThrowIfDisposed();
 
       // insert the part.
-      await _insert.Next().InsertAsync(part, token).ConfigureAwait(false);
+      await _insert.Next().InsertAsync(parts, token).ConfigureAwait(false);
       
       // regardless of the result, get the id, if it existed, get the id
       // and if we inserted it, get the id.
-      return await GetIdAsync(part, token).ConfigureAwait(false);
+      return await GetIdsAsync(parts, token).ConfigureAwait(false);
     }
   }
 }

@@ -48,6 +48,7 @@
     <Compile Include="Lock\Key.cs" />
     <Compile Include="Lock\Lock.cs" />
     <Compile Include="Persisters\FilesWordsHelper.cs" />
+    <Compile Include="Persisters\Part.cs" />
     <Compile Include="Persisters\PartsHelper.cs" />
     <Compile Include="Persisters\PersisterHelper.cs" />
     <Compile Include="Persisters\WordsHelper.cs" />

@@ -145,6 +145,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <returns>The list of ids we could not insert, for whatever reason.</returns>
     public async Task<IList<long>> InsertAsync(long wordId, IReadOnlyCollection<long> partIds, CancellationToken token)
     {
+      if (!partIds.Any())
+      {
+        return new List<long>();
+      }
+
       using (await Lock.TryAsync().ConfigureAwait(false))
       {
         var invalidIds = new List<long>();
