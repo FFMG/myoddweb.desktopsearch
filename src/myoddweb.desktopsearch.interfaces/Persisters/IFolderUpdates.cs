@@ -68,8 +68,9 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// Get a number of pending updates.
     /// </summary>
     /// <param name="limit">The maximum number of pending updates we are looking for.</param>
+    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IList<IPendingFolderUpdate>> GetPendingFolderUpdatesAsync( long limit, CancellationToken token);
+    Task<IList<IPendingFolderUpdate>> GetPendingFolderUpdatesAsync( long limit, IConnectionFactory connectionFactory, CancellationToken token);
   }
 }
