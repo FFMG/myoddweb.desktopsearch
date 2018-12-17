@@ -590,21 +590,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       Contract.Assert(_factory != null);
 
-      var sqlSelect = $"SELECT id FROM {Tables.Files} where folderid=@folderid AND name=@name";
       var sqlInsert = $"INSERT INTO {Tables.Files} (folderid, name) VALUES (@folderid, @name)";
       using (var cmdInsert = _factory.CreateCommand(sqlInsert))
-      using (var cmdSelect = _factory.CreateCommand(sqlSelect))
       {
-        var pSFolderId = cmdSelect.CreateParameter();
-        pSFolderId.DbType = DbType.Int64;
-        pSFolderId.ParameterName = "@folderid";
-        cmdSelect.Parameters.Add(pSFolderId);
-
-        var pSName = cmdSelect.CreateParameter();
-        pSName.DbType = DbType.String;
-        pSName.ParameterName = "@name";
-        cmdSelect.Parameters.Add(pSName);
-
         var pIFolderId = cmdInsert.CreateParameter();
         pIFolderId.DbType = DbType.Int64;
         pIFolderId.ParameterName = "@folderid";
@@ -642,17 +630,14 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             if (IsFileSupportedByAnyParsers(file))
             {
-              pSFolderId.Value = folderId;
-              pSName.Value = file.Name.ToLowerInvariant();
-
-              var value = await _factory.ExecuteReadOneAsync(cmdSelect, token).ConfigureAwait(false);
-              if (null == value || value == DBNull.Value)
+              var fileId = await _filesHelper.GetAsync(folderId, file.Name, token).ConfigureAwait(false);
+              if (fileId == -1 )
               {
                 _logger.Error($"There was an issue finding the file id: {file.FullName} from perister");
                 continue;
               }
               // we will need to touch this id.
-              idsToTouch.Add( (long)value );
+              idsToTouch.Add( fileId );
             }
 
             // this item was inserted
