@@ -35,19 +35,21 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// Flag a file as having changed.
     /// </summary>
     /// <param name="fileId"></param>
+    /// <param name="ticks"></param>
     /// <param name="type"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchFileAsync(long fileId, UpdateType type, CancellationToken token);
+    Task<bool> TouchFileAsync(long fileId, long ticks, UpdateType type, CancellationToken token);
 
     /// <summary>
     /// Touch a list of files
     /// </summary>
     /// <param name="fileIds"></param>
+    /// <param name="ticks"></param>
     /// <param name="type"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchFilesAsync( IEnumerable<long> fileIds, UpdateType type, CancellationToken token);
+    Task<bool> TouchFilesAsync( IEnumerable<long> fileIds, long ticks, UpdateType type, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given file

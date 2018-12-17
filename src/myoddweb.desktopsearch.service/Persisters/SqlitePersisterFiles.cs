@@ -230,7 +230,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       if (IsFileSupportedByAnyParsers(file))
       {
         // touch that file as changed
-        await FileUpdates.TouchFileAsync(fileId, UpdateType.Changed, token).ConfigureAwait(false);
+        await FileUpdates.TouchFileAsync(fileId, file.LastWriteTimeUtc.Ticks, UpdateType.Changed, token).ConfigureAwait(false);
       }
 
       // return the new file id
@@ -312,8 +312,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
       }
 
-      // touch the files.
-      await FileUpdates.TouchFilesAsync(deletedFileIdsToTouch, UpdateType.Deleted, token).ConfigureAwait(false);
+      // touch the files, the ticks time does not matter....
+      await FileUpdates.TouchFilesAsync(deletedFileIdsToTouch, DateTime.UtcNow.Ticks, UpdateType.Deleted, token).ConfigureAwait(false);
 
       // update the files count.
       await _counts.UpdateFilesCountAsync( -1* deletedCount, token).ConfigureAwait(false);
@@ -347,7 +347,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       if (fileIds.Any())
       {
         // touch that folder as changed
-        await FileUpdates.TouchFilesAsync(fileIds, UpdateType.Deleted, token).ConfigureAwait(false);
+        // as the file is deleted we don't really care about the date/time.
+        await FileUpdates.TouchFilesAsync(fileIds, DateTime.UtcNow.Ticks, UpdateType.Deleted, token).ConfigureAwait(false);
 
         // we are about to delete those files.
         await _counts.UpdateFilesCountAsync(fileIds.Count, token).ConfigureAwait(false);
@@ -669,7 +670,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         }
 
         // we can then touch all the updated items
-        await FileUpdates.TouchFilesAsync(idsToTouch, UpdateType.Created, token).ConfigureAwait(false);
+        // we use 'now' as the created time.
+        await FileUpdates.TouchFilesAsync(idsToTouch, DateTime.UtcNow.Ticks, UpdateType.Created, token).ConfigureAwait(false);
       }
 
       // we are about to delete those files.

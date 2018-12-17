@@ -34,9 +34,10 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// Touch certain file ids.
     /// </summary>
     /// <param name="fileIds"></param>
+    /// <param name="ticks"></param>
     /// <param name="type"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<long> TouchAsync(IReadOnlyCollection<long> fileIds, UpdateType type, CancellationToken token);
+    Task<long> TouchAsync(IReadOnlyCollection<long> fileIds, long ticks, UpdateType type, CancellationToken token);
   }
 }

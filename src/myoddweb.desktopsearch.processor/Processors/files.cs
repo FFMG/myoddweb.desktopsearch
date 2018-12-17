@@ -365,8 +365,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         catch (FileNotFoundException)
         {
           // file does not exist anymore...
-          //_persister.Folders.Files.FileUpdates.TouchFileAsync(file as FileInfo, UpdateType.Deleted, token)
-          //  .ConfigureAwait(false);
+          await _persister.Folders.Files.DeleteFileAsync(file as FileInfo, token).ConfigureAwait(false);
           _logger.Warning($"The file {file.FullName} does not exist");
 
           // in any case, we found nothing in that file

@@ -147,7 +147,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
     {
     }
 
-    public async Task<long> TouchAsync(IReadOnlyCollection<long> ids, UpdateType type, CancellationToken token)
+    public async Task<long> TouchAsync(IReadOnlyCollection<long> ids, long ticks, UpdateType type, CancellationToken token)
     {
       if (!ids.Any())
       {
@@ -157,7 +157,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       using (await Lock.TryAsync().ConfigureAwait(false))
       {
         Type.Value = (long)type;
-        Ticks.Value = DateTime.UtcNow.Ticks;
+        Ticks.Value = ticks;
 
         long actualTouch = 0;
         foreach (var id in ids)
@@ -240,11 +240,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
 
     /// <inheritdoc />
-    public Task<long> TouchAsync(IReadOnlyCollection<long> fileIds, UpdateType type, CancellationToken token)
+    public Task<long> TouchAsync(IReadOnlyCollection<long> fileIds, long ticks, UpdateType type, CancellationToken token)
     {
       ThrowIfDisposed();
 
-      return _touch.TouchAsync(fileIds, type, token );
+      return _touch.TouchAsync(fileIds, ticks, type, token );
     }
 
   }

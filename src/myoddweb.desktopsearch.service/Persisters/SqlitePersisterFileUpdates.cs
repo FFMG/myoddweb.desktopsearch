@@ -85,18 +85,18 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // then we can do the update
-      return await TouchFilesAsync(new [] {fileId}, type, token).ConfigureAwait(false);
+      return await TouchFilesAsync(new [] {fileId}, file.LastWriteTimeUtc.Ticks, type, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchFileAsync(long fileId, UpdateType type, CancellationToken token)
+    public async Task<bool> TouchFileAsync(long fileId, long ticks, UpdateType type, CancellationToken token)
     {
       // just make the files do all the work.
-      return await TouchFilesAsync(new [] { fileId }, type, token).ConfigureAwait(false);
+      return await TouchFilesAsync(new [] { fileId }, ticks, type, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchFilesAsync(IEnumerable<long> fileIds, UpdateType type, CancellationToken token)
+    public async Task<bool> TouchFilesAsync(IEnumerable<long> fileIds, long ticks, UpdateType type, CancellationToken token)
     {
       if (null == fileIds)
       {
@@ -119,7 +119,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         Contract.Assert( _filesUpdatesHelper != null );
-        var insertCount = await _filesUpdatesHelper.TouchAsync(ids, type, token).ConfigureAwait(false);
+        var insertCount = await _filesUpdatesHelper.TouchAsync(ids, ticks, type, token).ConfigureAwait(false);
 
         // update the pending files count.
         await _counts.UpdatePendingUpdatesCountAsync(insertCount, token).ConfigureAwait(false);
