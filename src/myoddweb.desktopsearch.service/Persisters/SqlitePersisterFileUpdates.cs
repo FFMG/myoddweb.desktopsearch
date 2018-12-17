@@ -89,10 +89,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchFileAsync(long fileId, long ticks, UpdateType type, CancellationToken token)
+    public Task<bool> TouchFileAsync(long fileId, long ticks, UpdateType type, CancellationToken token)
     {
       // just make the files do all the work.
-      return await TouchFilesAsync(new [] { fileId }, ticks, type, token).ConfigureAwait(false);
+      return TouchFilesAsync(new [] { fileId }, ticks, type, token);
     }
 
     /// <inheritdoc />
@@ -154,10 +154,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkFileProcessedAsync(long fileId, CancellationToken token)
+    public Task<bool> MarkFileProcessedAsync(long fileId, CancellationToken token)
     {
       // just make the files do all the work.
-      return await MarkFilesProcessedAsync(new [] { fileId }, token).ConfigureAwait(false);
+      return MarkFilesProcessedAsync(new [] { fileId }, token);
     }
 
     /// <inheritdoc />

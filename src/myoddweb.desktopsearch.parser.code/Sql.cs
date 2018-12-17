@@ -72,9 +72,9 @@ namespace myoddweb.desktopsearch.parser.code
     }
 
     /// <inheritdoc />
-    public async Task<long> ParseAsync(IParserHelper helper, ILogger logger, CancellationToken token)
+    public Task<long> ParseAsync(IParserHelper helper, ILogger logger, CancellationToken token)
     {
-      return await _parser.ParserAsync(helper, Contains, token).ConfigureAwait(false);
+      return _parser.ParserAsync(helper, Contains, token);
     }
     
     /// <summary>

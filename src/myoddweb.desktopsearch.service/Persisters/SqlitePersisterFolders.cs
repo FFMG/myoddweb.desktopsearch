@@ -82,9 +82,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, CancellationToken token)
+    public Task<bool> AddOrUpdateDirectoryAsync(DirectoryInfo directory, CancellationToken token)
     {
-      return await AddOrUpdateDirectoriesAsync(new [] {directory}, token ).ConfigureAwait(false);
+      return AddOrUpdateDirectoriesAsync(new [] {directory}, token );
     }
 
     /// <inheritdoc />

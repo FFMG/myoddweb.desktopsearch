@@ -106,9 +106,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddOrUpdateFileAsync(FileInfo file, CancellationToken token)
+    public Task<bool> AddOrUpdateFileAsync(FileInfo file, CancellationToken token)
     {
-      return await AddOrUpdateFilesAsync(new [] { file }, token ).ConfigureAwait(false);
+      return AddOrUpdateFilesAsync(new [] { file }, token );
     }
 
     /// <inheritdoc />
@@ -238,9 +238,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteFileAsync(FileInfo file, CancellationToken token)
+    public Task<bool> DeleteFileAsync(FileInfo file, CancellationToken token)
     {
-      return await DeleteFilesAsync(new[] { file }, token).ConfigureAwait(false);
+      return DeleteFilesAsync(new[] { file }, token);
     }
 
     /// <inheritdoc />
