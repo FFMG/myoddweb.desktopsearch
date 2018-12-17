@@ -14,11 +14,12 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.Data;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.Enums;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -27,6 +28,16 @@ namespace myoddweb.desktopsearch.service.Persisters
 {
   internal class SqlitePersisterFileUpdates : IFileUpdates
   {
+    /// <summary>
+    /// The folder updates helper
+    /// </summary>
+    private FileUpdatesHelper _filesUpdatesHelper;
+
+    /// <summary>
+    /// The current connection factory
+    /// </summary>
+    private IConnectionFactory _factory;
+
     /// <summary>
     /// The logger
     /// </summary>
@@ -55,33 +66,44 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchFileAsync(FileInfo file, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token)
+    public void Prepare(IPersister persister, IConnectionFactory factory)
     {
-      if (null == connectionFactory)
-      {
-        throw new ArgumentNullException(nameof(connectionFactory),
-          "You have to be within a tansaction when calling this function.");
-      }
+      // sanity check.
+      Contract.Assert(_filesUpdatesHelper == null);
+      _filesUpdatesHelper = new FileUpdatesHelper(factory, Tables.FileUpdates);
+      _factory = factory;
+    }
 
-      var fileId = await _files.GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
+    /// <inheritdoc />
+    public void Complete(bool success)
+    {
+      _filesUpdatesHelper?.Dispose();
+      _filesUpdatesHelper = null;
+      _factory = null;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> TouchFileAsync(FileInfo file, UpdateType type, CancellationToken token)
+    {
+      var fileId = await _files.GetFileIdAsync(file, token, false).ConfigureAwait(false);
       if (-1 == fileId)
       {
         return true;
       }
 
       // then we can do the update
-      return await TouchFilesAsync(new [] {fileId}, type, connectionFactory, token).ConfigureAwait(false);
+      return await TouchFilesAsync(new [] {fileId}, type, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchFileAsync(long fileId, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> TouchFileAsync(long fileId, UpdateType type, CancellationToken token)
     {
       // just make the files do all the work.
-      return await TouchFilesAsync(new [] { fileId }, type, connectionFactory, token).ConfigureAwait(false);
+      return await TouchFilesAsync(new [] { fileId }, type, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> TouchFilesAsync(IEnumerable<long> fileIds, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> TouchFilesAsync(IEnumerable<long> fileIds, UpdateType type, CancellationToken token)
     {
       if (null == fileIds)
       {
@@ -95,81 +117,39 @@ namespace myoddweb.desktopsearch.service.Persisters
         return true;
       }
 
-      if (null == connectionFactory)
-      {
-        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
-      }
-
       // first mark that folder id as procesed.
-      if (!await MarkFilesProcessedAsync( ids, connectionFactory, token).ConfigureAwait(false))
+      if (!await MarkFilesProcessedAsync( ids, token).ConfigureAwait(false))
       {
         return false;
       }
 
-      var insertCount = 0;
-      var sqlInsert = $"INSERT INTO {Tables.FileUpdates} (fileid, type, ticks) VALUES (@id, @type, @ticks)";
-      using (var cmd = connectionFactory.CreateCommand(sqlInsert))
+      try
       {
-        try
-        {
-          var pId = cmd.CreateParameter();
-          pId.DbType = DbType.Int64;
-          pId.ParameterName = "@id";
-          cmd.Parameters.Add(pId);
+        Contract.Assert(_factory != null);
+        Contract.Assert( _filesUpdatesHelper != null );
+        var insertCount = await _filesUpdatesHelper.TouchAsync(ids, type, token).ConfigureAwait(false);
 
-          var pType = cmd.CreateParameter();
-          pType.DbType = DbType.Int64;
-          pType.ParameterName = "@type";
-          cmd.Parameters.Add(pType);
-
-          var pTicks = cmd.CreateParameter();
-          pTicks.DbType = DbType.Int64;
-          pTicks.ParameterName = "@ticks";
-          cmd.Parameters.Add(pTicks);
-
-          foreach (var fileId in ids)
-          {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            pId.Value = fileId;
-            pType.Value = (long) type;
-            pTicks.Value = DateTime.UtcNow.Ticks;
-            if (0 == await connectionFactory.ExecuteWriteAsync( cmd, token).ConfigureAwait(false))
-            {
-              _logger.Error($"There was an issue adding file the file update: {fileId} to persister");
-              return false;
-            }
-            ++insertCount;
-          }
-        }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Insert multiple files.");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-          return false;
-        }
+        // update the pending files count.
+        await _counts.UpdatePendingUpdatesCountAsync(insertCount, _factory, token).ConfigureAwait(false);
+        return true;
       }
-
-      // update the pending files count.
-      await _counts.UpdatePendingUpdatesCountAsync(insertCount, connectionFactory, token).ConfigureAwait(false);
-      return true;
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Insert multiple files.");
+        throw;
+      }
+      catch (Exception ex)
+      {
+        _logger.Exception(ex);
+        return false;
+      }
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkFileProcessedAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> MarkFileProcessedAsync(FileInfo file, CancellationToken token)
     {
-      if (null == connectionFactory)
-      {
-        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
-      }
-
       // look for the files id
-      var fileId = await _files.GetFileIdAsync(file, connectionFactory, token, false).ConfigureAwait(false);
+      var fileId = await _files.GetFileIdAsync(file, token, false).ConfigureAwait(false);
 
       // did we find it?
       if (fileId == -1)
@@ -178,70 +158,41 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // then we can do it by id.
-      return await MarkFilesProcessedAsync(new []{fileId}, connectionFactory, token).ConfigureAwait(false);
+      return await MarkFilesProcessedAsync(new []{fileId}, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkFileProcessedAsync(long fileId, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> MarkFileProcessedAsync(long fileId, CancellationToken token)
     {
       // just make the files do all the work.
-      return await MarkFilesProcessedAsync(new [] { fileId }, connectionFactory, token).ConfigureAwait(false);
+      return await MarkFilesProcessedAsync(new [] { fileId }, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task<bool> MarkFilesProcessedAsync(IEnumerable<long> fileIds, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> MarkFilesProcessedAsync(IEnumerable<long> fileIds, CancellationToken token)
     {
-      if (null == connectionFactory)
+      try
       {
-        throw new ArgumentNullException(nameof(connectionFactory), "You have to be within a tansaction when calling this function.");
-      }
+        Contract.Assert(_factory != null);
+        Contract.Assert( _filesUpdatesHelper != null );
+        var deletedCount = await _filesUpdatesHelper.DeleteAsync(fileIds.ToList(), token).ConfigureAwait(false);
 
-      var deletedCount = 0;
-      var sqlDelete = $"DELETE FROM {Tables.FileUpdates} WHERE fileid = @id";
-      using (var cmd = connectionFactory.CreateCommand(sqlDelete))
+        // update the pending files count.
+        await _counts.UpdatePendingUpdatesCountAsync(-1 * deletedCount, _factory, token).ConfigureAwait(false);
+
+        // all done.
+        return true;
+      }
+      catch (OperationCanceledException)
       {
-        try
-        {
-          var pId = cmd.CreateParameter();
-          pId.DbType = DbType.Int64;
-          pId.ParameterName = "@id";
-          cmd.Parameters.Add(pId);
-
-          foreach (var fileId in fileIds)
-          {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            // set the folder id.
-            pId.Value = fileId;
-
-            // this could return 0 if the row has already been processed
-            if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
-            {
-              continue;
-            }
-
-            // it was deleted
-            ++deletedCount;
-          }
-        }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Removing file id from update");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-          return false;
-        }
+        _logger.Warning("Received cancellation request - Removing file id from update");
+        throw;
       }
-
-      // update the pending files count.
-      await _counts.UpdatePendingUpdatesCountAsync(-1 * deletedCount, connectionFactory, token).ConfigureAwait(false);
-
-      // return if this cancelled or not
-      return true;
+      catch (Exception ex)
+      {
+        _logger.Exception(ex);
+        return false;
+      }
     }
 
     /// <inheritdoc />

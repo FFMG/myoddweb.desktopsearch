@@ -202,7 +202,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
             // Get the files currently on record this can be null if we have nothing.
             // if the folder was just created we are not going to bother getting more data.
-            var filesOnRecord = type == UpdateType.Created ? new List<FileInfo>() : await _files.GetFilesAsync(folderId, factory, token).ConfigureAwait(false);
+            var filesOnRecord = type == UpdateType.Created ? new List<FileInfo>() : await _files.GetFilesAsync(folderId, token).ConfigureAwait(false);
 
             // add this update
             pendingUpdates.Add(new PendingFolderUpdate(

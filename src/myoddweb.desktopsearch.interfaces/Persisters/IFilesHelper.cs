@@ -16,27 +16,26 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.interfaces.Enums;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IFolderUpdatesHelper : IDisposable
+  public interface IFilesHelper : IDisposable
   {
     /// <summary>
-    /// Delete the pending folder ids
+    /// Get the id of all the files in a folder.
     /// </summary>
-    /// <param name="ids"></param>
+    /// <param name="id"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task DeleteAsync(IReadOnlyCollection<long> ids, CancellationToken token);
+    Task<IList<IFileHelper>> GetAsync( long id, CancellationToken token);
 
     /// <summary>
-    /// Touch certain folder ids.
+    /// Get the id of a file for a folder/name
     /// </summary>
-    /// <param name="folderIds"></param>
-    /// <param name="type"></param>
+    /// <param name="id"></param>
+    /// <param name="name"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task TouchAsync(IReadOnlyCollection<long> folderIds, UpdateType type, CancellationToken token);
+    Task<long> GetAsync(long id, string name, CancellationToken token);
   }
 }

@@ -12,31 +12,19 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using myoddweb.desktopsearch.interfaces.Enums;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IFolderUpdatesHelper : IDisposable
+  public interface IFileHelper
   {
     /// <summary>
-    /// Delete the pending folder ids
+    /// The file id
     /// </summary>
-    /// <param name="ids"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    Task DeleteAsync(IReadOnlyCollection<long> ids, CancellationToken token);
+    long Id { get; }
 
     /// <summary>
-    /// Touch certain folder ids.
+    /// The file name.
     /// </summary>
-    /// <param name="folderIds"></param>
-    /// <param name="type"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    Task TouchAsync(IReadOnlyCollection<long> folderIds, UpdateType type, CancellationToken token);
+    string Name { get; }
   }
 }

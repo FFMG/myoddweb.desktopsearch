@@ -61,6 +61,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public void Prepare(IPersister persister, IConnectionFactory factory)
     {
+      // prepare the files
+      Files.Prepare( persister, factory );
+
       // prepare the folder updates
       FolderUpdates.Prepare( persister, factory );
 
@@ -72,6 +75,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public void Complete(bool success)
     {
+      Files.Complete( success );
       FolderUpdates.Complete( success );
       _foldersHelper?.Dispose();
       _foldersHelper = null;

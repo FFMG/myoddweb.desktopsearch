@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IFiles
+  public interface IFiles : ITransaction
   {
     /// <summary>
     /// Files update manager
@@ -30,101 +30,90 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// Add or update a file to a folder.
     /// </summary>
     /// <param name="file"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateFileAsync( FileInfo file, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> AddOrUpdateFileAsync( FileInfo file, CancellationToken token);
 
     /// <summary>
     /// Add or update multiple files.
     /// </summary>
     /// <param name="files"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> AddOrUpdateFilesAsync(IList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> AddOrUpdateFilesAsync(IList<FileInfo> files, CancellationToken token);
 
     /// <summary>
     /// Rename a file
     /// </summary>
     /// <param name="file"></param>
     /// <param name="oldFile"></param>
-    /// <param name="transaction"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<long> RenameOrAddFileAsync(FileInfo file, FileInfo oldFile, IConnectionFactory transaction, CancellationToken token);
+    Task<long> RenameOrAddFileAsync(FileInfo file, FileInfo oldFile, CancellationToken token);
 
     /// <summary>
     /// Delete a single file.
     /// </summary>
     /// <param name="file"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFileAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> DeleteFileAsync(FileInfo file, CancellationToken token);
 
     /// <summary>
     /// Delete multiple files.
     /// </summary>
     /// <param name="files"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFilesAsync(IList<FileInfo> files, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> DeleteFilesAsync(IList<FileInfo> files, CancellationToken token);
 
     /// <summary>
     /// Delete multiple files from a directory.
     /// </summary>
     /// <param name="directory"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFilesAsync(DirectoryInfo directory, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> DeleteFilesAsync(DirectoryInfo directory, CancellationToken token);
 
     /// <summary>
     /// Delete multiple files from a directory.
     /// </summary>
     /// <param name="directoryId"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> DeleteFilesAsync(long directoryId, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> DeleteFilesAsync(long directoryId, CancellationToken token);
 
     /// <summary>
     /// Check that we have the file on record.
     /// </summary>
     /// <param name="file"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> FileExistsAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token );
+    Task<bool> FileExistsAsync(FileInfo file, CancellationToken token );
 
     /// <summary>
     /// Get all the files in the directory
     /// </summary>
     /// <param name="directoryId"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IList<FileInfo>> GetFilesAsync(long directoryId, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<IList<FileInfo>> GetFilesAsync(long directoryId, CancellationToken token);
 
     /// <summary>
     /// Get a file information
     /// </summary>
     /// <param name="fileId"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<FileInfo> GetFileAsync(long fileId, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<FileInfo> GetFileAsync(long fileId, CancellationToken token);
 
     /// <summary>
     /// Get the id of a file or -1.
     /// </summary>
     /// <param name="file"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <param name="createIfNotFound"></param>
     /// <returns></returns>
-    Task<long> GetFileIdAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token, bool createIfNotFound);
+    Task<long> GetFileIdAsync(FileInfo file, CancellationToken token, bool createIfNotFound);
   }
 }

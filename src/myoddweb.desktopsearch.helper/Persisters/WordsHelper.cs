@@ -115,7 +115,6 @@ namespace myoddweb.desktopsearch.helper.Persisters
   public class WordsHelper : IWordsHelper
   {
     #region Member variables
-
     /// <summary>
     /// The words helper.
     /// </summary>

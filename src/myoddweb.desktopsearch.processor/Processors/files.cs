@@ -119,7 +119,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           }
 
           // process those words.
-          totalnumberOfFilesProcessed += await ProcessFileAndWordsUpdates(pendingUpdates, factory, token).ConfigureAwait(false);
+          totalnumberOfFilesProcessed += await ProcessFileAndWordsUpdates(pendingUpdates, token).ConfigureAwait(false);
         }
         return totalnumberOfFilesProcessed;
       }
@@ -135,10 +135,10 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
     }
 
-    private async Task<long> ProcessFileAndWordsUpdates(ICollection<IPendingFileUpdate> pendingFileUpdates, IConnectionFactory factory, CancellationToken token)
+    private async Task<long> ProcessFileAndWordsUpdates(ICollection<IPendingFileUpdate> pendingFileUpdates, CancellationToken token)
     {
       // process the files
-      var completedUpdates = await ProcessFileUpdates(factory, pendingFileUpdates, token).ConfigureAwait(false);
+      var completedUpdates = await ProcessFileUpdates( pendingFileUpdates, token).ConfigureAwait(false);
 
       // how many files did we process, (that are not null)
       return completedUpdates.Count( p => p != null );
@@ -147,17 +147,16 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// Process a single list update
     /// </summary>
-    /// <param name="factory"></param>
     /// <param name="pendingFileUpdates"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<ICollection<IPendingFileUpdate>> ProcessFileUpdates(IConnectionFactory factory, ICollection<IPendingFileUpdate> pendingFileUpdates, CancellationToken token)
+    private async Task<ICollection<IPendingFileUpdate>> ProcessFileUpdates( ICollection<IPendingFileUpdate> pendingFileUpdates, CancellationToken token)
     {
       // the first thing we will do is mark the file as processed.
       // if anything goes wrong _after_ that we will try and 'touch' it again.
       // by doing it that way around we ensure that we never keep the transaction.
       // and we don't run the risk of someone else trying to process this again.
-      await _persister.Folders.Files.FileUpdates.MarkFilesProcessedAsync(pendingFileUpdates.Select(p => p.FileId), factory, token).ConfigureAwait(false);
+      await _persister.Folders.Files.FileUpdates.MarkFilesProcessedAsync(pendingFileUpdates.Select(p => p.FileId), token).ConfigureAwait(false);
 
       var tasks = new List<Task<IPendingFileUpdate>>(pendingFileUpdates.Count);
       foreach (var pendingFileUpdate in pendingFileUpdates)
@@ -356,7 +355,7 @@ namespace myoddweb.desktopsearch.processor.Processors
           if (directory != null)
           {
             var directoryInfo = new DirectoryInfo(directory);
-            await _persister.Folders.FolderUpdates.TouchDirectoriesAsync( new []{directoryInfo}, UpdateType.Deleted, token).ConfigureAwait(false);
+            await _persister.Folders.DeleteDirectoryAsync( directoryInfo, token).ConfigureAwait(false);
           }
           _logger.Warning( $"The directory {directory} does not exist" );
 

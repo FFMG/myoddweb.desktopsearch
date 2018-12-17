@@ -200,7 +200,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
 
       // and add them to the persiser
-      if (await _persister.Folders.Files.AddOrUpdateFilesAsync(files, factory, token).ConfigureAwait(false))
+      if (await _persister.Folders.Files.AddOrUpdateFilesAsync(files, token).ConfigureAwait(false))
       {
         // log what we just did
         _logger.Verbose($"Directory processor: Found {files.Count} file(s) in the new directory: {directory.FullName}.");
@@ -228,7 +228,7 @@ namespace myoddweb.desktopsearch.processor.Processors
       }
 
       // using the foler id is the fastest.
-      if (!await _persister.Folders.Files.DeleteFilesAsync(pendingUpdate.FolderId, factory, token))
+      if (!await _persister.Folders.Files.DeleteFilesAsync(pendingUpdate.FolderId, token))
       {
         _logger.Verbose($"Directory processor: Unable to delete directory: {directory.FullName}.");
         return;
@@ -279,13 +279,13 @@ namespace myoddweb.desktopsearch.processor.Processors
       // We know that the helper functions never return anything null...
       if (filesToRemove.Any())
       {
-        await _persister.Folders.Files.DeleteFilesAsync(filesToRemove, factory, token).ConfigureAwait(false);
+        await _persister.Folders.Files.DeleteFilesAsync(filesToRemove, token).ConfigureAwait(false);
       }
 
       // anything to add?
       if (filesToAdd.Any())
       {
-        await _persister.Folders.Files.AddOrUpdateFilesAsync(filesToAdd, factory, token).ConfigureAwait(false);
+        await _persister.Folders.Files.AddOrUpdateFilesAsync(filesToAdd, token).ConfigureAwait(false);
       }
 
       _logger.Verbose($"Directory processor: {directory.FullName} was changed {filesToRemove.Count} file(s) removed and {filesToAdd.Count} file(s) added.");

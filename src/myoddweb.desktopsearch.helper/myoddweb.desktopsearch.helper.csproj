@@ -47,7 +47,12 @@
     <Compile Include="IO\InternalAsyncTimer.cs" />
     <Compile Include="Lock\Key.cs" />
     <Compile Include="Lock\Lock.cs" />
+    <Compile Include="Persisters\FileHelper.cs" />
+    <Compile Include="Persisters\FilesHelper.cs" />
     <Compile Include="Persisters\FilesWordsHelper.cs" />
+    <Compile Include="Persisters\FoldersHelper.cs" />
+    <Compile Include="Persisters\FileUpdatesHelper.cs" />
+    <Compile Include="Persisters\FolderUpdatesHelper.cs" />
     <Compile Include="Persisters\Part.cs" />
     <Compile Include="Persisters\PartsHelper.cs" />
     <Compile Include="Persisters\PersisterHelper.cs" />

@@ -12,14 +12,9 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.interfaces.Enums;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -85,7 +80,7 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"File event: {e.FullName} (Created)");
 
       // just add the file.
-      await Files.AddOrUpdateFileAsync( file, factory, token).ConfigureAwait(false);
+      await Files.AddOrUpdateFileAsync( file, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -106,10 +101,10 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"File event: {e.FullName} (Deleted)");
 
       // do we have the file on record?
-      if (await Files.FileExistsAsync(file, factory, token).ConfigureAwait(false))
+      if (await Files.FileExistsAsync(file, token).ConfigureAwait(false))
       {
         // just delete the folder.
-        await Files.DeleteFileAsync(file, factory, token).ConfigureAwait(false);
+        await Files.DeleteFileAsync(file, token).ConfigureAwait(false);
       }
     }
 
@@ -126,7 +121,7 @@ namespace myoddweb.desktopsearch.parser.IO
       Logger.Verbose($"File event: {e.FullName} (Changed)");
 
       // just add the file.
-      await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false);
+      await Files.AddOrUpdateFileAsync(file, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -155,7 +150,7 @@ namespace myoddweb.desktopsearch.parser.IO
         }
 
         // just add the new directly.
-        if (!await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false))
+        if (!await Files.AddOrUpdateFileAsync(file, token).ConfigureAwait(false))
         {
           Logger.Error( $"File event: Unable to add file {e.FullName} during rename.");
         }
@@ -175,13 +170,13 @@ namespace myoddweb.desktopsearch.parser.IO
         }
 
         // if the old file does not exist on record ... then there is nothing more for us to do .
-        if (!await Files.FileExistsAsync(oldFile, factory, token).ConfigureAwait(false))
+        if (!await Files.FileExistsAsync(oldFile, token).ConfigureAwait(false))
         {
           return;
         }
 
         // delete the old folder only, in case it did exist.
-        if (!await Files.DeleteFileAsync(oldFile, factory, token).ConfigureAwait(false))
+        if (!await Files.DeleteFileAsync(oldFile, token).ConfigureAwait(false))
         {
           Logger.Error( $"File event: Unable to remove old file {e.PreviousFullName} durring rename");
         }
@@ -196,10 +191,10 @@ namespace myoddweb.desktopsearch.parser.IO
       //
       // if we do not have the old file on record then it is not a rename
       // but rather is is a new one.
-      if (!await Files.FileExistsAsync(oldFile, factory, token).ConfigureAwait(false))
+      if (!await Files.FileExistsAsync(oldFile, token).ConfigureAwait(false))
       {
         // just add the new directly.
-        if (!await Files.AddOrUpdateFileAsync(file, factory, token).ConfigureAwait(false))
+        if (!await Files.AddOrUpdateFileAsync(file, token).ConfigureAwait(false))
         {
           Logger.Error($"File event: Unable to add file {e.FullName} during rename.");
         }
@@ -209,7 +204,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // we have the old name on record so we can try and rename it.
       // if we ever have an issue, it could be because we are trying to rename to
       // something that already exists.
-      if (-1 == await Files.RenameOrAddFileAsync(file, oldFile, factory, token).ConfigureAwait(false))
+      if (-1 == await Files.RenameOrAddFileAsync(file, oldFile, token).ConfigureAwait(false))
       {
         Logger.Error( $"File event: Unable to rename file {e.PreviousFullName} > {e.FullName}");
       }

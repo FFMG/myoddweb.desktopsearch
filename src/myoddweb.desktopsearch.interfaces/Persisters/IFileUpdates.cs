@@ -20,64 +20,58 @@ using myoddweb.desktopsearch.interfaces.Enums;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IFileUpdates
+  public interface IFileUpdates : ITransaction
   {
     /// <summary>
     /// Flag a file as having changed.
     /// </summary>
     /// <param name="file"></param>
     /// <param name="type"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchFileAsync(FileInfo file, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> TouchFileAsync(FileInfo file, UpdateType type, CancellationToken token);
 
     /// <summary>
     /// Flag a file as having changed.
     /// </summary>
     /// <param name="fileId"></param>
     /// <param name="type"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchFileAsync(long fileId, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> TouchFileAsync(long fileId, UpdateType type, CancellationToken token);
 
     /// <summary>
     /// Touch a list of files
     /// </summary>
     /// <param name="fileIds"></param>
     /// <param name="type"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> TouchFilesAsync( IEnumerable<long> fileIds, UpdateType type, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> TouchFilesAsync( IEnumerable<long> fileIds, UpdateType type, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given file
     /// </summary>
     /// <param name="file"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkFileProcessedAsync(FileInfo file, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> MarkFileProcessedAsync(FileInfo file, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given file
     /// </summary>
     /// <param name="fileId"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkFileProcessedAsync(long fileId, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> MarkFileProcessedAsync(long fileId, CancellationToken token);
 
     /// <summary>
     /// Flag that we have processed the given file
     /// </summary>
     /// <param name="fileIds"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> MarkFilesProcessedAsync(IEnumerable<long> fileIds, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> MarkFilesProcessedAsync(IEnumerable<long> fileIds, CancellationToken token);
 
     /// <summary>
     /// Get a number of pending updates.

@@ -20,23 +20,23 @@ using myoddweb.desktopsearch.interfaces.Enums;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IFolderUpdatesHelper : IDisposable
+  public interface IFileUpdatesHelper : IDisposable
   {
     /// <summary>
-    /// Delete the pending folder ids
+    /// Delete the pending file ids
     /// </summary>
     /// <param name="ids"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task DeleteAsync(IReadOnlyCollection<long> ids, CancellationToken token);
+    Task<long> DeleteAsync(IReadOnlyCollection<long> ids, CancellationToken token);
 
     /// <summary>
-    /// Touch certain folder ids.
+    /// Touch certain file ids.
     /// </summary>
-    /// <param name="folderIds"></param>
+    /// <param name="fileIds"></param>
     /// <param name="type"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task TouchAsync(IReadOnlyCollection<long> folderIds, UpdateType type, CancellationToken token);
+    Task<long> TouchAsync(IReadOnlyCollection<long> fileIds, UpdateType type, CancellationToken token);
   }
 }
