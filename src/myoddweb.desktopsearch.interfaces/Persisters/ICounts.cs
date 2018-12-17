@@ -17,47 +17,42 @@ using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface ICounts
+  public interface ICounts : ITransaction
   {
     /// <summary>
     /// Start the counter.
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// </summary>
-    Task Initialise(IConnectionFactory connectionFactory, CancellationToken token);
+    Task Initialise( CancellationToken token);
 
     /// <summary>
     /// Get the pending update count.
     /// </summary>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<long> GetPendingUpdatesCountAsync( IConnectionFactory connectionFactory, CancellationToken token);
+    Task<long> GetPendingUpdatesCountAsync( CancellationToken token);
 
     /// <summary>
     /// Get the pending update count.
     /// </summary>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<long> GetFilesCountAsync(IConnectionFactory connectionFactory, CancellationToken token);
+    Task<long> GetFilesCountAsync( CancellationToken token);
 
     /// <summary>
     /// Update the number of pending updates
     /// </summary>
     /// <param name="addOrRemove"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> UpdatePendingUpdatesCountAsync( long addOrRemove, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> UpdatePendingUpdatesCountAsync( long addOrRemove, CancellationToken token);
 
     /// <summary>
     /// Update the number of files
     /// </summary>
     /// <param name="addOrRemove"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> UpdateFilesCountAsync(long addOrRemove, IConnectionFactory connectionFactory, CancellationToken token);
+    Task<bool> UpdateFilesCountAsync(long addOrRemove, CancellationToken token);
   }
 }

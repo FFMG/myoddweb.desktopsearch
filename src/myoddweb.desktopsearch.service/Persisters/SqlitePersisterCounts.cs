@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Data;
+using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Logging;
@@ -29,6 +30,12 @@ namespace myoddweb.desktopsearch.service.Persisters
       File
     }
 
+    #region Member Variables
+    /// <summary>
+    /// The current connection factory
+    /// </summary>
+    private IConnectionFactory _factory;
+
     /// <summary>
     /// The current running total of pending updaqtes.
     /// </summary>
@@ -43,6 +50,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
+    #endregion
 
     public SqlitePersisterCounts(ILogger logger )
     {
@@ -51,13 +59,27 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public Task Initialise(IConnectionFactory connectionFactory, CancellationToken token)
+    public void Prepare(IPersister persister, IConnectionFactory factory)
     {
-      return InitialiserCountersAsync(connectionFactory, token);
+      // sanity check.
+      Contract.Assert(_factory == null);
+      _factory = factory;
     }
 
     /// <inheritdoc />
-    public Task<long> GetPendingUpdatesCountAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    public void Complete(bool success)
+    {
+      _factory = null;
+    }
+
+    /// <inheritdoc />
+    public Task Initialise( CancellationToken token)
+    {
+      return InitialiserCountersAsync( token);
+    }
+
+    /// <inheritdoc />
+    public Task<long> GetPendingUpdatesCountAsync( CancellationToken token)
     {
       if (null == _pendingUpdatesCount )
       {
@@ -67,7 +89,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public Task<long> GetFilesCountAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    public Task<long> GetFilesCountAsync( CancellationToken token)
     {
       if (null == _filesCount)
       {
@@ -77,9 +99,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> UpdatePendingUpdatesCountAsync(long addOrRemove, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> UpdatePendingUpdatesCountAsync(long addOrRemove, CancellationToken token)
     {
-      if (!await UpdateCountDirectAsync(Type.PendingUpdate, addOrRemove, connectionFactory, token).ConfigureAwait(false))
+      if (!await UpdateCountDirectAsync(Type.PendingUpdate, addOrRemove, token).ConfigureAwait(false))
       {
         return false;
       }
@@ -89,9 +111,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<bool> UpdateFilesCountAsync(long addOrRemove, IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<bool> UpdateFilesCountAsync(long addOrRemove, CancellationToken token)
     {
-      if (!await UpdateCountDirectAsync(Type.File, addOrRemove, connectionFactory, token).ConfigureAwait(false))
+      if (!await UpdateCountDirectAsync(Type.File, addOrRemove, token).ConfigureAwait(false))
       {
         return false;
       }
@@ -104,20 +126,19 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Initialise all the counters.
     /// </summary>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task InitialiserCountersAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task InitialiserCountersAsync(CancellationToken token)
     {
       // firt initialise
-      await InitialiserCountersAsync(Type.PendingUpdate, connectionFactory, token).ConfigureAwait(false);
-      await InitialiserCountersAsync(Type.File, connectionFactory, token).ConfigureAwait(false);
+      await InitialiserCountersAsync(Type.PendingUpdate, token).ConfigureAwait(false);
+      await InitialiserCountersAsync(Type.File, token).ConfigureAwait(false);
 
       // get the pending updates
-      _pendingUpdatesCount = await GetCountValue(Type.PendingUpdate, connectionFactory, token).ConfigureAwait(false);
+      _pendingUpdatesCount = await GetCountValue(Type.PendingUpdate, token).ConfigureAwait(false);
 
       // and get the files count.
-      _filesCount = await GetCountValue(Type.File, connectionFactory, token).ConfigureAwait(false);
+      _filesCount = await GetCountValue(Type.File, token).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -125,10 +146,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     /// <param name="type"></param>
     /// <param name="addOrRemove"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> UpdateCountDirectAsync(Type type, long addOrRemove, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<bool> UpdateCountDirectAsync(Type type, long addOrRemove, CancellationToken token)
     {
       if (0 == addOrRemove)
       {
@@ -138,7 +158,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       var sql = $"UPDATE {Tables.Counts} SET count=count+@count WHERE type=@type";
 
-      using (var cmd = connectionFactory.CreateCommand(sql))
+      using (var cmd = _factory.CreateCommand(sql))
       {
         var pType = cmd.CreateParameter();
         pType.DbType = DbType.Int64;
@@ -156,7 +176,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         // get out if needed.
         token.ThrowIfCancellationRequested();
 
-        if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+        if (0 == await _factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
         {
           // 
           _logger.Error($"I was unable to update count for {type.ToString()}, how is it posible?");
@@ -172,15 +192,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Get a value from the database.
     /// </summary>
     /// <param name="type"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long?> GetCountValue(Type type, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task<long?> GetCountValue(Type type, CancellationToken token)
     {
       try
       {
         var sql = $"SELECT count FROM {Tables.Counts} WHERE type=@type";
-        using (var cmd = connectionFactory.CreateCommand(sql))
+        using (var cmd = _factory.CreateCommand(sql))
         {
           var pType = cmd.CreateParameter();
           pType.DbType = DbType.Int64;
@@ -189,7 +208,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           // run the select query
           pType.Value = (long) type;
-          var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
+          var value = await _factory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
           if (null == value || value == DBNull.Value)
           {
             return null;
@@ -219,29 +238,28 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Query the db to get a count value
     /// </summary>
     /// <param name="type"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> GetActualCountAsync(Type type, IConnectionFactory connectionFactory,CancellationToken token)
+    private async Task<long> GetActualCountAsync(Type type, CancellationToken token)
     {
       string sql;
       switch (type)
       {
         case Type.File:
-          sql = "SELECT COUNT(*) as count FROM Files";
+          sql = $"SELECT COUNT(*) as count FROM {Tables.Files}";
           break;
 
         case Type.PendingUpdate:
-          sql = "SELECT COUNT(*) as count FROM FileUpdates";
+          sql = $"SELECT COUNT(*) as count FROM {Tables.FileUpdates}";
           break;
 
         default:
           throw new ArgumentException($"Unknown count type {type.ToString()}");
       }
 
-      using (var cmd = connectionFactory.CreateCommand(sql))
+      using (var cmd = _factory.CreateCommand(sql))
       {
-        var value = await connectionFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
+        var value = await _factory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
 
         // get out if needed.
         token.ThrowIfCancellationRequested();
@@ -263,22 +281,21 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Initialize a single count.
     /// </summary>
     /// <param name="type"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task InitialiserCountersAsync(Type type, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task InitialiserCountersAsync(Type type, CancellationToken token)
     {
       // do we have a value in the database?
-      var current = await GetCountValue(type, connectionFactory, token).ConfigureAwait(false);
+      var current = await GetCountValue(type, token).ConfigureAwait(false);
       if ( null != current )
       {
         // the value exists already ... so we want to update.
-        await UpdateCountersAsync(type, connectionFactory, token).ConfigureAwait(false);
+        await UpdateCountersAsync(type, token).ConfigureAwait(false);
         return;
       }
 
       // insert the value for that type.
-      await InsertCountersAsync(type, connectionFactory, token).ConfigureAwait(false);
+      await InsertCountersAsync(type, token).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -286,18 +303,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// We will not check if the value already exists!
     /// </summary>
     /// <param name="type"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task UpdateCountersAsync(Type type, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task UpdateCountersAsync(Type type, CancellationToken token)
     {
       // get the vale we will be updating
-      var count = await GetActualCountAsync(type, connectionFactory, token).ConfigureAwait(false);
+      var count = await GetActualCountAsync(type, token).ConfigureAwait(false);
 
       // the value does not exist, we have to get it.
       var sql = $"UPDATE {Tables.Counts} SET count=@count WHERE type=@type";
 
-      using (var cmd = connectionFactory.CreateCommand(sql))
+      using (var cmd = _factory.CreateCommand(sql))
       {
         var pType = cmd.CreateParameter();
         pType.DbType = DbType.Int64;
@@ -316,7 +332,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           pType.Value = (long)type;
           pCount.Value = count;
-          if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+          if (0 == await _factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
           {
             _logger.Error($"There was an issue updating the count {type.ToString()} to persister");
           }
@@ -339,18 +355,17 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// We will not check if the value already exists!
     /// </summary>
     /// <param name="type"></param>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task InsertCountersAsync(Type type, IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task InsertCountersAsync(Type type, CancellationToken token)
     { 
       // get the vale we will be inserting
-      var count = await GetActualCountAsync(type, connectionFactory, token).ConfigureAwait(false);
+      var count = await GetActualCountAsync(type, token).ConfigureAwait(false);
 
       // the value does not exist, we have to get it.
       var sql = $"INSERT INTO {Tables.Counts} (type, count) VALUES (@type, @count)";
 
-      using (var cmd = connectionFactory.CreateCommand(sql))
+      using (var cmd = _factory.CreateCommand(sql))
       {
         var pType = cmd.CreateParameter();
         pType.DbType = DbType.Int64;
@@ -369,7 +384,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           pType.Value = (long)type;
           pCount.Value = count;
-          if (0 == await connectionFactory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+          if (0 == await _factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
           {
             _logger.Error($"There was an issue adding count {type.ToString()} to persister");
           }

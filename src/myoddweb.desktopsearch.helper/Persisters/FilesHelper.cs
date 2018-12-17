@@ -21,6 +21,115 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.helper.Persisters
 {
+  internal class PersisterDeleteFilesHelper : PersisterHelper
+  {
+    /// <summary>
+    /// The id parameter;
+    /// </summary>
+    private IDbDataParameter _folderid;
+
+    /// <summary>
+    /// The name parameter;
+    /// </summary>
+    private IDbDataParameter _name;
+
+    /// <summary>
+    /// The id parameter;
+    /// </summary>
+    public IDbDataParameter FolderId
+    {
+      get
+      {
+        if (null != _folderid)
+        {
+          return _folderid;
+        }
+
+        _folderid = Command.CreateParameter();
+        _folderid.DbType = DbType.Int64;
+        _folderid.ParameterName = "@folderid";
+        Command.Parameters.Add(_folderid);
+        return _folderid;
+      }
+    }
+
+    /// <summary>
+    /// The id parameter;
+    /// </summary>
+    public IDbDataParameter Name
+    {
+      get
+      {
+        if (null != _name)
+        {
+          return _name;
+        }
+
+        _name = Command.CreateParameter();
+        _name.DbType = DbType.String;
+        _name.ParameterName = "@name";
+        Command.Parameters.Add(_name);
+        return _name;
+      }
+    }
+
+    public PersisterDeleteFilesHelper(IConnectionFactory factory, string sql) : base(factory, sql)
+    {
+    }
+
+    public async Task<bool> DeleteAsync(long folderid, string name, CancellationToken token)
+    {
+      using (await Lock.TryAsync().ConfigureAwait(false))
+      {
+        // look for the given path
+        FolderId.Value = folderid;
+        Name.Value = name.ToLowerInvariant();
+        return 1 == await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false);
+      }
+    }
+  }
+
+  internal class PersisterDeleteFolderFilesHelper : PersisterHelper
+  {
+    /// <summary>
+    /// The id parameter;
+    /// </summary>
+    private IDbDataParameter _folderid;
+
+    /// <summary>
+    /// The id parameter;
+    /// </summary>
+    public IDbDataParameter FolderId
+    {
+      get
+      {
+        if (null != _folderid)
+        {
+          return _folderid;
+        }
+
+        _folderid = Command.CreateParameter();
+        _folderid.DbType = DbType.Int64;
+        _folderid.ParameterName = "@folderid";
+        Command.Parameters.Add(_folderid);
+        return _folderid;
+      }
+    }
+
+    public PersisterDeleteFolderFilesHelper(IConnectionFactory factory, string sql) : base(factory, sql)
+    {
+    }
+
+    public async Task<int> DeleteAsync(long folderid, CancellationToken token)
+    {
+      using (await Lock.TryAsync().ConfigureAwait(false))
+      {
+        FolderId.Value = folderid;
+        return await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false);
+      }
+    }
+  }
+
   internal class PersisterSelectIdFilesHelper : PersisterHelper
   {
     /// <summary>
@@ -164,6 +273,16 @@ namespace myoddweb.desktopsearch.helper.Persisters
     private readonly PersisterSelectIdsFilesHelper _selectIds;
 
     /// <summary>
+    /// Delete a file by id/name
+    /// </summary>
+    private readonly PersisterDeleteFilesHelper _delete;
+
+    /// <summary>
+    /// Delete all the files for a folder.
+    /// </summary>
+    private readonly PersisterDeleteFolderFilesHelper _deleteFolder;
+
+    /// <summary>
     /// Select a single id from folder/name
     /// </summary>
     private readonly PersisterSelectIdFilesHelper _selectId;
@@ -181,6 +300,12 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
       // select a single file.
       _selectId = new PersisterSelectIdFilesHelper(factory, $"SELECT id FROM {tableName} WHERE folderid=@folderid AND name=@name");
+
+      // delete a file by id/name
+      _delete = new PersisterDeleteFilesHelper( factory, $"DELETE FROM {tableName} WHERE folderid=@folderid and name=@name");
+
+      // delete all the files in one folder.
+      _deleteFolder = new PersisterDeleteFolderFilesHelper( factory, $"DELETE FROM {tableName} WHERE folderid=@folderid");
     }
 
     /// <summary>
@@ -207,6 +332,8 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
       _selectIds?.Dispose();
       _selectId?.Dispose();
+      _delete?.Dispose();
+      _deleteFolder?.Dispose();
     }
 
     /// <inheritdoc />
@@ -216,10 +343,25 @@ namespace myoddweb.desktopsearch.helper.Persisters
       return _selectIds.GetAsync(id, token);
     }
 
+    /// <inheritdoc />
     public Task<long> GetAsync(long id, string name, CancellationToken token)
     {
       ThrowIfDisposed();
       return _selectId.GetAsync(id, name, token);
+    }
+
+    /// <inheritdoc />
+    public Task<bool> DeleteAsync(long id, string name, CancellationToken token)
+    {
+      ThrowIfDisposed();
+      return _delete.DeleteAsync(id, name, token);
+    }
+
+    /// <inheritdoc />
+    public Task<int> DeleteAsync(long id, CancellationToken token)
+    {
+      ThrowIfDisposed();
+      return _deleteFolder.DeleteAsync(id, token);
     }
   }
 }

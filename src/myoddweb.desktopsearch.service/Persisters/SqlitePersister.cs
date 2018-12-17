@@ -165,7 +165,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         await Update(connectionFactory, token).ConfigureAwait(false);
 
         // init the counters.
-        await Counts.Initialise(connectionFactory, token).ConfigureAwait(false);
+        await Counts.Initialise( token).ConfigureAwait(false);
         Commit( connectionFactory );
       }
       catch (Exception e)
@@ -199,6 +199,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="factory"></param>
     private void PrepareTransaction(IConnectionFactory factory)
     {
+      Counts.Prepare(this, factory );
       Words.Prepare(this, factory);
       WordsParts.Prepare( this, factory );
       FilesWords.Prepare( this, factory );
@@ -211,6 +212,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="success"></param>
     private void CompleteTransaction(bool success )
     {
+      Counts.Complete(success);
       Words.Complete(success);
       WordsParts.Complete( success );
       FilesWords.Complete(success);

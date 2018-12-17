@@ -152,11 +152,10 @@ namespace myoddweb.desktopsearch.http.Route
         token.ThrowIfCancellationRequested();
       }
       */
-      var connectionFactory = await Persister.BeginRead(token).ConfigureAwait(false);
       return new StatusResponse
       {
-        PendingUpdates = await persister.GetPendingUpdatesCountAsync( connectionFactory, token ).ConfigureAwait(false),
-        Files = await persister.GetFilesCountAsync(connectionFactory, token).ConfigureAwait(false)
+        PendingUpdates = await persister.GetPendingUpdatesCountAsync(token ).ConfigureAwait(false),
+        Files = await persister.GetFilesCountAsync( token).ConfigureAwait(false)
       };
     }
 

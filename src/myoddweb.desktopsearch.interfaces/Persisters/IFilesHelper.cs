@@ -32,10 +32,27 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <summary>
     /// Get the id of a file for a folder/name
     /// </summary>
-    /// <param name="id"></param>
-    /// <param name="name"></param>
+    /// <param name="id">The folder id</param>
+    /// <param name="name">The file name, (case insensitive)</param>
     /// <param name="token"></param>
     /// <returns></returns>
     Task<long> GetAsync(long id, string name, CancellationToken token);
+
+    /// <summary>
+    /// Delete a single file
+    /// </summary>
+    /// <param name="id">The folder id</param>
+    /// <param name="name">The file name, (case insensitive)</param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<bool> DeleteAsync(long id, string name, CancellationToken token);
+
+    /// <summary>
+    /// Delete all the files linked to folder.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<int> DeleteAsync(long id, CancellationToken token);
   }
 }

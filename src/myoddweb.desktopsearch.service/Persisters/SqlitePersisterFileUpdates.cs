@@ -34,11 +34,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     private FileUpdatesHelper _filesUpdatesHelper;
 
     /// <summary>
-    /// The current connection factory
-    /// </summary>
-    private IConnectionFactory _factory;
-
-    /// <summary>
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
@@ -71,7 +66,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       // sanity check.
       Contract.Assert(_filesUpdatesHelper == null);
       _filesUpdatesHelper = new FileUpdatesHelper(factory, Tables.FileUpdates);
-      _factory = factory;
     }
 
     /// <inheritdoc />
@@ -79,7 +73,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       _filesUpdatesHelper?.Dispose();
       _filesUpdatesHelper = null;
-      _factory = null;
     }
 
     /// <inheritdoc />
@@ -125,12 +118,11 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       try
       {
-        Contract.Assert(_factory != null);
         Contract.Assert( _filesUpdatesHelper != null );
         var insertCount = await _filesUpdatesHelper.TouchAsync(ids, type, token).ConfigureAwait(false);
 
         // update the pending files count.
-        await _counts.UpdatePendingUpdatesCountAsync(insertCount, _factory, token).ConfigureAwait(false);
+        await _counts.UpdatePendingUpdatesCountAsync(insertCount, token).ConfigureAwait(false);
         return true;
       }
       catch (OperationCanceledException)
@@ -173,12 +165,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
-        Contract.Assert(_factory != null);
         Contract.Assert( _filesUpdatesHelper != null );
         var deletedCount = await _filesUpdatesHelper.DeleteAsync(fileIds.ToList(), token).ConfigureAwait(false);
 
         // update the pending files count.
-        await _counts.UpdatePendingUpdatesCountAsync(-1 * deletedCount, _factory, token).ConfigureAwait(false);
+        await _counts.UpdatePendingUpdatesCountAsync(-1 * deletedCount, token).ConfigureAwait(false);
 
         // all done.
         return true;

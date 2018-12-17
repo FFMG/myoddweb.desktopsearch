@@ -89,6 +89,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       // sanity check.
       Contract.Assert(_filesHelper == null);
+      Contract.Assert(_factory == null);
+
       _filesHelper = new FilesHelper(factory, Tables.Files );
       FileUpdates.Prepare( persister, factory );
       _factory = factory;
@@ -250,77 +252,63 @@ namespace myoddweb.desktopsearch.service.Persisters
         return true;
       }
 
-      Contract.Assert(_factory != null);
+      // sanity check.
+      Contract.Assert( _filesHelper != null );
 
       var deletedFileIdsToTouch = new List<long>(files.Count);
       long deletedCount = 0;
-      var sqlDelete = $"DELETE FROM {Tables.Files} WHERE folderid=@folderid and name=@name";
-      using (var cmd = _factory.CreateCommand(sqlDelete))
+      foreach (var file in files)
       {
-        var pFolderId = cmd.CreateParameter();
-        pFolderId.DbType = DbType.Int64;
-        pFolderId.ParameterName = "@folderid";
-        cmd.Parameters.Add(pFolderId);
-
-        var pName = cmd.CreateParameter();
-        pName.DbType = DbType.String;
-        pName.ParameterName = "@name";
-        cmd.Parameters.Add(pName);
-        foreach (var file in files)
+        try
         {
-          try
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
+          // get the folder id, no need to create it.
+          var folderId = await _folders.GetDirectoryIdAsync(file.Directory, token, false).ConfigureAwait(false);
+          if (-1 == folderId)
           {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            // get the folder id, no need to create it.
-            var folderId = await _folders.GetDirectoryIdAsync(file.Directory, token, false).ConfigureAwait(false);
-            if (-1 == folderId)
-            {
-              _logger.Warning($"Could not delete file: {file.FullName}, could not locate the parent folder?");
-              continue;
-            }
-
-            // get the file ids
-            var fileId = await GetFileIdAsync(file, token, false).ConfigureAwait(false);
-
-            // if we have no ids... then no point in going further
-            if (fileId == -1 )
-            {
-              _logger.Warning($"Could not delete file: {file.FullName}, could not locate the file?");
-              continue;
-            }
-
-            if (IsFileSupportedByAnyParsers(file))
-            {
-              // touch that file as changed.
-              deletedFileIdsToTouch.Add( fileId );
-            }
-            
-            // then we can delete this file.
-            pFolderId.Value = folderId;
-            pName.Value = file.Name.ToLowerInvariant();
-            if (0 == await _factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
-            {
-              _logger.Warning($"Could not delete file: {file.FullName}, does it still exist?");
-            }
-            else
-            {
-              // it was deleted
-              ++deletedCount;
-            }
+            _logger.Warning($"Could not delete file: {file.FullName}, could not locate the parent folder?");
+            continue;
           }
-          catch (OperationCanceledException)
+
+          // get the file ids
+          var fileId = await GetFileIdAsync(file, token, false).ConfigureAwait(false);
+
+          // if we have no ids... then no point in going further
+          if (fileId == -1)
           {
-            _logger.Warning("Received cancellation request - Deleting files");
-            throw;
+            _logger.Warning($"Could not delete file: {file.FullName}, could not locate the file?");
+            continue;
           }
-          catch (Exception ex)
+
+          if (IsFileSupportedByAnyParsers(file))
           {
-            _logger.Exception(ex);
-            // swallow this execption
-            // and try and delete the other files.
+            // touch that file as changed.
+            deletedFileIdsToTouch.Add(fileId);
           }
+
+          // then we can delete this file.
+          if (!await _filesHelper.DeleteAsync(folderId, file.Name, token ).ConfigureAwait(false))
+          {
+            _logger.Warning($"Could not delete file: {file.FullName}, does it still exist?");
+          }
+          else
+          {
+            // it was deleted
+            ++deletedCount;
+          }
+        }
+        catch (OperationCanceledException)
+        {
+          _logger.Warning("Received cancellation request - Deleting files");
+          throw;
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
+          // swallow this execption
+          // and try and delete the other files.
         }
       }
 
@@ -328,7 +316,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       await FileUpdates.TouchFilesAsync(deletedFileIdsToTouch, UpdateType.Deleted, token).ConfigureAwait(false);
 
       // update the files count.
-      await _counts.UpdateFilesCountAsync( -1* deletedCount, _factory, token).ConfigureAwait(false);
+      await _counts.UpdateFilesCountAsync( -1* deletedCount, token).ConfigureAwait(false);
 
       // we are done.
       return true;
@@ -352,7 +340,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<bool> DeleteFilesAsync(long folderId, CancellationToken token)
     {
-      Contract.Assert(_factory != null);
+      Contract.Assert(_filesHelper != null);
 
       // get the files for that folder so we can fag them as touched.
       var fileIds = await GetFileIdsAsync(folderId, token).ConfigureAwait(false);
@@ -362,41 +350,29 @@ namespace myoddweb.desktopsearch.service.Persisters
         await FileUpdates.TouchFilesAsync(fileIds, UpdateType.Deleted, token).ConfigureAwait(false);
 
         // we are about to delete those files.
-        await _counts.UpdateFilesCountAsync(fileIds.Count, _factory, token).ConfigureAwait(false);
+        await _counts.UpdateFilesCountAsync(fileIds.Count, token).ConfigureAwait(false);
       }
 
-      var sql = $"DELETE FROM {Tables.Files} WHERE folderid=@folderid";
-      using (var cmd = _factory.CreateCommand(sql))
+      try
       {
-        try
-        {
-          var pFolderId = cmd.CreateParameter();
-          pFolderId.DbType = DbType.Int64;
-          pFolderId.ParameterName = "@folderid";
-          cmd.Parameters.Add(pFolderId);
+        // delete the files.
+        var deletedFiles = await _filesHelper.DeleteAsync(folderId, token).ConfigureAwait(false);
 
-          // set the folder id.
-          cmd.Parameters["@folderid"].Value = folderId;
+        // and give a message...
+        _logger.Verbose($"Deleted {deletedFiles} file(s) from folder id: {folderId}.");
 
-          // delete the files.
-          var deletedFiles = await _factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false);
-
-          // and give a message...
-          _logger.Verbose($"Deleted {deletedFiles} file(s) from folder id: {folderId}.");
-
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-        }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Delete files by folder");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-          return false;
-        }
+        // get out if needed.
+        token.ThrowIfCancellationRequested();
+      }
+      catch (OperationCanceledException)
+      {
+        _logger.Warning("Received cancellation request - Delete files by folder");
+        throw;
+      }
+      catch (Exception ex)
+      {
+        _logger.Exception(ex);
+        return false;
       }
 
       // we are done.
@@ -697,7 +673,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // we are about to delete those files.
-      await _counts.UpdateFilesCountAsync(insertedCount, _factory, token).ConfigureAwait(false);
+      await _counts.UpdateFilesCountAsync(insertedCount, token).ConfigureAwait(false);
 
       return true;
     }
