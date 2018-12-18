@@ -150,7 +150,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       if (
         !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.Files}_folderid_name ON {Tables.Files}(folderid, name);", connectionFactory).ConfigureAwait(false))
+          ExecuteNonQueryAsync($"CREATE UNIQUE INDEX index_{Tables.Files}_folderid_name ON {Tables.Files}(folderid, name);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }

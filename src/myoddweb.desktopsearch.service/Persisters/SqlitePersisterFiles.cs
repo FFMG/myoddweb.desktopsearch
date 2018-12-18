@@ -464,8 +464,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<FileInfo> GetFileAsync(long fileId, CancellationToken token)
     {
-      // the pending updates
-      FileInfo file = null;
       try
       {
         Contract.Assert( _filesHelper != null );
@@ -481,30 +479,31 @@ namespace myoddweb.desktopsearch.service.Persisters
           cmd.Parameters.Add(pId);
 
           // set the folder id.
-          cmd.Parameters["@id"].Value = fileId;
+          pId.Value = fileId;
           using (var reader = await _factory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
           {
             var folderIdPos = reader.GetOrdinal("folderid");
-            var namePos = reader.GetOrdinal("name"); 
-            if (reader.Read())
+            var namePos = reader.GetOrdinal("name");
+            if (!reader.Read())
             {
-              // get the directory
-              var directory = await _folders.GetDirectoryAsync((long) reader[folderIdPos], token)
-                .ConfigureAwait(false);
-
-              // sanity check
-              if (null == directory)
-              {
-                _logger.Error( $"The file '{(string) reader[namePos]}'({fileId}) is on record, but the fodler ({(long) reader[folderIdPos]}) does not exist!");
-                return null;
-              }
-
-              // we can now rebuild the file info.
-              file = new FileInfo(Path.Combine(directory.FullName, (string) reader[namePos]));
-
-              // get out if needed.
-              token.ThrowIfCancellationRequested();
+              return null;
             }
+
+            // get the directory
+            var directory = await _folders.GetDirectoryAsync((long) reader[folderIdPos], token).ConfigureAwait(false);
+
+            // sanity check
+            if (null == directory)
+            {
+              _logger.Error( $"The file '{(string) reader[namePos]}'({fileId}) is on record, but the fodler ({(long) reader[folderIdPos]}) does not exist!");
+              return null;
+            }
+
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
+
+            // we can now rebuild the file info.
+            return new FileInfo(Path.Combine(directory.FullName, (string) reader[namePos]));
           }
         }
       }
@@ -516,11 +515,8 @@ namespace myoddweb.desktopsearch.service.Persisters
       catch (Exception e)
       {
         _logger.Exception(e);
-        return null;
+        throw;
       }
-
-      // return whatever we found
-      return file;
     }
 
     #region private functions
@@ -588,70 +584,51 @@ namespace myoddweb.desktopsearch.service.Persisters
       // what we actually inserted
       var insertedCount = 0;
 
-      Contract.Assert(_factory != null);
+      // sanity check...
+      Contract.Assert(_filesHelper != null);
 
-      var sqlInsert = $"INSERT INTO {Tables.Files} (folderid, name) VALUES (@folderid, @name)";
-      using (var cmdInsert = _factory.CreateCommand(sqlInsert))
+      var idsToTouch = new List<long>();
+
+      foreach (var file in files)
       {
-        var pIFolderId = cmdInsert.CreateParameter();
-        pIFolderId.DbType = DbType.Int64;
-        pIFolderId.ParameterName = "@folderid";
-        cmdInsert.Parameters.Add(pIFolderId);
-
-        var pIName = cmdInsert.CreateParameter();
-        pIName.DbType = DbType.String;
-        pIName.ParameterName = "@name";
-        cmdInsert.Parameters.Add(pIName);
-
-        var idsToTouch = new List<long>();
-
-        foreach (var file in files)
+        try
         {
-          try
+          // get out if needed.
+          token.ThrowIfCancellationRequested();
+
+          // Get the folder for this file and insert it, if need be.
+          var folderId = await _folders.GetDirectoryIdAsync(file.Directory, token, true).ConfigureAwait(false);
+          if (-1 == folderId)
           {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            // Get the folder for this file and insert it, if need be.
-            var folderId = await _folders.GetDirectoryIdAsync(file.Directory, token, true).ConfigureAwait(false);
-            if (-1 == folderId)
-            {
-              _logger.Error($"I was unable to insert {file.FullName} as I could not locate and insert the directory!");
-              return false;
-            }
-
-            pIFolderId.Value = folderId;
-            pIName.Value = file.Name.ToLowerInvariant();
-            if (0 == await _factory.ExecuteWriteAsync(cmdInsert, token).ConfigureAwait(false))
-            {
-              _logger.Error($"There was an issue adding file: {file.FullName} to persister");
-              continue;
-            }
-
-            if (IsFileSupportedByAnyParsers(file))
-            {
-              var fileId = await _filesHelper.GetAsync(folderId, file.Name, token).ConfigureAwait(false);
-              if (fileId == -1 )
-              {
-                _logger.Error($"There was an issue finding the file id: {file.FullName} from perister");
-                continue;
-              }
-              // we will need to touch this id.
-              idsToTouch.Add( fileId );
-            }
-
-            // this item was inserted
-            ++insertedCount;
+            _logger.Error($"I was unable to insert {file.FullName} as I could not locate and insert the directory!");
+            return false;
           }
-          catch (OperationCanceledException)
+
+          var fileId = await _filesHelper.InsertAndGetAsync(folderId, file.Name, token).ConfigureAwait(false);
+          if (-1 == fileId )
           {
-            _logger.Warning("Received cancellation request - Insert multiple files");
-            throw;
+            _logger.Error($"There was an issue adding file: {file.FullName} to persister");
+            continue;
           }
-          catch (Exception ex)
+
+          // do we need to 'touch' that file?
+          if (IsFileSupportedByAnyParsers(file))
           {
-            _logger.Exception(ex);
+            // we will need to touch this id.
+            idsToTouch.Add( fileId );
           }
+
+          // this item was inserted
+          ++insertedCount;
+        }
+        catch (OperationCanceledException)
+        {
+          _logger.Warning("Received cancellation request - Insert multiple files");
+          throw;
+        }
+        catch (Exception ex)
+        {
+          _logger.Exception(ex);
         }
 
         // we can then touch all the updated items

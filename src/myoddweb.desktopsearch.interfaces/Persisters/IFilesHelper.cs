@@ -54,5 +54,14 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<int> DeleteAsync(long id, CancellationToken token);
+
+    /// <summary>
+    /// Insert a file ... and get the id of it.
+    /// </summary>
+    /// <param name="id">The folder id</param>
+    /// <param name="name">The file name, (case insensitive)</param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<long> InsertAndGetAsync(long id, string name, CancellationToken token);
   }
 }

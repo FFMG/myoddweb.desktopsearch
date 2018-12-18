@@ -21,6 +21,74 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.helper.Persisters
 {
+  internal class PersisterInsertFilesHelper : PersisterHelper
+  {
+    /// <summary>
+    /// The id parameter;
+    /// </summary>
+    private IDbDataParameter _folderid;
+
+    /// <summary>
+    /// The name parameter;
+    /// </summary>
+    private IDbDataParameter _name;
+
+    /// <summary>
+    /// The id parameter;
+    /// </summary>
+    public IDbDataParameter FolderId
+    {
+      get
+      {
+        if (null != _folderid)
+        {
+          return _folderid;
+        }
+
+        _folderid = Command.CreateParameter();
+        _folderid.DbType = DbType.Int64;
+        _folderid.ParameterName = "@folderid";
+        Command.Parameters.Add(_folderid);
+        return _folderid;
+      }
+    }
+
+    /// <summary>
+    /// The id parameter;
+    /// </summary>
+    public IDbDataParameter Name
+    {
+      get
+      {
+        if (null != _name)
+        {
+          return _name;
+        }
+
+        _name = Command.CreateParameter();
+        _name.DbType = DbType.String;
+        _name.ParameterName = "@name";
+        Command.Parameters.Add(_name);
+        return _name;
+      }
+    }
+
+    public PersisterInsertFilesHelper(IConnectionFactory factory, string sql) : base(factory, sql)
+    {
+    }
+
+    public async Task InsertAsync(long folderid, string name, CancellationToken token)
+    {
+      using (await Lock.TryAsync().ConfigureAwait(false))
+      {
+        // look for the given path
+        FolderId.Value = folderid;
+        Name.Value = name.ToLowerInvariant();
+        await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false);
+      }
+    }
+  }
+
   internal class PersisterDeleteFilesHelper : PersisterHelper
   {
     /// <summary>
@@ -288,6 +356,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
     private readonly PersisterSelectIdFilesHelper _selectId;
 
     /// <summary>
+    /// Insert a file/folder/
+    /// </summary>
+    private readonly PersisterInsertFilesHelper _insert;
+
+    /// <summary>
     /// Check if this item has been disposed or not.
     /// </summary>
     private bool _disposed;
@@ -306,6 +379,9 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
       // delete all the files in one folder.
       _deleteFolder = new PersisterDeleteFolderFilesHelper( factory, $"DELETE FROM {tableName} WHERE folderid=@folderid");
+
+      // insert
+      _insert = new PersisterInsertFilesHelper(factory, $"INSERT OR IGNORE INTO {tableName} (folderid, name) VALUES (@folderid, @name)");
     }
 
     /// <summary>
@@ -334,6 +410,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       _selectId?.Dispose();
       _delete?.Dispose();
       _deleteFolder?.Dispose();
+      _insert?.Dispose();
     }
 
     /// <inheritdoc />
@@ -362,6 +439,18 @@ namespace myoddweb.desktopsearch.helper.Persisters
     {
       ThrowIfDisposed();
       return _deleteFolder.DeleteAsync(id, token);
+    }
+
+    /// <inheritdoc />
+    public async Task<long> InsertAndGetAsync(long id, string name, CancellationToken token)
+    {
+      ThrowIfDisposed();
+
+      // insert it
+      await _insert.InsertAsync(id, name, token ).ConfigureAwait(false);
+
+      // then try and get the id  
+      return await _selectId.GetAsync(id, name, token).ConfigureAwait(false);
     }
   }
 }
