@@ -53,7 +53,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task InsertAsync(string word, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // insert the word.
         Word.Value = word;
@@ -95,7 +95,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<long> GetIdAsync(string word, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // we are first going to look for that id
         // if it does not exist, then we cannot update the files table.

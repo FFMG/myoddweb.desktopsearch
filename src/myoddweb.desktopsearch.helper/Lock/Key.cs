@@ -39,9 +39,14 @@ namespace myoddweb.desktopsearch.helper.Lock
       _parent.Exit(_id);
     }
 
-    public async Task<IDisposable> TryAsync()
+    /// <summary>
+    /// Try and enter the lock and return ourselves as an IDisposable.
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public async Task<IDisposable> TryAsync(CancellationToken token)
     {
-      await _parent.EnterAsync(_id).ConfigureAwait(false);
+      await _parent.EnterAsync(_id, token).ConfigureAwait(false);
       return this;
     }
   }

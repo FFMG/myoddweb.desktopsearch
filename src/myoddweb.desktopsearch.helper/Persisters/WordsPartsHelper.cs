@@ -55,7 +55,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<IList<long>> GetAsync(long wordId, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // select all the ids that belong to that word.
         WordId.Value = wordId;
@@ -150,7 +150,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
         return new List<long>();
       }
 
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         var invalidIds = new List<long>();
         // insert the word.
@@ -242,7 +242,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
         return new List<long>();
       }
 
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // insert the word.
         WordId.Value = wordId;
@@ -332,7 +332,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<bool> DeleteAsync(long wordId, long partId, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // insert the word.
         WordId.Value = wordId;

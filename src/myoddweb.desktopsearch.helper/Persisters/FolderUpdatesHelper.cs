@@ -47,7 +47,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
         return;
       }
 
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         foreach (var id in ids)
         {
@@ -149,7 +149,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
         return;
       }
 
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         Type.Value = (long)type;
         Ticks.Value = DateTime.UtcNow.Ticks;

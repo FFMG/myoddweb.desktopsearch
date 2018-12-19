@@ -54,7 +54,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task InsertAsync(DirectoryInfo directory, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // the path we are adding/getting.
         var path = directory.FullName.ToLowerInvariant();
@@ -124,7 +124,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<bool> RenameAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // the path we are adding/getting.
         var path1 = directory.FullName.ToLowerInvariant();
@@ -171,7 +171,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<bool> DeleteAsync(DirectoryInfo directory, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // the path we are adding/getting.
         var path = directory.FullName.ToLowerInvariant();
@@ -216,7 +216,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<long> GetIdAsync(DirectoryInfo directory, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // the path we are adding/getting.
         var path = directory.FullName.ToLowerInvariant();
@@ -268,7 +268,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<string> GetPathAsync(long id, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // look for the given path
         Id.Value = id;

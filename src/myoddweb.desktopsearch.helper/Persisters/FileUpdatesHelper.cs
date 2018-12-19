@@ -47,7 +47,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
         return 0;
       }
 
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         var actualDelete = 0;
         foreach (var id in ids)
@@ -154,7 +154,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
         return 0;
       }
 
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         Type.Value = (long)type;
         Ticks.Value = ticks;

@@ -54,7 +54,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task InsertAsync(IReadOnlyCollection<string> parts, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         foreach (var part in parts)
         {
@@ -99,7 +99,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<IList<IPart>> GetAsync(IReadOnlyCollection<string> parts, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         var partsAndIds = new List<IPart>();
 

@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace myoddweb.desktopsearch.helper.Lock
@@ -29,11 +30,12 @@ namespace myoddweb.desktopsearch.helper.Lock
     /// <summary>
     /// Try and get the lock async
     /// </summary>
+    /// <param name="token"></param>
     /// <returns></returns>
-    public Task<IDisposable> TryAsync()
+    public Task<IDisposable> TryAsync( CancellationToken token)
     {
       var key = new Key( this );
-      return key.TryAsync();
+      return key.TryAsync( token );
     }
 
     /// <summary>
@@ -43,20 +45,21 @@ namespace myoddweb.desktopsearch.helper.Lock
     public IDisposable Try()
     {
       var key = new Key(this);
-      return key.TryAsync().GetAwaiter().GetResult();
+      return key.TryAsync( default(CancellationToken) ).GetAwaiter().GetResult();
     }
 
     /// <summary>
     /// Enter the locks.
     /// </summary>
     /// <param name="id"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    internal async Task EnterAsync(long id)
+    internal async Task EnterAsync(long id, CancellationToken token)
     {
       // wait until we can get the lock
       // we do not want to hold the lock
       // so the lock ownwe can release it.
-      await Wait.UntilAsync(() =>
+      await Wait.UntilAsync(  () =>
       {
         lock (_lock)
         {
@@ -69,7 +72,7 @@ namespace myoddweb.desktopsearch.helper.Lock
           _owningId = id;
           return true;
         }
-      }).ConfigureAwait(false);
+      }, token).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.Lock;
 using NUnit.Framework;
 
@@ -12,7 +13,7 @@ namespace myoddweb.desktopsearch.parser.test
     {
       bool gotLock;
       var l = new Lock();
-      using (await l.TryAsync().ConfigureAwait(false))
+      using (await l.TryAsync( CancellationToken.None).ConfigureAwait(false))
       {
         gotLock = true;
       }
@@ -37,7 +38,7 @@ namespace myoddweb.desktopsearch.parser.test
       bool gotLock;
       bool wasDisposed;
       var l = new Lock();
-      var key = await l.TryAsync().ConfigureAwait(false);
+      var key = await l.TryAsync(CancellationToken.None).ConfigureAwait(false);
       try
       {
         gotLock = true;
@@ -57,7 +58,7 @@ namespace myoddweb.desktopsearch.parser.test
       bool gotLock;
       bool wasDisposed;
       var l = new Lock();
-      var key = l.TryAsync();
+      var key = l.TryAsync(CancellationToken.None);
       try
       {
         gotLock = true;
@@ -76,11 +77,11 @@ namespace myoddweb.desktopsearch.parser.test
     {
       var gotLock = 0;
       var l = new Lock();
-      using (await l.TryAsync().ConfigureAwait(false))
+      using (await l.TryAsync(CancellationToken.None).ConfigureAwait(false))
       {
         ++gotLock;
       }
-      using (await l.TryAsync().ConfigureAwait(false))
+      using (await l.TryAsync(CancellationToken.None).ConfigureAwait(false))
       {
         ++gotLock;
       }

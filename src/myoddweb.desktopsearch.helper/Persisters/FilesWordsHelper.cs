@@ -78,7 +78,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<bool> ExistAsync(long wordId, long fileId, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // we are first going to look for that id
         // if it does not exist, then we cannot update the files table.
@@ -150,7 +150,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<bool> InsertAsync(long wordId, long fileId, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // insert the word.
         WordId.Value = wordId;
@@ -193,7 +193,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<bool> DeleteAsync(long fileId, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // delete the file
         FileId.Value = fileId;

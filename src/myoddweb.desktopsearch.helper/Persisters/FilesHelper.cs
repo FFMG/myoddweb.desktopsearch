@@ -79,7 +79,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task InsertAsync(long folderid, string name, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // look for the given path
         FolderId.Value = folderid;
@@ -147,7 +147,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<bool> DeleteAsync(long folderid, string name, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // look for the given path
         FolderId.Value = folderid;
@@ -190,7 +190,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<int> DeleteAsync(long folderid, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         FolderId.Value = folderid;
         return await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false);
@@ -256,7 +256,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<long> GetAsync(long folderid, string name, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         // look for the given path
         FolderId.Value = folderid;
@@ -305,7 +305,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
     public async Task<IList<IFileHelper>> GetAsync(long folderid, CancellationToken token)
     {
-      using (await Lock.TryAsync().ConfigureAwait(false))
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
         var files = new List<IFileHelper>();
 
