@@ -13,12 +13,14 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper;
 using myoddweb.desktopsearch.helper.IO;
 using myoddweb.desktopsearch.interfaces.IO;
 using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
@@ -156,14 +158,17 @@ namespace myoddweb.desktopsearch.service.IO
           return null;
         }
 
-        var posibleFiles = new HashSet<FileInfo>( new FileInfoComparer() );
-        foreach (var file in files)
-        {
-          if (await Task.Run( () => helper.File.CanReadFile(file), token).ConfigureAwait(false))
+        var posibleFiles = new ConcurrentBag<FileInfo>(  );
+        var tasks = files.Select(file => Task.Run(() =>
           {
-            posibleFiles.Add(file);
-          }
-        }
+            if (helper.File.CanReadFile(file))
+            {
+              posibleFiles.Add(file);
+            }
+          }, token)).ToArray();
+
+        // we then wait for them all
+        await Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
 
         // if we found nothing we return null.
         return posibleFiles.Any() ? posibleFiles.ToList() : null;
@@ -225,18 +230,29 @@ namespace myoddweb.desktopsearch.service.IO
           return directories;
         }
 
-        var tasks = new List<Task<List<DirectoryInfo>>>(dirs.Count());
-        foreach (var info in dirs)
+        if (dirs.Length == 1)
         {
-          // get out if needed.
+          // get out if needed, (in case we have many 1x directories in a row).
           token.ThrowIfCancellationRequested();
 
-          // we can parse this directory now and add whatever we found to the list.
-          tasks.Add( BuildDirectoryListAsync(info, token) );
+          // no need to start another thread for a single task...
+          directories.AddRange(await BuildDirectoryListAsync(dirs[0], token).ConfigureAwait( false ));
         }
+        else
+        {
+          var tasks = new List<Task<List<DirectoryInfo>>>(dirs.Length);
+          foreach (var info in dirs)
+          {
+            // get out if needed.
+            token.ThrowIfCancellationRequested();
 
-        var arrayOfDirectories = await helper.Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
-        directories.AddRange(arrayOfDirectories.SelectMany( y => y ));
+            // we can parse this directory now and add whatever we found to the list.
+            tasks.Add(BuildDirectoryListAsync(info, token));
+          }
+
+          var arrayOfDirectories = await Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
+          directories.AddRange(arrayOfDirectories.SelectMany(y => y));
+        }
 
         // return what we found
         return directories;

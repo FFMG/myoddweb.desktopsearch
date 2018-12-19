@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -20,6 +21,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper;
 using myoddweb.desktopsearch.interfaces.Enums;
 using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -127,7 +129,7 @@ namespace myoddweb.desktopsearch.parser
         }
 
         // wait for everything to complete
-        var totalDirectories = await helper.Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
+        var totalDirectories = await Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
 
         // only now, that everything is done
         // we can set the last time we checked flag
@@ -404,61 +406,57 @@ namespace myoddweb.desktopsearch.parser
         return;
       }
 
-      var directoriesAndFiles = new Dictionary<DirectoryInfo, IList<FileInfo>>();
-      foreach (var directory in directories)
-      {
-        // look for all the files in that directory.
-        // so they can also be added.
-        var files = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait(false);
-
-        // now add the files ass well as the directory
-        directoriesAndFiles.Add( directory, files );
-      }
-
-      // get all the changed or updated files.
-      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
-      if (null == transaction)
-      {
-        throw new Exception("Unable to get transaction!");
-      }
-
-      try
-      {
-        // we can now process everything in on single go.
-
-        // do all the directories at once.
-        await _persister.Folders.AddOrUpdateDirectoriesAsync(directoriesAndFiles.Keys.ToList(), token)
-          .ConfigureAwait(false);
-
-        // then do the files.
-        foreach (var directoryAndFiles in directoriesAndFiles)
+      // look for all the files in that directory.
+      // so they can also be added.
+      var tasks = directories.Select(directory => _directory.ParseDirectoryAsync(directory, token).ContinueWith(
+        async (task) =>
         {
-          var files = directoryAndFiles.Value;
-          if (files != null)
+          if (task.IsFaulted)
           {
-            // add the files...
-            await _persister.Folders.Files.AddOrUpdateFilesAsync(files, token).ConfigureAwait(false);
+            if (null != task.Exception)
+            {
+              throw task.Exception;
+            }
+            return;
           }
-        }
 
-        // all the folders have been processed.
-        await _persister.Folders.FolderUpdates.MarkDirectoriesProcessedAsync(directoriesAndFiles.Keys.ToList(), token).ConfigureAwait(false);
+          var files = task.Result;
+          if (!task.Result.Any())
+          {
+            return;
+          }
+          // get all the changed or updated files.
+          var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
+          try
+          {
+            // do all the directories at once.
+            await _persister.Folders.AddOrUpdateDirectoryAsync(directory, token).ConfigureAwait(false);
 
-        // all done
-        _persister.Commit(transaction);
-      }
-      catch (OperationCanceledException)
-      {
-        _persister.Rollback(transaction);
-        _logger.Warning("Received cancellation request - parsing created directories parsing");
-        throw;
-      }
-      catch (Exception e)
-      {
-        _persister.Rollback(transaction);
-        _logger.Exception(e);
-        throw;
-      }
+            // then do the files.
+            await _persister.Folders.Files.AddOrUpdateFilesAsync(files, token).ConfigureAwait(false);
+
+            // all the folders have been processed.
+            await _persister.Folders.FolderUpdates.MarkDirectoriesProcessedAsync( new []{directory}, token).ConfigureAwait(false);
+
+            // all done
+            _persister.Commit(transaction);
+          }
+          catch (OperationCanceledException)
+          {
+            _persister.Rollback(transaction);
+            _logger.Warning("Received cancellation request - parsing created directories parsing");
+            throw;
+          }
+          catch (Exception e)
+          {
+            _persister.Rollback(transaction);
+            _logger.Exception(e);
+            throw;
+          }
+        }, token)).ToArray();
+
+      // and then wait for everything to complete
+      await Wait.WhenAll(tasks, _logger, token).ConfigureAwait( false );
     }
 
     #region Start Parsing
@@ -469,7 +467,7 @@ namespace myoddweb.desktopsearch.parser
     {
       if (_runningTask != null && !_runningTask.IsCompleted)
       {
-        helper.Wait.WaitAll(_runningTask, _logger, token );
+        Wait.WaitAll(_runningTask, _logger, token );
         _runningTask = null;
       }
       _runningTask = WorkAsync(token);
@@ -517,7 +515,7 @@ namespace myoddweb.desktopsearch.parser
       // wait for the main task itself to complete.
       if (_runningTask != null && !_runningTask.IsCompleted)
       {
-        helper.Wait.WaitAll(_runningTask, _logger);
+        Wait.WaitAll(_runningTask, _logger);
         _runningTask = null;
       }
     }

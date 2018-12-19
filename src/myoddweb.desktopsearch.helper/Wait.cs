@@ -35,15 +35,26 @@ namespace myoddweb.desktopsearch.helper
     private const int MultipleProcessorsSleep = 2;
     #endregion
 
+    /// <summary>
+    /// Prevent direct creating
+    /// </summary>
     private Wait()
     {
-
     }
 
-    public static async Task WhenAll(IReadOnlyCollection<Task> tasks, ILogger logger,
-      CancellationToken token = default(CancellationToken))
+    public static Task WhenAll(IReadOnlyCollection<Task> tasks, ILogger logger, CancellationToken token = default(CancellationToken))
     {
-      var task = Task.WhenAll(tasks.ToArray());
+      return WhenAll(tasks.ToArray(), logger, token);
+    }
+
+    public static Task<T[]> WhenAll<T>(IReadOnlyCollection<Task<T>> tasks, ILogger logger, CancellationToken token = default(CancellationToken))
+    {
+      return WhenAll(tasks.ToArray(), logger, token);
+    }
+
+    public static async Task WhenAll(Task[] tasks, ILogger logger, CancellationToken token = default(CancellationToken))
+    { 
+      var task = Task.WhenAll(tasks);
       try
       {
         await task.ConfigureAwait(false);
@@ -59,9 +70,9 @@ namespace myoddweb.desktopsearch.helper
       }
     }
 
-    public static async Task<T[]> WhenAll<T>(IReadOnlyCollection<Task<T>> tasks, ILogger logger, CancellationToken token = default(CancellationToken))
+    public static async Task<T[]> WhenAll<T>(Task<T>[] tasks, ILogger logger, CancellationToken token = default(CancellationToken))
     {
-      var task = Task.WhenAll(tasks.ToArray());
+      var task = Task.WhenAll(tasks);
       T[] results = null;
       try
       {
@@ -85,11 +96,16 @@ namespace myoddweb.desktopsearch.helper
       WaitAll(new []{task}, logger, token);
     }
 
-    public static void WaitAll(IReadOnlyCollection<Task> tasks, ILogger logger, CancellationToken token = default(CancellationToken) )
+    public static void WaitAll(IReadOnlyCollection<Task> tasks, ILogger logger, CancellationToken token = default(CancellationToken))
+    {
+      WaitAll(tasks.ToArray(), logger, token);
+    }
+
+    public static void WaitAll(Task[] tasks, ILogger logger, CancellationToken token = default(CancellationToken) )
     {
       try
       {
-        Task.WaitAll(tasks.ToArray());
+        Task.WaitAll(tasks);
       }
       catch (AggregateException ae)
       {
@@ -197,6 +213,7 @@ namespace myoddweb.desktopsearch.helper
         ++count;
       }
     }
+    
     /// <summary>
     /// Wait until a function completes.
     /// </summary>

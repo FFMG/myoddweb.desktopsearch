@@ -320,8 +320,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        _transactionSpinner.Rollback(connectionFactory);
-        CompleteTransaction(false);
+        _transactionSpinner.Rollback(connectionFactory, () => CompleteTransaction(false) );
         return true;
       }
       catch (Exception rollbackException)
@@ -344,8 +343,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        _transactionSpinner.Commit(connectionFactory);
-        CompleteTransaction(true);
+        _transactionSpinner.Commit(connectionFactory, () => CompleteTransaction(true));
         return true;
       }
       catch (Exception commitException)

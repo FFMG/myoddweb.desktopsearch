@@ -137,7 +137,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Rollback a transaction
     /// </summary>
     /// <param name="connectionFactory"></param>
-    public void Rollback(IConnectionFactory connectionFactory)
+    /// <param name="onCompleted"></param>
+    public void Rollback(IConnectionFactory connectionFactory, Action onCompleted)
     {
       // update the counter.
       using (_counterRollback.Start())
@@ -146,6 +147,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         if (connectionFactory.IsReadOnly)
         {
           connectionFactory.Rollback();
+          onCompleted();
           return;
         }
 
@@ -161,7 +163,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             throw new ArgumentException("The given transaction was not created by this class");
           }
 
-          RollbackInLock();
+          RollbackInLock(onCompleted);
         }
         finally
         {
@@ -177,7 +179,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Commit a transaction.
     /// </summary>
     /// <param name="connectionFactory"></param>
-    public void Commit(IConnectionFactory connectionFactory )
+    /// <param name="onCompleted"></param>
+    public void Commit(IConnectionFactory connectionFactory, Action onCompleted )
     {
       // update the counter.
       using (_counterCommit.Start())
@@ -186,6 +189,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         if (connectionFactory.IsReadOnly)
         {
           connectionFactory.Commit();
+          onCompleted();
           return;
         }
 
@@ -200,7 +204,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             throw new ArgumentException("The given transaction was not created by this class");
           }
 
-          CommitInLock();
+          CommitInLock( onCompleted );
         }
         finally
         {
@@ -215,13 +219,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Rollback a transaction within a lock.
     /// </summary>
-    private void RollbackInLock()
+    /// <param name="onCompleted"></param>
+    private void RollbackInLock(Action onCompleted)
     {
       try
       {
         // try and roll back
         _writeFactory?.Rollback();
-
+        onCompleted();
       }
       finally
       {
@@ -234,12 +239,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Commit the tansaction while we are in lock.
     /// </summary>
-    private void CommitInLock()
+    /// <param name="onCompleted"></param>
+    private void CommitInLock(Action onCompleted)
     {
       try
       {
         // try and commit 
         _writeFactory?.Commit();
+        onCompleted();
       }
       finally 
       {
