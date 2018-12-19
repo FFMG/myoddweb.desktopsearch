@@ -316,15 +316,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreateFoldersAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE TABLE {Tables.Folders} (id integer PRIMARY KEY, path varchar(260))", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE TABLE {Tables.Folders} (id integer PRIMARY KEY, path varchar(260) UNIQUE)", connectionFactory)
           .ConfigureAwait(false))
-      {
-        return false;
-      }
-
-      if ( 
-        !await
-          ExecuteNonQueryAsync($"CREATE INDEX index_{Tables.Folders}_path ON {Tables.Folders}(path);", connectionFactory).ConfigureAwait(false))
       {
         return false;
       }

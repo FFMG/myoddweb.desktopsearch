@@ -321,7 +321,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
     public FoldersHelper(IConnectionFactory factory, string tableName)
     {
       // create the word command.
-      _insert = new PersisterInsertFoldersHelper(factory, $"INSERT INTO {tableName} (path) VALUES (@path)");
+      _insert = new PersisterInsertFoldersHelper(factory, $"INSERT OR IGNORE INTO {tableName} (path) VALUES (@path)");
 
       // create the select id
       _selectId = new PersisterSelectFoldersHelper(factory, $"SELECT id FROM {tableName} where path=@path");
