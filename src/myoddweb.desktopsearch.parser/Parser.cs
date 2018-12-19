@@ -406,57 +406,56 @@ namespace myoddweb.desktopsearch.parser
         return;
       }
 
-      // look for all the files in that directory.
-      // so they can also be added.
-      var tasks = directories.Select(directory => _directory.ParseDirectoryAsync(directory, token).ContinueWith(
-        async (task) =>
-        {
-          if (task.IsFaulted)
-          {
-            if (null != task.Exception)
-            {
-              throw task.Exception;
-            }
-            return;
-          }
-
-          var files = task.Result;
-          if (!task.Result.Any())
-          {
-            return;
-          }
-          // get all the changed or updated files.
-          var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
-          try
-          {
-            // do all the directories at once.
-            await _persister.Folders.AddOrUpdateDirectoryAsync(directory, token).ConfigureAwait(false);
-
-            // then do the files.
-            await _persister.Folders.Files.AddOrUpdateFilesAsync(files, token).ConfigureAwait(false);
-
-            // all the folders have been processed.
-            await _persister.Folders.FolderUpdates.MarkDirectoriesProcessedAsync( new []{directory}, token).ConfigureAwait(false);
-
-            // all done
-            _persister.Commit(transaction);
-          }
-          catch (OperationCanceledException)
-          {
-            _persister.Rollback(transaction);
-            _logger.Warning("Received cancellation request - parsing created directories parsing");
-            throw;
-          }
-          catch (Exception e)
-          {
-            _persister.Rollback(transaction);
-            _logger.Exception(e);
-            throw;
-          }
-        }, token)).ToArray();
+      // parse all the directories at once.
+      var tasks = directories.Select(directory => PersistCreatedDirectories(directory, token )).ToArray();
 
       // and then wait for everything to complete
       await Wait.WhenAll(tasks, _logger, token).ConfigureAwait( false );
+    }
+
+    /// <summary>
+    /// Parse a directory and save all the values for that directory to the database.
+    /// </summary>
+    /// <param name="directory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task PersistCreatedDirectories(DirectoryInfo directory, CancellationToken token)
+    {
+      //  get the files in that directory.
+      var files = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait( false );
+      if (files == null || !files.Any())
+      {
+        return;
+      }
+
+      // get all the changed or updated files.
+      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
+      try
+      {
+        // do all the directories at once.
+        await _persister.Folders.AddOrUpdateDirectoryAsync(directory, token).ConfigureAwait(false);
+
+        // then do the files.
+        await _persister.Folders.Files.AddOrUpdateFilesAsync(files, token).ConfigureAwait(false);
+
+        // all the folders have been processed.
+        await _persister.Folders.FolderUpdates.MarkDirectoriesProcessedAsync(new[] { directory }, token).ConfigureAwait(false);
+
+        // all done
+        _persister.Commit(transaction);
+      }
+      catch (OperationCanceledException)
+      {
+        _persister.Rollback(transaction);
+        _logger.Warning("Received cancellation request - parsing created directories parsing");
+        throw;
+      }
+      catch (Exception e)
+      {
+        _persister.Rollback(transaction);
+        _logger.Exception(e);
+        throw;
+      }
     }
 
     #region Start Parsing
