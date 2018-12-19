@@ -102,7 +102,12 @@ namespace myoddweb.desktopsearch.service.Persisters
           var lockTaken = false;
           try
           {
-            Monitor.Enter(_lock, ref lockTaken);
+            Monitor.TryEnter(_lock, ref lockTaken);
+            if (!lockTaken)
+            {
+              token.ThrowIfCancellationRequested();
+              continue;
+            }
 
             // oops... we didn't really get it.
             // go around again to make sure.
