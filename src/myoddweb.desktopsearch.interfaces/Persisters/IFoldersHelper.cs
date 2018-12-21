@@ -52,7 +52,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="oldDirectory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> RenameAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, CancellationToken token);
+    Task<long> RenameAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, CancellationToken token);
 
     /// <summary>
     /// Delete a folder.

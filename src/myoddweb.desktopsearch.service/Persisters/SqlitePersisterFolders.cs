@@ -105,47 +105,51 @@ namespace myoddweb.desktopsearch.service.Persisters
         // sanity check
         Contract.Assert(_foldersHelper != null);
 
-        if (!await _foldersHelper.RenameAsync( directory, oldDirectory, token).ConfigureAwait(false))
+        // get the current value
+        var oldFolderId = await _foldersHelper.GetAsync(oldDirectory, token).ConfigureAwait(false);
+
+        // then try and update it
+        var updatedFolderId = await _foldersHelper.RenameAsync(directory, oldDirectory, token).ConfigureAwait(false);
+        if (-1 == updatedFolderId )
         {
           // we could not rename it, this could be because of an error
           // or because the old path simply does not exist.
           // in that case we can try and simply add the new path.
           _logger.Error($"There was an issue renaming folder: {directory.FullName} to persister");
-
-          // try and add it back in...
-          var ids = await InsertDirectoriesAsync(new[] {oldDirectory}, token).ConfigureAwait(false);
-          if( !ids.Any())
-          {
-            return -1;
-          }
+          return -1;
         }
 
-        // if we are here, we either renamed the directory or we managed 
-        // to add add a new directory
-        // in either cases, we can now return the id of this newly added path.
-        // we won't ask the function to insert a new file as we _just_ renamed it.
-        // so it has to exist...
-        var folderId = await GetDirectoryIdAsync(directory, token, false).ConfigureAwait(false);
-
         // touch that folder as changed
-        await FolderUpdates.TouchDirectoriesAsync(new []{folderId}, UpdateType.Changed, token).ConfigureAwait(false);
+        if (updatedFolderId == oldFolderId)
+        {
+          await FolderUpdates.TouchDirectoriesAsync(new[] { updatedFolderId }, UpdateType.Changed, token).ConfigureAwait(false);
+        }
+        else
+        {
+          // we created the new one
+          await FolderUpdates.TouchDirectoriesAsync(new[] { updatedFolderId }, UpdateType.Created, token).ConfigureAwait(false);
+
+          // but if the old one is not the same as the new one
+          // then we must have removed the old one.
+          await FolderUpdates.TouchDirectoriesAsync(new[] { oldFolderId }, UpdateType.Deleted, token).ConfigureAwait(false);
+        }
 
         // get out if needed.
         token.ThrowIfCancellationRequested();
 
         // we are done
-        return folderId;
+        return updatedFolderId;
       }
       catch (OperationCanceledException)
       {
-        _logger.Warning("Received cancellation request - Update directory");
+        _logger.Warning("Received cancellation request - Rename directory");
         throw;
       }
       catch (Exception ex)
       {
         _logger.Exception(ex);
+        throw;
       }
-      return -1;
     }
  
     /// <inheritdoc />

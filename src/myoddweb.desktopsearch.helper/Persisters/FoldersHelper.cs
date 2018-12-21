@@ -393,12 +393,44 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
 
     /// <inheritdoc />
-    public Task<bool> RenameAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, CancellationToken token)
+    public async Task<long> RenameAsync(DirectoryInfo directory, DirectoryInfo oldDirectory, CancellationToken token)
     {
       ThrowIfDisposed();
 
-      // rename
-      return _rename.RenameAsync(directory, oldDirectory, token);
+      // look for the old name .. it has to exist.
+      // otherwise it is not a rename, but just an insert.
+      var oldId = await GetAsync(directory, token).ConfigureAwait(false);
+      if (oldId == -1)
+      {
+        // the old value does not exist
+        // so just insert the new one and move on.
+        return await InsertAndGetAsync(directory, token).ConfigureAwait(false);
+      }
+
+      // look for the new value, it might already exist.
+      var newId = await GetAsync(directory, token).ConfigureAwait(false);
+      if (newId == -1)
+      {
+        // the new values does not exist already
+        // do we can just rename the old one and return it.
+        await _rename.RenameAsync(directory, oldDirectory, token).ConfigureAwait(false);
+      }
+      else if (newId == oldId)
+      {
+        // we are trying to rename the folder the same thing?
+        // so we just return the value we have already...
+        return newId;
+      }
+      else
+      {
+        // the new one _already_ exists
+        // so we cannot change the old value to the new one
+        // we must delete the old one and return the new one.
+        await _delete.DeleteAsync(oldDirectory, token).ConfigureAwait(false);
+      }
+
+      // return the id, as the id might have changed from what we just found.
+      return await GetAsync(directory, token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

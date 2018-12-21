@@ -137,104 +137,71 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<long> RenameOrAddFileAsync(FileInfo file, FileInfo oldFile, CancellationToken token)
     {
-      // this is the new folder, we might as well create it if it does not exit.
-      var folderId = await _folders.GetDirectoryIdAsync(file.Directory, token, true).ConfigureAwait(false);
-      if (-1 == folderId)
+      try
       {
-        // we cannot create the parent folder id
-        // so there is nothing more to do really.
-        return -1;
-      }
-
-      // get the old folder.
-      var oldFolderId = await _folders.GetDirectoryIdAsync(oldFile.Directory, token, true).ConfigureAwait(false);
-      if (-1 == oldFolderId)
-      {
-        // this cannot be a renaming, as the parent dirctory does not exist.
-        // so we will just try and add it.
-        // by calling the 'GetFile' function and creating it if needed we will insert the file.
-        return await GetFileIdAsync( file, token, true ).ConfigureAwait(false);
-      }
-
-      Contract.Assert(_factory != null );
-
-      // so we have an old folder id and a new folder id
-      var sql = $"UPDATE {Tables.Files} SET name=@name1, folderid=@folderid1 WHERE name=@name2 and folderid=@folderid2";
-      using (var cmd = _factory.CreateCommand(sql))
-      {
-        try
+        // this is the new folder, we might as well create it if it does not exit.
+        var folderId = await _folders.GetDirectoryIdAsync(file.Directory, token, true).ConfigureAwait(false);
+        if (-1 == folderId)
         {
-          var pName1 = cmd.CreateParameter();
-          pName1.DbType = DbType.String;
-          pName1.ParameterName = "@name1";
-          cmd.Parameters.Add(pName1);
-
-          var pName2 = cmd.CreateParameter();
-          pName2.DbType = DbType.String;
-          pName2.ParameterName = "@name2";
-          cmd.Parameters.Add(pName2);
-
-          var pFolderId1 = cmd.CreateParameter();
-          pFolderId1.DbType = DbType.Int64;
-          pFolderId1.ParameterName = "@folderid1";
-          cmd.Parameters.Add(pFolderId1);
-
-          var pFolderId2 = cmd.CreateParameter();
-          pFolderId2.DbType = DbType.Int64;
-          pFolderId2.ParameterName = "@folderid2";
-          cmd.Parameters.Add(pFolderId2);
-
-          // try and replace path1 with path2
-          cmd.Parameters["@name1"].Value = file.Name.ToLowerInvariant();
-          cmd.Parameters["@name2"].Value = oldFile.Name.ToLowerInvariant();
-          cmd.Parameters["@folderid1"].Value = folderId;
-          cmd.Parameters["@folderid2"].Value = oldFolderId;
-          if (0 == await _factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
-          {
-            // we could not rename it, this could be because of an error
-            // or because the old path simply does not exist.
-            // in that case we can try and simply add the new path.
-            if (!await InsertFilesAsync( new []{file}, token).ConfigureAwait(false))
-            {
-              _logger.Error($"There was an issue renaming the file: {file.FullName} to persister");
-              return -1;
-            }
-          }
-
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-        }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Rename file");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
+          // we cannot create the parent folder id
+          // so there is nothing more to do really.
           return -1;
         }
-      }
 
-      // if we are here, we either renamed the file
-      // or we managed to add add it
-      // in either cases, we can now return the id of this newly added file.
-      // we won't ask the function to insert a new file as we _just_ renamed it.
-      // so it has to exist...
-      var fileId = await GetFileIdAsync(file, token, false).ConfigureAwait(false);
-      if (-1 == fileId)
+        // get the old folder.
+        var oldFolderId = await _folders.GetDirectoryIdAsync(oldFile.Directory, token, true).ConfigureAwait(false);
+        if (-1 == oldFolderId)
+        {
+          // this cannot be a renaming, as the parent dirctory does not exist.
+          // so we will just try and add it.
+          // by calling the 'GetFile' function and creating it if needed we will insert the file.
+          return await GetFileIdAsync( file, token, true ).ConfigureAwait(false);
+        }
+
+        // sanity check
+        Contract.Assert( _filesHelper != null );
+
+        // get the 'current' value in case something changed.
+        var oldFileId = await _filesHelper.GetAsync(oldFolderId, oldFile.Name, token).ConfigureAwait(false);
+        var updatedFileId = await _filesHelper.RenameAsync(folderId, file.Name, oldFolderId, oldFile.Name, token).ConfigureAwait(false);
+        if (-1 == updatedFileId)
+        {
+          return -1;
+        }
+
+        if (IsFileSupportedByAnyParsers(file))
+        {
+          // touch that file as changed
+          if (oldFileId != updatedFileId)
+          {
+            await FileUpdates.TouchFileAsync(updatedFileId, file.LastWriteTimeUtc.Ticks, UpdateType.Created, token).ConfigureAwait(false);
+          }
+          else
+          {
+            await FileUpdates.TouchFileAsync(updatedFileId, file.LastWriteTimeUtc.Ticks, UpdateType.Changed, token).ConfigureAwait(false);
+          }
+        }
+
+        // if the file id is not the same, it means that the file was either
+        // created and/or already existed and was therefore deleted.
+        if (oldFileId != updatedFileId)
+        {
+          await FileUpdates.TouchFileAsync(oldFileId, file.LastWriteTimeUtc.Ticks, UpdateType.Deleted, token).ConfigureAwait(false);
+        }
+
+        // return the new file id
+        return updatedFileId;
+      }
+      catch (OperationCanceledException)
       {
-        return -1;
+        _logger.Warning("Received cancellation request - Rename file");
+        throw;
       }
-
-      if (IsFileSupportedByAnyParsers(file))
+      catch (Exception ex)
       {
-        // touch that file as changed
-        await FileUpdates.TouchFileAsync(fileId, file.LastWriteTimeUtc.Ticks, UpdateType.Changed, token).ConfigureAwait(false);
+        _logger.Exception(ex);
+        throw;
       }
-
-      // return the new file id
-      return fileId;
     }
 
     /// <inheritdoc />

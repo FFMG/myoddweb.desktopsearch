@@ -131,10 +131,10 @@ namespace myoddweb.desktopsearch.helper.Persisters
     {
       using (await Lock.TryAsync(token).ConfigureAwait(false))
       {
-        FolderId1.Value = newName;
+        FolderId1.Value = newFolderid;
         Name1.Value = newName.ToLowerInvariant();
 
-        FolderId2.Value = oldName;
+        FolderId2.Value = oldFolderid;
         Name2.Value = oldName.ToLowerInvariant();
 
         await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false);
@@ -584,7 +584,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
 
     /// <inheritdoc />
-    public async Task<long> RenameAsync(long oldFolerId, string oldName, long newFolderId, string newName, CancellationToken token)
+    public async Task<long> RenameAsync(long newFolderId, string newName, long oldFolerId, string oldName, CancellationToken token)
     {
       ThrowIfDisposed();
 
@@ -605,6 +605,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
         // the new values does not exist already
         // do we can just rename the old one and return it.
         await _update.UpdateAsync(newFolderId, newName, oldFolerId, oldName, token ).ConfigureAwait(false);
+      }
+      else if (newId == oldId)
+      {
+        // we are trying to rename the file the same thing?
+        return newId;
       }
       else
       {
