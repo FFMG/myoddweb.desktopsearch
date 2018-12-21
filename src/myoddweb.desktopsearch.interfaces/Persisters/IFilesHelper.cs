@@ -63,5 +63,19 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="token"></param>
     /// <returns></returns>
     Task<long> InsertAndGetAsync(long id, string name, CancellationToken token);
+
+    /// <summary>
+    /// Rename a file and return the id of the file
+    /// If the file _already_ exists, we will delete the old one
+    /// And return the existing value
+    /// It will be up to the caller to replace the corresponding links.
+    /// </summary>
+    /// <param name="oldFolerId"></param>
+    /// <param name="oldName"></param>
+    /// <param name="newFolderId"></param>
+    /// <param name="newName"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<long> RenameAsync( long oldFolerId, string oldName, long newFolderId, string newName, CancellationToken token);
   }
 }

@@ -21,6 +21,127 @@ using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.helper.Persisters
 {
+  internal class PersisterUpdateFilesHelper : PersisterHelper
+  {
+    /// <summary>
+    /// The id parameter;
+    /// </summary>
+    private IDbDataParameter _folderid1;
+
+    /// <summary>
+    /// The id parameter;
+    /// </summary>
+    private IDbDataParameter _folderid2;
+
+    /// <summary>
+    /// The name parameter;
+    /// </summary>
+    private IDbDataParameter _name1;
+
+    /// <summary>
+    /// The name parameter;
+    /// </summary>
+    private IDbDataParameter _name2;
+
+    /// <summary>
+    /// The id parameter;
+    /// </summary>
+    public IDbDataParameter FolderId1
+    {
+      get
+      {
+        if (null != _folderid1)
+        {
+          return _folderid1;
+        }
+
+        _folderid1 = Command.CreateParameter();
+        _folderid1.DbType = DbType.Int64;
+        _folderid1.ParameterName = "@folderid1";
+        Command.Parameters.Add(_folderid1);
+        return _folderid1;
+      }
+    }
+
+    /// <summary>
+    /// The id parameter;
+    /// </summary>
+    public IDbDataParameter FolderId2
+    {
+      get
+      {
+        if (null != _folderid2)
+        {
+          return _folderid2;
+        }
+
+        _folderid2 = Command.CreateParameter();
+        _folderid2.DbType = DbType.Int64;
+        _folderid2.ParameterName = "@folderid2";
+        Command.Parameters.Add(_folderid2);
+        return _folderid2;
+      }
+    }
+
+    /// <summary>
+    /// The name parameter;
+    /// </summary>
+    public IDbDataParameter Name1
+    {
+      get
+      {
+        if (null != _name1)
+        {
+          return _name1;
+        }
+
+        _name1 = Command.CreateParameter();
+        _name1.DbType = DbType.String;
+        _name1.ParameterName = "@name1";
+        Command.Parameters.Add(_name1);
+        return _name1;
+      }
+    }
+
+    /// <summary>
+    /// The name parameter;
+    /// </summary>
+    public IDbDataParameter Name2
+    {
+      get
+      {
+        if (null != _name2)
+        {
+          return _name2;
+        }
+
+        _name2 = Command.CreateParameter();
+        _name2.DbType = DbType.String;
+        _name2.ParameterName = "@name2";
+        Command.Parameters.Add(_name2);
+        return _name2;
+      }
+    }
+
+    public PersisterUpdateFilesHelper(IConnectionFactory factory, string sql) : base(factory, sql)
+    {
+    }
+
+    public async Task UpdateAsync(long newFolderid, string newName, long oldFolderid, string oldName, CancellationToken token)
+    {
+      using (await Lock.TryAsync(token).ConfigureAwait(false))
+      {
+        FolderId1.Value = newName;
+        Name1.Value = newName.ToLowerInvariant();
+
+        FolderId2.Value = oldName;
+        Name2.Value = oldName.ToLowerInvariant();
+
+        await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false);
+      }
+    }
+  }
+
   internal class PersisterInsertFilesHelper : PersisterHelper
   {
     /// <summary>
@@ -336,6 +457,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
   {
     #region Member variables
     /// <summary>
+    /// Rename a folder id/name
+    /// </summary>
+    private readonly PersisterUpdateFilesHelper _update;
+
+    /// <summary>
     /// Get the file ids for one folder.
     /// </summary>
     private readonly PersisterSelectIdsFilesHelper _selectIds;
@@ -382,6 +508,9 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
       // insert
       _insert = new PersisterInsertFilesHelper(factory, $"INSERT OR IGNORE INTO {tableName} (folderid, name) VALUES (@folderid, @name)");
+
+      // update
+      _update = new PersisterUpdateFilesHelper(factory, $"UPDATE {tableName} SET name=@name1, folderid=@folderid1 WHERE name=@name2 and folderid=@folderid2");
     }
 
     /// <summary>
@@ -411,6 +540,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       _delete?.Dispose();
       _deleteFolder?.Dispose();
       _insert?.Dispose();
+      _update?.Dispose();
     }
 
     /// <inheritdoc />
@@ -452,5 +582,41 @@ namespace myoddweb.desktopsearch.helper.Persisters
       // then try and get the id  
       return await _selectId.GetAsync(id, name, token).ConfigureAwait(false);
     }
+
+    /// <inheritdoc />
+    public async Task<long> RenameAsync(long oldFolerId, string oldName, long newFolderId, string newName, CancellationToken token)
+    {
+      ThrowIfDisposed();
+
+      // look for the old name .. it has to exist.
+      // otherwise it is not a rename, but just an insert.
+      var oldId = await GetAsync(oldFolerId, oldName, token).ConfigureAwait(false);
+      if (oldId == -1)
+      {
+        // the old value does not exist
+        // so just insert the new one and move on.
+        return await InsertAndGetAsync(newFolderId, newName, token).ConfigureAwait(false);
+      }
+
+      // look for the new value, it might already exist.
+      var newId = await GetAsync(newFolderId, newName, token).ConfigureAwait(false);
+      if (newId == -1)
+      {
+        // the new values does not exist already
+        // do we can just rename the old one and return it.
+        await _update.UpdateAsync(newFolderId, newName, oldFolerId, oldName, token ).ConfigureAwait(false);
+      }
+      else
+      {
+        // the new one _already_ exists
+        // so we cannot change the old value to the new one
+        // we must delete the old one and return the new one.
+        await _delete.DeleteAsync(oldFolerId, oldName, token).ConfigureAwait(false);
+      }
+
+      // return the id, as the id might have changed from what we just found.
+      return await GetAsync(newFolderId, newName, token).ConfigureAwait(false);
+    }
+
   }
 }
