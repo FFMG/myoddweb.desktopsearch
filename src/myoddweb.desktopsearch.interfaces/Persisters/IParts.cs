@@ -17,11 +17,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IParts
   {
     /// <summary>
-    /// The parts table name.
-    /// </summary>
-    string TableName { get; }
-
-    /// <summary>
     /// The maximum number of charaters per parts.
     /// </summary>
     int MaxNumCharactersPerParts { get; }

@@ -13,6 +13,9 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlitePersisterWordsParts : IWordsParts
   {
     #region Member variables
+    /// <inheritdoc />
+    public IConnectionFactory Factory { get; set; }
+
     /// <summary>
     /// The word parts helper used durring transaction.
     /// </summary>
@@ -91,6 +94,8 @@ namespace myoddweb.desktopsearch.service.Persisters
         return;
       }
 
+      Factory = factory;
+
       // sanity check.
       Contract.Assert(_wordsPartsHelper == null);
     
@@ -100,13 +105,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public void Complete(IConnectionFactory factory, bool success)
     {
-      if (factory.IsReadOnly)
+      if (Factory != factory)
       {
         return;
       }
 
       _wordsPartsHelper?.Dispose();
       _wordsPartsHelper = null;
+      Factory = null;
     }
 
     #region Private parts function

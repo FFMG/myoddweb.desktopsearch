@@ -29,6 +29,8 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlitePersisterFilesWords : IFilesWords
   {
     #region Member variables
+    /// <inheritdoc />
+    public IConnectionFactory Factory { get; set; }
 
     /// <summary>
     /// The files helper per transaction.
@@ -55,9 +57,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-
-    /// <inheritdoc />
-    public string TableName => Tables.FilesWords;
 
     /// <inheritdoc />
     public async Task<bool> AddWordToFilesAsync( IWord wordToAdd, IList<long> fileIdsToAddWordTo, CancellationToken token)
@@ -167,19 +166,23 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // sanity check.
       Contract.Assert(_fileWordsHelper == null);
+      Contract.Assert(Factory == null );
 
-      _fileWordsHelper = new FilesWordsHelper(factory, TableName);
+      Factory = factory;
+      _fileWordsHelper = new FilesWordsHelper(factory, Tables.FilesWords );
     }
 
     /// <inheritdoc />
     public void Complete(IConnectionFactory factory, bool success)
     {
-      if (factory.IsReadOnly)
+      if (factory != Factory)
       {
         return;
       }
+
       _fileWordsHelper?.Dispose();
       _fileWordsHelper = null;
+      Factory = null;
     }
   }
 }

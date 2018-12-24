@@ -29,6 +29,9 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlitePersisterWords : interfaces.Persisters.IWords, IDisposable
   {
     #region Member variable
+    /// <inheritdoc />
+    public IConnectionFactory Factory { get; set; }
+
     /// <summary>
     /// The word helper durring a transaction. 
     /// </summary>
@@ -77,9 +80,6 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public string TableName => Tables.Words;
-
-    /// <inheritdoc />
     public async Task<long> AddOrUpdateWordAsync( IWord word, CancellationToken token)
     {
       using (_counterAddOrUpdate.Start())
@@ -125,17 +125,19 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       // sanity check.
+      Contract.Assert(Factory == null );
       Contract.Assert(_wordsHelper == null);
       Contract.Assert(_partsHelper == null);
 
-      _wordsHelper = new WordsHelper(factory, TableName);
-      _partsHelper = new PartsHelper(factory, persister.Parts.TableName);
+      Factory = factory;
+      _wordsHelper = new WordsHelper(factory, Tables.Words);
+      _partsHelper = new PartsHelper(factory, Tables.Parts );
     }
 
     /// <inheritdoc />
     public void Complete(IConnectionFactory factory, bool success)
     {
-      if (factory.IsReadOnly)
+      if (factory != Factory)
       {
         return;
       }
@@ -145,6 +147,8 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       _partsHelper = null;
       _wordsHelper = null;
+
+      Factory = null;
     }
 
     #region Private word functions

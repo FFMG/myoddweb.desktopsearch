@@ -3,6 +3,11 @@
   public interface ITransaction
   {
     /// <summary>
+    /// The current connection factory.
+    /// </summary>
+    IConnectionFactory Factory { get; set; }
+
+    /// <summary>
     /// Prepare for a transaction
     /// </summary>
     void Prepare(IPersister persister, IConnectionFactory factory );

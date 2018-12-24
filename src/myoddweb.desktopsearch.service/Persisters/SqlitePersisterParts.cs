@@ -21,9 +21,6 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlitePersisterParts : IParts
   {
     /// <inheritdoc />
-    public string TableName => Tables.Parts;
-
-    /// <inheritdoc />
     public int MaxNumCharactersPerParts { get; }
 
     public SqlitePersisterParts(int maxNumCharactersPerParts)

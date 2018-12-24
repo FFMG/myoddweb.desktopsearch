@@ -31,10 +31,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     #region Member Variables
-    /// <summary>
-    /// The current connection factory
-    /// </summary>
-    private IConnectionFactory _factory;
+    /// <inheritdoc />
+    public IConnectionFactory Factory { get; set; }
 
     /// <summary>
     /// The current running total of pending updaqtes.
@@ -62,17 +60,20 @@ namespace myoddweb.desktopsearch.service.Persisters
     public void Prepare(IPersister persister, IConnectionFactory factory)
     {
       // sanity check.
-      Contract.Assert(_factory == null);
-      _factory = factory;
+      if (Factory == null)
+      {
+        Factory = factory;
+      }
     }
 
     /// <inheritdoc />
     public void Complete(IConnectionFactory factory, bool success)
     {
-      if (factory == _factory)
+      if (factory != Factory)
       {
-        _factory = null;
+        return;
       }
+      Factory = null;
     }
 
     /// <inheritdoc />
@@ -161,7 +162,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       var sql = $"UPDATE {Tables.Counts} SET count=count+@count WHERE type=@type";
 
-      using (var cmd = _factory.CreateCommand(sql))
+      using (var cmd = Factory.CreateCommand(sql))
       {
         var pType = cmd.CreateParameter();
         pType.DbType = DbType.Int64;
@@ -179,7 +180,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         // get out if needed.
         token.ThrowIfCancellationRequested();
 
-        if (0 == await _factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+        if (0 == await Factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
         {
           // 
           _logger.Error($"I was unable to update count for {type.ToString()}, how is it posible?");
@@ -202,7 +203,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         var sql = $"SELECT count FROM {Tables.Counts} WHERE type=@type";
-        using (var cmd = _factory.CreateCommand(sql))
+        using (var cmd = Factory.CreateCommand(sql))
         {
           var pType = cmd.CreateParameter();
           pType.DbType = DbType.Int64;
@@ -211,7 +212,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           // run the select query
           pType.Value = (long) type;
-          var value = await _factory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
+          var value = await Factory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
           if (null == value || value == DBNull.Value)
           {
             return null;
@@ -260,9 +261,9 @@ namespace myoddweb.desktopsearch.service.Persisters
           throw new ArgumentException($"Unknown count type {type.ToString()}");
       }
 
-      using (var cmd = _factory.CreateCommand(sql))
+      using (var cmd = Factory.CreateCommand(sql))
       {
-        var value = await _factory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
+        var value = await Factory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
 
         // get out if needed.
         token.ThrowIfCancellationRequested();
@@ -316,7 +317,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the value does not exist, we have to get it.
       var sql = $"UPDATE {Tables.Counts} SET count=@count WHERE type=@type";
 
-      using (var cmd = _factory.CreateCommand(sql))
+      using (var cmd = Factory.CreateCommand(sql))
       {
         var pType = cmd.CreateParameter();
         pType.DbType = DbType.Int64;
@@ -335,7 +336,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           pType.Value = (long)type;
           pCount.Value = count;
-          if (0 == await _factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+          if (0 == await Factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
           {
             _logger.Error($"There was an issue updating the count {type.ToString()} to persister");
           }
@@ -368,7 +369,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       // the value does not exist, we have to get it.
       var sql = $"INSERT INTO {Tables.Counts} (type, count) VALUES (@type, @count)";
 
-      using (var cmd = _factory.CreateCommand(sql))
+      using (var cmd = Factory.CreateCommand(sql))
       {
         var pType = cmd.CreateParameter();
         pType.DbType = DbType.Int64;
@@ -387,7 +388,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           pType.Value = (long)type;
           pCount.Value = count;
-          if (0 == await _factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
+          if (0 == await Factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
           {
             _logger.Error($"There was an issue adding count {type.ToString()} to persister");
           }

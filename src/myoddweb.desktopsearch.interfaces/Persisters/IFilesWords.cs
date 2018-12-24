@@ -22,11 +22,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IFilesWords : ITransaction
   {
     /// <summary>
-    /// Get the table name.
-    /// </summary>
-    string TableName { get; }
-
-    /// <summary>
     /// Add a word to a list of files.
     /// </summary>
     /// <param name="wordToAdd">The word we want to add to the list of words.</param>

@@ -30,6 +30,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 {
   internal class SqlitePersisterFolders : IFolders
   {
+    /// <inheritdoc />
+    public IConnectionFactory Factory { get; set; }
+
     /// <summary>
     /// The folders helper to help us add/remove/update folders.
     /// </summary>
@@ -75,6 +78,8 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // sanity check.
       Contract.Assert(_foldersHelper == null);
+      Contract.Assert(Factory == null );
+      Factory = factory;
       _foldersHelper = new FoldersHelper(factory, Tables.Folders );
     }
 
@@ -84,12 +89,14 @@ namespace myoddweb.desktopsearch.service.Persisters
       Files.Complete(factory, success);
       FolderUpdates.Complete(factory, success);
 
-      if (factory.IsReadOnly)
+      if (factory != Factory )
       {
         return;
       }
+
       _foldersHelper?.Dispose();
       _foldersHelper = null;
+      Factory = null;
     }
 
     /// <inheritdoc />

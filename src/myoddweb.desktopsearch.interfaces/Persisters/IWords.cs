@@ -23,11 +23,6 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
   public interface IWords: ITransaction
   {
     /// <summary>
-    /// The name of the words table
-    /// </summary>
-    string TableName { get; }
-
-    /// <summary>
     /// Add or update a single word.
     /// </summary>
     /// <param name="word"></param>

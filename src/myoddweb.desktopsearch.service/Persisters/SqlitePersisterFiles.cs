@@ -32,15 +32,13 @@ namespace myoddweb.desktopsearch.service.Persisters
   internal class SqlitePersisterFiles : IFiles
   {
     #region Member Variables
+    /// <inheritdoc />
+    public IConnectionFactory Factory { get; set; }
+
     /// <summary>
     /// The files update helper
     /// </summary>
     private IFilesHelper _filesHelper;
-
-    /// <summary>
-    /// The current connection factory
-    /// </summary>
-    private IConnectionFactory _factory;
 
     /// <summary>
     /// The folders interface
@@ -95,23 +93,25 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // sanity check.
       Contract.Assert(_filesHelper == null);
-      Contract.Assert(_factory == null);
+      Contract.Assert(Factory == null);
 
       _filesHelper = new FilesHelper(factory, Tables.Files );
       FileUpdates.Prepare( persister, factory );
-      _factory = factory;
+      Factory = factory;
     }
 
     /// <inheritdoc />
     public void Complete(IConnectionFactory factory, bool success)
     {
       FileUpdates.Complete( factory, success );
-      if (factory == _factory)
+      if (factory != Factory)
       {
-        _filesHelper?.Dispose();
-        _filesHelper = null;
-        _factory = null;
+        return;
       }
+
+      _filesHelper?.Dispose();
+      _filesHelper = null;
+      Factory = null;
     }
 
     /// <inheritdoc />
@@ -443,11 +443,11 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         Contract.Assert( _filesHelper != null );
-        Contract.Assert(_factory != null);
+        Contract.Assert( Factory != null);
 
         // we want to get the latest updated folders.
         var sql = $"SELECT folderid, name FROM {Tables.Files} WHERE id=@id";
-        using (var cmd = _factory.CreateCommand(sql))
+        using (var cmd = Factory.CreateCommand(sql))
         {
           var pId = cmd.CreateParameter();
           pId.DbType = DbType.Int64;
@@ -456,7 +456,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           // set the folder id.
           pId.Value = fileId;
-          using (var reader = await _factory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
+          using (var reader = await Factory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
           {
             var folderIdPos = reader.GetOrdinal("folderid");
             var namePos = reader.GetOrdinal("name");
