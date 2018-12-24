@@ -17,6 +17,7 @@ using System.Data;
 using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
+using myoddweb.desktopsearch.helper.Persisters;
 using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -31,6 +32,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     #region Member Variables
+
+    private ICountsHelper _countsHelper;
+
     /// <inheritdoc />
     public IConnectionFactory Factory { get; set; }
 
@@ -63,6 +67,11 @@ namespace myoddweb.desktopsearch.service.Persisters
       if (Factory == null)
       {
         Factory = factory;
+      }
+
+      if (!factory.IsReadOnly)
+      {
+        _countsHelper = new CountsHelper(factory, Tables.Counts);
       }
     }
 
@@ -152,44 +161,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="addOrRemove"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> UpdateCountDirectAsync(Type type, long addOrRemove, CancellationToken token)
+    private Task<bool> UpdateCountDirectAsync(Type type, long addOrRemove, CancellationToken token)
     {
       if (0 == addOrRemove)
       {
         //  tada!
-        return true;
+        return Task.FromResult(true);
       }
 
-      var sql = $"UPDATE {Tables.Counts} SET count=count+@count WHERE type=@type";
-
-      using (var cmd = Factory.CreateCommand(sql))
-      {
-        var pType = cmd.CreateParameter();
-        pType.DbType = DbType.Int64;
-        pType.ParameterName = "@type";
-        cmd.Parameters.Add(pType);
-
-        var pCount = cmd.CreateParameter();
-        pCount.DbType = DbType.Int64;
-        pCount.ParameterName = "@count";
-        cmd.Parameters.Add(pCount);
-        
-        pCount.Value = addOrRemove;
-        pType.Value = (long)type;
-
-        // get out if needed.
-        token.ThrowIfCancellationRequested();
-
-        if (0 == await Factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
-        {
-          // 
-          _logger.Error($"I was unable to update count for {type.ToString()}, how is it posible?");
-          return false;
-        }
-
-        // all good.
-        return true;
-      }
+      Contract.Assert(_countsHelper != null );
+      return _countsHelper.UpdateAsync((long) type, addOrRemove, token);
     }
 
     /// <summary>

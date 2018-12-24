@@ -60,6 +60,7 @@
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Enums\LogLevel.cs" />
     <Compile Include="Persisters\IConnectionFactory.cs" />
+    <Compile Include="Persisters\ICountsHelper.cs" />
     <Compile Include="Persisters\ICounts.cs" />
     <Compile Include="Persisters\IFilesHelper.cs" />
     <Compile Include="Persisters\IFilesWordsHelper.cs" />
