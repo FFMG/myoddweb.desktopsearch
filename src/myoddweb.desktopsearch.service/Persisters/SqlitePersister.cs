@@ -209,14 +209,15 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// Complete the transactions.
     /// </summary>
+    /// <param name="factory"></param>
     /// <param name="success"></param>
-    private void CompleteTransaction(bool success )
+    private void CompleteTransaction(IConnectionFactory factory, bool success )
     {
-      Counts.Complete(success);
-      Words.Complete(success);
-      WordsParts.Complete( success );
-      FilesWords.Complete(success);
-      Folders.Complete(success);
+      Counts.Complete(factory, success);
+      Words.Complete(factory, success);
+      WordsParts.Complete(factory, success);
+      FilesWords.Complete(factory, success);
+      Folders.Complete(factory, success);
     }
     #endregion
 
@@ -320,7 +321,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        _transactionSpinner.Rollback(connectionFactory, () => CompleteTransaction(false) );
+        _transactionSpinner.Rollback(connectionFactory, () => CompleteTransaction( connectionFactory, false) );
         return true;
       }
       catch (Exception rollbackException)
@@ -343,7 +344,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        _transactionSpinner.Commit(connectionFactory, () => CompleteTransaction(true));
+        _transactionSpinner.Commit(connectionFactory, () => CompleteTransaction(connectionFactory, true));
         return true;
       }
       catch (Exception commitException)

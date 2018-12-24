@@ -67,9 +67,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public void Complete(bool success)
+    public void Complete(IConnectionFactory factory, bool success)
     {
-      _factory = null;
+      if (factory == _factory)
+      {
+        _factory = null;
+      }
     }
 
     /// <inheritdoc />

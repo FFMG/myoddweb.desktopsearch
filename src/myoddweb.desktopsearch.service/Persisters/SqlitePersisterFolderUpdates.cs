@@ -63,14 +63,25 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public void Prepare(IPersister persister, IConnectionFactory factory)
     {
+      // no readonly event posible here.
+      if (factory.IsReadOnly)
+      {
+        return;
+      }
+
       // sanity check.
       Contract.Assert(_foldersUpdatesHelper == null);
       _foldersUpdatesHelper = new FolderUpdatesHelper(factory, Tables.FolderUpdates);
     }
 
     /// <inheritdoc />
-    public void Complete(bool success)
+    public void Complete(IConnectionFactory factory, bool success)
     {
+      if (factory.IsReadOnly)
+      {
+        return;
+      }
+
       _foldersUpdatesHelper?.Dispose();
       _foldersUpdatesHelper = null;
     }

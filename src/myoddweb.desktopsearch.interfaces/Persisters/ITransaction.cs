@@ -10,7 +10,8 @@
     /// <summary>
     /// Complete a transaction
     /// </summary>
+    /// <param name="factory">The factory that we just completed.</param>
     /// <param name="success">If the transaction was successfull or not.</param>
-    void Complete(bool success);
+    void Complete(IConnectionFactory factory, bool success);
   }
 }

@@ -85,6 +85,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public void Prepare(IPersister persister, IConnectionFactory factory)
     {
+      // no readonly event posible here.
+      if (factory.IsReadOnly)
+      {
+        return;
+      }
+
       // sanity check.
       Contract.Assert(_wordsPartsHelper == null);
     
@@ -92,8 +98,13 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public void Complete(bool success)
+    public void Complete(IConnectionFactory factory, bool success)
     {
+      if (factory.IsReadOnly)
+      {
+        return;
+      }
+
       _wordsPartsHelper?.Dispose();
       _wordsPartsHelper = null;
     }

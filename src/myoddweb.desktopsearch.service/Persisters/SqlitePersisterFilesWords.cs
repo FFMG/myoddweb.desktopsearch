@@ -14,7 +14,6 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Threading;
@@ -160,6 +159,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public void Prepare(IPersister persister, IConnectionFactory factory)
     {
+      // no readonly event posible here.
+      if (factory.IsReadOnly)
+      {
+        return;
+      }
+
       // sanity check.
       Contract.Assert(_fileWordsHelper == null);
 
@@ -167,8 +172,12 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc />
-    public void Complete(bool success)
+    public void Complete(IConnectionFactory factory, bool success)
     {
+      if (factory.IsReadOnly)
+      {
+        return;
+      }
       _fileWordsHelper?.Dispose();
       _fileWordsHelper = null;
     }
