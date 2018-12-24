@@ -71,6 +71,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       if (!factory.IsReadOnly)
       {
+        Contract.Assert(_countsHelper == null );
         _countsHelper = new CountsHelper(factory, Tables.Counts);
       }
     }
@@ -78,11 +79,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public void Complete(IConnectionFactory factory, bool success)
     {
-      if (factory != Factory)
+      if (!factory.IsReadOnly)
       {
-        return;
+        _countsHelper = null;
       }
-      Factory = null;
+      if (factory == Factory)
+      {
+        Factory = null;
+      }
     }
 
     /// <inheritdoc />
