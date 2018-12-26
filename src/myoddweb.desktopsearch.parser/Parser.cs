@@ -13,7 +13,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -64,7 +63,7 @@ namespace myoddweb.desktopsearch.parser
     private readonly interfaces.Configs.IConfig _config;
     #endregion
 
-    public Parser(interfaces.Configs.IConfig config, IPersister persister, ILogger logger, IDirectory directory )
+    public Parser(interfaces.Configs.IConfig config, IPersister persister, ILogger logger, IDirectory directory)
     {
       // set the config values.
       _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -87,7 +86,7 @@ namespace myoddweb.desktopsearch.parser
     private async Task<bool> WorkAsync(CancellationToken token)
     {
       // get all the paths we will be working with.
-      var paths = helper.IO.Paths.GetStartPaths( _config.Paths );
+      var paths = helper.IO.Paths.GetStartPaths(_config.Paths);
 
       // first we get a full list of files/directories.
       if (!await ParseAllDirectoriesAsync(paths, token).ConfigureAwait(false))
@@ -109,7 +108,7 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="paths"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ParseAllDirectoriesAsync( IEnumerable<DirectoryInfo> paths, CancellationToken token)
+    private async Task<bool> ParseAllDirectoriesAsync(IEnumerable<DirectoryInfo> paths, CancellationToken token)
     {
       try
       {
@@ -125,15 +124,15 @@ namespace myoddweb.desktopsearch.parser
           token.ThrowIfCancellationRequested();
 
           // parse that one directory
-          tasks.Add( ParseDirectoriesAsync( path, token ) );
+          tasks.Add(ParseDirectoriesAsync(path, token));
         }
 
         // wait for everything to complete
-        var totalDirectories = await Wait.WhenAll( tasks, _logger, token ).ConfigureAwait(false);
+        var totalDirectories = await Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
 
         // only now, that everything is done
         // we can set the last time we checked flag
-        await SetLastUpdatedTimeAsync( token ).ConfigureAwait( false );
+        await SetLastUpdatedTimeAsync(token).ConfigureAwait(false);
 
         // stop the watch and log how many items we found.
         stopwatch.Stop();
@@ -286,7 +285,7 @@ namespace myoddweb.desktopsearch.parser
 
             //
             case UpdateType.Deleted:
-              throw new ArgumentException( $"How can a newly parsed directory, {directory.FullName} be deleted??");
+              throw new ArgumentException($"How can a newly parsed directory, {directory.FullName} be deleted??");
 
             default:
               throw new ArgumentOutOfRangeException();
@@ -306,8 +305,8 @@ namespace myoddweb.desktopsearch.parser
       // update the changed directorues
       await PersistChangedDirectories(changedDirectories, token).ConfigureAwait(false);
 
-      // update the changed directorues
-      await PersistCreatedDirectories(createdDirectories, token).ConfigureAwait(false);
+      // process the directories.
+      await ProcessCreatedDirectories(createdDirectories, token).ConfigureAwait(false);
 
       // log that we are done.
       var sb = new StringBuilder();
@@ -392,13 +391,21 @@ namespace myoddweb.desktopsearch.parser
       }
     }
 
+    public static IEnumerable<IList<T>> SplitDirectories<T>(List<T> locations, int nSize)
+    {
+      for (var i = 0; i < locations.Count; i += nSize)
+      {
+        yield return locations.GetRange(i, Math.Min(nSize, locations.Count - i));
+      }
+    }
+
     /// <summary>
     /// Persist all the directories and files.
     /// </summary>
     /// <param name="directories"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task PersistCreatedDirectories(IReadOnlyCollection<DirectoryInfo> directories, CancellationToken token)
+    private async Task ProcessCreatedDirectories(List<DirectoryInfo> directories, CancellationToken token)
     {
       // do we have anything to do??
       if (!directories.Any())
@@ -406,40 +413,48 @@ namespace myoddweb.desktopsearch.parser
         return;
       }
 
+      var listSize = (int)(Math.Ceiling(directories.Count * 0.05)) + 1; // 5% ... make sure at least one
+      var listOfDirectories = SplitDirectories(directories, listSize);
+
       // parse all the directories at once.
-      var tasks = directories.Select(directory => PersistCreatedDirectories(directory, token )).ToArray();
+      var tasks = listOfDirectories.Select(dirs => PersistCreatedDirectories(dirs, token)).ToArray();
 
       // and then wait for everything to complete
-      await Wait.WhenAll(tasks, _logger, token).ConfigureAwait( false );
+      await Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Parse a directory and save all the values for that directory to the database.
     /// </summary>
-    /// <param name="directory"></param>
+    /// <param name="directories"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task PersistCreatedDirectories(DirectoryInfo directory, CancellationToken token)
+    private async Task PersistCreatedDirectories(IEnumerable<DirectoryInfo> directories, CancellationToken token)
     {
-      //  get the files in that directory.
-      var files = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait( false );
-      if (files == null || !files.Any())
-      {
-        return;
-      }
-
       // get all the changed or updated files.
       var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
       try
       {
-        // do all the directories at once.
-        await _persister.Folders.AddOrUpdateDirectoryAsync(directory, token).ConfigureAwait(false);
+        foreach (var directory in directories)
+        {
+          token.ThrowIfCancellationRequested();
 
-        // then do the files.
-        await _persister.Folders.Files.AddOrUpdateFilesAsync(files, token).ConfigureAwait(false);
+          //  get the files in that directory.
+          var files = await _directory.ParseDirectoryAsync(directory, token).ConfigureAwait(false);
+          if (files == null || !files.Any())
+          {
+            continue;
+          }
 
-        // all the folders have been processed.
-        await _persister.Folders.FolderUpdates.MarkDirectoriesProcessedAsync(new[] { directory }, token).ConfigureAwait(false);
+          // do all the directories at once.
+          await _persister.Folders.AddOrUpdateDirectoryAsync(directory, token).ConfigureAwait(false);
+
+          // then do the files.
+          await _persister.Folders.Files.AddOrUpdateFilesAsync(files, token).ConfigureAwait(false);
+
+          // all the folders have been processed.
+          await _persister.Folders.FolderUpdates.MarkDirectoriesProcessedAsync(new[] { directory }, token).ConfigureAwait(false);
+        }
 
         // all done
         _persister.Commit(transaction);
@@ -466,7 +481,7 @@ namespace myoddweb.desktopsearch.parser
     {
       if (_runningTask != null && !_runningTask.IsCompleted)
       {
-        Wait.WaitAll(_runningTask, _logger, token );
+        Wait.WaitAll(_runningTask, _logger, token);
         _runningTask = null;
       }
       _runningTask = WorkAsync(token);
@@ -485,7 +500,7 @@ namespace myoddweb.desktopsearch.parser
       foreach (var path in paths)
       {
         // the file watcher.
-        var fileWatcher = new Watcher(path, _logger, 
+        var fileWatcher = new Watcher(path, _logger,
           new FilesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger),
           new DirectoriesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger)
         );

@@ -222,13 +222,27 @@ namespace myoddweb.desktopsearch.service.Persisters
     #endregion
 
     #region IPersister functions
+    /// <summary>
+    /// Fix all the parts words to make sure that the search table is up to date.
+    /// @see https://www.sqlite.org/fts3.html#rebuild
+    /// </summary>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public async Task MaintenancePartsSearchAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    {
+      // https://www.sqlite.org/fts3.html#rebuild
+      await ExecuteNonQueryAsync($"INSERT INTO {Tables.PartsSearch}({Tables.PartsSearch}) VALUES ('rebuild')",
+        connectionFactory, token).ConfigureAwait(false);
+    }
 
     /// <inheritdoc />
-    public Task MaintenanceAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task MaintenanceAsync(IConnectionFactory connectionFactory, CancellationToken token)
     {
       try
       {
-        return Task.FromResult<object>(null);
+        // parts search
+        await MaintenancePartsSearchAsync(connectionFactory, token).ConfigureAwait(false);
       }
       catch (OperationCanceledException e)
       {
@@ -356,18 +370,20 @@ namespace myoddweb.desktopsearch.service.Persisters
     #endregion
 
     #region Commands
+
     /// <summary>
     /// </summary>
     /// <param name="sql"></param>
     /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ExecuteNonQueryAsync(string sql, IConnectionFactory connectionFactory )
+    private async Task<bool> ExecuteNonQueryAsync(string sql, IConnectionFactory connectionFactory, CancellationToken token = default(CancellationToken) )
     {
       try
       {
         using (var command = connectionFactory.CreateCommand(sql))
         {
-          await connectionFactory.ExecuteWriteAsync(command, CancellationToken.None).ConfigureAwait(false);
+          await connectionFactory.ExecuteWriteAsync(command, token).ConfigureAwait(false);
         }
         return true;
       }

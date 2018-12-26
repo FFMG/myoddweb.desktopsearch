@@ -50,8 +50,8 @@ namespace myoddweb.desktopsearch.parser.test
 
     [TestCase("", 0 )]
     [TestCase("A", 1)]
-    [TestCase("AB", 3)]
-    [TestCase("ABCDEFG", 28)]
+    [TestCase("AB", 2)]
+    [TestCase("ABCDEFG", 7)]
     public void TheNumberOfItemsIsValid( string word, int expected )
     {
       var p = new Parts(word);
@@ -85,8 +85,8 @@ namespace myoddweb.desktopsearch.parser.test
       Assert.AreEqual(expected, p.Count);
     }
 
-    [TestCase("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz", -1, 1953)] // (62*63)/2 = 1953
-    [TestCase("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz", 10, 575)]  // (62*63)/2 - ((62-10)*(63-10))/2 = 575
+    [TestCase("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz", -1, 62)] // (length=62)
+    [TestCase("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz", 10, 62)]  // (62*63)/2 - ((62-10)*(63-10))/2 = 575
     public void LargeParts(string word, int length, int expected)
     {
       var p = new Parts(word, length);
@@ -95,16 +95,10 @@ namespace myoddweb.desktopsearch.parser.test
 
     [TestCase("", new string[]{})]
     [TestCase("A", new [] {"A"})]
-    [TestCase("AB", new[] { "A", "AB", "B" })]
+    [TestCase("AB", new[] { "AB", "B" })]
     [TestCase("ABCDEFG", new []
     {
-      "A", "AB", "ABC", "ABCD", "ABCDE", "ABCDEF", "ABCDEFG",
-      "B", "BC", "BCD", "BCDE", "BCDEF", "BCDEFG",
-      "C", "CD", "CDE", "CDEF", "CDEFG",
-      "D", "DE", "DEF", "DEFG",
-      "E", "EF", "EFG",
-      "F", "FG",
-      "G"
+      "ABCDEFG", "BCDEFG", "CDEFG", "DEFG", "EFG", "FG", "G"
     })]
     public void CheckTheValues(string word, string[] expected)
     {
@@ -122,33 +116,15 @@ namespace myoddweb.desktopsearch.parser.test
     [TestCase("AB", 1, new[] { "A", "B" })]
     [TestCase("ABCDEFG", -1, new[]
     {
-      "A", "AB", "ABC", "ABCD", "ABCDE", "ABCDEF", "ABCDEFG",
-      "B", "BC", "BCD", "BCDE", "BCDEF", "BCDEFG",
-      "C", "CD", "CDE", "CDEF", "CDEFG",
-      "D", "DE", "DEF", "DEFG",
-      "E", "EF", "EFG",
-      "F", "FG",
-      "G"
+      "ABCDEFG","BCDEFG","CDEFG","DEFG","EFG","FG","G"
     })]
     [TestCase("ABCDEFG", 4, new[]
     {
-      "A", "AB", "ABC", "ABCD",
-      "B", "BC", "BCD", "BCDE",
-      "C", "CD", "CDE", "CDEF",
-      "D", "DE", "DEF", "DEFG",
-      "E", "EF", "EFG",
-      "F", "FG",
-      "G"
+      "ABCD", "BCDE", "CDEF","DEFG","EFG","FG","G"
     })]
     [TestCase("ABCDEFG", 3, new[]
     {
-      "A", "AB", "ABC",
-      "B", "BC", "BCD",
-      "C", "CD", "CDE",
-      "D", "DE", "DEF",
-      "E", "EF", "EFG",
-      "F", "FG",
-      "G"
+      "ABC","BCD","CDE","DEF", "EFG","FG","G"
     })]
     public void CheckTheValuesWithAMaxLength(string word, int length, string[] expected)
     {
@@ -162,16 +138,10 @@ namespace myoddweb.desktopsearch.parser.test
     }
 
     [TestCase("A", new[] { "A" })]
-    [TestCase("AB", new[] { "A", "AB", "B" })]
+    [TestCase("AB", new[] { "AB", "B" })]
     [TestCase("ABCDEFG", new[]
     {
-      "A", "AB", "ABC", "ABCD", "ABCDE", "ABCDEF", "ABCDEFG",
-      "B", "BC", "BCD", "BCDE", "BCDEF", "BCDEFG",
-      "C", "CD", "CDE", "CDEF", "CDEFG",
-      "D", "DE", "DEF", "DEFG",
-      "E", "EF", "EFG",
-      "F", "FG",
-      "G"
+      "ABCDEFG", "BCDEFG", "CDEFG", "DEFG", "EFG", "FG", "G"
     })]
     public void DoAForEachLoopMoreThanOnce(string word, string[] expected)
     {
@@ -208,7 +178,7 @@ namespace myoddweb.desktopsearch.parser.test
     {
       const string value = "Cat";
       var p = new Parts(value, 3);
-      Assert.AreEqual(new[] { "C", "Ca", "Cat", "a", "at", "t" }, p.ToArray());
+      Assert.AreEqual(new[] { "Cat", "at", "t" }, p.ToArray());
     }
 
     [Test]
@@ -216,7 +186,7 @@ namespace myoddweb.desktopsearch.parser.test
     {
       const string value = "Cat";
       var p = new Parts(value, -1);
-      Assert.AreEqual(new[] { "C", "Ca", "Cat", "a", "at", "t" }, p.ToArray());
+      Assert.AreEqual(new[] { "Cat", "at", "t" }, p.ToArray());
     }
 
     [Test]
@@ -224,7 +194,7 @@ namespace myoddweb.desktopsearch.parser.test
     {
       const string value = "Hi";
       var p = new Parts( value, 20);
-      Assert.AreEqual(new[] { "H", "Hi", "i" }, p.ToArray());
+      Assert.AreEqual(new[] { "Hi", "i" }, p.ToArray());
     }
   }
 }

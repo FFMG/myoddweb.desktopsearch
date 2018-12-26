@@ -38,16 +38,12 @@ namespace myoddweb.desktopsearch.parser.test
       Assert.Throws<ArgumentNullException>(() => { var _ = new Word(value, MaxNumCharactersPerParts); });
     }
 
-    [TestCase("Mix", new [] {"M", "Mi", "Mix", "i", "ix", "x"})]
-    [TestCase("mix", new[] { "m", "mi", "mix", "i", "ix", "x" })]
-    [TestCase("Home", new[] { "H", "Ho", "Hom", "Home", "o", "om", "ome", "m", "me", "e" })]
+    [TestCase("Mix", new [] {"Mix", "ix", "x"})]
+    [TestCase("mix", new[] { "mix", "ix", "x" })]
+    [TestCase("Home", new[] { "Home", "ome", "me", "e" })]
     [TestCase("notes", new[]
     {
-      "n", "no", "not", "note", "notes",
-      "o", "ot", "ote", "otes",
-      "t", "te", "tes",
-      "e", "es",
-      "s",
+      "notes", "otes", "tes", "es", "s"
     })]
     public void SimpleParts( string value, string[] expected )
     {
@@ -55,8 +51,8 @@ namespace myoddweb.desktopsearch.parser.test
       Assert.That(w.Parts, Is.EquivalentTo(expected));
     }
 
-    [TestCase("ooo", new[] { "o", "ooo", "oo" })]
-    [TestCase("Ooo", new[] { "O", "Oo", "Ooo", "o", "oo" })]
+    [TestCase("ooo", new[] { "ooo", "o", "oo" })]
+    [TestCase("Ooo", new[] { "Ooo", "oo", "o" })]
     public void RepeatLetters(string value, string[] expected)
     {
       var w = new Word(value, MaxNumCharactersPerParts);
@@ -94,7 +90,7 @@ namespace myoddweb.desktopsearch.parser.test
       const string value = "Cat";
       var w = new Word(value, 3);
       var p = w.Parts;
-      Assert.AreEqual(new[] { "C", "Ca", "Cat", "a", "at", "t" }, p.ToArray());
+      Assert.AreEqual(new[] { "Cat", "at", "t" }, p.ToArray());
     }
 
     [Test]
@@ -103,7 +99,7 @@ namespace myoddweb.desktopsearch.parser.test
       const string value = "Hi";
       var w = new Word(value, MaxNumCharactersPerParts);
       var p = w.Parts;
-      Assert.AreEqual(new [] { "H", "Hi", "i" }, p.ToArray());
+      Assert.AreEqual(new [] { "Hi", "i" }, p.ToArray());
     }
   }
 }

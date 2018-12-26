@@ -73,6 +73,12 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
 
+      // the parts search table
+      if (!await CreatePartsSearchAsync(connectionFactory).ConfigureAwait(false))
+      {
+        return false;
+      }
+
       // the words parts table
       if (!await CreateWordsPartsAsync(connectionFactory).ConfigureAwait(false))
       {
@@ -270,6 +276,27 @@ namespace myoddweb.desktopsearch.service.Persisters
         return false;
       }
       
+      // no need to create an index on text ... it is unique.
+      // and id is also unique
+
+      return true;
+    }
+
+    /// <summary>
+    /// Create all the word parts table.
+    /// each part is unique...
+    /// </summary>
+    /// <param name="connectionFactory"></param>
+    /// <returns></returns>
+    private async Task<bool> CreatePartsSearchAsync(IConnectionFactory connectionFactory)
+    {
+      if (!await
+        ExecuteNonQueryAsync($"CREATE VIRTUAL TABLE {Tables.PartsSearch} USING fts4( id, part);", connectionFactory)
+          .ConfigureAwait(false))
+      {
+        return false;
+      }
+
       // no need to create an index on text ... it is unique.
       // and id is also unique
 
