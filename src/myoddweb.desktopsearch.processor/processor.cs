@@ -74,7 +74,7 @@ namespace myoddweb.desktopsearch.processor
         new List<IProcessor>
         {
           new Folders(directoriesCounter, config.UpdatesFolderPerEvent, persister, logger, directory),
-          new Files(filesCounter, config.UpdatesFilesPerEvent, fileParsers, config.IgnoreFiles, persister, logger)
+          new Files(filesCounter, config.UpdatesFilesPerEvent, fileParsers, config.IgnoreFiles, persister, logger, directory)
         },
         _logger, config.EventsProcessorMs);
 

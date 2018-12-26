@@ -31,6 +31,11 @@ namespace myoddweb.desktopsearch.processor.Processors
   {
     #region Member Variables
     /// <summary>
+    /// The current directory.
+    /// </summary>
+    private IDirectory _directory;
+
+    /// <summary>
     /// The logger that we will be using to log messages.
     /// </summary>
     private readonly ILogger _logger;
@@ -67,12 +72,17 @@ namespace myoddweb.desktopsearch.processor.Processors
       ICounter counter,
       int updatesFilesPerEvent,
       IList<IFileParser> parsers, 
-      IList<IIgnoreFile> ignoreFiles, 
+      IList<IIgnoreFile> ignoreFiles,
       IPersister persister, 
-      ILogger logger)
+      ILogger logger,
+      IDirectory directory
+      )
     {
       // save the counter
       _counter = counter ?? throw new ArgumentNullException(nameof(counter));
+
+      // check for ignored directories.
+      _directory = directory ?? throw new ArgumentNullException(nameof(directory));
 
       if (updatesFilesPerEvent <= 0)
       {
@@ -314,6 +324,12 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <returns></returns>
     private bool IsIgnored(IPendingFileUpdate pendingFileUpdate)
     {
+      // check for 'pending' files
+      // that might now be in an ignored directory.
+      if (_directory.IsIgnored(pendingFileUpdate.File.Directory))
+      {
+        return true;
+      }
       return _ignoreFiles.Any(ignoreFile => ignoreFile.Match(pendingFileUpdate.File));
     }
 
