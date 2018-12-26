@@ -72,14 +72,14 @@ namespace myoddweb.desktopsearch.http.Route
 	      f.name as name,
 	      fo.path as path 
       from 
-	      Parts p, 
+	      PartsSearch ps, 
 	      WordsParts wp, 
 	      Words w,
 	      FilesWords fw, 
 	      Files f, 
 	      Folders fo
-      Where p.part = @search
-        AND wp.partid = p.id
+      Where ps.part MATCH @search
+        AND wp.partid = ps.id
         AND w.id = wp.wordid
         AND fw.wordid = w.id
         AND f.id = fw.fileid
@@ -94,7 +94,7 @@ namespace myoddweb.desktopsearch.http.Route
         pSearch.DbType = DbType.String;
         pSearch.ParameterName = "@search";
         cmd.Parameters.Add(pSearch);
-        pSearch.Value = search.What;
+        pSearch.Value = $"^{search.What}*";
         using (var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
         {
           var wordPos = reader.GetOrdinal("word");
