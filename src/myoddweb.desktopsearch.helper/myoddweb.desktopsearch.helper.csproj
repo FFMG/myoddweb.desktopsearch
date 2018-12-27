@@ -55,6 +55,7 @@
     <Compile Include="Persisters\FileUpdatesHelper.cs" />
     <Compile Include="Persisters\FolderUpdatesHelper.cs" />
     <Compile Include="Persisters\Part.cs" />
+    <Compile Include="Persisters\PartsSearchHelper.cs" />
     <Compile Include="Persisters\PartsHelper.cs" />
     <Compile Include="Persisters\PersisterHelper.cs" />
     <Compile Include="Persisters\WordsHelper.cs" />

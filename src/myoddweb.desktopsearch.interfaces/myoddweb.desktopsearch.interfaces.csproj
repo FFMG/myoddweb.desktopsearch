@@ -71,6 +71,7 @@
     <Compile Include="Persisters\IFolderUpdatesHelper.cs" />
     <Compile Include="Persisters\IPart.cs" />
     <Compile Include="Persisters\IParts.cs" />
+    <Compile Include="Persisters\IPartsSearchHelper.cs" />
     <Compile Include="Persisters\IPartsHelper.cs" />
     <Compile Include="Persisters\IPendingParserWordsUpdate.cs" />
     <Compile Include="Persisters\IPendingFileUpdate.cs" />
