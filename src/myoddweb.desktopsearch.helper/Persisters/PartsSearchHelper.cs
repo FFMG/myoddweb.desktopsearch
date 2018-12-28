@@ -26,7 +26,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <summary>
     /// The part id.
     /// </summary>
-    private IDbDataParameter _id;
+    private IDbDataParameter _docid;
 
     /// <summary>
     /// The part value.
@@ -36,20 +36,20 @@ namespace myoddweb.desktopsearch.helper.Persisters
     /// <summary>
     /// The part Id parameter.
     /// </summary>
-    private IDbDataParameter Id
+    private IDbDataParameter DocId
     {
       get
       {
-        if (null != _id)
+        if (null != _docid)
         {
-          return _id;
+          return _docid;
         }
 
-        _id = Command.CreateParameter();
-        _id.DbType = DbType.Int64;
-        _id.ParameterName = "@id";
-        Command.Parameters.Add(_id);
-        return _id;
+        _docid = Command.CreateParameter();
+        _docid.DbType = DbType.Int64;
+        _docid.ParameterName = "@docid";
+        Command.Parameters.Add(_docid);
+        return _docid;
       }
     }
 
@@ -83,8 +83,9 @@ namespace myoddweb.desktopsearch.helper.Persisters
       {
         foreach (var part in parts)
         {
+          // https://www.sqlite.org/fts3.html#_external_content_fts4_tables_
           // insert the word.
-          Id.Value = part.Id;
+          DocId.Value = part.Id;
           Part.Value = part.Value;
           await Factory.ExecuteWriteAsync(Command, token).ConfigureAwait(false);
         }
@@ -111,7 +112,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       const int numberOfItems = 10;
 
       // insert
-      _insert = new MultiplePersisterHelper<PersisterInsertPartsSearchHelper>(() => new PersisterInsertPartsSearchHelper( factory, $"INSERT OR IGNORE INTO {tableName} (id, part) VALUES (@id, @part)"), numberOfItems);
+      _insert = new MultiplePersisterHelper<PersisterInsertPartsSearchHelper>(() => new PersisterInsertPartsSearchHelper( factory, $"INSERT OR IGNORE INTO {tableName} (docid, part) VALUES (@docid, @part)"), numberOfItems);
     }
 
     /// <summary>

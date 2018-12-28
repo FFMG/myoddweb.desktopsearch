@@ -14,13 +14,11 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.helper.Models;
 using myoddweb.desktopsearch.http.Models;
 using myoddweb.desktopsearch.interfaces.Models;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -67,17 +65,17 @@ namespace myoddweb.desktopsearch.http.Route
       }
     }
 
-    private Task<IList<IWord>> GetWords(SearchRequest search, IConnectionFactory connectionFactory, CancellationToken token)
+    private Task<IList<IWord>> GetWords(SearchRequest search, CancellationToken token)
     {
-      return Persister.Query.FindAsync(search.What, search.Count, connectionFactory, token); 
+      return Persister.Query.FindAsync(search.What, search.Count, token); 
     }
 
-    private async Task<StatusResponse> GetStatus(ICounts persister, CancellationToken token)
+    private async Task<StatusResponse> GetStatus( CancellationToken token)
     {
       return new StatusResponse
       {
-        PendingUpdates = await persister.GetPendingUpdatesCountAsync(token ).ConfigureAwait(false),
-        Files = await persister.GetFilesCountAsync( token).ConfigureAwait(false)
+        PendingUpdates = await Persister.Counts.GetPendingUpdatesCountAsync(token ).ConfigureAwait(false),
+        Files = await Persister.Counts.GetFilesCountAsync( token).ConfigureAwait(false)
       };
     }
 
@@ -99,11 +97,11 @@ namespace myoddweb.desktopsearch.http.Route
       try
       {
         // search the words.
-        var words = await GetWords(search, transaction, token).ConfigureAwait(false);
+        var words = await GetWords(search, token).ConfigureAwait(false);
         log.AppendLine($"  > Got Words              Time Elapsed: {stopwatch.Elapsed:g}");
 
         // get the percent complete
-        var status = await GetStatus(Persister.Counts, token).ConfigureAwait(false);
+        var status = await GetStatus( token).ConfigureAwait(false);
         log.AppendLine($"  > Got Status             Time Elapsed: {stopwatch.Elapsed:g}");
 
         // we are done here.

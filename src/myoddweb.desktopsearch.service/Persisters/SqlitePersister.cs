@@ -121,7 +121,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       Parts = new SqlitePersisterParts( maxNumCharactersPerParts );
 
       // the query
-      Query = new SqlitePersisterQuery(maxNumCharactersPerParts);
+      Query = new SqlitePersisterQuery(maxNumCharactersPerParts, logger);
     }
 
     /// <inheritdoc />
@@ -210,6 +210,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       WordsParts.Prepare( this, factory );
       FilesWords.Prepare( this, factory );
       Folders.Prepare( this, factory );
+      Query.Prepare(this, factory);
     }
 
     /// <summary>
@@ -224,6 +225,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       WordsParts.Complete(factory, success);
       FilesWords.Complete(factory, success);
       Folders.Complete(factory, success);
+      Query.Complete( factory, success );
     }
     #endregion
 

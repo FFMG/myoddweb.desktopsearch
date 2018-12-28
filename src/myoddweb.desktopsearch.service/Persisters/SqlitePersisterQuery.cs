@@ -13,11 +13,14 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
+using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper.Models;
+using myoddweb.desktopsearch.interfaces.Logging;
 using myoddweb.desktopsearch.interfaces.Models;
 using myoddweb.desktopsearch.interfaces.Persisters;
 
@@ -25,74 +28,139 @@ namespace myoddweb.desktopsearch.service.Persisters
 {
   internal class SqlitePersisterQuery : IQuery
   {
+    #region
+    public IConnectionFactory Factory { get; set; }
+
     /// <summary>
     /// The maximum number of characters per query
     /// </summary>
     private readonly int _maxNumCharactersPerParts;
 
-    public SqlitePersisterQuery(int maxNumCharactersPerParts)
+    /// <summary>
+    /// The logger
+    /// </summary>
+    private readonly ILogger _logger;
+    #endregion
+
+    public SqlitePersisterQuery(int maxNumCharactersPerParts, ILogger logger )
     {
+      // the maximum number of characters allowed.
       _maxNumCharactersPerParts = maxNumCharactersPerParts;
+
+      // save the logger.
+      _logger = logger ?? throw new ArgumentNullException( nameof(logger) );
     }
 
-    public async Task<IList<IWord>> FindAsync(string what, int count, IConnectionFactory factory,  CancellationToken token)
+    /// <summary>
+    /// Make sure that the word we are looking for fits within the limits we have.
+    /// </summary>
+    /// <param name="what"></param>
+    /// <returns></returns>
+    private string ResziedWord(string what)
     {
-      var sql = $@"
-      select 
-	      w.word as word,
-	      f.name as name,
-	      fo.path as path 
-      from 
-	      {Tables.PartsSearch} ps, 
-	      {Tables.WordsParts} wp, 
-	      {Tables.Words} w,
-	      {Tables.FilesWords} fw, 
-	      {Tables.Files} f, 
-	      {Tables.Folders} fo
-      Where ps.part MATCH @search
-        AND wp.partid = ps.id
-        AND w.id = wp.wordid
-        AND fw.wordid = w.id
-        AND f.id = fw.fileid
-        AND fo.id = f.folderid
-      LIMIT {count};";
-
-      var words = new List<IWord>(count);
-      using (var cmd = factory.CreateCommand(sql))
+      if (what.Length < _maxNumCharactersPerParts)
       {
-        var pSearch = cmd.CreateParameter();
-        pSearch.DbType = DbType.String;
-        pSearch.ParameterName = "@search";
-        cmd.Parameters.Add(pSearch);
-        pSearch.Value = $"^{what}*";
-        using (var reader = await factory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
+        return what;
+      }
+      return what.Substring(0, _maxNumCharactersPerParts);
+    }
+
+    /// <inheritdoc />
+    public async Task<IList<IWord>> FindAsync(string what, int count, CancellationToken token)
+    {
+      Contract.Assert( Factory != null );
+
+      try
+      {
+        var sql = $@"
+        select 
+	        w.word as word,
+	        f.name as name,
+	        fo.path as path 
+        from 
+	        {Tables.PartsSearch} ps, 
+	        {Tables.WordsParts} wp, 
+	        {Tables.Words} w,
+	        {Tables.FilesWords} fw, 
+	        {Tables.Files} f, 
+	        {Tables.Folders} fo
+        Where ps.part MATCH @search
+          AND wp.partid = ps.docid
+          AND w.id = wp.wordid
+          AND fw.wordid = w.id
+          AND f.id = fw.fileid
+          AND fo.id = f.folderid
+        LIMIT {count};";
+
+        var words = new List<IWord>(count);
+        using (var cmd = Factory.CreateCommand(sql))
         {
-          var wordPos = reader.GetOrdinal("word");
-          var namePos = reader.GetOrdinal("name");
-          var pathPos = reader.GetOrdinal("path");
-
-          while (reader.Read())
+          var pSearch = cmd.CreateParameter();
+          pSearch.DbType = DbType.String;
+          pSearch.ParameterName = "@search";
+          cmd.Parameters.Add(pSearch);
+          pSearch.Value = $"^{ResziedWord(what)}*";
+          using (var reader = await Factory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
           {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
+            var wordPos = reader.GetOrdinal("word");
+            var namePos = reader.GetOrdinal("name");
+            var pathPos = reader.GetOrdinal("path");
 
-            // add this update
-            var word = (string)reader[wordPos];
-            var name = (string)reader[namePos];
-            var path = (string)reader[pathPos];
-            words.Add(new Word
+            while (reader.Read())
             {
-              FullName = System.IO.Path.Combine(path, name),
-              Directory = path,
-              Name = name,
-              Actual = word
-            });
+              // get out if needed.
+              token.ThrowIfCancellationRequested();
+
+              // add this update
+              var word = (string)reader[wordPos];
+              var name = (string)reader[namePos];
+              var path = (string)reader[pathPos];
+              words.Add(new Word
+              {
+                FullName = System.IO.Path.Combine(path, name),
+                Directory = path,
+                Name = name,
+                Actual = word
+              });
+            }
           }
         }
+        return words;
       }
-
-      return words;
+      catch (OperationCanceledException e)
+      {
+        _logger.Warning("Received cancellation request durring Query/Find.");
+        // is it my token?
+        if (e.CancellationToken != token)
+        {
+          _logger.Exception(e);
+        }
+        throw;
+      }
+      catch (Exception e)
+      {
+        _logger.Exception( e );
+        throw;
+      }
     }
 
+    /// <inheritdoc />
+    public void Prepare(IPersister persister, IConnectionFactory factory)
+    {
+      if (null == Factory)
+      {
+        Factory = factory;
+      }
+    }
+
+    /// <inheritdoc />
+    public void Complete(IConnectionFactory factory, bool success)
+    {
+      if (factory != Factory)
+      {
+        return;
+      }
+      Factory = null;
+    }
   }
 }

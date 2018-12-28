@@ -291,7 +291,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task<bool> CreatePartsSearchAsync(IConnectionFactory connectionFactory)
     {
       if (!await
-        ExecuteNonQueryAsync($"CREATE VIRTUAL TABLE {Tables.PartsSearch} USING fts4( content='Parts', id, part);", connectionFactory)
+        ExecuteNonQueryAsync($"CREATE VIRTUAL TABLE {Tables.PartsSearch} USING fts4( content='Parts', part);", connectionFactory)
           .ConfigureAwait(false))
       {
         return false;

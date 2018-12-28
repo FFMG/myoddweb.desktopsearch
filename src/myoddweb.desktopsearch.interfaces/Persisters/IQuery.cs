@@ -19,16 +19,15 @@ using myoddweb.desktopsearch.interfaces.Models;
 
 namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  public interface IQuery
+  public interface IQuery : ITransaction
   {
     /// <summary>
     /// Look for a certain word in the database
     /// </summary>
     /// <param name="what">The word we are looking for.</param>
     /// <param name="count">How many do we want?</param>
-    /// <param name="factory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IList<IWord>> FindAsync( string what, int count, IConnectionFactory factory, CancellationToken token);
+    Task<IList<IWord>> FindAsync( string what, int count, CancellationToken token);
   }
 }
