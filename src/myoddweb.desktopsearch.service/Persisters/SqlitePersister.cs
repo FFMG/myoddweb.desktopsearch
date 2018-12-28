@@ -239,9 +239,26 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     public async Task MaintenancePartsSearchAsync(IConnectionFactory connectionFactory, CancellationToken token)
     {
-      // https://www.sqlite.org/fts3.html#rebuild
-      await ExecuteNonQueryAsync($"INSERT INTO {Tables.PartsSearch}({Tables.PartsSearch}) VALUES ('rebuild')",
-        connectionFactory, token).ConfigureAwait(false);
+      var r = new Random( DateTime.UtcNow.Millisecond ).Next(100);
+
+      // 5% of the time, rebuild...
+      if (r < 5)
+      {
+        // https://www.sqlite.org/fts3.html#*fts4rebuidcmd
+        _logger.Information("Maintenance rebuilding virtual table");
+        await ExecuteNonQueryAsync($"INSERT INTO {Tables.PartsSearch}({Tables.PartsSearch}) VALUES ('rebuild')", connectionFactory, token).ConfigureAwait(false);
+        return;
+      }
+
+      // 25% of the time, optimize
+      if ( r < 25 )
+      {
+        // https://www.sqlite.org/fts3.html#optimize
+        _logger.Information("Maintenance optimizing virtual table");
+        await ExecuteNonQueryAsync($"INSERT INTO {Tables.PartsSearch}({Tables.PartsSearch}) VALUES ('optimize')", connectionFactory, token).ConfigureAwait(false);
+      }
+
+      // otherwise, do nothing.
     }
 
     /// <inheritdoc />

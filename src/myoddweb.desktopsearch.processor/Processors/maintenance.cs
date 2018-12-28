@@ -51,7 +51,7 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
-        _logger.Verbose("Started Maintenance Process.");
+        _logger.Information("Started Maintenance Process.");
         await _persister.MaintenanceAsync(connectionFactory, token).ConfigureAwait(false);
 
         // it worked
@@ -62,14 +62,14 @@ namespace myoddweb.desktopsearch.processor.Processors
         // nothing to log
         throw;
       }
-      catch (Exception)
+      catch (Exception e)
       {
-        _logger.Verbose("Error while processing Maintenance.");
+        _logger.Exception("Error while processing Maintenance.", e);
         throw;
       }
       finally
       {
-        _logger.Verbose(success
+        _logger.Information(success
           ? $"Complete Maintenance Process (Time Elapsed: {stopwatch.Elapsed:g})."
           : $"Complete Maintenance Process with errors (Time Elapsed: {stopwatch.Elapsed:g}).");
       }
