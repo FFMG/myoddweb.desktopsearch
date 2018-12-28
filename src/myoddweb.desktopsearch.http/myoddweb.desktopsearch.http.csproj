@@ -49,7 +49,6 @@
     <Compile Include="Models\SearchRequest.cs" />
     <Compile Include="Models\SearchResponse.cs" />
     <Compile Include="Models\StatusResponse.cs" />
-    <Compile Include="Models\Word.cs" />
     <Compile Include="Route\Home.cs" />
     <Compile Include="Route\Javascript.cs" />
     <Compile Include="Route\Route.cs" />

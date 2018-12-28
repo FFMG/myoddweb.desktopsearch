@@ -60,6 +60,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     #region Public properties
     /// <inheritdoc />
+    public IQuery Query { get; }
+
+    /// <inheritdoc />
     public IConfig Config { get; }
 
     /// <inheritdoc />
@@ -116,6 +119,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // the parts
       Parts = new SqlitePersisterParts( maxNumCharactersPerParts );
+
+      // the query
+      Query = new SqlitePersisterQuery(maxNumCharactersPerParts);
     }
 
     /// <inheritdoc />

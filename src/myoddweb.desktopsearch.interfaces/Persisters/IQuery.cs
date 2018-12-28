@@ -13,26 +13,22 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Collections.Generic;
-using myoddweb.desktopsearch.helper.Models;
+using System.Threading;
+using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Models;
 
-namespace myoddweb.desktopsearch.http.Models
+namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  internal class SearchResponse
+  public interface IQuery
   {
     /// <summary>
-    /// All the words we found.
+    /// Look for a certain word in the database
     /// </summary>
-    public IList<IWord> Words { get; set; }
-
-    /// <summary>
-    /// How long it took to get the insformation.
-    /// </summary>
-    public long ElapsedMilliseconds { get; set; }
-
-    /// <summary>
-    /// The status of the entire system.
-    /// </summary>
-    public StatusResponse Status { get; set; }
+    /// <param name="what">The word we are looking for.</param>
+    /// <param name="count">How many do we want?</param>
+    /// <param name="factory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<IList<IWord>> FindAsync( string what, int count, IConnectionFactory factory, CancellationToken token);
   }
 }

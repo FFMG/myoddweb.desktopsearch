@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Logging;
@@ -44,11 +45,17 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <inheritdoc />
     public async Task<long> WorkAsync(IConnectionFactory connectionFactory, CancellationToken token)
     {
+      var stopwatch = new Stopwatch();
+      stopwatch.Start();
+      var success = false;
+
       try
       {
         _logger.Verbose("Started Maintenance Process.");
         await _persister.MaintenanceAsync(connectionFactory, token).ConfigureAwait(false);
-        _logger.Verbose("Complete Maintenance Process.");
+
+        // it worked
+        success = true;
       }
       catch (OperationCanceledException)
       {
@@ -59,6 +66,12 @@ namespace myoddweb.desktopsearch.processor.Processors
       {
         _logger.Verbose("Error while processing Maintenance.");
         throw;
+      }
+      finally
+      {
+        _logger.Verbose(success
+          ? $"Complete Maintenance Process (Time Elapsed: {stopwatch.Elapsed:g})."
+          : $"Complete Maintenance Process with errors (Time Elapsed: {stopwatch.Elapsed:g}).");
       }
       return 0;
     }

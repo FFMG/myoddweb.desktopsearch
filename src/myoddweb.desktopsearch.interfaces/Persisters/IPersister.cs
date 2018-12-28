@@ -55,6 +55,11 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     IParts Parts { get; }
 
     /// <summary>
+    /// The query interface.
+    /// </summary>
+    IQuery Query { get; }
+
+    /// <summary>
     /// Get a database transaction.
     /// </summary>
     /// <param name="token"></param>

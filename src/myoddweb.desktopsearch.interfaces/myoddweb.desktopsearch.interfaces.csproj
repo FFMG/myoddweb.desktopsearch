@@ -59,6 +59,7 @@
     <Compile Include="IO\IWord.cs" />
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Enums\LogLevel.cs" />
+    <Compile Include="Models\IWord.cs" />
     <Compile Include="Persisters\IConnectionFactory.cs" />
     <Compile Include="Persisters\ICountsHelper.cs" />
     <Compile Include="Persisters\ICounts.cs" />
@@ -75,6 +76,7 @@
     <Compile Include="Persisters\IPartsHelper.cs" />
     <Compile Include="Persisters\IPendingParserWordsUpdate.cs" />
     <Compile Include="Persisters\IPendingFileUpdate.cs" />
+    <Compile Include="Persisters\IQuery.cs" />
     <Compile Include="Persisters\ITransaction.cs" />
     <Compile Include="Persisters\IWords.cs" />
     <Compile Include="Persisters\IWordsHelper.cs" />

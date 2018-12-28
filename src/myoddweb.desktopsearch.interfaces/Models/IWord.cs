@@ -12,27 +12,28 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Collections.Generic;
-using myoddweb.desktopsearch.helper.Models;
-using myoddweb.desktopsearch.interfaces.Models;
-
-namespace myoddweb.desktopsearch.http.Models
+namespace myoddweb.desktopsearch.interfaces.Models
 {
-  internal class SearchResponse
+  public interface IWord
   {
     /// <summary>
-    /// All the words we found.
+    /// The file name only
     /// </summary>
-    public IList<IWord> Words { get; set; }
+    string Name { get; }
 
     /// <summary>
-    /// How long it took to get the insformation.
+    /// The directory path
     /// </summary>
-    public long ElapsedMilliseconds { get; set; }
+    string Directory { get;}
 
     /// <summary>
-    /// The status of the entire system.
+    /// The file full name
     /// </summary>
-    public StatusResponse Status { get; set; }
+    string FullName { get;}
+
+    /// <summary>
+    /// The actual word that was matched.
+    /// </summary>
+    string Actual { get; }
   }
 }
