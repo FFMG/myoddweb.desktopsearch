@@ -110,8 +110,11 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<long> WorkAsync( IConnectionFactory factory, CancellationToken token)
+    public async Task<long> WorkAsync( CancellationToken token)
     {
+      // get a factory item
+      var factory = await _persister.BeginWrite(token).ConfigureAwait(false);
+
       try
       {
         // Make sure that we do not kill the IO 
@@ -131,15 +134,20 @@ namespace myoddweb.desktopsearch.processor.Processors
           // process those words.
           totalnumberOfFilesProcessed += await ProcessFileAndWordsUpdates(pendingUpdates, token).ConfigureAwait(false);
         }
+
+        _persister.Commit(factory);
+
         return totalnumberOfFilesProcessed;
       }
       catch (OperationCanceledException)
       {
+        _persister.Rollback(factory);
         _logger.Warning("Files processor: Received cancellation request - Files Processor - Work");
         throw;
       }
       catch (Exception e)
       {
+        _persister.Rollback(factory);
         _logger.Exception("Files processor: ", e);
         throw;
       }

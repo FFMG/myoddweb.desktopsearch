@@ -23,10 +23,9 @@ namespace myoddweb.desktopsearch.processor
     /// <summary>
     /// We are telling the processor to do some work.
     /// </summary>
-    /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<long> WorkAsync(IConnectionFactory connectionFactory, CancellationToken token );
+    Task<long> WorkAsync(CancellationToken token );
 
     /// <summary>
     /// Stop all processing and cleanup

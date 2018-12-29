@@ -71,7 +71,6 @@ namespace myoddweb.desktopsearch.processor
       var filesCounter = new ProcessorPerformanceCounter(performance, fileCounterName, logger);
 
       _eventTimer = new ProcessorTimer(
-        persister,
         new List<IProcessor>
         {
           new Folders(directoriesCounter, processorsConfig.UpdatesFolderPerEvent, persister, logger, directory),
@@ -80,7 +79,6 @@ namespace myoddweb.desktopsearch.processor
         _logger, processorsConfig.EventsProcessorMs);
 
       _maintenanceTimer = new ProcessorTimer(
-        persister,
         new List<IProcessor>
         {
           new Maintenance( maintenanceConfig.Active, persister, logger)

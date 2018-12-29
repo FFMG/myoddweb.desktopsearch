@@ -50,7 +50,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<long> WorkAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<long> WorkAsync(CancellationToken token)
     {
       var stopwatch = new Stopwatch();
       stopwatch.Start();
@@ -67,7 +67,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         }
 
         _logger.Information("Started Maintenance Process.");
-        await _persister.MaintenanceAsync(connectionFactory, token).ConfigureAwait(false);
+        await _persister.MaintenanceAsync(token).ConfigureAwait(false);
 
         // it worked
         success = true;

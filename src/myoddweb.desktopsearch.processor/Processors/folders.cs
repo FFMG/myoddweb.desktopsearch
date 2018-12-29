@@ -87,10 +87,13 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<long> WorkAsync(IConnectionFactory factory, CancellationToken token)
+    public async Task<long> WorkAsync( CancellationToken token)
     {
       using (_counter.Start())
-      { 
+      {
+        // get a factory item
+        var factory = await _persister.BeginWrite(token).ConfigureAwait(false);
+
         try
         {
           // then get _all_ the file updates that we want to do.
@@ -104,16 +107,20 @@ namespace myoddweb.desktopsearch.processor.Processors
           // process the update.
           await ProcessFolderUpdatesAsync(factory, pendingUpdates, token).ConfigureAwait(false);
 
+          _persister.Commit(factory);
+
           // we processed one update
           return pendingUpdates.Count;
         }
         catch (OperationCanceledException)
         {
+          _persister.Rollback(factory);
           _logger.Warning("Directory processor: Received cancellation request - Directories Processor - Work");
           throw;
         }
         catch (Exception e)
         {
+          _persister.Rollback(factory);
           _logger.Exception("Directory processor: ", e);
           throw;
         }
