@@ -40,6 +40,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
+
+    /// <summary>
+    /// Readonly factory.
+    /// </summary>
+    private IConnectionFactory _readOnlyFactory;
+
+    /// <summary>
+    /// Return readonly factory if we have one ... otherwise, return the factory.
+    /// </summary>
+    private IConnectionFactory ReadonlyFactory => _readOnlyFactory ?? Factory;
     #endregion
 
     public SqlitePersisterQuery(int maxNumCharactersPerParts, ILogger logger )
@@ -68,7 +78,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public async Task<IList<IWord>> FindAsync(string what, int count, CancellationToken token)
     {
-      Contract.Assert( Factory != null );
+      Contract.Assert( ReadonlyFactory != null );
 
       try
       {
@@ -93,14 +103,14 @@ namespace myoddweb.desktopsearch.service.Persisters
         LIMIT {count};";
 
         var words = new List<IWord>(count);
-        using (var cmd = Factory.CreateCommand(sql))
+        using (var cmd = ReadonlyFactory.CreateCommand(sql))
         {
           var pSearch = cmd.CreateParameter();
           pSearch.DbType = DbType.String;
           pSearch.ParameterName = "@search";
           cmd.Parameters.Add(pSearch);
           pSearch.Value = $"^{ResziedWord(what)}*";
-          using (var reader = await Factory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
+          using (var reader = await ReadonlyFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
           {
             var wordPos = reader.GetOrdinal("word");
             var namePos = reader.GetOrdinal("name");
@@ -147,20 +157,31 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public void Prepare(IPersister persister, IConnectionFactory factory)
     {
-      if (null == Factory)
+      // save non readonly factory
+      if (Factory == null && !factory.IsReadOnly)
       {
         Factory = factory;
+      }
+
+      // save the readonly factory
+      if (_readOnlyFactory == null && factory.IsReadOnly)
+      {
+        _readOnlyFactory = factory;
       }
     }
 
     /// <inheritdoc />
     public void Complete(IConnectionFactory factory, bool success)
     {
-      if (factory != Factory)
+      if (factory == Factory)
       {
-        return;
+        Factory = null;
       }
-      Factory = null;
+
+      if (factory == _readOnlyFactory)
+      {
+        _readOnlyFactory = null;
+      }
     }
   }
 }

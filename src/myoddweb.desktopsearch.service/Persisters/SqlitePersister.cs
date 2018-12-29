@@ -239,23 +239,31 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     public async Task MaintenancePartsSearchAsync(IConnectionFactory connectionFactory, CancellationToken token)
     {
-      var r = new Random( DateTime.UtcNow.Millisecond ).Next(100);
+      const string configMaintenanceRebuild = "maintenance.rebuild";
+      const string configMaintenanceOptimize = "maintenance.optimize";
 
-      // 5% of the time, rebuild...
-      if (r < 5)
+      var lastRebuild = await Config.GetConfigValueAsync(configMaintenanceRebuild, DateTime.MinValue, connectionFactory, token ).ConfigureAwait(false);
+
+      // was it more than 24hrs ago?
+      if ((DateTime.UtcNow - lastRebuild).TotalHours > 24 )
       {
         // https://www.sqlite.org/fts3.html#*fts4rebuidcmd
         _logger.Information("Maintenance rebuilding virtual table");
         await ExecuteNonQueryAsync($"INSERT INTO {Tables.PartsSearch}({Tables.PartsSearch}) VALUES ('rebuild')", connectionFactory, token).ConfigureAwait(false);
-        return;
+
+        // set the update time.
+        await Config.SetConfigValueAsync(configMaintenanceRebuild, DateTime.UtcNow, connectionFactory, token).ConfigureAwait(false);
       }
 
-      // 25% of the time, optimize
-      if ( r < 25 )
+      var lastOptimize = await Config.GetConfigValueAsync(configMaintenanceOptimize, DateTime.MinValue, connectionFactory, token).ConfigureAwait(false);
+      if ((DateTime.UtcNow - lastOptimize).TotalHours > 6)
       {
         // https://www.sqlite.org/fts3.html#optimize
         _logger.Information("Maintenance optimizing virtual table");
         await ExecuteNonQueryAsync($"INSERT INTO {Tables.PartsSearch}({Tables.PartsSearch}) VALUES ('optimize')", connectionFactory, token).ConfigureAwait(false);
+
+        // set the update time.
+        await Config.SetConfigValueAsync(configMaintenanceOptimize, DateTime.UtcNow, connectionFactory, token).ConfigureAwait(false);
       }
 
       // otherwise, do nothing.

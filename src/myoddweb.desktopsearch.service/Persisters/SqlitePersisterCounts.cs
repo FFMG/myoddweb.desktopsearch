@@ -52,6 +52,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// The logger
     /// </summary>
     private readonly ILogger _logger;
+
+    /// <summary>
+    /// Readonly factory.
+    /// </summary>
+    private IConnectionFactory _readOnlyFactory;
+
+    /// <summary>
+    /// Return readonly factory if we have one ... otherwise, return the factory.
+    /// </summary>
+    private IConnectionFactory ReadonlyFactory => _readOnlyFactory ?? Factory;
     #endregion
 
     public SqlitePersisterCounts(ILogger logger )
@@ -63,28 +73,33 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc />
     public void Prepare(IPersister persister, IConnectionFactory factory)
     {
-      // sanity check.
-      if (Factory == null)
+      // save non readonly factory
+      if (Factory == null && !factory.IsReadOnly)
       {
         Factory = factory;
+
+        Contract.Assert(_countsHelper == null);
+        _countsHelper = new CountsHelper(factory, Tables.Counts);
       }
 
-      if (!factory.IsReadOnly)
+      // save the readonly factory
+      if (_readOnlyFactory == null && factory.IsReadOnly)
       {
-        Contract.Assert(_countsHelper == null );
-        _countsHelper = new CountsHelper(factory, Tables.Counts);
+        _readOnlyFactory = factory;
       }
     }
 
     /// <inheritdoc />
     public void Complete(IConnectionFactory factory, bool success)
     {
-      if (!factory.IsReadOnly)
+      if (factory == _readOnlyFactory)
       {
-        _countsHelper = null;
+        _readOnlyFactory = null;
       }
+
       if (factory == Factory)
       {
+        _countsHelper = null;
         Factory = null;
       }
     }
@@ -188,7 +203,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       try
       {
         var sql = $"SELECT count FROM {Tables.Counts} WHERE type=@type";
-        using (var cmd = Factory.CreateCommand(sql))
+        using (var cmd = ReadonlyFactory.CreateCommand(sql))
         {
           var pType = cmd.CreateParameter();
           pType.DbType = DbType.Int64;
@@ -197,7 +212,7 @@ namespace myoddweb.desktopsearch.service.Persisters
 
           // run the select query
           pType.Value = (long) type;
-          var value = await Factory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
+          var value = await ReadonlyFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
           if (null == value || value == DBNull.Value)
           {
             return null;
@@ -246,9 +261,9 @@ namespace myoddweb.desktopsearch.service.Persisters
           throw new ArgumentException($"Unknown count type {type.ToString()}");
       }
 
-      using (var cmd = Factory.CreateCommand(sql))
+      using (var cmd = ReadonlyFactory.CreateCommand(sql))
       {
-        var value = await Factory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
+        var value = await ReadonlyFactory.ExecuteReadOneAsync(cmd, token).ConfigureAwait(false);
 
         // get out if needed.
         token.ThrowIfCancellationRequested();
@@ -298,6 +313,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       // get the vale we will be updating
       var count = await GetActualCountAsync(type, token).ConfigureAwait(false);
+
+      // sanity check
+      Contract.Assert( !Factory?.IsReadOnly ?? false );
 
       // the value does not exist, we have to get it.
       var sql = $"UPDATE {Tables.Counts} SET count=@count WHERE type=@type";
@@ -350,6 +368,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     { 
       // get the vale we will be inserting
       var count = await GetActualCountAsync(type, token).ConfigureAwait(false);
+
+      // sanity check
+      Contract.Assert( !Factory?.IsReadOnly ?? false );
 
       // the value does not exist, we have to get it.
       var sql = $"INSERT INTO {Tables.Counts} (type, count) VALUES (@type, @count)";
