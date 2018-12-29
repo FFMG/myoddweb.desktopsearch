@@ -230,6 +230,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     #endregion
 
     #region IPersister functions
+
     /// <summary>
     /// Fix all the parts words to make sure that the search table is up to date.
     /// @see https://www.sqlite.org/fts3.html#rebuild
@@ -237,15 +238,14 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <param name="connectionFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task MaintenancePartsSearchAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    private async Task MaintenanceFtsRebuildAsync(IConnectionFactory connectionFactory, CancellationToken token)
     {
       const string configMaintenanceRebuild = "maintenance.rebuild";
-      const string configMaintenanceOptimize = "maintenance.optimize";
+      var lastRebuild = await Config.GetConfigValueAsync(configMaintenanceRebuild, DateTime.MinValue, connectionFactory, token).ConfigureAwait(false);
 
-      var lastRebuild = await Config.GetConfigValueAsync(configMaintenanceRebuild, DateTime.MinValue, connectionFactory, token ).ConfigureAwait(false);
-
-      // was it more than 24hrs ago?
-      if ((DateTime.UtcNow - lastRebuild).TotalHours > 24 )
+      // between 22 and 26 hours to prevent running at the same time as others.
+      var randomHours = (new Random(DateTime.UtcNow.Millisecond)).Next(22, 26);
+      if ((DateTime.UtcNow - lastRebuild).TotalHours > randomHours)
       {
         // https://www.sqlite.org/fts3.html#*fts4rebuidcmd
         _logger.Information("Maintenance rebuilding virtual table");
@@ -254,9 +254,23 @@ namespace myoddweb.desktopsearch.service.Persisters
         // set the update time.
         await Config.SetConfigValueAsync(configMaintenanceRebuild, DateTime.UtcNow, connectionFactory, token).ConfigureAwait(false);
       }
+    }
 
+    /// <summary>
+    /// Fix all the parts words to make sure that the search table is up to date.
+    /// @see https://www.sqlite.org/fts3.html#rebuild
+    /// </summary>
+    /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task MaintenanceFtsOptimizeAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    { 
+      const string configMaintenanceOptimize = "maintenance.optimize";
       var lastOptimize = await Config.GetConfigValueAsync(configMaintenanceOptimize, DateTime.MinValue, connectionFactory, token).ConfigureAwait(false);
-      if ((DateTime.UtcNow - lastOptimize).TotalHours > 6)
+
+      // between 5 and 7 hours to prevent running at the same time as others.
+      var randomHours = (new Random(DateTime.UtcNow.Millisecond)).Next(5, 7);
+      if ((DateTime.UtcNow - lastOptimize).TotalHours > randomHours)
       {
         // https://www.sqlite.org/fts3.html#optimize
         _logger.Information("Maintenance optimizing virtual table");
@@ -265,8 +279,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         // set the update time.
         await Config.SetConfigValueAsync(configMaintenanceOptimize, DateTime.UtcNow, connectionFactory, token).ConfigureAwait(false);
       }
-
-      // otherwise, do nothing.
     }
 
     /// <inheritdoc />
@@ -274,8 +286,11 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       try
       {
-        // parts search
-        await MaintenancePartsSearchAsync(connectionFactory, token).ConfigureAwait(false);
+        // fts rebuild
+        await MaintenanceFtsRebuildAsync(connectionFactory, token).ConfigureAwait(false);
+
+        // fts optimize
+        await MaintenanceFtsOptimizeAsync(connectionFactory, token).ConfigureAwait(false);
       }
       catch (OperationCanceledException e)
       {
