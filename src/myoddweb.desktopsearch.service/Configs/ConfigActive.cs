@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
+using System;
 using System.ComponentModel;
 using myoddweb.desktopsearch.interfaces.Configs;
 using Newtonsoft.Json;
@@ -39,7 +40,20 @@ namespace myoddweb.desktopsearch.service.Configs
     /// <inheritdoc />
     public bool IsActive()
     {
-      throw new System.NotImplementedException();
+      var currentTime = Utc ? DateTime.UtcNow : DateTime.Now;
+      var currentHour = currentTime.Hour;
+      if (From < To)
+      {
+        // we are checking times during the day
+        // something like 8:00 and 22:00
+        return currentHour >= From && currentHour <= To;
+      }
+
+      // we are checking for over night times
+      // something like from 22:00 to 5:00
+      // the actuall check should be (hr >= From && hr <24) || hr >= 0 && hr <= To)
+      // but we already know that the To/From are within ranges.
+      return currentHour >= From || currentHour <= To;
     }
   }
 }

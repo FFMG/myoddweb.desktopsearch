@@ -51,7 +51,8 @@ namespace myoddweb.desktopsearch.processor
 
     public Processor(
       IList<IFileParser> fileParsers,
-      IProcessors config, 
+      IProcessors processorsConfig,
+      IMaintenance maintenanceConfig,
       IPersister persister, 
       ILogger logger, 
       IDirectory directory,
@@ -73,18 +74,18 @@ namespace myoddweb.desktopsearch.processor
         persister,
         new List<IProcessor>
         {
-          new Folders(directoriesCounter, config.UpdatesFolderPerEvent, persister, logger, directory),
-          new Files(filesCounter, config.UpdatesFilesPerEvent, fileParsers, config.IgnoreFiles, persister, logger, directory)
+          new Folders(directoriesCounter, processorsConfig.UpdatesFolderPerEvent, persister, logger, directory),
+          new Files(filesCounter, processorsConfig.UpdatesFilesPerEvent, fileParsers, processorsConfig.IgnoreFiles, persister, logger, directory)
         },
-        _logger, config.EventsProcessorMs);
+        _logger, processorsConfig.EventsProcessorMs);
 
       _maintenanceTimer = new ProcessorTimer(
         persister,
         new List<IProcessor>
         {
-          new Maintenance( persister, logger)
+          new Maintenance( maintenanceConfig.Active, persister, logger)
         },
-        _logger, (int)TimeSpan.FromMinutes( config.MaintenanceProcessorMinutes).TotalMilliseconds );
+        _logger, (int)TimeSpan.FromMinutes(processorsConfig.MaintenanceProcessorMinutes).TotalMilliseconds );
     }
 
     #region Start/Stop functions
