@@ -37,23 +37,55 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public bool Utc { get; protected set; }
 
+    public ConfigActive( int to, int from)
+    {
+      To = to;
+      From = from;
+      if (To < 0)
+      {
+        throw new ArgumentException( $"The 'To' value cannot be -ve ({To}).", nameof(To) );
+      }
+      if (From < 0)
+      {
+        throw new ArgumentException($"The 'From' value cannot be -ve ({From}).", nameof(From));
+      }
+
+      // The 'to' value is exclusive
+      if (To > 24)
+      {
+        throw new ArgumentException($"The 'To' value cannot be more than 24hrs ({To}).", nameof(To));
+      }
+
+      // the 'from' value is inclusive, so 24hr is not posible
+      if (From == 24)
+      {
+        From = 0;
+      }
+      if (From > 23 )
+      {
+        throw new ArgumentException($"The 'From' value cannot be more than 23hrs ({From}).", nameof(From));
+      }
+    }
+
     /// <inheritdoc />
     public bool IsActive()
     {
+      // The from is inclusive, so 8:00 is from 8:00... 8:05 and so on.
+      // the to is exclusive so 23:00 is up to 23:00.
       var currentTime = Utc ? DateTime.UtcNow : DateTime.Now;
       var currentHour = currentTime.Hour;
       if (From < To)
       {
         // we are checking times during the day
         // something like 8:00 and 22:00
-        return currentHour >= From && currentHour <= To;
+        return currentHour >= From && currentHour < To;
       }
 
       // we are checking for over night times
       // something like from 22:00 to 5:00
       // the actuall check should be (hr >= From && hr <24) || hr >= 0 && hr <= To)
       // but we already know that the To/From are within ranges.
-      return currentHour >= From || currentHour <= To;
+      return currentHour >= From || currentHour < To;
     }
   }
 }
