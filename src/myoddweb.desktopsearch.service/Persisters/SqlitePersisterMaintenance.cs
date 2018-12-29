@@ -498,20 +498,21 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     private async Task MaintenanceVacuumAsync(CancellationToken token)
     {
-      // get a factory item
-      var factory = await BeginWrite(token).ConfigureAwait(false);
+      // get a factory item ... but we do not want a transaction.
+      var factory = await BeginWrite(false, token).ConfigureAwait(false);
       try
       {
         const string configVacuum = "maintenance.vacuum";
-        var lastOptimize = await Config.GetConfigValueAsync(configVacuum, DateTime.MinValue, factory, token)
+        var lastVacuum = await Config.GetConfigValueAsync(configVacuum, DateTime.MinValue, factory, token)
           .ConfigureAwait(false);
 
         // between 24 and 28 hours to prevent running at the same time as others.
         var randomHours = (new Random(DateTime.UtcNow.Millisecond)).Next(24, 28);
-        if ((DateTime.UtcNow - lastOptimize).TotalHours > randomHours)
+        if ((DateTime.UtcNow - lastVacuum).TotalHours > randomHours)
         {
           // https://www.sqlite.org/lang_vacuum.html
           _logger.Information("Maintenance vacuum database");
+          await ExecuteNonQueryAsync("VACUUM;",factory, token).ConfigureAwait(false);
 
           // set the update time.
           await Config.SetConfigValueAsync(configVacuum, DateTime.UtcNow, factory, token).ConfigureAwait(false);

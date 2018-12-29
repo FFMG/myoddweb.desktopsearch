@@ -98,19 +98,16 @@ namespace myoddweb.desktopsearch.processor.Processors
         {
           // then get _all_ the file updates that we want to do.
           var pendingUpdates = await GetPendingFolderUpdatesAndMarkDirectoryProcessedAsync(factory, token).ConfigureAwait(false);
-          if (null == pendingUpdates)
+          if (null != pendingUpdates)
           {
-            //  probably was canceled.
-            return 0;
+            // process the update.
+            await ProcessFolderUpdatesAsync(factory, pendingUpdates, token).ConfigureAwait(false);
           }
-
-          // process the update.
-          await ProcessFolderUpdatesAsync(factory, pendingUpdates, token).ConfigureAwait(false);
 
           _persister.Commit(factory);
 
           // we processed one update
-          return pendingUpdates.Count;
+          return pendingUpdates?.Count ?? 0;
         }
         catch (OperationCanceledException)
         {

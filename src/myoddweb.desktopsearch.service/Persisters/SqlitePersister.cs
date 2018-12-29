@@ -149,7 +149,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       _connectionReadOnly.Open();
 
       // create the connection spinner and pass the function to create transactions.
-      _transactionSpinner = new TransactionsManager(ConnectionFactory, _performance, _logger);
+      _transactionSpinner = new TransactionsManager( _performance, _logger);
 
       // initiialise everything
       Initialise(token).GetAwaiter().GetResult();
@@ -181,22 +181,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         throw;
       }
     }
-
-    #region TransactionSpiner functions
-    /// <summary>
-    /// Create the connection factory
-    /// </summary>
-    /// <param name="isReadOnly"></param>
-    /// <returns></returns>
-    private IConnectionFactory ConnectionFactory( bool isReadOnly )
-    {
-      if (isReadOnly)
-      {
-        return new SqliteReadOnlyConnectionFactory( _connectionReadOnly );
-      } 
-      return new SqliteReadWriteConnectionFactory( _config );
-    }
-    #endregion
 
     #region Private
     /// <summary>
@@ -240,7 +224,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        var factory = await _transactionSpinner.BeginRead(token).ConfigureAwait(false);
+        var factory = await _transactionSpinner.BeginRead( ()=> new SqliteReadOnlyConnectionFactory(_connectionReadOnly), token).ConfigureAwait(false);
         PrepareTransaction(factory);
         return factory;
       }
@@ -261,16 +245,22 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc/>
-    public async Task<IConnectionFactory> BeginWrite(CancellationToken token)
+    public Task<IConnectionFactory> BeginWrite(CancellationToken token)
+    {
+      return BeginWrite(true, token);
+    }
+
+    private async Task<IConnectionFactory> BeginWrite(bool createTransaction, CancellationToken token)
     {
       // set the value
       try
+
       {
         if (null == _transactionSpinner)
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        var factory = await _transactionSpinner.BeginWrite(token).ConfigureAwait(false);
+        var factory = await _transactionSpinner.BeginWrite(() => new SqliteReadWriteConnectionFactory(createTransaction, _config), token).ConfigureAwait(false);
         PrepareTransaction( factory );
         return factory;
       }
