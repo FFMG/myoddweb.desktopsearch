@@ -48,6 +48,11 @@ namespace myoddweb.desktopsearch.service.Configs
 
     /// <inheritdoc />
     [DefaultValue(null)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public IMaintenance Maintenance { get; protected set; }
+
+    /// <inheritdoc />
+    [DefaultValue(null)]
     public IPerformance Performance { get; protected set; }
 
     /// <inheritdoc />
@@ -82,6 +87,12 @@ namespace myoddweb.desktopsearch.service.Configs
         Timers = JsonConvert.DeserializeObject<ConfigTimers>("{}");
       }
 
+      if (null == Maintenance)
+      {
+        // set the default values.
+        Maintenance = JsonConvert.DeserializeObject<ConfigMaintenance>("{}");
+      }
+
       if (null == Processors)
       {
         // set the default values.
@@ -102,6 +113,7 @@ namespace myoddweb.desktopsearch.service.Configs
     /// <param name="maxNumCharactersPerParts"></param>
     /// <param name="paths"></param>
     /// <param name="timers"></param>
+    /// <param name="maintenance"></param>
     /// <param name="performance"></param>
     /// <param name="processors"></param>
     /// <param name="webserver"></param>
@@ -112,6 +124,7 @@ namespace myoddweb.desktopsearch.service.Configs
       int maxNumCharactersPerParts,
       ConfigPaths paths, 
       ConfigTimers timers, 
+      ConfigMaintenance maintenance,
       ConfigPerformance performance,
       ConfigProcessor processors, 
       ConfigWebServer webserver,
@@ -120,6 +133,7 @@ namespace myoddweb.desktopsearch.service.Configs
     {
       Paths = paths;
       Timers = timers;
+      Maintenance = maintenance;
       Loggers = RecreateLoggers(loggers);
       Processors = processors;
       WebServer = webserver;

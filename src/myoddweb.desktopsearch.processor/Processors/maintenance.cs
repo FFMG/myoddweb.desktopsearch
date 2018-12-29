@@ -17,8 +17,9 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.interfaces.Logging;
+using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.processor.Processors
 {
@@ -36,8 +37,14 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// </summary>
     private readonly IPersister _persister;
 
-    public Maintenance(IPersister persister, ILogger logger)
+    /// <summary>
+    /// The active times
+    /// </summary>
+    private readonly IActive _active;
+
+    public Maintenance(IActive active, IPersister persister, ILogger logger)
     {
+      _active = active ?? throw new ArgumentNullException(nameof(active));
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -51,6 +58,14 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       try
       {
+        // check if we are active at the current time.
+        if (!_active.IsActive())
+        {
+          // we are not active ... so we have nothing to do.
+          _logger.Verbose("Maintenance Process ignored, out of active hours.");
+          return 0;
+        }
+
         _logger.Information("Started Maintenance Process.");
         await _persister.MaintenanceAsync(connectionFactory, token).ConfigureAwait(false);
 

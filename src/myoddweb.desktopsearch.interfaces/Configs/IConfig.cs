@@ -29,6 +29,11 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     ITimers Timers { get; }
 
     /// <summary>
+    /// The maintenance variables.
+    /// </summary>
+    IMaintenance Maintenance { get; }
+
+    /// <summary>
     /// All the loggers
     /// </summary>
     IList<ILogger> Loggers { get; }

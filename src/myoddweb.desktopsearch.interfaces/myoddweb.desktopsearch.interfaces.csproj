@@ -41,10 +41,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Configs\IActive.cs" />
     <Compile Include="Configs\IConfig.cs" />
     <Compile Include="Configs\IDatabase.cs" />
     <Compile Include="Configs\IIgnoreFile.cs" />
     <Compile Include="Configs\ILogger.cs" />
+    <Compile Include="Configs\IMaintenance.cs" />
     <Compile Include="Configs\IPaths.cs" />
     <Compile Include="Configs\IPerformance.cs" />
     <Compile Include="Configs\IProcessors.cs" />

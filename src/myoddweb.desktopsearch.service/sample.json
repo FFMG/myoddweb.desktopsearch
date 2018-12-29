@@ -25,6 +25,13 @@
   "Timers": {
     "EventsParserMs": 30000
   },
+  "Maintenance": {
+    "Active" : 
+    {
+      "From" : 23,
+      "To" : 5
+    }
+  },
   "Processors": {
     "UpdatesFilesPerEvent" : 50,
     "UpdatesFolderPerEvent": 50,

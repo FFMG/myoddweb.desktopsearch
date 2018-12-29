@@ -85,10 +85,12 @@
   <ItemGroup>
     <Compile Include="ArgumentsParser.cs" />
     <Compile Include="Configs\Config.cs" />
+    <Compile Include="Configs\ConfigActive.cs" />
     <Compile Include="Configs\ConfigFileLogger.cs" />
     <Compile Include="Configs\ConfigConsoleLogger.cs" />
     <Compile Include="Configs\ConfigIgnoreFile.cs" />
     <Compile Include="Configs\ConfigLoggers.cs" />
+    <Compile Include="Configs\ConfigMaintenance.cs" />
     <Compile Include="Configs\ConfigPaths.cs" />
     <Compile Include="Configs\ConfigProcessor.cs" />
     <Compile Include="Configs\ConfigSqliteDatabase.cs" />
