@@ -145,7 +145,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
     }
 
     /// <inheritdoc />
-    public Task<bool> UpdateAsync(long type, long addOrRemove, CancellationToken token)
+    public Task<bool> AddAsync(long type, long addOrRemove, CancellationToken token)
     {
       ThrowIfDisposed();
 

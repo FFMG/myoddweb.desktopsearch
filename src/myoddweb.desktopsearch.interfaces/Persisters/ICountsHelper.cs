@@ -27,7 +27,7 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <param name="addOrRemove"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<bool> UpdateAsync( long type, long addOrRemove, CancellationToken token);
+    Task<bool> AddAsync( long type, long addOrRemove, CancellationToken token);
 
     /// <summary>
     /// Insert or update a value.

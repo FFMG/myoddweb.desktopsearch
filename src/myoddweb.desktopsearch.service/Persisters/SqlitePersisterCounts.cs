@@ -189,7 +189,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       Contract.Assert(_countsHelper != null );
-      return _countsHelper.UpdateAsync((long) type, addOrRemove, token);
+      return _countsHelper.AddAsync((long) type, addOrRemove, token);
     }
 
     /// <summary>
