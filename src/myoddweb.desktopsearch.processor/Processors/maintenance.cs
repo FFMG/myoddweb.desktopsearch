@@ -57,6 +57,7 @@ namespace myoddweb.desktopsearch.processor.Processors
         if (!_active.IsActive())
         {
           // we are not active ... so we have nothing to do.
+          _logger.Verbose("Maintenance Process ignored, out of active hours.");
           return 0;
         }
 
