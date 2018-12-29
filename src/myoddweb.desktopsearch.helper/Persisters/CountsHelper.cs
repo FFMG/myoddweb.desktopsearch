@@ -99,6 +99,11 @@ namespace myoddweb.desktopsearch.helper.Persisters
     private readonly PersisterUpdateCountsHelper _update;
 
     /// <summary>
+    /// Insert the counters.
+    /// </summary>
+    private readonly PersisterUpdateCountsHelper _insert;
+
+    /// <summary>
     /// Check if this item has been disposed or not.
     /// </summary>
     private bool _disposed;
@@ -108,6 +113,9 @@ namespace myoddweb.desktopsearch.helper.Persisters
     {
       // update the counters.
       _update = new PersisterUpdateCountsHelper( factory, $"UPDATE {tableName} SET count=count+@count WHERE type=@type" );
+
+      // insert the counters.
+      _insert = new PersisterUpdateCountsHelper(factory, $"INSERT OR REPLACE INTO {tableName} (count, type) VALUES (@count, @type);");
     }
 
     /// <summary>
@@ -133,6 +141,7 @@ namespace myoddweb.desktopsearch.helper.Persisters
       _disposed = true;
 
       _update?.Dispose();
+      _insert?.Dispose();
     }
 
     /// <inheritdoc />
@@ -142,5 +151,14 @@ namespace myoddweb.desktopsearch.helper.Persisters
 
       return _update.UpdateAsync(type, addOrRemove, token);
     }
+
+    /// <inheritdoc />
+    public Task<bool> SetAsync(long type, long value, CancellationToken token)
+    {
+      ThrowIfDisposed();
+
+      return _insert.UpdateAsync(type, value, token);
+    }
+
   }
 }

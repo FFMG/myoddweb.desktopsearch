@@ -289,126 +289,26 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <returns></returns>
     private async Task InitialiserCountersAsync(Type type, CancellationToken token)
     {
-      // do we have a value in the database?
-      var current = await GetCountValue(type, token).ConfigureAwait(false);
-      if ( null != current )
-      {
-        // the value exists already ... so we want to update.
-        await UpdateCountersAsync(type, token).ConfigureAwait(false);
-        return;
-      }
-
-      // insert the value for that type.
-      await InsertCountersAsync(type, token).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Update the value for the given type.
-    /// We will not check if the value already exists!
-    /// </summary>
-    /// <param name="type"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task UpdateCountersAsync(Type type, CancellationToken token)
-    {
-      // get the vale we will be updating
+      // get the vale we will be setting
       var count = await GetActualCountAsync(type, token).ConfigureAwait(false);
 
-      // sanity check
-      Contract.Assert( !Factory?.IsReadOnly ?? false );
-
-      // the value does not exist, we have to get it.
-      var sql = $"UPDATE {Tables.Counts} SET count=@count WHERE type=@type";
-
-      using (var cmd = Factory.CreateCommand(sql))
+      Contract.Assert(_countsHelper != null);
+      try
       {
-        var pType = cmd.CreateParameter();
-        pType.DbType = DbType.Int64;
-        pType.ParameterName = "@type";
-        cmd.Parameters.Add(pType);
-
-        var pCount = cmd.CreateParameter();
-        pCount.DbType = DbType.Int64;
-        pCount.ParameterName = "@count";
-        cmd.Parameters.Add(pCount);
-
-        try
+        if (false == await _countsHelper.SetAsync((long)type, count, token).ConfigureAwait(false))
         {
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-
-          pType.Value = (long)type;
-          pCount.Value = count;
-          if (0 == await Factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
-          {
-            _logger.Error($"There was an issue updating the count {type.ToString()} to persister");
-          }
-        }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Update counter");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-          throw;
+          _logger.Error($"There was an issue updating the count {type.ToString()} to persister");
         }
       }
-    }
-
-    /// <summary>
-    /// Insert the value for the given type.
-    /// We will not check if the value already exists!
-    /// </summary>
-    /// <param name="type"></param>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task InsertCountersAsync(Type type, CancellationToken token)
-    { 
-      // get the vale we will be inserting
-      var count = await GetActualCountAsync(type, token).ConfigureAwait(false);
-
-      // sanity check
-      Contract.Assert( !Factory?.IsReadOnly ?? false );
-
-      // the value does not exist, we have to get it.
-      var sql = $"INSERT INTO {Tables.Counts} (type, count) VALUES (@type, @count)";
-
-      using (var cmd = Factory.CreateCommand(sql))
+      catch (OperationCanceledException)
       {
-        var pType = cmd.CreateParameter();
-        pType.DbType = DbType.Int64;
-        pType.ParameterName = "@type";
-        cmd.Parameters.Add(pType);
-
-        var pCount = cmd.CreateParameter();
-        pCount.DbType = DbType.Int64;
-        pCount.ParameterName = "@count";
-        cmd.Parameters.Add(pCount);
-
-        try
-        {
-          // get out if needed.
-          token.ThrowIfCancellationRequested();
-
-          pType.Value = (long)type;
-          pCount.Value = count;
-          if (0 == await Factory.ExecuteWriteAsync(cmd, token).ConfigureAwait(false))
-          {
-            _logger.Error($"There was an issue adding count {type.ToString()} to persister");
-          }
-        }
-        catch (OperationCanceledException)
-        {
-          _logger.Warning("Received cancellation request - Insert counter");
-          throw;
-        }
-        catch (Exception ex)
-        {
-          _logger.Exception(ex);
-          throw;
-        }
+        _logger.Warning("Received cancellation request - Update counter");
+        throw;
+      }
+      catch (Exception ex)
+      {
+        _logger.Exception(ex);
+        throw;
       }
     }
     #endregion
