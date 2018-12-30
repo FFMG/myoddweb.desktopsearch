@@ -52,20 +52,20 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <inheritdoc />
     public async Task<long> WorkAsync(CancellationToken token)
     {
+      // check if we are active at the current time.
+      if (!_active.IsActive())
+      {
+        // we are not active ... so we have nothing to do.
+        _logger.Verbose("Maintenance Process ignored, out of active hours.");
+        return 0;
+      }
+
       var stopwatch = new Stopwatch();
       stopwatch.Start();
       var success = false;
 
       try
       {
-        // check if we are active at the current time.
-        if (!_active.IsActive())
-        {
-          // we are not active ... so we have nothing to do.
-          _logger.Verbose("Maintenance Process ignored, out of active hours.");
-          return 0;
-        }
-
         _logger.Information("Started Maintenance Process.");
         await _persister.MaintenanceAsync(token).ConfigureAwait(false);
 
