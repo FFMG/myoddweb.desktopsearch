@@ -29,7 +29,7 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int EventsProcessorMs { get; protected set; }
 
-    [DefaultValue(60)]
+    [DefaultValue(30)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int MaintenanceProcessorMinutes { get; protected set; }
 

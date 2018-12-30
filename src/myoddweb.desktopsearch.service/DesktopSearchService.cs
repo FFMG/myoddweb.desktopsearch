@@ -371,30 +371,50 @@ namespace myoddweb.desktopsearch.service
     {
       var sb = new StringBuilder();
       sb.AppendLine( "Startup complete.");
-      sb.AppendLine($"                           ProcessID : {Process.GetCurrentProcess().Id}");
-      sb.AppendLine($"                            Platform : {(Environment.Is64BitProcess ? "64-bit (x64)" : "32-bit (x86))")}");
-      sb.AppendLine($"                             Runtime : {Environment.Version}");
+      sb.AppendLine($"  ProcessID                       : {Process.GetCurrentProcess().Id}");
+      sb.AppendLine($"  Platform                        : {(Environment.Is64BitProcess ? "64-bit (x64)" : "32-bit (x86))")}");
+      sb.AppendLine($"  Runtime                         : {Environment.Version}");
       sb.AppendLine();
 
       sb.AppendLine( "Webserver");
-      sb.AppendLine($"                                Port : {config.WebServer.Port}");
+      sb.AppendLine($"  Port                            : {config.WebServer.Port}");
       sb.AppendLine();
 
       sb.AppendLine( "Processors" );
-      sb.AppendLine($"          Update folders per events  : {config.Processors.UpdatesFolderPerEvent}");
-      sb.AppendLine($"                 Events Processor Ms : {config.Processors.EventsProcessorMs} Ms");
-      sb.AppendLine($"       Maintenance Processor Minutes : {config.Processors.MaintenanceProcessorMinutes} Minutes");
-
+      sb.AppendLine($"  Update files per events         : {config.Processors.UpdatesFilesPerEvent}");
+      sb.AppendLine($"  Update folders per events       : {config.Processors.UpdatesFolderPerEvent}");
+      sb.AppendLine($"  Events Processor Ms             : {config.Processors.EventsProcessorMs} Ms");
+      sb.AppendLine($"  Maintenance Processor Minutes   : {config.Processors.MaintenanceProcessorMinutes} Minutes");
+      sb.AppendLine( "  Ignore Files");
+      foreach (var ignorefile in config.Processors.IgnoreFiles)
+      {
+        sb.AppendLine($"    Pattern                       : {ignorefile.Pattern}");
+        sb.AppendLine($"    Max size in Mb                : {ignorefile.MaxSizeMegabytes}");
+      }
       sb.AppendLine();
 
       sb.AppendLine("Paths");
-      sb.AppendLine($"                  Parse Fixed Drives : {(config.Paths.ParseFixedDrives?"true":"false")}");
-      sb.AppendLine($"              Parse Removable Drives : {(config.Paths.ParseRemovableDrives ? "true" : "false")}");
+      sb.AppendLine($"  Parse Fixed Drives              : {(config.Paths.ParseFixedDrives?"true":"false")}");
+      sb.AppendLine($"  Parse Removable Drives          : {(config.Paths.ParseRemovableDrives ? "true" : "false")}");
+      sb.AppendLine( "  Included Paths");
+      foreach (var path in config.Paths.Paths)
+      {
+        sb.AppendLine($"    Folder                        : {path}");
+      }
+      sb.AppendLine( "  Ignored Paths");
+      foreach (var ignoredPath in config.Paths.IgnoredPaths)
+      {
+        sb.AppendLine($"    Folder                        : {ignoredPath}");
+      }
       sb.AppendLine();
 
       sb.AppendLine("Misc");
-      sb.AppendLine($"     Max Number Characters Per Words : {config.MaxNumCharactersPerWords}");
-      sb.AppendLine($"     Max Number Characters Per Parts : {config.MaxNumCharactersPerParts}");
+      sb.AppendLine($"  Max Number Characters Per Words : {config.MaxNumCharactersPerWords}");
+      sb.AppendLine($"  Max Number Characters Per Parts : {config.MaxNumCharactersPerParts}");
+      sb.AppendLine( "  Maintenance");
+      sb.AppendLine($"    From                          : {config.Maintenance.Active.From}:00");
+      sb.AppendLine($"    To                            : {config.Maintenance.Active.To}:00");
+      sb.AppendLine($"    UTC                           : {(config.Maintenance.Active.Utc?"True":"False")}");
 
       _logger.Information( sb.ToString() );
     }
