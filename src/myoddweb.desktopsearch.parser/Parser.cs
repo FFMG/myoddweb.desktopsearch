@@ -495,7 +495,7 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    private bool StartWatchers(CancellationToken token)
+    private void StartWatchers(CancellationToken token)
     {
       // get all the paths we will be working with.
       var paths = helper.IO.Paths.GetStartPaths(_config.Paths);
@@ -513,7 +513,6 @@ namespace myoddweb.desktopsearch.parser
 
         _watchers.Add(fileWatcher);
       }
-      return true;
     }
     #endregion
 
