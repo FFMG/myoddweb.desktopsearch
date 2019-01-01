@@ -53,6 +53,7 @@ namespace myoddweb.desktopsearch.processor
       IList<IFileParser> fileParsers,
       IProcessors processorsConfig,
       IMaintenance maintenanceConfig,
+      IParser parser,
       IPersister persister, 
       ILogger logger, 
       IDirectory directory,
@@ -81,7 +82,7 @@ namespace myoddweb.desktopsearch.processor
       _maintenanceTimer = new ProcessorTimer(
         new List<IProcessor>
         {
-          new Maintenance( maintenanceConfig.Active, persister, logger)
+          new Maintenance( maintenanceConfig.Active, parser, persister, logger)
         },
         _logger, (int)TimeSpan.FromMinutes(processorsConfig.MaintenanceProcessorMinutes).TotalMilliseconds );
     }

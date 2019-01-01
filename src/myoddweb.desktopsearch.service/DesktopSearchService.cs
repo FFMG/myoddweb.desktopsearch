@@ -50,7 +50,7 @@ namespace myoddweb.desktopsearch.service
     /// <summary>
     /// This is the parser we are currently working with.
     /// </summary>
-    private Parser _parser;
+    private IParser _parser;
 
     /// <summary>
     /// The logger created.
@@ -308,7 +308,7 @@ namespace myoddweb.desktopsearch.service
         _parser = new Parser( config, _persister, _logger, directory );
 
         // create the processor
-        _processor = new Processor( fileParsers, config.Processors, config.Maintenance, _persister, _logger, directory, config.Performance );
+        _processor = new Processor( fileParsers, config.Processors, config.Maintenance, _parser, _persister, _logger, directory, config.Performance );
 
         // create the http server
         _http = new HttpServer( config.WebServer, _persister, _logger);

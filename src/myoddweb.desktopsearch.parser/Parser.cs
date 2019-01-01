@@ -29,7 +29,7 @@ using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
 namespace myoddweb.desktopsearch.parser
 {
-  public class Parser
+  public class Parser : IParser
   {
     #region Member variables
     /// <summary>
@@ -78,40 +78,31 @@ namespace myoddweb.desktopsearch.parser
       _directory = directory ?? throw new ArgumentNullException(nameof(directory));
     }
 
-    /// <summary>
-    /// Do all the parsing work,
-    /// </summary>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private async Task<bool> WorkAsync(CancellationToken token)
+    /// <inheritdoc />
+    public async Task MaintenanceAsync(CancellationToken token)
     {
-      // get all the paths we will be working with.
-      var paths = helper.IO.Paths.GetStartPaths(_config.Paths);
-
-      // first we get a full list of files/directories.
-      if (!await ParseAllDirectoriesAsync(paths, token).ConfigureAwait(false))
+      // are we still running the start?
+      if (!_runningTask?.IsCompleted ?? true)
       {
-        return false;
+        return;
       }
 
-      // we then watch for files/folder changes.
-      if (!StartWatchers(paths, token))
-      {
-        return false;
-      }
-      return true;
+      // we can re-parse everthing
+      await ParseAllDirectoriesAsync(token).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Parse all the directories.
     /// </summary>
-    /// <param name="paths"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ParseAllDirectoriesAsync(IEnumerable<DirectoryInfo> paths, CancellationToken token)
+    private async Task<bool> ParseAllDirectoriesAsync(CancellationToken token)
     {
       try
       {
+        // get all the paths we will be working with.
+        var paths = helper.IO.Paths.GetStartPaths(_config.Paths);
+
         var stopwatch = new Stopwatch();
         stopwatch.Start();
 
@@ -484,18 +475,31 @@ namespace myoddweb.desktopsearch.parser
         Wait.WaitAll(_runningTask, _logger, token);
         _runningTask = null;
       }
-      _runningTask = WorkAsync(token);
+      _runningTask = ParseAllDirectoriesAsync(token).ContinueWith(
+        (t) =>
+        {
+          if (!t.Result || t.IsFaulted || t.IsCanceled )
+          {
+            return;
+          }
+          // we then watch for files/folder changes.
+          StartWatchers(token);
+        }, token);
+
+
       _logger.Information("Parser started");
     }
 
     /// <summary>
     /// Start to watch all the folders and sub folders.
     /// </summary>
-    /// <param name="paths"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private bool StartWatchers(IEnumerable<DirectoryInfo> paths, CancellationToken token)
+    private bool StartWatchers(CancellationToken token)
     {
+      // get all the paths we will be working with.
+      var paths = helper.IO.Paths.GetStartPaths(_config.Paths);
+
       // get the ignore path
       foreach (var path in paths)
       {

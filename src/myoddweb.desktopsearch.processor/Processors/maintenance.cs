@@ -12,12 +12,12 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-
 using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Configs;
+using myoddweb.desktopsearch.interfaces.IO;
 using myoddweb.desktopsearch.interfaces.Persisters;
 using ILogger = myoddweb.desktopsearch.interfaces.Logging.ILogger;
 
@@ -30,7 +30,11 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// The logger that we will be using to log messages.
     /// </summary>
     private readonly ILogger _logger;
-    #endregion
+
+    /// <summary>
+    /// This is the parser we are currently working with.
+    /// </summary>
+    private readonly IParser _parser;
 
     /// <summary>
     /// The persister.
@@ -41,9 +45,11 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// The active times
     /// </summary>
     private readonly IActive _active;
+    #endregion
 
-    public Maintenance(IActive active, IPersister persister, ILogger logger)
+    public Maintenance(IActive active, IParser parser, IPersister persister, ILogger logger)
     {
+      _parser = parser ?? throw new ArgumentNullException(nameof(parser));
       _active = active ?? throw new ArgumentNullException(nameof(active));
       _persister = persister ?? throw new ArgumentNullException(nameof(persister));
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -68,6 +74,8 @@ namespace myoddweb.desktopsearch.processor.Processors
       {
         _logger.Information("Started Maintenance Process.");
         await _persister.MaintenanceAsync(token).ConfigureAwait(false);
+
+        await _parser.MaintenanceAsync(token).ConfigureAwait(false);
 
         // it worked
         success = true;

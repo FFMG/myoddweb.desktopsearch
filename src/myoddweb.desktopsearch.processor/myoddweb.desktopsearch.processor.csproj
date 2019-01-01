@@ -59,6 +59,10 @@
       <Project>{B1B3597E-D169-47A0-8CA8-FD543EF817D9}</Project>
       <Name>myoddweb.desktopsearch.interfaces</Name>
     </ProjectReference>
+    <ProjectReference Include="..\myoddweb.desktopsearch.parser\myoddweb.desktopsearch.parser.csproj">
+      <Project>{22E5A150-C0AD-4715-8A42-47C50D74BAAE}</Project>
+      <Name>myoddweb.desktopsearch.parser</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
