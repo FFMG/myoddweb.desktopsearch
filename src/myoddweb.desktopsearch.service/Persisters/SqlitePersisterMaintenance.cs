@@ -12,6 +12,8 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Persisters;
@@ -69,6 +71,12 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // the parts table
       if (!await CreatePartsAsync(connectionFactory).ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // the parts search table
+      if (!await CreatePartsSearchAsync(connectionFactory).ConfigureAwait(false))
       {
         return false;
       }
@@ -277,6 +285,27 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <summary>
+    /// Create all the word parts table.
+    /// each part is unique...
+    /// </summary>
+    /// <param name="connectionFactory"></param>
+    /// <returns></returns>
+    private async Task<bool> CreatePartsSearchAsync(IConnectionFactory connectionFactory)
+    {
+      if (!await
+        ExecuteNonQueryAsync($"CREATE VIRTUAL TABLE {Tables.PartsSearch} USING fts4( content='Parts', part);", connectionFactory)
+          .ConfigureAwait(false))
+      {
+        return false;
+      }
+
+      // no need to create an index on text ... it is unique.
+      // and id is also unique
+
+      return true;
+    }
+
+    /// <summary>
     /// Create the updates table.
     /// </summary>
     /// <param name="connectionFactory"></param>
@@ -380,5 +409,154 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       await CreateDatabase(connectionFactory).ConfigureAwait(false);
     }
+
+    #region Periodic maintenance
+    /// <summary>
+    /// Fix all the parts words to make sure that the search table is up to date.
+    /// @see https://www.sqlite.org/fts3.html#rebuild
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task MaintenanceFtsRebuildAsync(CancellationToken token)
+    {
+      // get a factory item
+      var factory = await BeginWrite(token).ConfigureAwait(false);
+      try
+      {
+        const string configMaintenanceRebuild = "maintenance.rebuild";
+        var lastRebuild = await Config
+          .GetConfigValueAsync(configMaintenanceRebuild, DateTime.MinValue, factory, token)
+          .ConfigureAwait(false);
+
+        // between 22 and 26 hours to prevent running at the same time as others.
+        var randomHours = (new Random(DateTime.UtcNow.Millisecond)).Next(22, 26);
+        if ((DateTime.UtcNow - lastRebuild).TotalHours > randomHours)
+        {
+          // https://www.sqlite.org/fts3.html#*fts4rebuidcmd
+          _logger.Information("Maintenance rebuilding virtual table");
+          await ExecuteNonQueryAsync($"INSERT INTO {Tables.PartsSearch}({Tables.PartsSearch}) VALUES ('rebuild')", factory, token).ConfigureAwait(false);
+
+          // set the update time.
+          await Config.SetConfigValueAsync(configMaintenanceRebuild, DateTime.UtcNow, factory, token).ConfigureAwait(false);
+        }
+        Commit(factory);
+      }
+      catch
+      {
+        Rollback(factory);
+
+        // will be logged by the caller
+        throw;
+      }
+    }
+
+    /// <summary>
+    /// Fix all the parts words to make sure that the search table is up to date.
+    /// @see https://www.sqlite.org/fts3.html#rebuild
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task MaintenanceFtsOptimizeAsync(CancellationToken token)
+    {
+      // get a factory item
+      var factory = await BeginWrite(token).ConfigureAwait(false);
+      try
+      {
+        const string configMaintenanceOptimize = "maintenance.optimize";
+        var lastOptimize = await Config
+          .GetConfigValueAsync(configMaintenanceOptimize, DateTime.MinValue, factory, token)
+          .ConfigureAwait(false);
+
+        // between 5 and 7 hours to prevent running at the same time as others.
+        var randomHours = (new Random(DateTime.UtcNow.Millisecond)).Next(5, 7);
+        if ((DateTime.UtcNow - lastOptimize).TotalHours > randomHours)
+        {
+          // https://www.sqlite.org/fts3.html#optimize
+          _logger.Information("Maintenance optimizing virtual table");
+          await ExecuteNonQueryAsync($"INSERT INTO {Tables.PartsSearch}({Tables.PartsSearch}) VALUES ('optimize')",
+            factory, token).ConfigureAwait(false);
+
+          // set the update time.
+          await Config.SetConfigValueAsync(configMaintenanceOptimize, DateTime.UtcNow, factory, token)
+            .ConfigureAwait(false);
+        }
+        Commit(factory);
+      }
+      catch
+      {
+        Rollback(factory);
+        // the caller will log
+        throw;
+      }
+    }
+
+    /// <summary>
+    /// Fix all the parts words to make sure that the search table is up to date.
+    /// @see https://www.sqlite.org/lang_vacuum.html
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task MaintenanceVacuumAsync(CancellationToken token)
+    {
+      // get a factory item ... but we do not want a transaction.
+      var factory = await BeginWrite(false, token).ConfigureAwait(false);
+      try
+      {
+        const string configVacuum = "maintenance.vacuum";
+        var lastVacuum = await Config.GetConfigValueAsync(configVacuum, DateTime.MinValue, factory, token)
+          .ConfigureAwait(false);
+
+        // between 24 and 28 hours to prevent running at the same time as others.
+        var randomHours = (new Random(DateTime.UtcNow.Millisecond)).Next(24, 28);
+        if ((DateTime.UtcNow - lastVacuum).TotalHours > randomHours)
+        {
+          // https://www.sqlite.org/lang_vacuum.html
+          _logger.Information("Maintenance vacuum database");
+          await ExecuteNonQueryAsync("VACUUM;",factory, token).ConfigureAwait(false);
+
+          // set the update time.
+          await Config.SetConfigValueAsync(configVacuum, DateTime.UtcNow, factory, token).ConfigureAwait(false);
+        }
+        Commit(factory);
+      }
+      catch
+      {
+        Rollback(factory);
+        // the caller will log
+        throw;
+      }
+    }
+
+    /// <inheritdoc />
+    public async Task MaintenanceAsync(CancellationToken token)
+    {
+      try
+      {
+        // vacuum
+        await MaintenanceVacuumAsync(token).ConfigureAwait(false);
+
+        // fts rebuild
+        await MaintenanceFtsRebuildAsync(token).ConfigureAwait(false);
+
+        // fts optimize
+        await MaintenanceFtsOptimizeAsync(token).ConfigureAwait(false);
+      }
+      catch (OperationCanceledException e)
+      {
+        _logger.Warning("Received cancellation request durring Persister Maintenance.");
+        // is it my token?
+        if (e.CancellationToken != token)
+        {
+          _logger.Exception(e);
+        }
+        throw;
+      }
+      catch (Exception e)
+      {
+        _logger.Exception(e);
+        throw;
+      }
+    }
+    #endregion
   }
 }

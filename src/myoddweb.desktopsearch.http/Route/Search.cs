@@ -14,13 +14,13 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.http.Models;
+using myoddweb.desktopsearch.interfaces.Models;
 using myoddweb.desktopsearch.interfaces.Persisters;
 using Newtonsoft.Json;
 
@@ -32,7 +32,8 @@ namespace myoddweb.desktopsearch.http.Route
     /// This is the search route
     /// The method is 'search' while the value is the query. 
     /// </summary>
-    public Search(IPersister persister, interfaces.Logging.ILogger logger) : base(new[] { "Search" }, Method.Post, persister, logger )
+    public Search(IPersister persister, interfaces.Logging.ILogger logger) : 
+      base(new[] { "Search" }, Method.Post, persister, logger )
     {
     }
 
@@ -64,98 +65,17 @@ namespace myoddweb.desktopsearch.http.Route
       }
     }
 
-    private async Task<List<Word>> GetWords(SearchRequest search, IConnectionFactory connectionFactory, CancellationToken token)
+    private Task<IList<IWord>> GetWords(SearchRequest search, CancellationToken token)
     {
-      var sql = $@"
-      select 
-	      w.word as word,
-	      f.name as name,
-	      fo.path as path 
-      from 
-	      Parts p, 
-	      WordsParts wp, 
-	      Words w,
-	      FilesWords fw, 
-	      Files f, 
-	      Folders fo
-      Where p.part = @search
-        AND wp.partid = p.id
-        AND w.id = wp.wordid
-        AND fw.wordid = w.id
-        AND f.id = fw.fileid
-        AND fo.id = f.folderid
-      LIMIT {search.Count} 
-                      ";
-
-      var words = new List<Word>( search.Count );
-      using (var cmd = connectionFactory.CreateCommand(sql))
-      {
-        var pSearch = cmd.CreateParameter();
-        pSearch.DbType = DbType.String;
-        pSearch.ParameterName = "@search";
-        cmd.Parameters.Add(pSearch);
-        pSearch.Value = search.What;
-        using (var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
-        {
-          var wordPos = reader.GetOrdinal("word");
-          var namePos = reader.GetOrdinal("name");
-          var pathPos = reader.GetOrdinal("path");
-
-          while (reader.Read())
-          {
-            // get out if needed.
-            token.ThrowIfCancellationRequested();
-
-            // add this update
-            var word = (string) reader[wordPos];
-            var name = (string) reader[namePos];
-            var path = (string) reader[pathPos];
-            words.Add(new Word
-            {
-              FullName = System.IO.Path.Combine(path, name),
-              Directory = path,
-              Name = name,
-              Actual = word
-            });
-          }
-        }
-      }
-
-      return words;
+      return Persister.Query.FindAsync(search.What, search.Count, token); 
     }
 
-    private async Task<StatusResponse> GetStatus(ICounts persister, CancellationToken token)
+    private async Task<StatusResponse> GetStatus( CancellationToken token)
     {
-      /*
-      const string sql = @"SELECT  (
-        SELECT COUNT(*)
-        FROM   FileUpdates
-        ) AS PendingUpdates,
-        (
-        SELECT COUNT(*)
-        FROM   Files
-        ) AS Files";
-
-      using (var cmd = connectionFactory.CreateCommand(sql))
-      using( var reader = await connectionFactory.ExecuteReadAsync(cmd, token).ConfigureAwait(false))
-      {
-        if (!reader.Read())
-        {
-          return new StatusResponse
-          {
-            PendingUpdates = 0,
-            Files = 0
-          };
-        }
-
-        // get out if needed.
-        token.ThrowIfCancellationRequested();
-      }
-      */
       return new StatusResponse
       {
-        PendingUpdates = await persister.GetPendingUpdatesCountAsync(token ).ConfigureAwait(false),
-        Files = await persister.GetFilesCountAsync( token).ConfigureAwait(false)
+        PendingUpdates = await Persister.Counts.GetPendingUpdatesCountAsync(token ).ConfigureAwait(false),
+        Files = await Persister.Counts.GetFilesCountAsync( token).ConfigureAwait(false)
       };
     }
 
@@ -177,11 +97,11 @@ namespace myoddweb.desktopsearch.http.Route
       try
       {
         // search the words.
-        var words = await GetWords(search, transaction, token).ConfigureAwait(false);
+        var words = await GetWords(search, token).ConfigureAwait(false);
         log.AppendLine($"  > Got Words              Time Elapsed: {stopwatch.Elapsed:g}");
 
         // get the percent complete
-        var status = await GetStatus(Persister.Counts, token).ConfigureAwait(false);
+        var status = await GetStatus( token).ConfigureAwait(false);
         log.AppendLine($"  > Got Status             Time Elapsed: {stopwatch.Elapsed:g}");
 
         // we are done here.

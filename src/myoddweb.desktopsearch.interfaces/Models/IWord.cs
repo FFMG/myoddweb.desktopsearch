@@ -12,24 +12,28 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using System.Threading;
-using System.Threading.Tasks;
-using myoddweb.desktopsearch.interfaces.Persisters;
-
-namespace myoddweb.desktopsearch.processor
+namespace myoddweb.desktopsearch.interfaces.Models
 {
-  internal interface IProcessor
+  public interface IWord
   {
     /// <summary>
-    /// We are telling the processor to do some work.
+    /// The file name only
     /// </summary>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    Task<long> WorkAsync(CancellationToken token );
+    string Name { get; }
 
     /// <summary>
-    /// Stop all processing and cleanup
+    /// The directory path
     /// </summary>
-    void Stop();
+    string Directory { get;}
+
+    /// <summary>
+    /// The file full name
+    /// </summary>
+    string FullName { get;}
+
+    /// <summary>
+    /// The actual word that was matched.
+    /// </summary>
+    string Actual { get; }
   }
 }

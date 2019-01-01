@@ -32,9 +32,8 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <summary>
     /// The function that will create the connection every time we need one.
     /// </summary>
-    /// <param name="isReadOnly">If we want a readonly factory only.</param>
     /// <returns></returns>
-    public delegate IConnectionFactory CreateFactory( bool isReadOnly );
+    public delegate IConnectionFactory CreateFactory();
 
     /// <summary>
     /// This is the write connection factory
@@ -46,26 +45,23 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Our lock object
     /// </summary>
     private readonly object _lock = new object(); 
-
-    private readonly CreateFactory _createFactory;
     #endregion
 
-    public TransactionsManager(CreateFactory createFactory, IPerformance performance, ILogger logger )
+    public TransactionsManager(IPerformance performance, ILogger logger )
     {
       _counterBegin = new TransactionPerformanceCounter( performance, "Database: Begin", logger );
       _counterCommit = new TransactionPerformanceCounter(performance, "Database: Commit", logger);
       _counterRollback = new TransactionPerformanceCounter(performance, "Database: Rollback", logger);
-
-      _createFactory = createFactory ?? throw new ArgumentNullException(nameof(createFactory));
     }
 
     /// <summary>
     /// Begin a read transaction.
     /// There can be more than one.
     /// </summary>
+    /// <param name="createFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task<IConnectionFactory> BeginRead(CancellationToken token)
+    public Task<IConnectionFactory> BeginRead(CreateFactory createFactory, CancellationToken token)
     {
       // update the counter.
       using (_counterBegin.Start())
@@ -74,7 +70,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         token.ThrowIfCancellationRequested();
 
         // create the transaction
-        var trans = _createFactory(true);
+        var trans = createFactory();
 
         // return our created factory.
         return Task.FromResult(trans);
@@ -85,9 +81,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// Begin a write transaction.
     /// There can only be one
     /// </summary>
+    /// <param name="createFactory"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<IConnectionFactory> BeginWrite( CancellationToken token )
+    public async Task<IConnectionFactory> BeginWrite(CreateFactory createFactory, CancellationToken token )
     {
       // update the counter.
       using (_counterBegin.Start())
@@ -119,7 +116,7 @@ namespace myoddweb.desktopsearch.service.Persisters
             // create the connection
             // we were able to get a null transaction
             // ... and we are inside the lock
-            _writeFactory = _createFactory(false);
+            _writeFactory = createFactory();
             return _writeFactory;
           }
           finally

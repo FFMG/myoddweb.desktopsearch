@@ -18,7 +18,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper;
 using myoddweb.desktopsearch.interfaces.Logging;
-using myoddweb.desktopsearch.interfaces.Persisters;
 
 namespace myoddweb.desktopsearch.processor
 {
@@ -29,11 +28,6 @@ namespace myoddweb.desktopsearch.processor
     /// The processor we are currently running.
     /// </summary>
     private readonly IList<IProcessor> _processors;
-
-    /// <summary>
-    /// The persister.
-    /// </summary>
-    private readonly IPersister _persister;
 
     /// <summary>
     /// The timer to start the next round.
@@ -58,7 +52,7 @@ namespace myoddweb.desktopsearch.processor
     private readonly ILogger _logger;
     #endregion
 
-    public ProcessorTimer( IPersister persister, IList<IProcessor> processors, ILogger logger, int eventsProcessorMs )
+    public ProcessorTimer( IList<IProcessor> processors, ILogger logger, int eventsProcessorMs )
     {
       EventsProcessorMs = eventsProcessorMs;
       if (EventsProcessorMs <= 0)
@@ -71,8 +65,6 @@ namespace myoddweb.desktopsearch.processor
         throw new ArgumentException("You must have at least one item to process!");
       }
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-      _persister = persister ?? throw new ArgumentNullException(nameof(persister));
     }
 
     #region Events Process Timer
@@ -94,33 +86,25 @@ namespace myoddweb.desktopsearch.processor
     /// </summary>
     private async Task EventsProcessorAsync()
     {
-      // get a factory item
-      var factory = await _persister.BeginWrite(_token).ConfigureAwait(false);
-
       // create all the processor tasks
       var tasks = new List<Task<long>>();
       foreach (var processor in _processors)
       {
-        tasks.Add( processor.WorkAsync(factory, _token) );
+        tasks.Add( processor.WorkAsync( _token) );
       }
       
       try
       {
         // wait for everything
         await Wait.WhenAll(tasks, _logger, _token).ConfigureAwait(false);
-
-        // and complete the work.
-        _persister.Commit(factory);
       }
       catch (OperationCanceledException)
       {
-        factory.Rollback();
         _logger.Warning("Received cancellation request - Processor timer.");
         throw;
       }
       catch (Exception e)
       {
-        factory.Rollback();
         _logger.Exception(e);
       }
 

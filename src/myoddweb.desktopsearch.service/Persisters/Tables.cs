@@ -24,6 +24,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     public const string Words = "Words";
     public const string FilesWords = "FilesWords";
     public const string Parts = "Parts";
+    public const string PartsSearch = "PartsSearch";
     public const string WordsParts = "WordsParts";
     public const string Counts = "Counts";
   }

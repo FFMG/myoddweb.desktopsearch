@@ -125,28 +125,16 @@ namespace myoddweb.desktopsearch.helper.IO
       var actualPosition = 0;
 
       // get the max posible array length
-      var maxLength = _wordLength * (_wordLength + 1) / 2;
-
-      // then if we have a max word length, then we can drop the value further
-      if (MaxPartLength > 0 && _wordLength > MaxPartLength)
-      {
-        var excludedLength = _wordLength - MaxPartLength;
-        maxLength -= excludedLength * (excludedLength + 1) / 2;
-      }
-
-      var data = new string[maxLength];
+      var data = new string[_wordLength];
 
       for (var start = 0; start < _wordLength; ++start)
       {
-        for( var length = 1; length  <= _wordLength - start; length++ )
+        var part = _word.Substring(start);
+        if (MaxPartLength > 0 && part.Length > MaxPartLength)
         {
-          // check if we have reached the max length allowed. 
-          if (MaxPartLength != -1 && length > MaxPartLength)
-          {
-            break;
-          }
-          data[actualPosition++] = _word.Substring(start, length );
+          part = part.Substring(0, MaxPartLength);
         }
+        data[actualPosition++] = part;
       }
       _data = data.Where( d => d != null ).Distinct().ToArray();
     }

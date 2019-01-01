@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.interfaces.Configs;
@@ -49,31 +50,43 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<long> WorkAsync(IConnectionFactory connectionFactory, CancellationToken token)
+    public async Task<long> WorkAsync(CancellationToken token)
     {
+      // check if we are active at the current time.
+      if (!_active.IsActive())
+      {
+        // we are not active ... so we have nothing to do.
+        _logger.Verbose("Maintenance Process ignored, out of active hours.");
+        return 0;
+      }
+
+      var stopwatch = new Stopwatch();
+      stopwatch.Start();
+      var success = false;
+
       try
       {
-        // check if we are active at the current time.
-        if (!_active.IsActive())
-        {
-          // we are not active ... so we have nothing to do.
-          _logger.Verbose("Maintenance Process ignored, out of active hours.");
-          return 0;
-        }
+        _logger.Information("Started Maintenance Process.");
+        await _persister.MaintenanceAsync(token).ConfigureAwait(false);
 
-        _logger.Verbose("Started Maintenance Process.");
-        await _persister.MaintenanceAsync(connectionFactory, token).ConfigureAwait(false);
-        _logger.Verbose("Complete Maintenance Process.");
+        // it worked
+        success = true;
       }
       catch (OperationCanceledException)
       {
         // nothing to log
         throw;
       }
-      catch (Exception)
+      catch (Exception e)
       {
-        _logger.Verbose("Error while processing Maintenance.");
+        _logger.Exception("Error while processing Maintenance.", e);
         throw;
+      }
+      finally
+      {
+        _logger.Information(success
+          ? $"Complete Maintenance Process (Time Elapsed: {stopwatch.Elapsed:g})."
+          : $"Complete Maintenance Process with errors (Time Elapsed: {stopwatch.Elapsed:g}).");
       }
       return 0;
     }

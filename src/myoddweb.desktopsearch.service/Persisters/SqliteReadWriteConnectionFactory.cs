@@ -44,9 +44,14 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     /// <inheritdoc />
     public override bool IsReadOnly => false;
+
+    /// <summary>
+    /// If false, we will _not_ create a transaction
+    /// </summary>
+    private readonly bool _createTransaction;
     #endregion
 
-    public SqliteReadWriteConnectionFactory(ConfigSqliteDatabase config) :
+    public SqliteReadWriteConnectionFactory(bool createTransaction, ConfigSqliteDatabase config) :
       base( CreateConnection( config ) )
     {
       // save the config value
@@ -56,6 +61,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
       _cacheSize = config.CacheSize;
       _autoCheckpoint = config.AutoCheckpoint;
+      _createTransaction = createTransaction;
     }
 
     /// <summary>
@@ -145,7 +151,10 @@ namespace myoddweb.desktopsearch.service.Persisters
     {
       if (_sqLiteTransaction == null)
       {
-        _sqLiteTransaction = SqLiteConnection.BeginTransaction();
+        if (_createTransaction)
+        {
+          _sqLiteTransaction = SqLiteConnection.BeginTransaction();
+        }
       }
     }
 

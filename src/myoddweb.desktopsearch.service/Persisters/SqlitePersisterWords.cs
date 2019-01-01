@@ -37,6 +37,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     private IWordsHelper _wordsHelper;
     private IPartsHelper _partsHelper;
+    private IPartsSearchHelper _partsSearchHelper;
 
     /// <summary>
     /// The counter for adding new words
@@ -128,10 +129,12 @@ namespace myoddweb.desktopsearch.service.Persisters
       Contract.Assert(Factory == null );
       Contract.Assert(_wordsHelper == null);
       Contract.Assert(_partsHelper == null);
+      Contract.Assert(_partsSearchHelper == null );
 
       Factory = factory;
       _wordsHelper = new WordsHelper(factory, Tables.Words);
       _partsHelper = new PartsHelper(factory, Tables.Parts );
+      _partsSearchHelper = new PartsSearchHelper( factory, Tables.PartsSearch );
     }
 
     /// <inheritdoc />
@@ -143,10 +146,12 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       _partsHelper?.Dispose();
+      _partsSearchHelper?.Dispose();
       _wordsHelper?.Dispose();
 
       _partsHelper = null;
       _wordsHelper = null;
+      _partsSearchHelper = null;
 
       Factory = null;
     }
@@ -279,11 +284,15 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
 
       Contract.Assert( _partsHelper != null );
+      Contract.Assert( _partsSearchHelper != null);
 
       // try and insert the values and get the ids.
       // the return values are string+id
       // if the id is -1, then we had an error
       var partValuesAndIds = await _partsHelper.InsertAndGetAsync(parts.ToList(), token).ConfigureAwait(false);
+
+      // then add it to the helpers.
+      await _partsSearchHelper.InsertAsync(partValuesAndIds.Where(v => v.Id != -1).ToList(), token).ConfigureAwait(false);
 
       // get all the non -1 ids
       var partIds = partValuesAndIds.Where( v => v.Id != -1 ).Select(p => p.Id).ToList();

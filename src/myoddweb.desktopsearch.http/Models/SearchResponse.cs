@@ -13,6 +13,8 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Collections.Generic;
+using myoddweb.desktopsearch.helper.Models;
+using myoddweb.desktopsearch.interfaces.Models;
 
 namespace myoddweb.desktopsearch.http.Models
 {
@@ -21,7 +23,7 @@ namespace myoddweb.desktopsearch.http.Models
     /// <summary>
     /// All the words we found.
     /// </summary>
-    public List<Word> Words { get; set; }
+    public IList<IWord> Words { get; set; }
 
     /// <summary>
     /// How long it took to get the insformation.

@@ -60,6 +60,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
     #region Public properties
     /// <inheritdoc />
+    public IQuery Query { get; }
+
+    /// <inheritdoc />
     public IConfig Config { get; }
 
     /// <inheritdoc />
@@ -116,6 +119,9 @@ namespace myoddweb.desktopsearch.service.Persisters
 
       // the parts
       Parts = new SqlitePersisterParts( maxNumCharactersPerParts );
+
+      // the query
+      Query = new SqlitePersisterQuery(maxNumCharactersPerParts, logger);
     }
 
     /// <inheritdoc />
@@ -143,7 +149,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       _connectionReadOnly.Open();
 
       // create the connection spinner and pass the function to create transactions.
-      _transactionSpinner = new TransactionsManager(ConnectionFactory, _performance, _logger);
+      _transactionSpinner = new TransactionsManager( _performance, _logger);
 
       // initiialise everything
       Initialise(token).GetAwaiter().GetResult();
@@ -176,22 +182,6 @@ namespace myoddweb.desktopsearch.service.Persisters
       }
     }
 
-    #region TransactionSpiner functions
-    /// <summary>
-    /// Create the connection factory
-    /// </summary>
-    /// <param name="isReadOnly"></param>
-    /// <returns></returns>
-    private IConnectionFactory ConnectionFactory( bool isReadOnly )
-    {
-      if (isReadOnly)
-      {
-        return new SqliteReadOnlyConnectionFactory( _connectionReadOnly );
-      } 
-      return new SqliteReadWriteConnectionFactory( _config );
-    }
-    #endregion
-
     #region Private
     /// <summary>
     /// Prepare the transactions.
@@ -204,6 +194,7 @@ namespace myoddweb.desktopsearch.service.Persisters
       WordsParts.Prepare( this, factory );
       FilesWords.Prepare( this, factory );
       Folders.Prepare( this, factory );
+      Query.Prepare(this, factory);
     }
 
     /// <summary>
@@ -218,35 +209,11 @@ namespace myoddweb.desktopsearch.service.Persisters
       WordsParts.Complete(factory, success);
       FilesWords.Complete(factory, success);
       Folders.Complete(factory, success);
+      Query.Complete( factory, success );
     }
     #endregion
 
     #region IPersister functions
-
-    /// <inheritdoc />
-    public Task MaintenanceAsync(IConnectionFactory connectionFactory, CancellationToken token)
-    {
-      try
-      {
-        return Task.FromResult<object>(null);
-      }
-      catch (OperationCanceledException e)
-      {
-        _logger.Warning("Received cancellation request durring Persister Maintenance.");
-        // is it my token?
-        if (e.CancellationToken != token)
-        {
-          _logger.Exception(e);
-        }
-        throw;
-      }
-      catch (Exception e)
-      {
-        _logger.Exception(e);
-        throw;
-      }
-    }
-
     /// <inheritdoc/>
     public async Task<IConnectionFactory> BeginRead(CancellationToken token)
     {
@@ -257,7 +224,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        var factory = await _transactionSpinner.BeginRead(token).ConfigureAwait(false);
+        var factory = await _transactionSpinner.BeginRead( ()=> new SqliteReadOnlyConnectionFactory(_connectionReadOnly), token).ConfigureAwait(false);
         PrepareTransaction(factory);
         return factory;
       }
@@ -278,16 +245,22 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <inheritdoc/>
-    public async Task<IConnectionFactory> BeginWrite(CancellationToken token)
+    public Task<IConnectionFactory> BeginWrite(CancellationToken token)
+    {
+      return BeginWrite(true, token);
+    }
+
+    private async Task<IConnectionFactory> BeginWrite(bool createTransaction, CancellationToken token)
     {
       // set the value
       try
+
       {
         if (null == _transactionSpinner)
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        var factory = await _transactionSpinner.BeginWrite(token).ConfigureAwait(false);
+        var factory = await _transactionSpinner.BeginWrite(() => new SqliteReadWriteConnectionFactory(createTransaction, _config), token).ConfigureAwait(false);
         PrepareTransaction( factory );
         return factory;
       }
@@ -356,18 +329,20 @@ namespace myoddweb.desktopsearch.service.Persisters
     #endregion
 
     #region Commands
+
     /// <summary>
     /// </summary>
     /// <param name="sql"></param>
     /// <param name="connectionFactory"></param>
+    /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> ExecuteNonQueryAsync(string sql, IConnectionFactory connectionFactory )
+    private async Task<bool> ExecuteNonQueryAsync(string sql, IConnectionFactory connectionFactory, CancellationToken token = default(CancellationToken) )
     {
       try
       {
         using (var command = connectionFactory.CreateCommand(sql))
         {
-          await connectionFactory.ExecuteWriteAsync(command, CancellationToken.None).ConfigureAwait(false);
+          await connectionFactory.ExecuteWriteAsync(command, token).ConfigureAwait(false);
         }
         return true;
       }

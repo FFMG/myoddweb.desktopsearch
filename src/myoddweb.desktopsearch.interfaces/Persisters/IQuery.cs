@@ -12,24 +12,22 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.interfaces.Persisters;
+using myoddweb.desktopsearch.interfaces.Models;
 
-namespace myoddweb.desktopsearch.processor
+namespace myoddweb.desktopsearch.interfaces.Persisters
 {
-  internal interface IProcessor
+  public interface IQuery : ITransaction
   {
     /// <summary>
-    /// We are telling the processor to do some work.
+    /// Look for a certain word in the database
     /// </summary>
+    /// <param name="what">The word we are looking for.</param>
+    /// <param name="count">How many do we want?</param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<long> WorkAsync(CancellationToken token );
-
-    /// <summary>
-    /// Stop all processing and cleanup
-    /// </summary>
-    void Stop();
+    Task<IList<IWord>> FindAsync( string what, int count, CancellationToken token);
   }
 }

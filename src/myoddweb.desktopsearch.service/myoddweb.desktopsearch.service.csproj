@@ -39,7 +39,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>true</Prefer32Bit>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -114,6 +114,7 @@
     <Compile Include="Persisters\SqlitePersisterCounts.cs" />
     <Compile Include="Persisters\SqlitePersisterFilesWords.cs" />
     <Compile Include="Persisters\SqlitePersisterParts.cs" />
+    <Compile Include="Persisters\SqlitePersisterQuery.cs" />
     <Compile Include="Persisters\SqlitePersisterWords.cs" />
     <Compile Include="Persisters\SqlitePersisterFiles.cs" />
     <Compile Include="Persisters\SqlitePersisterFileUpdates.cs" />
