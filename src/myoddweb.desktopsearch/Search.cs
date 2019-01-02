@@ -23,7 +23,7 @@ namespace myoddweb.desktopsearch
   public partial class Search : Form
   {
     private const int ColumnName = 0;
-    private const int ColumnPath = 1;
+    private const int ColumnFullName = 1;
     private const int ColumnActual = 2;
 
     private readonly string _url;
@@ -67,8 +67,8 @@ namespace myoddweb.desktopsearch
       searchList.Height = height;
 
       searchList.Columns[ColumnName].Width = (int) (width * .25);
-      searchList.Columns[ColumnPath].Width = (int)(width * .50) - Margin.Left;
-      searchList.Columns[ColumnActual].Width = (int)(width * .25); 
+      searchList.Columns[ColumnFullName].Width = (int)(width * .60) - Margin.Left;
+      searchList.Columns[ColumnActual].Width = (int)(width * .15); 
     }
 
     private void OnTextChanged(object sender, EventArgs e)
@@ -83,9 +83,14 @@ namespace myoddweb.desktopsearch
 
       try
       {
+        //  build the request
         var request = new SearchRequest( text, 100 );
         var content = JsonConvert.SerializeObject(request);
+
+        // query the service
         var response = Http.PostAsync(_url, content).GetAwaiter().GetResult();
+
+        //  output the result.
         var searchResponse = JsonConvert.DeserializeObject<SearchResponse>(response);
         SetSearchResponse(searchResponse);
       }
@@ -95,6 +100,10 @@ namespace myoddweb.desktopsearch
       }
     }
 
+    /// <summary>
+    /// Output the list view
+    /// </summary>
+    /// <param name="searchResponse"></param>
     private void SetSearchResponse(ISearchResponse searchResponse)
     {
       // empty the list.
@@ -106,7 +115,7 @@ namespace myoddweb.desktopsearch
 
       foreach (var word in searchResponse.Words)
       {
-        string[] row = { word.Directory, word.Actual};
+        string[] row = { word.FullName, word.Actual};
         searchList.Items.Add(word.Name).SubItems.AddRange( row );
       }
     }
