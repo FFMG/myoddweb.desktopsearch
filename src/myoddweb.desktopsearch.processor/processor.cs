@@ -96,7 +96,7 @@ namespace myoddweb.desktopsearch.processor
       _parserTimer = new ProcessorTimer(
         new List<IProcessor>
         {
-          new Parser( parserCounter, parser)
+          new Parser( parserCounter, parser, logger )
         },
         _logger, (int)TimeSpan.FromMinutes(processorsConfig.ParserProcessorMinutes).TotalMilliseconds);
 
