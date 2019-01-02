@@ -87,8 +87,7 @@ namespace myoddweb.desktopsearch.parser
         return;
       }
 
-      var commited = false;
-      var factory = await _persister.BeginWrite( token).ConfigureAwait(false);
+      var factory = await _persister.BeginWrite(token).ConfigureAwait(false);
       try
       {
         const string configParse = "maintenance.parse";
@@ -98,27 +97,47 @@ namespace myoddweb.desktopsearch.parser
         var randomHours = (new Random(DateTime.UtcNow.Millisecond)).Next(3, 5);
         if ((DateTime.UtcNow - lastParse).TotalHours > randomHours)
         {
+          //
+          //  Do maintenance work
+          //
+          _logger.Information("Maintenance files/folders parser");
+
           // save the date and commit ... because the parser needs its own factory.
           await _persister.Config.SetConfigValueAsync(configParse, DateTime.UtcNow, factory, token).ConfigureAwait(false);
-          _persister.Commit(factory);
-          commited = true;
-
-          // we can re-parse everthing
-          await ParseAllDirectoriesAsync(token).ConfigureAwait(false);
         }
-        else
-        {
-          _persister.Commit(factory);
-          commited = true;
-        }
+        _persister.Commit(factory);
       }
       catch (Exception e)
       {
-        if (!commited)
-        {
-          _persister.Commit(factory);
-        }
+        _persister.Rollback(factory);
+        _logger.Exception("There was an exception re-parsing the directories.", e);
+        throw;
+      }
+    }
+
+    /// <inheritdoc />
+    public async Task WorkAsync(CancellationToken token)
+    {
+      // are we still running the start?
+      if (!_runningTask?.IsCompleted ?? true)
+      {
+        return;
+      }
+
+      try
+      {
+        // we can re-parse everthing
+        await ParseAllDirectoriesAsync(token).ConfigureAwait(false);
+      }
+      catch (OperationCanceledException )
+      {
+        _logger.Warning("Files/Folder parser processor: Received cancellation request - Work");
+        throw;
+      }
+      catch (Exception e)
+      {
         _logger.Exception(  "There was an exception re-parsing the directories.", e );
+        throw;
       }
     }
 

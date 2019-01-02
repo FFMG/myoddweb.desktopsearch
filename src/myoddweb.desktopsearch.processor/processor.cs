@@ -47,6 +47,11 @@ namespace myoddweb.desktopsearch.processor
     /// The maintenance time
     /// </summary>
     private readonly ProcessorTimer _maintenanceTimer;
+
+    /// <summary>
+    /// The files/folder timer.
+    /// </summary>
+    private readonly ProcessorTimer _parserTimer;
     #endregion
 
     public Processor(
@@ -65,11 +70,13 @@ namespace myoddweb.desktopsearch.processor
 
       const string directoryCounterName = "Processor: Average time processing Directories";
       const string fileCounterName = "Processor: Average time processing Files";
+      const string parserCounterName = "Processor: Average time parsing files/folders";
 
       // Create the various processors, they will not start doing anything just yet
       // or at least, they shouldn't
       var directoriesCounter = new ProcessorPerformanceCounter(performance, directoryCounterName, logger);
       var filesCounter = new ProcessorPerformanceCounter(performance, fileCounterName, logger);
+      var parserCounter = new ProcessorPerformanceCounter(performance, parserCounterName, logger);
 
       _eventTimer = new ProcessorTimer(
         new List<IProcessor>
@@ -85,6 +92,14 @@ namespace myoddweb.desktopsearch.processor
           new Maintenance( maintenanceConfig.Active, parser, persister, logger)
         },
         _logger, (int)TimeSpan.FromMinutes(processorsConfig.MaintenanceProcessorMinutes).TotalMilliseconds );
+
+      _parserTimer = new ProcessorTimer(
+        new List<IProcessor>
+        {
+          new Parser( parserCounter, parser)
+        },
+        _logger, (int)TimeSpan.FromMinutes(processorsConfig.ParserProcessorMinutes).TotalMilliseconds);
+
     }
 
     #region Start/Stop functions
@@ -99,6 +114,7 @@ namespace myoddweb.desktopsearch.processor
       // start the timers
       _eventTimer.Start( token );
       _maintenanceTimer.Start( token );
+      _parserTimer.Start(token);
 
       // register the token cancellation
       _cancellationTokenRegistration = token.Register(TokenCancellation);
@@ -115,6 +131,7 @@ namespace myoddweb.desktopsearch.processor
       // and we can stop the timers.
       _eventTimer.Stop();
       _maintenanceTimer.Stop();
+      _parserTimer.Stop();
     }
 
     /// <summary>

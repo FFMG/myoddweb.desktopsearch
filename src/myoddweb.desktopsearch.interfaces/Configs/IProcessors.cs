@@ -29,6 +29,11 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     int MaintenanceProcessorMinutes { get; }
 
     /// <summary>
+    /// How often we want to run the parser.
+    /// </summary>
+    int ParserProcessorMinutes { get; }
+
+    /// <summary>
     /// The number of files we want to do per processing events.
     /// Don't make that number too small as it will take forever to parse
     /// But also not too big as it blocks the database when/if there is work to do.

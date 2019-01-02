@@ -33,10 +33,11 @@
     }
   },
   "Processors": {
-    "UpdatesFilesPerEvent" : 50,
+    "UpdatesFilesPerEvent": 50,
     "UpdatesFolderPerEvent": 50,
     "EventsProcessorMs": 200,
     "MaintenanceProcessorMinutes": 30,
+    "ParserProcessorMinutes": 180,
     "IgnoreFiles": [
       {
         "Pattern": "*.*",

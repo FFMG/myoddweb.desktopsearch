@@ -29,9 +29,15 @@ namespace myoddweb.desktopsearch.service.Configs
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int EventsProcessorMs { get; protected set; }
 
+    /// <inheritdoc />
     [DefaultValue(30)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
     public int MaintenanceProcessorMinutes { get; protected set; }
+
+    /// <inheritdoc />
+    [DefaultValue(180)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public int ParserProcessorMinutes { get; protected set; }
 
     /// <inheritdoc />
     [DefaultValue(50)]
@@ -73,6 +79,11 @@ namespace myoddweb.desktopsearch.service.Configs
         throw new ArgumentException($"The 'MaintenanceProcessorMs'({MaintenanceProcessorMinutes}) cannot be -ve or zero");
       }
 
+      if (ParserProcessorMinutes <= 0)
+      {
+        throw new ArgumentException($"The 'ParserProcessorMinutes'({ParserProcessorMinutes}) cannot be -ve or zero");
+      }
+      
       if (null == IgnoreFiles)
       {
         IgnoreFiles = new List<IIgnoreFile>

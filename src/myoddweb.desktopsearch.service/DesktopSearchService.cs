@@ -385,6 +385,7 @@ namespace myoddweb.desktopsearch.service
       sb.AppendLine($"  Update folders per events       : {config.Processors.UpdatesFolderPerEvent}");
       sb.AppendLine($"  Events Processor Ms             : {config.Processors.EventsProcessorMs} Ms");
       sb.AppendLine($"  Maintenance Processor Minutes   : {config.Processors.MaintenanceProcessorMinutes} Minutes");
+      sb.AppendLine($"  Parser Processor Minutes        : {config.Processors.ParserProcessorMinutes} Minutes"); 
       sb.AppendLine( "  Ignore Files");
       foreach (var ignorefile in config.Processors.IgnoreFiles)
       {

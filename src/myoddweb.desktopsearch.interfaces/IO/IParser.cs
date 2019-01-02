@@ -35,5 +35,12 @@ namespace myoddweb.desktopsearch.interfaces.IO
     /// <param name="token"></param>
     /// <returns></returns>
     Task MaintenanceAsync(CancellationToken token);
+
+    /// <summary>
+    /// Let the parser process maintenance operations.
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task WorkAsync(CancellationToken token);
   }
 }
