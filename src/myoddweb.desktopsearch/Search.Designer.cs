@@ -38,6 +38,7 @@
       this.searchBox.Name = "searchBox";
       this.searchBox.Size = new System.Drawing.Size(776, 20);
       this.searchBox.TabIndex = 0;
+      this.searchBox.TextChanged += new System.EventHandler(this.OnTextChanged);
       // 
       // searchList
       // 
@@ -46,6 +47,7 @@
       this.searchList.Size = new System.Drawing.Size(776, 220);
       this.searchList.TabIndex = 1;
       this.searchList.UseCompatibleStateImageBehavior = false;
+      this.searchList.View = System.Windows.Forms.View.Details;
       // 
       // Search
       // 
