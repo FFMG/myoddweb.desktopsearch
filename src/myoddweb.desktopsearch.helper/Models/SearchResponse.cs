@@ -13,20 +13,42 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System.Collections.Generic;
-using myoddweb.desktopsearch.interfaces.Enums;
 using myoddweb.desktopsearch.interfaces.Models;
+using Newtonsoft.Json;
 
-namespace myoddweb.desktopsearch.http.Models
+namespace myoddweb.desktopsearch.helper.Models
 {
-  internal class SearchResponse : ISearchResponse
+  public class SearchResponse : ISearchResponse
   {
     /// <inheritdoc />
-    public IList<IWord> Words { get; set; }
+    public IList<IWord> Words { get; protected set; }
 
     /// <inheritdoc />
-    public long ElapsedMilliseconds { get; set; }
+    public long ElapsedMilliseconds { get; protected set; }
 
     /// <inheritdoc />
-    public IStatusResponse Status { get; set; }
+    public IStatusResponse Status { get; protected set; }
+
+    [JsonConstructor]
+    protected SearchResponse(IList<Word> words, long elapsedMilliseconds, StatusResponse status)
+    {
+      Words = new List<IWord>(words);
+      ElapsedMilliseconds = elapsedMilliseconds;
+      Status = status;
+    }
+
+    public SearchResponse(IList<IWord> words, long elapsedMilliseconds, IStatusResponse status)
+    {
+      Words = words;
+      ElapsedMilliseconds = elapsedMilliseconds;
+      Status = status;
+    }
+
+    public SearchResponse()
+    {
+      Words = null;
+      ElapsedMilliseconds = 0;
+      Status = null;
+    }
   }
 }

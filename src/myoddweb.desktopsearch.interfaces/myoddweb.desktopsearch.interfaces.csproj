@@ -62,6 +62,7 @@
     <Compile Include="IO\IWord.cs" />
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Enums\LogLevel.cs" />
+    <Compile Include="Models\ISearchRequest.cs" />
     <Compile Include="Models\ISearchResponse.cs" />
     <Compile Include="Models\IStatusResponse.cs" />
     <Compile Include="Models\IWord.cs" />

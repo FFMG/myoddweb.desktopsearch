@@ -30,6 +30,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.12.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -47,6 +50,9 @@
     <Compile Include="IO\InternalAsyncTimer.cs" />
     <Compile Include="Lock\Key.cs" />
     <Compile Include="Lock\Lock.cs" />
+    <Compile Include="Models\SearchRequest.cs" />
+    <Compile Include="Models\SearchResponse.cs" />
+    <Compile Include="Models\StatusResponse.cs" />
     <Compile Include="Models\Word.cs" />
     <Compile Include="Persisters\CountsHelper.cs" />
     <Compile Include="Persisters\FileHelper.cs" />
@@ -86,6 +92,9 @@
       <Project>{B1B3597E-D169-47A0-8CA8-FD543EF817D9}</Project>
       <Name>myoddweb.desktopsearch.interfaces</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

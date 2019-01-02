@@ -13,7 +13,10 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
+using myoddweb.desktopsearch.helper.Models;
+using Newtonsoft.Json;
 
 namespace myoddweb.desktopsearch
 {
@@ -31,8 +34,10 @@ namespace myoddweb.desktopsearch
       // and resize it all.
       OnResize();
 
-      const string content = "{ what: \"blah\", count: 10 }";
-      var result = Http.PostAsync(_url, content).GetAwaiter().GetResult();
+      var request = new SearchRequest("Hello", 10);
+      var content = JsonConvert.SerializeObject(request);
+      var response = Http.PostAsync(_url, content).GetAwaiter().GetResult();
+      var searchResponse = JsonConvert.DeserializeObject<SearchResponse>(response);
     }
 
     private void OnSizeChanged(object sender, EventArgs e)

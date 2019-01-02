@@ -19,8 +19,7 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.http.Models;
-using myoddweb.desktopsearch.interfaces.Enums;
+using myoddweb.desktopsearch.helper.Models;
 using myoddweb.desktopsearch.interfaces.Models;
 using myoddweb.desktopsearch.interfaces.Persisters;
 using Newtonsoft.Json;
@@ -115,12 +114,9 @@ namespace myoddweb.desktopsearch.http.Route
         Logger.Information( log.ToString());
 
         // we can now build the response model.
-        return new SearchResponse
-        {
-          Words = words,
-          ElapsedMilliseconds = stopwatch.ElapsedMilliseconds,
-          Status = status
-        };
+        return new SearchResponse(words,
+          stopwatch.ElapsedMilliseconds,
+          status );
       }
       catch (Exception e)
       {

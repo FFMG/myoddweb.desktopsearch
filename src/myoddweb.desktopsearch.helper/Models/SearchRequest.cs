@@ -13,36 +13,35 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Runtime.Serialization;
-using Newtonsoft.Json;
+using myoddweb.desktopsearch.interfaces.Models;
 
-namespace myoddweb.desktopsearch.http.Models
+namespace myoddweb.desktopsearch.helper.Models
 {
-  internal class SearchRequest
+  public class SearchRequest : ISearchRequest
   {
     /// <summary>
     /// The string we are searching for.
     /// </summary>
-    [JsonProperty(Required = Required.Always)]
     public string What { get; set; }
 
     /// <summary>
     /// The maximun number of items we want to get
     /// </summary>
-    [JsonProperty(Required = Required.Always)]
     public int Count { get; set; }
 
     /// <summary>
     /// Validate that the values given are valid.
     /// </summary>
-    /// <param name="context"></param>
-    [OnDeserialized]
-    internal void OnDeserialized(StreamingContext context)
+    /// <param name="what"></param>
+    /// <param name="count"></param>
+    public SearchRequest(string what, int count )
     {
-      if (Count <= 0)
+      if (count <= 0)
       {
         throw new ArgumentException( $"The number of items to return cannot be zero or -ve ({Count})");
       }
+      Count = count;
+      What = what ?? throw new ArgumentNullException(nameof(what));
     }
   }
 }
