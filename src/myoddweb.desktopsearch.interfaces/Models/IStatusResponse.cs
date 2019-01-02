@@ -12,16 +12,19 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-using myoddweb.desktopsearch.interfaces.Models;
 
-namespace myoddweb.desktopsearch.http.Models
+namespace myoddweb.desktopsearch.interfaces.Models
 {
-  public class StatusResponse : IStatusResponse
+  public interface IStatusResponse
   {
-    /// <inheritdoc />
-    public long PendingUpdates { get; set; }
+    /// <summary>
+    /// The number of files we are still processing
+    /// </summary>
+    long PendingUpdates { get; }
 
-    /// <inheritdoc />
-    public long Files { get; set; }
+    /// <summary>
+    /// The number of files on record.
+    /// </summary>
+    long Files { get; }
   }
 }

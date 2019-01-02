@@ -20,6 +20,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using myoddweb.desktopsearch.http.Models;
+using myoddweb.desktopsearch.interfaces.Enums;
 using myoddweb.desktopsearch.interfaces.Models;
 using myoddweb.desktopsearch.interfaces.Persisters;
 using Newtonsoft.Json;
@@ -70,7 +71,7 @@ namespace myoddweb.desktopsearch.http.Route
       return Persister.Query.FindAsync(search.What, search.Count, token); 
     }
 
-    private async Task<StatusResponse> GetStatus( CancellationToken token)
+    private async Task<IStatusResponse> GetStatus( CancellationToken token)
     {
       return new StatusResponse
       {
@@ -84,7 +85,7 @@ namespace myoddweb.desktopsearch.http.Route
     /// </summary>
     /// <param name="search"></param>
     /// <returns></returns>
-    private async Task<SearchResponse> BuildResponse(SearchRequest search)
+    private async Task<ISearchResponse> BuildResponse(SearchRequest search)
     {
       // we want the stopwatch to include the getting of the transaction as well.
       var stopwatch = new Stopwatch();

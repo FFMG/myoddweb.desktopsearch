@@ -62,6 +62,8 @@
     <Compile Include="IO\IWord.cs" />
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Enums\LogLevel.cs" />
+    <Compile Include="Models\ISearchResponse.cs" />
+    <Compile Include="Models\IStatusResponse.cs" />
     <Compile Include="Models\IWord.cs" />
     <Compile Include="Persisters\IConnectionFactory.cs" />
     <Compile Include="Persisters\ICountsHelper.cs" />
