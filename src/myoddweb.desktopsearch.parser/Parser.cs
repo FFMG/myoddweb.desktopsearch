@@ -87,8 +87,39 @@ namespace myoddweb.desktopsearch.parser
         return;
       }
 
-      // we can re-parse everthing
-      await ParseAllDirectoriesAsync(token).ConfigureAwait(false);
+      var commited = false;
+      var factory = await _persister.BeginWrite( token).ConfigureAwait(false);
+      try
+      {
+        const string configParse = "maintenance.parse";
+        var lastParse = await _persister.Config.GetConfigValueAsync(configParse, DateTime.MinValue, factory, token).ConfigureAwait(false);
+
+        // between 3 and 5 hours to prevent running at the same time as others.
+        var randomHours = (new Random(DateTime.UtcNow.Millisecond)).Next(3, 5);
+        if ((DateTime.UtcNow - lastParse).TotalHours > randomHours)
+        {
+          // save the date and commit ... because the parser needs its own factory.
+          await _persister.Config.SetConfigValueAsync(configParse, DateTime.UtcNow, factory, token).ConfigureAwait(false);
+          _persister.Commit(factory);
+          commited = true;
+
+          // we can re-parse everthing
+          await ParseAllDirectoriesAsync(token).ConfigureAwait(false);
+        }
+        else
+        {
+          _persister.Commit(factory);
+          commited = true;
+        }
+      }
+      catch (Exception e)
+      {
+        if (!commited)
+        {
+          _persister.Commit(factory);
+        }
+        _logger.Exception(  "There was an exception re-parsing the directories.", e );
+      }
     }
 
     /// <summary>
