@@ -1,0 +1,5 @@
+{
+    "Url" : "http://localhost/",
+    "Port" : 9501,
+    "MinimumSearchLength" : 5
+}

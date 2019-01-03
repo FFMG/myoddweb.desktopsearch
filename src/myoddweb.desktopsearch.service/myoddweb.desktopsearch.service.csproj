@@ -83,7 +83,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ArgumentsParser.cs" />
     <Compile Include="Configs\Config.cs" />
     <Compile Include="Configs\ConfigActive.cs" />
     <Compile Include="Configs\ConfigFileLogger.cs" />

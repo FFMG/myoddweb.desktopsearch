@@ -23,6 +23,7 @@ using System.Reflection;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading;
+using myoddweb.desktopsearch.helper;
 using myoddweb.desktopsearch.http;
 using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -36,6 +37,7 @@ using Newtonsoft.Json;
 using Directory = myoddweb.desktopsearch.service.IO.Directory;
 using ILogger = myoddweb.desktopsearch.interfaces.Configs.ILogger;
 using myoddweb.desktopsearch.interfaces.Persisters;
+using File = System.IO.File;
 using IConfig = myoddweb.desktopsearch.interfaces.Configs.IConfig;
 
 namespace myoddweb.desktopsearch.service

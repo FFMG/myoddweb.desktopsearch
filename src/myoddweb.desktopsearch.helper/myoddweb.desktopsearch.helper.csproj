@@ -43,6 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ArgumentsParser.cs" />
     <Compile Include="AsyncTimer.cs" />
     <Compile Include="Collection.cs" />
     <Compile Include="Components\FileParser.cs" />

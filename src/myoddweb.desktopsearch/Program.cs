@@ -13,7 +13,11 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
+using myoddweb.desktopsearch.helper;
+using myoddweb.desktopsearch.Interfaces;
+using Newtonsoft.Json;
 
 namespace myoddweb.desktopsearch
 {
@@ -23,11 +27,23 @@ namespace myoddweb.desktopsearch
     /// The main entry point for the application.
     /// </summary>
     [STAThread]
-    private static void Main()
+    private static void Main( string[] args )
     {
       Application.EnableVisualStyles();
       Application.SetCompatibleTextRenderingDefault(false);
-      Application.Run(new Search( "http://localhost", 9501, 5 ));
+
+      var arguments = new ArgumentsParser(args, new Dictionary<string, ArgumentData>
+      {
+        { "config", new ArgumentData{ IsRequired = false, DefaultValue = "desktop.json"}}
+      });
+
+      Application.Run(new Search( Config( arguments ) ));
+    }
+
+    private static IConfig Config(ArgumentsParser arguments )
+    {
+      var json = System.IO.File.ReadAllText(arguments["config"]);
+      return JsonConvert.DeserializeObject<Config.Config>(json);
     }
   }
 }

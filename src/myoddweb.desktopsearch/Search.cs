@@ -17,11 +17,12 @@ using System.Windows.Forms;
 using myoddweb.desktopsearch.helper.Models;
 using myoddweb.desktopsearch.Helpers;
 using myoddweb.desktopsearch.interfaces.Models;
+using myoddweb.desktopsearch.Interfaces;
 using Newtonsoft.Json;
 
 namespace myoddweb.desktopsearch
 {
-  public partial class Search : Form
+  internal partial class Search : Form
   {
     private const int ColumnName = 0;
     private const int ColumnFullName = 1;
@@ -39,18 +40,18 @@ namespace myoddweb.desktopsearch
     private readonly string _url;
 
     /// <summary>
-    /// The minimum number of characters before we do a seatch
+    /// All the arguments.
     /// </summary>
-    private readonly int _minimumSearchLenght;
+    private readonly IConfig _config;
     #endregion
 
-    public Search( string url, int port, int minimumSearchLenght )
+    public Search(IConfig config )
     {
-      // rebuild the search url
-      _url = $"{url}:{port}/Search";
+      // set the arguments.
+      _config = config;
 
-      // the minimum size of the characters.
-      _minimumSearchLenght = minimumSearchLenght;
+      // rebuild the search url
+      _url = BuildSearchUrl();
 
       // create everything
       InitializeComponent();
@@ -71,6 +72,15 @@ namespace myoddweb.desktopsearch
         Enabled = false
       };
       _timer.Tick += OnTimer;
+    }
+
+    private string BuildSearchUrl()
+    {
+      var url = _config.Url;
+      url = url.TrimEnd('/', '\\');
+
+      var port = _config.Port;
+      return $"{url}:{port}/Search";
     }
 
     private void InitializeListControl()
@@ -141,7 +151,7 @@ namespace myoddweb.desktopsearch
 
       // search for the current text.
       var text = searchBox.Text;
-      if (text.Length < _minimumSearchLenght)
+      if (text.Length < _config.MinimumSearchLength)
       {
         return;
       }

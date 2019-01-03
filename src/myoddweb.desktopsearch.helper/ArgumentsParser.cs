@@ -16,7 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace myoddweb.desktopsearch.service
+namespace myoddweb.desktopsearch.helper
 {
   /// <summary>
   /// The argument data, indicate required values.
