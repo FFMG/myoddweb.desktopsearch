@@ -39,6 +39,7 @@ namespace myoddweb.desktopsearch
 
     public WordsListView()
     {
+      // Create the image list and add just a single 'null' logo.
       _imageList = new ImageList();
       _imageList.Images.Add("", SystemIcons.WinLogo);
 
@@ -125,23 +126,67 @@ namespace myoddweb.desktopsearch
       }
       Items[lstHitTestInfo.Item.Index].Selected = true;
       Select();
+      
+      // create the context menu.
+      ContextMenuStrip = CreateContextMenu();
+    }
 
+    /// <summary>
+    /// (re)Create the context menu
+    /// </summary>
+    /// <returns></returns>
+    private ContextMenuStrip CreateContextMenu()
+    {
+      // create the context menu
       var cm = new ContextMenuStrip();
 
       // open
-      var ttOpen = cm.Items.Add( "Open");
+      var ttOpen = cm.Items.Add("Open");
       ttOpen.Font = new Font(ttOpen.Font, FontStyle.Bold);
       ttOpen.Click += OnOpen;
-      cm.Items.Add("Open Path");
+
+      // open the path
+      var ttOpenPath = cm.Items.Add("Open Path");
+      ttOpenPath.Click += OnOpenPath;
 
       // copy top clipboard
       var ttCopy = cm.Items.Add("Copy full path to clipboard");
-      ttCopy.Click += CopyToClipboard;
+      ttCopy.Click += OnCopyToClipboard;
 
       // open with
       var ttOpenWith = cm.Items.Add("Open With");
       ttOpenWith.Click += OnOpenWith;
-      ContextMenuStrip = cm;
+
+      // return the created context menu.
+      return cm;
+    }
+    #endregion
+
+    #region Context Menu events
+    /// <summary>
+    /// Open a selected item path.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void OnOpenPath(object sender, EventArgs e)
+    {
+      var word = GetCurrentWord();
+      if (null == word)
+      {
+        return;
+      }
+
+      using (var pProcess = new Process())
+      {
+        pProcess.StartInfo.FileName = "explorer.exe";
+        pProcess.StartInfo.Arguments = word.Directory; //argument
+        pProcess.StartInfo.UseShellExecute = true;
+        pProcess.StartInfo.RedirectStandardOutput = false;
+        pProcess.StartInfo.WindowStyle = ProcessWindowStyle.Normal;
+        pProcess.StartInfo.CreateNoWindow = false;
+        pProcess.Start();
+        pProcess.WaitForInputIdle();
+      }
     }
 
     /// <summary>
@@ -149,7 +194,7 @@ namespace myoddweb.desktopsearch
     /// </summary>
     /// <param name="sender"></param>
     /// <param name="e"></param>
-    private void CopyToClipboard(object sender, EventArgs e)
+    private void OnCopyToClipboard(object sender, EventArgs e)
     {
       var word = GetCurrentWord();
       if (null == word)
@@ -173,7 +218,7 @@ namespace myoddweb.desktopsearch
       }
 
       // open the file 'with'
-      Shell.OpenWith(word.FullName );
+      Shell.OpenWith(word.FullName);
     }
 
     /// <summary>
@@ -184,7 +229,7 @@ namespace myoddweb.desktopsearch
     private void OnOpen(object sender, EventArgs e)
     {
       var word = GetCurrentWord();
-      if( null == word )
+      if (null == word)
       {
         return;
       }
@@ -198,9 +243,9 @@ namespace myoddweb.desktopsearch
         pProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
         pProcess.StartInfo.CreateNoWindow = true; //not diplay a windows
         pProcess.Start();
+        pProcess.WaitForInputIdle();
       }
     }
-
     #endregion
 
     #region Public functions
