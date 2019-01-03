@@ -157,12 +157,22 @@ namespace myoddweb.desktopsearch
     private ContextMenuStrip CreateContextMenu()
     {
       // create the context menu
-      var cm = new ContextMenuStrip();
+      var cm = new ContextMenuStrip {ImageList = GetUpdatedImageList()};
 
       // open
       var ttOpen = cm.Items.Add("Open");
       ttOpen.Font = new Font(ttOpen.Font, FontStyle.Bold);
       ttOpen.Click += OnOpen;
+
+      var word = GetCurrentWord();
+      var ext = Path.GetExtension(word?.FullName);
+      if (ext != null)
+      {
+        if (_imageList.Images.ContainsKey(ext))
+        {
+          ttOpen.ImageKey = ext;
+        }
+      }
 
       // open the path
       var ttOpenPath = cm.Items.Add("Open Path");
@@ -173,8 +183,9 @@ namespace myoddweb.desktopsearch
       ttCopy.Click += OnCopyToClipboard;
 
       // open with
-      var ttOpenWith = cm.Items.Add("Open With");
+      var ttOpenWith = cm.Items.Add("Open With ...");
       ttOpenWith.Click += OnOpenWith;
+      ttOpenWith.Font = new Font(ttOpenWith.Font, FontStyle.Bold);
 
       // return the created context menu.
       return cm;
