@@ -31,11 +31,6 @@ namespace myoddweb.desktopsearch
 
     #region Member variable
     /// <summary>
-    /// The images we will be adding to show the icons for each file/folder.
-    /// </summary>
-    private ImageList _imageList;
-
-    /// <summary>
     /// The path of the url
     /// </summary>
     private readonly string _url;
@@ -139,67 +134,7 @@ namespace myoddweb.desktopsearch
     /// <param name="searchResponse"></param>
     private void SetSearchResponse(ISearchResponse searchResponse)
     {
-      // empty the list.
-      searchList.Items.Clear();
-      if (null == searchResponse)
-      {
-        return;
-      }
-
-      // create the image list.
-      searchList.SmallImageList = CreateOrUpdateImageList( searchResponse.Words);
-
-      // start the update
-      searchList.BeginUpdate();
-      foreach (var word in searchResponse.Words)
-      {
-        var ext = Path.GetExtension(word.FullName);
-        string[] row = { word.FullName, word.Actual};
-        var item = searchList.Items.Add(word.Name);
-        item.ImageKey = ext;
-        item.SubItems.AddRange( row );
-      }
-      searchList.EndUpdate();
-    }
-
-    /// <summary>
-    /// Get all the icons for all the file extensions.
-    /// </summary>
-    /// <param name="words"></param>
-    /// <returns></returns>
-    private ImageList CreateOrUpdateImageList(IEnumerable<IWord> words)
-    {
-      if (null == _imageList)
-      {
-        _imageList = new ImageList();
-        _imageList.Images.Add("", SystemIcons.WinLogo);
-      }
-
-      foreach (var word in words)
-      {
-        var ext = Path.GetExtension(word.FullName);
-        if (_imageList.Images.ContainsKey(ext ?? ""))
-        {
-          continue;
-        }
-
-        // get the icon
-        try
-        {
-          var icon = Icon.ExtractAssociatedIcon(word.FullName);
-          if (icon == null)
-          {
-            _imageList.Images.Add(ext, SystemIcons.WinLogo);
-            continue;
-          }
-          _imageList.Images.Add(ext, icon);
-        }
-        catch (Exception)
-        {
-          _imageList.Images.Add(ext, SystemIcons.WinLogo );
-        }
-      }
-      return _imageList;
+      searchList.Update(searchResponse?.Words);
     }
   }
 }
