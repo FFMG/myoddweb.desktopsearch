@@ -52,7 +52,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Http.cs" />
+    <Compile Include="Helpers\Shell.cs" />
+    <Compile Include="Helpers\Http.cs" />
     <Compile Include="Search.cs">
       <SubType>Form</SubType>
     </Compile>

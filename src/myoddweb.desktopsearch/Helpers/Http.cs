@@ -18,7 +18,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace myoddweb.desktopsearch
+namespace myoddweb.desktopsearch.Helpers
 {
   internal class Http
   {
