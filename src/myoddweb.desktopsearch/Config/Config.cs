@@ -13,7 +13,9 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.ComponentModel;
 using myoddweb.desktopsearch.Interfaces;
+using Newtonsoft.Json;
 
 namespace myoddweb.desktopsearch.Config
 {
@@ -31,7 +33,17 @@ namespace myoddweb.desktopsearch.Config
     /// <inheritdoc />
     public int MinimumSearchLength { get; protected set; }
 
-    public Config(string url, string save, int port, int minimumSearchLength)
+    /// <inheritdoc />
+    [DefaultValue(450)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public int KeyDownIntervalMs { get; protected set; }
+
+    /// <inheritdoc />
+    [DefaultValue(1000)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public int MaxNumberOfItemsToFetch { get; protected set; }
+
+    public Config(string url, string save, int port, int minimumSearchLength, int keyDownIntervalMs, int maxNumberOfItemsToFetch)
     {
       //  set the save json.
       Save = save ?? "save.json";
@@ -44,6 +56,20 @@ namespace myoddweb.desktopsearch.Config
       if (Port < 0)
       {
         throw new ArgumentException( @"The port number cannot be -ve", nameof(Port));
+      }
+
+      // the key down interval
+      KeyDownIntervalMs = keyDownIntervalMs;
+      if (keyDownIntervalMs <= 0)
+      {
+        throw new ArgumentException(@"The keydown interval cannot be -ve or zero", nameof(KeyDownIntervalMs));
+      }
+
+      // how many items to get from the API.
+      MaxNumberOfItemsToFetch = maxNumberOfItemsToFetch;
+      if (MaxNumberOfItemsToFetch <= 0)
+      {
+        throw new ArgumentException(@"The maximum number of items to fetch cannot be -ve or zero", nameof(MaxNumberOfItemsToFetch));
       }
 
       // MinimumSearchLength

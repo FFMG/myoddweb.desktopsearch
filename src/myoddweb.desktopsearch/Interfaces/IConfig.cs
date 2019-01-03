@@ -35,5 +35,15 @@ namespace myoddweb.desktopsearch.Interfaces
     /// Where we will save some of the values, (screen size/position and so on).
     /// </summary>
     string Save { get; }
+
+    /// <summary>
+    /// How long do we wait, in ms before calling the API
+    /// </summary>
+    int KeyDownIntervalMs { get; }
+
+    /// <summary>
+    /// How many items we want to get back from the API
+    /// </summary>
+    int MaxNumberOfItemsToFetch { get; }
   }
 }

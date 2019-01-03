@@ -1,5 +1,8 @@
 {
-    "Url" : "http://localhost/",
-    "Port" : 9501,
-    "MinimumSearchLength" : 5
+  "Save": "save.json",
+  "Url": "http://localhost/",
+  "Port": 9501,
+  "MinimumSearchLength": 5,
+  "KeyDownIntervalMs": 450,
+  "MaxNumberOfItemsToFetch" :  1000 
 }

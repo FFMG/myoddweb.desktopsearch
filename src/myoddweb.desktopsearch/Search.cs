@@ -69,7 +69,7 @@ namespace myoddweb.desktopsearch
       ResetStatusBar();
 
       // and size it all the first time.
-      OnResize();
+      RecalculateSize();
 
       //  give the search box focus
       ActiveControl = searchBox;
@@ -77,12 +77,16 @@ namespace myoddweb.desktopsearch
       // create start the timer, make sure that it is not running.
       _timer = new Timer
       {
-        Interval = 450,
+        Interval = config.KeyDownIntervalMs,
         Enabled = false
       };
       _timer.Tick += OnTimer;
     }
 
+    /// <summary>
+    /// Create the path to the search method.
+    /// </summary>
+    /// <returns></returns>
     private string BuildSearchUrl()
     {
       var url = _config.Url;
@@ -92,6 +96,9 @@ namespace myoddweb.desktopsearch
       return $"{url}:{port}/Search";
     }
 
+    /// <summary>
+    /// Restore the form position size.
+    /// </summary>
     private void InitializeForm()
     {
       if (!File.Exists(_config.Save))
@@ -110,6 +117,9 @@ namespace myoddweb.desktopsearch
       WindowState = save.FullScreen ? FormWindowState.Maximized : FormWindowState.Normal;
     }
 
+    /// <summary>
+    /// Create the list view control.
+    /// </summary>
     private void InitializeListControl()
     {
       searchList.FullRowSelect = true;
@@ -118,11 +128,9 @@ namespace myoddweb.desktopsearch
       searchList.Columns.Add("Actual", -2, HorizontalAlignment.Left);
     }
 
-    private void OnSizeChanged(object sender, EventArgs e)
-    {
-      OnResize();
-    }
-
+    /// <summary>
+    /// Remove all the values in the status bar.
+    /// </summary>
     private void ResetStatusBar()
     {
       searchStatusBar.Text = _url;
@@ -131,7 +139,7 @@ namespace myoddweb.desktopsearch
     /// <summary>
     /// Called when we want to resize the current text box and list view
     /// </summary>
-    private void OnResize()
+    private void RecalculateSize()
     {
       var left = Margin.Left;
       var width = ClientSize.Width - left - Margin.Right;
@@ -148,21 +156,6 @@ namespace myoddweb.desktopsearch
     }
 
     /// <summary>
-    /// When the text is updated, (and long enough), we will search
-    /// </summary>
-    /// <param name="sender"></param>
-    /// <param name="e"></param>
-    private void OnTextChanged(object sender, EventArgs e)
-    {
-      // clear the current content
-      SetSearchResponse(null);
-
-      // restart the timer
-      _timer.Stop();
-      _timer.Start();
-    }
-
-    /// <summary>
     /// Output the list view
     /// </summary>
     /// <param name="searchResponse"></param>
@@ -176,10 +169,36 @@ namespace myoddweb.desktopsearch
       {
         var status = searchResponse.Status;
         var percent = (((status.Files - status.PendingUpdates) / (double)status.Files) * 100.0);
-        searchStatusBar.Text = $@"{percent:F4}% Complete (Time Elapsed: {TimeSpan.FromMilliseconds(searchResponse.ElapsedMilliseconds):g})";
+        searchStatusBar.Text = $@"{searchResponse.Words.Count} Items - {percent:F4}% Complete (Time Elapsed: {TimeSpan.FromMilliseconds(searchResponse.ElapsedMilliseconds):g})";
       }
 
       searchList.Update(searchResponse?.Words);
+    }
+
+    #region Events
+    /// <summary>
+    /// Event when the form is resized.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void OnSizeChanged(object sender, EventArgs e)
+    {
+      RecalculateSize();
+    }
+
+    /// <summary>
+    /// When the text is updated, (and long enough), we will search
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void OnTextChanged(object sender, EventArgs e)
+    {
+      // clear the current content
+      SetSearchResponse(null);
+
+      // restart the timer
+      _timer.Stop();
+      _timer.Start();
     }
 
     /// <summary>
@@ -202,7 +221,7 @@ namespace myoddweb.desktopsearch
       try
       {
         //  build the request
-        var request = new SearchRequest(text, 100);
+        var request = new SearchRequest(text, _config.MaxNumberOfItemsToFetch);
         var content = JsonConvert.SerializeObject(request);
 
         // query the service
@@ -243,5 +262,6 @@ namespace myoddweb.desktopsearch
         //  to do...
       }
     }
+    #endregion
   }
 }
