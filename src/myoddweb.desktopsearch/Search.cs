@@ -13,6 +13,9 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 using myoddweb.desktopsearch.helper.Models;
 using myoddweb.desktopsearch.interfaces.Models;
@@ -113,11 +116,56 @@ namespace myoddweb.desktopsearch
         return;
       }
 
+      // create the image list.
+      searchList.SmallImageList = CreateImageList(searchResponse.Words);
+
+      // start the update
+      searchList.BeginUpdate();
       foreach (var word in searchResponse.Words)
       {
+        var ext = Path.GetExtension(word.FullName);
         string[] row = { word.FullName, word.Actual};
-        searchList.Items.Add(word.Name).SubItems.AddRange( row );
+        var item = searchList.Items.Add(word.Name);
+        item.ImageKey = ext;
+        item.SubItems.AddRange( row );
       }
+      searchList.EndUpdate();
+    }
+
+    /// <summary>
+    /// Get all the icons for all the file extensions.
+    /// </summary>
+    /// <param name="words"></param>
+    /// <returns></returns>
+    private static ImageList CreateImageList(IEnumerable<IWord> words)
+    {
+      var imageList = new ImageList();
+      imageList.Images.Add("", SystemIcons.WinLogo);
+      foreach (var word in words)
+      {
+        var ext = Path.GetExtension(word.FullName);
+        if (imageList.Images.ContainsKey(ext ?? ""))
+        {
+          continue;
+        }
+
+        // get the icon
+        try
+        {
+          var icon = Icon.ExtractAssociatedIcon(word.FullName);
+          if (icon == null)
+          {
+            imageList.Images.Add(ext, SystemIcons.WinLogo);
+            continue;
+          }
+          imageList.Images.Add(ext, icon);
+        }
+        catch (Exception)
+        {
+          imageList.Images.Add(ext, SystemIcons.WinLogo );
+        }
+      }
+      return imageList;
     }
   }
 }
