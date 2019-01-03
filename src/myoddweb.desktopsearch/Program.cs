@@ -17,7 +17,7 @@ using System.Windows.Forms;
 
 namespace myoddweb.desktopsearch
 {
-  static class Program
+  internal static class Program
   {
     /// <summary>
     /// The main entry point for the application.
@@ -27,7 +27,7 @@ namespace myoddweb.desktopsearch
     {
       Application.EnableVisualStyles();
       Application.SetCompatibleTextRenderingDefault(false);
-      Application.Run(new Search( "http://localhost", 9123));
+      Application.Run(new Search( "http://localhost", 9501, 5 ));
     }
   }
 }

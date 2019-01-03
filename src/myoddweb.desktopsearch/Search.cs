@@ -29,25 +29,50 @@ namespace myoddweb.desktopsearch
     private const int ColumnFullName = 1;
     private const int ColumnActual = 2;
 
+    #region Member variable
+    /// <summary>
+    /// The images we will be adding to show the icons for each file/folder.
+    /// </summary>
+    private ImageList _imageList;
+
+    /// <summary>
+    /// The path of the url
+    /// </summary>
     private readonly string _url;
 
-    public Search( string url, int port)
+    /// <summary>
+    /// The minimum number of characters before we do a seatch
+    /// </summary>
+    private readonly int _minimumSearchLenght;
+    #endregion
+
+    public Search( string url, int port, int minimumSearchLenght )
     {
+      // rebuild the search url
       _url = $"{url}:{port}/Search";
+
+      // the minimum size of the characters.
+      _minimumSearchLenght = minimumSearchLenght;
 
       // create everything
       InitializeComponent();
 
-      searchList.FullRowSelect = true;
-      searchList.Columns.Add("Name", -2, HorizontalAlignment.Left);
-      searchList.Columns.Add("Path", -2, HorizontalAlignment.Left);
-      searchList.Columns.Add("Actual", -2, HorizontalAlignment.Left);
+      // initialize te list control.
+      InitializeListControl();
 
-      // and resize it all.
+      // and size it all the first time.
       OnResize();
 
       //  give the search box focus
       ActiveControl = searchBox;
+    }
+
+    private void InitializeListControl()
+    {
+      searchList.FullRowSelect = true;
+      searchList.Columns.Add("Name", -2, HorizontalAlignment.Left);
+      searchList.Columns.Add("Path", -2, HorizontalAlignment.Left);
+      searchList.Columns.Add("Actual", -2, HorizontalAlignment.Left);
     }
 
     private void OnSizeChanged(object sender, EventArgs e)
@@ -74,12 +99,17 @@ namespace myoddweb.desktopsearch
       searchList.Columns[ColumnActual].Width = (int)(width * .15); 
     }
 
+    /// <summary>
+    /// When the text is updated, (and long enough), we will search
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
     private void OnTextChanged(object sender, EventArgs e)
     {
       // clear the current content
       SetSearchResponse(null);
       var text = searchBox.Text;
-      if (text.Length < 3)
+      if (text.Length < _minimumSearchLenght)
       {
         return;
       }
@@ -117,7 +147,7 @@ namespace myoddweb.desktopsearch
       }
 
       // create the image list.
-      searchList.SmallImageList = CreateImageList(searchResponse.Words);
+      searchList.SmallImageList = CreateOrUpdateImageList( searchResponse.Words);
 
       // start the update
       searchList.BeginUpdate();
@@ -137,14 +167,18 @@ namespace myoddweb.desktopsearch
     /// </summary>
     /// <param name="words"></param>
     /// <returns></returns>
-    private static ImageList CreateImageList(IEnumerable<IWord> words)
+    private ImageList CreateOrUpdateImageList(IEnumerable<IWord> words)
     {
-      var imageList = new ImageList();
-      imageList.Images.Add("", SystemIcons.WinLogo);
+      if (null == _imageList)
+      {
+        _imageList = new ImageList();
+        _imageList.Images.Add("", SystemIcons.WinLogo);
+      }
+
       foreach (var word in words)
       {
         var ext = Path.GetExtension(word.FullName);
-        if (imageList.Images.ContainsKey(ext ?? ""))
+        if (_imageList.Images.ContainsKey(ext ?? ""))
         {
           continue;
         }
@@ -155,17 +189,17 @@ namespace myoddweb.desktopsearch
           var icon = Icon.ExtractAssociatedIcon(word.FullName);
           if (icon == null)
           {
-            imageList.Images.Add(ext, SystemIcons.WinLogo);
+            _imageList.Images.Add(ext, SystemIcons.WinLogo);
             continue;
           }
-          imageList.Images.Add(ext, icon);
+          _imageList.Images.Add(ext, icon);
         }
         catch (Exception)
         {
-          imageList.Images.Add(ext, SystemIcons.WinLogo );
+          _imageList.Images.Add(ext, SystemIcons.WinLogo );
         }
       }
-      return imageList;
+      return _imageList;
     }
   }
 }
