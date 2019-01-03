@@ -29,6 +29,11 @@ namespace myoddweb.desktopsearch
 
     #region Member variable
     /// <summary>
+    /// The timer so we do not call the api while the user is typing.
+    /// </summary>
+    private readonly Timer _timer;
+
+    /// <summary>
     /// The path of the url
     /// </summary>
     private readonly string _url;
@@ -58,6 +63,14 @@ namespace myoddweb.desktopsearch
 
       //  give the search box focus
       ActiveControl = searchBox;
+
+      // create start the timer, make sure that it is not running.
+      _timer = new Timer
+      {
+        Interval = 450,
+        Enabled = false
+      };
+      _timer.Tick += OnTimer;
     }
 
     private void InitializeListControl()
@@ -101,6 +114,32 @@ namespace myoddweb.desktopsearch
     {
       // clear the current content
       SetSearchResponse(null);
+
+      // restart the timer
+      _timer.Stop();
+      _timer.Start();
+    }
+
+    /// <summary>
+    /// Output the list view
+    /// </summary>
+    /// <param name="searchResponse"></param>
+    private void SetSearchResponse(ISearchResponse searchResponse)
+    {
+      searchList.Update(searchResponse?.Words);
+    }
+
+    /// <summary>
+    /// Called when the timer is elapsed.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void OnTimer(object sender, EventArgs e)
+    {
+      // stop the timer
+      _timer.Stop();
+
+      // search for the current text.
       var text = searchBox.Text;
       if (text.Length < _minimumSearchLenght)
       {
@@ -110,7 +149,7 @@ namespace myoddweb.desktopsearch
       try
       {
         //  build the request
-        var request = new SearchRequest( text, 100 );
+        var request = new SearchRequest(text, 100);
         var content = JsonConvert.SerializeObject(request);
 
         // query the service
@@ -124,15 +163,6 @@ namespace myoddweb.desktopsearch
       {
         // to do.
       }
-    }
-
-    /// <summary>
-    /// Output the list view
-    /// </summary>
-    /// <param name="searchResponse"></param>
-    private void SetSearchResponse(ISearchResponse searchResponse)
-    {
-      searchList.Update(searchResponse?.Words);
     }
   }
 }
