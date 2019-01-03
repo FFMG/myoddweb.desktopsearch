@@ -43,7 +43,8 @@ namespace myoddweb.desktopsearch
     private void InitializeComponent()
     {
       this.searchBox = new System.Windows.Forms.TextBox();
-      this.searchList = new WordsListView();
+      this.searchList = new myoddweb.desktopsearch.WordsListView();
+      this.searchStatusBar = new System.Windows.Forms.StatusBar();
       this.SuspendLayout();
       // 
       // searchBox
@@ -58,16 +59,25 @@ namespace myoddweb.desktopsearch
       // 
       this.searchList.Location = new System.Drawing.Point(12, 29);
       this.searchList.Name = "searchList";
-      this.searchList.Size = new System.Drawing.Size(776, 220);
+      this.searchList.Size = new System.Drawing.Size(776, 216);
       this.searchList.TabIndex = 1;
       this.searchList.UseCompatibleStateImageBehavior = false;
       this.searchList.View = System.Windows.Forms.View.Details;
+      // 
+      // searchStatusBar
+      // 
+      this.searchStatusBar.Location = new System.Drawing.Point(0, 251);
+      this.searchStatusBar.Name = "searchStatusBar";
+      this.searchStatusBar.Size = new System.Drawing.Size(798, 22);
+      this.searchStatusBar.TabIndex = 2;
+      this.searchStatusBar.Text = "Status Bar";
       // 
       // Search
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-      this.ClientSize = new System.Drawing.Size(798, 261);
+      this.ClientSize = new System.Drawing.Size(798, 273);
+      this.Controls.Add(this.searchStatusBar);
       this.Controls.Add(this.searchList);
       this.Controls.Add(this.searchBox);
       this.Name = "Search";
@@ -82,6 +92,7 @@ namespace myoddweb.desktopsearch
 
     private System.Windows.Forms.TextBox searchBox;
     private WordsListView searchList;
+    private System.Windows.Forms.StatusBar searchStatusBar;
   }
 }
 

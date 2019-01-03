@@ -59,6 +59,9 @@ namespace myoddweb.desktopsearch
       // initialize te list control.
       InitializeListControl();
 
+      // clear the status bar result
+      ResetStatusBar();
+
       // and size it all the first time.
       OnResize();
 
@@ -96,6 +99,11 @@ namespace myoddweb.desktopsearch
       OnResize();
     }
 
+    private void ResetStatusBar()
+    {
+      searchStatusBar.Text = _url;
+    }
+
     /// <summary>
     /// Called when we want to resize the current text box and list view
     /// </summary>
@@ -103,7 +111,7 @@ namespace myoddweb.desktopsearch
     {
       var left = Margin.Left;
       var width = ClientSize.Width - left - Margin.Right;
-      var height = ClientSize.Height - searchList.Top - Margin.Bottom;
+      var height = ClientSize.Height - searchList.Top - searchStatusBar.Height - Margin.Bottom;
       searchBox.Left = left;
       searchList.Left = left;
       searchBox.Width = width;
@@ -136,6 +144,17 @@ namespace myoddweb.desktopsearch
     /// <param name="searchResponse"></param>
     private void SetSearchResponse(ISearchResponse searchResponse)
     {
+      if( searchResponse == null )
+      {
+        ResetStatusBar();
+      }
+      else
+      {
+        var status = searchResponse.Status;
+        var percent = (((status.Files - status.PendingUpdates) / status.Files) * 100);
+        searchStatusBar.Text = $@"{percent:F4}% Complete (Time Elapsed: {TimeSpan.FromMilliseconds(searchResponse.ElapsedMilliseconds):g})";
+      }
+
       searchList.Update(searchResponse?.Words);
     }
 
