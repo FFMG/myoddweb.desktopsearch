@@ -43,7 +43,11 @@ namespace myoddweb.desktopsearch
       _imageList = new ImageList();
       _imageList.Images.Add("", SystemIcons.WinLogo);
 
+      // when the user clicks 
       MouseDown += OnMouseDown;
+
+      // when the user double clicks
+      DoubleClick += OnDoubleClick;
     }
 
     #region Private functions
@@ -99,6 +103,21 @@ namespace myoddweb.desktopsearch
 
       // reset the words
       _words = null;
+    }
+
+    /// <summary>
+    /// Called when the user double clicked.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void OnDoubleClick(object sender, EventArgs e)
+    {
+      var word = GetCurrentWord();
+      if (null == word)
+      {
+        return;
+      }
+      OpenWord(word);
     }
 
     /// <summary>
@@ -233,7 +252,15 @@ namespace myoddweb.desktopsearch
       {
         return;
       }
+      OpenWord(word);
+    }
 
+    /// <summary>
+    /// Open a word.
+    /// </summary>
+    /// <param name="word"></param>
+    private static void OpenWord(IWord word)
+    {
       using (var pProcess = new Process())
       {
         pProcess.StartInfo.FileName = word.FullName;
