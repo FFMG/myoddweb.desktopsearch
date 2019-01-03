@@ -12,28 +12,29 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
-namespace myoddweb.desktopsearch.Interfaces
+
+using System.ComponentModel;
+using System.Drawing;
+using Newtonsoft.Json;
+
+namespace myoddweb.desktopsearch.Config
 {
-  internal interface IConfig
+  internal class Save
   {
-    /// <summary>
-    /// The Url of the API
-    /// </summary>
-    string Url { get; }
+    [DefaultValue(-1)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public int Width { get; set; }
 
-    /// <summary>
-    /// The port number
-    /// </summary>
-    int Port { get; }
+    [DefaultValue(-1)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public int Height { get; set; }
 
-    /// <summary>
-    /// The minimum number of characters before we do a search
-    /// </summary>
-    int MinimumSearchLength { get; }
+    [DefaultValue(true)]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public bool FullScreen { get; set; }
 
-    /// <summary>
-    /// Where we will save some of the values, (screen size/position and so on).
-    /// </summary>
-    string Save { get; }
+    [DefaultValue( null )]
+    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+    public Point Location { get; set; }
   }
 }

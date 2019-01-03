@@ -82,6 +82,7 @@ namespace myoddweb.desktopsearch
       this.Controls.Add(this.searchBox);
       this.Name = "Search";
       this.Text = "Search Desktop";
+      this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.OnClosing);
       this.SizeChanged += new System.EventHandler(this.OnSizeChanged);
       this.ResumeLayout(false);
       this.PerformLayout();

@@ -13,7 +13,10 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
+using myoddweb.desktopsearch.Config;
 using myoddweb.desktopsearch.helper.Models;
 using myoddweb.desktopsearch.Helpers;
 using myoddweb.desktopsearch.interfaces.Models;
@@ -59,6 +62,9 @@ namespace myoddweb.desktopsearch
       // initialize te list control.
       InitializeListControl();
 
+      // set the form position and so on
+      InitializeForm();
+
       // clear the status bar result
       ResetStatusBar();
 
@@ -84,6 +90,24 @@ namespace myoddweb.desktopsearch
 
       var port = _config.Port;
       return $"{url}:{port}/Search";
+    }
+
+    private void InitializeForm()
+    {
+      if (!File.Exists(_config.Save))
+      {
+        return;
+      }
+      var json = File.ReadAllText(_config.Save);
+      var save = JsonConvert.DeserializeObject<Save>(json);
+      if (save.Width == -1 || save.Height == -1)
+      {
+        return;
+      }
+
+      Size = new Size(save.Width, save.Height);
+      Location = save.Location;
+      WindowState = save.FullScreen ? FormWindowState.Maximized : FormWindowState.Normal;
     }
 
     private void InitializeListControl()
@@ -151,7 +175,7 @@ namespace myoddweb.desktopsearch
       else
       {
         var status = searchResponse.Status;
-        var percent = (((status.Files - status.PendingUpdates) / status.Files) * 100);
+        var percent = (((status.Files - status.PendingUpdates) / (double)status.Files) * 100.0);
         searchStatusBar.Text = $@"{percent:F4}% Complete (Time Elapsed: {TimeSpan.FromMilliseconds(searchResponse.ElapsedMilliseconds):g})";
       }
 
@@ -191,6 +215,32 @@ namespace myoddweb.desktopsearch
       catch
       {
         // to do.
+      }
+    }
+
+    /// <summary>
+    /// Save the screen size/potions when we close.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void OnClosing(object sender, FormClosingEventArgs e)
+    {
+      try
+      {
+        var full = (WindowState == FormWindowState.Maximized);
+        var save = new Save
+        {
+          Width = full ? RestoreBounds.Size.Width : Size.Width,
+          Height = full ? RestoreBounds.Size.Height : Size.Height,
+          FullScreen = full,
+          Location = full ? RestoreBounds.Location : Location
+        };
+        var json = JsonConvert.SerializeObject(save, Formatting.Indented);
+        File.WriteAllText(_config.Save, json);
+      }
+      catch
+      {
+        //  to do...
       }
     }
   }

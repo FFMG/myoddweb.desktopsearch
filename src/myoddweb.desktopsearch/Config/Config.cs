@@ -23,13 +23,19 @@ namespace myoddweb.desktopsearch.Config
     public string Url { get; protected set; }
 
     /// <inheritdoc />
+    public string Save { get; protected set; }
+
+    /// <inheritdoc />
     public int Port { get; protected set; }
 
     /// <inheritdoc />
     public int MinimumSearchLength { get; protected set; }
 
-    public Config(string url, int port, int minimumSearchLength)
+    public Config(string url, string save, int port, int minimumSearchLength)
     {
+      //  set the save json.
+      Save = save ?? "save.json";
+
       // the url value.
       Url = url ?? throw new ArgumentNullException( nameof(url));
 

@@ -53,6 +53,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Config\Config.cs" />
+    <Compile Include="Config\Save.cs" />
     <Compile Include="Helpers\Shell.cs" />
     <Compile Include="Helpers\Http.cs" />
     <Compile Include="Interfaces\IConfig.cs" />
