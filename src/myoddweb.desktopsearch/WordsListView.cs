@@ -128,15 +128,35 @@ namespace myoddweb.desktopsearch
 
       var cm = new ContextMenuStrip();
 
+      // open
       var ttOpen = cm.Items.Add( "Open");
       ttOpen.Font = new Font(ttOpen.Font, FontStyle.Bold);
       ttOpen.Click += OnOpen;
       cm.Items.Add("Open Path");
-      cm.Items.Add("Copy full path to clipboard");
 
+      // copy top clipboard
+      var ttCopy = cm.Items.Add("Copy full path to clipboard");
+      ttCopy.Click += CopyToClipboard;
+
+      // open with
       var ttOpenWith = cm.Items.Add("Open With");
       ttOpenWith.Click += OnOpenWith;
       ContextMenuStrip = cm;
+    }
+
+    /// <summary>
+    /// Copy the full path tot he clipboard.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void CopyToClipboard(object sender, EventArgs e)
+    {
+      var word = GetCurrentWord();
+      if (null == word)
+      {
+        return;
+      }
+      Clipboard.SetText(word.FullName);
     }
 
     /// <summary>
