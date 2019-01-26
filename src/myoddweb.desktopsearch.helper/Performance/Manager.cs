@@ -154,7 +154,7 @@ namespace myoddweb.desktopsearch.helper.Performance
     /// </summary>
     /// <param name="counter"></param>
     /// <returns></returns>
-    private CounterCreationDataCollection BuildCollectionData(Counter counter)
+    private static CounterCreationDataCollection BuildCollectionData(ICounter counter)
     {
       // Create the collection data. 
       var counterCreationDataCollection = new CounterCreationDataCollection
