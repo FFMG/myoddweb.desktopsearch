@@ -12,10 +12,12 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using myoddweb.desktopsearch.interfaces.Enums;
-using myoddweb.desktopsearch.interfaces.Logging;
 using Newtonsoft.Json;
 
 namespace myoddweb.desktopsearch.service.Configs
@@ -26,11 +28,36 @@ namespace myoddweb.desktopsearch.service.Configs
     public string Type { get; protected set; }
 
     /// <summary>
+    /// The expanded dabase source.
+    /// </summary>
+    private string _path;
+
+    /// <summary>
     /// Path only used for certain loggers.
     /// </summary>
     [DefaultValue(null)]
     [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-    public string Path { get; protected set; }
+    public string Path
+    {
+      get => _path;
+      protected set
+      {
+        if (value == null)
+        {
+          _path = null;
+          return;
+        }
+        // set the database source
+        _path = Environment.ExpandEnvironmentVariables(value);
+
+        // if not null, make sure that the path is set.
+        var path = System.IO.Path.GetDirectoryName(_path);
+        if (path != null && !Directory.Exists(path))
+        {
+          Directory.CreateDirectory(path);
+        }
+      }
+    }
 
     [JsonProperty(Required = Required.Always)]
     public List<LogLevel> LogLevels { get; protected set; }

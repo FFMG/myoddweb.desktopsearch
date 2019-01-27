@@ -55,6 +55,11 @@ namespace myoddweb.desktopsearch.service.Configs
       get => _source;
       protected set
       {
+        if (value == null)
+        {
+          _source = null;
+          return;
+        }
         // set the database source
         _source = Environment.ExpandEnvironmentVariables(value);
 
