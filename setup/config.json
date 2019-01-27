@@ -1,0 +1,71 @@
+{
+  "MaxNumCharactersPerWords": 255,
+  "MaxNumCharactersPerParts": 15,
+  "MaxNumberOfWordsToProcess": 250,
+
+  "WebServer": {
+    "Port": 9123
+  },
+  "Loggers": [
+    {
+      "LogLevels": [
+        "Error",
+        "Warning",
+        "Information"
+      ],
+      "Type": "File",
+      "Path" :  "./" 
+    }
+  ],
+  "Maintenance": {
+    "Active" : 
+    {
+      "From" : 23,
+      "To" : 5
+    }
+  },
+  "Processors": {
+    "UpdatesFilesPerEvent" : 50,
+    "UpdatesFolderPerEvent": 50,
+    "EventsProcessorMs": 200,
+    "MaintenanceProcessorMinutes": 30,
+    "IgnoreFiles" : [
+      {
+        "Pattern": "*.*",
+        "MaxSizeMegabytes": "1024"
+      },
+      {
+        "Pattern": "*.sql",
+        "MaxSizeMegabytes": "40"
+      }
+    ]
+  },
+  "Paths": {
+    "ParseFixedDrives": true,
+    "ParseRemovableDrives": false,
+    "Paths": [
+    ],
+    "IgnoredPaths": [
+      "%temp%",
+      "%tmp%",
+      "%ProgramFiles%",
+      "%ProgramFiles(x86)%",
+      "%ProgramW6432%",
+      "%windir%",
+    ],
+    "ComponentsPaths": [
+      ".\\"
+    ]
+  },
+  "Database": {
+    "Source": ".\\database.db",
+    "IgnoredPaths": [ ".\\" ],
+    "CacheSize": 10000,
+    "AutoCheckpoint" : 16384
+  },
+  "Performance": {
+    "CategoryName": "myoddweb.desktopsearch",
+    "CategoryHelp": "Performance counters for myoddweb.desktopsearch",
+    "DeleteStartUp": false
+  }  
+}
