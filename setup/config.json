@@ -14,7 +14,7 @@
         "Information"
       ],
       "Type": "File",
-      "Path" :  "%appdata%\\desktopsearch\\" 
+      "Path" :  "%appdata%\\myoddweb\\desktopsearch\\" 
     }
   ],
   "Maintenance": {
@@ -58,8 +58,8 @@
     ]
   },
   "Database": {
-    "Source": "%appdata%\\desktopsearch\\database.db",
-    "IgnoredPaths": [ "%appdata%\\desktopsearch\\" ],
+    "Source": "%appdata%\\myoddweb\\desktopsearch\\database.db",
+    "IgnoredPaths": [ "%appdata%\\myoddweb\\desktopsearch\\" ],
     "CacheSize": 10000,
     "AutoCheckpoint" : 16384
   },

@@ -168,13 +168,8 @@ namespace myoddweb.desktopsearch.service
     private IConfig CreateConfig()
     {
       var config = _arguments["config"];
-      if (!File.Exists(config))
-      {
-        config =
-          Path.Combine(
-          Path.GetDirectoryName( Assembly.GetExecutingAssembly().Location ) ?? throw new InvalidOperationException(), 
-          config );
-      }
+      config = Environment.ExpandEnvironmentVariables(config);
+      _eventLog.WriteEntry($"Config location: {config}.");
       var json = File.ReadAllText(config);
       return JsonConvert.DeserializeObject<Config>(json);
     }
@@ -285,7 +280,9 @@ namespace myoddweb.desktopsearch.service
       {
         return new SqlitePersister(
           config.Performance, 
-          parsers, logger, sqlData, 
+          parsers, 
+          logger, 
+          sqlData, 
           config.MaxNumCharactersPerWords, 
           config.MaxNumCharactersPerParts
           );
@@ -326,6 +323,7 @@ namespace myoddweb.desktopsearch.service
         // create the config
         var config = CreateConfig();
 
+        // (re)create the performance counters
         CreatePerformance(config.Performance);
 
         // and the logger

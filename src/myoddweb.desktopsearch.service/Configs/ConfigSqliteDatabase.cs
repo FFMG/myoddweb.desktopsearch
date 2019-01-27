@@ -12,8 +12,11 @@
 //
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
+
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using myoddweb.desktopsearch.interfaces.Configs;
 using Newtonsoft.Json;
 
@@ -40,10 +43,29 @@ namespace myoddweb.desktopsearch.service.Configs
     public long AutoCheckpoint { get; protected set; }
 
     /// <summary>
+    /// The expanded dabase source.
+    /// </summary>
+    private string _source;
+
+    /// <summary>
     /// The source to the database.
     /// </summary>
     [JsonProperty(Required = Required.Always)]
-    public string Source { get; protected set; }
+    public string Source {
+      get => _source;
+      protected set
+      {
+        // set the database source
+        _source = Environment.ExpandEnvironmentVariables(value);
+
+        // if not null, make sure that the path is set.
+        var path = Path.GetDirectoryName(_source);
+        if (path != null && !Directory.Exists(path))
+        {
+          Directory.CreateDirectory(path );
+        }
+      }
+    }
 
     /// <inheritdoc />
     [DefaultValue(null)]
