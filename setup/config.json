@@ -51,7 +51,7 @@
       "%ProgramFiles%",
       "%ProgramFiles(x86)%",
       "%ProgramW6432%",
-      "%windir%",
+      "%windir%"
     ],
     "ComponentsPaths": [
       ".\\"
