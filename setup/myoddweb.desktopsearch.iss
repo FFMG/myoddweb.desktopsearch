@@ -7,6 +7,7 @@
 #define AppExeName "myoddweb.desktopsearch.service.exe"
 #define RootFolder ".."
 #define InstallPath "{pf}\myoddweb"
+#define AppData "{userappdata}\\desktopsearch\\"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -34,10 +35,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
+Source: "config.json"; DestDir: "{#AppData}"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.service.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "config.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "config.json"; DestDir: "{userappdata}"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\EntityFramework.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\EntityFramework.SqlServer.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.helper.dll"; DestDir: "{app}"; Flags: ignoreversion

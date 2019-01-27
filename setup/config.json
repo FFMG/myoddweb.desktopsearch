@@ -14,7 +14,7 @@
         "Information"
       ],
       "Type": "File",
-      "Path" :  "./" 
+      "Path" :  "%appdata%\\desktopsearch\\" 
     }
   ],
   "Maintenance": {
@@ -58,8 +58,8 @@
     ]
   },
   "Database": {
-    "Source": ".\\database.db",
-    "IgnoredPaths": [ ".\\" ],
+    "Source": "%appdata%\\desktopsearch\\database.db",
+    "IgnoredPaths": [ "%appdata%\\desktopsearch\\" ],
     "CacheSize": 10000,
     "AutoCheckpoint" : 16384
   },
