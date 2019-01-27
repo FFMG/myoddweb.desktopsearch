@@ -81,11 +81,6 @@ namespace myoddweb.desktopsearch.service
     private System.ComponentModel.IContainer components;
 
     /// <summary>
-    /// We use this to prevent a shutdown while we are still starting.
-    /// </summary>
-    private bool _startupThreadBusy;
-
-    /// <summary>
     /// The http server.
     /// </summary>
     private HttpServer _http;
@@ -103,7 +98,7 @@ namespace myoddweb.desktopsearch.service
     /// <summary>
     /// The currently running task.
     /// </summary>
-    private Task _serviceTask;
+    private Task _startupTask;
 
     public DesktopSearchService()
     {
@@ -155,8 +150,8 @@ namespace myoddweb.desktopsearch.service
 #endif
       _eventLog.WriteEntry("Starting service");
 
-      // start the service task
-      _serviceTask = Task.Run( () => StartParserAndProcessor(), _cancellationTokenSource.Token );
+      // start the parsers task
+      _startupTask = Task.Run( () => StartParserAndProcessor(), _cancellationTokenSource.Token );
     }
 
     protected override void OnStop()
@@ -324,8 +319,6 @@ namespace myoddweb.desktopsearch.service
       var errorDuringStartup = false;
       try
       {
-        _startupThreadBusy = true;
-
         System.IO.Directory.SetCurrentDirectory(
           Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? throw new InvalidOperationException()
         );
@@ -391,10 +384,6 @@ namespace myoddweb.desktopsearch.service
         {
           Console.WriteLine(ex.Message);
         }
-      }
-      finally
-      {
-        _startupThreadBusy = false;
       }
 
       // if there were any errors in startup stop everything.
@@ -470,16 +459,13 @@ namespace myoddweb.desktopsearch.service
     {
       _cancellationTokenSource?.Cancel();
 
-      // don't do the stop while the startup thread is still busy starting up
-      SpinWait.SpinUntil( () => !_startupThreadBusy);
-
       _parser?.Stop();
       _processor?.Stop();
       _http?.Stop();
       _persister?.Stop();
 
       // wait for the service task to complete.
-      _serviceTask?.Wait();
+      _startupTask?.Wait();
 
       _cancellationTokenSource = null;
       _parser = null;
@@ -653,10 +639,8 @@ namespace myoddweb.desktopsearch.service
     {
       try
       {
-        if (!StartParserAndProcessor())
-        {
-          return;
-        }
+        // start the parsers task
+        _startupTask = Task.Run(() => StartParserAndProcessor(), _cancellationTokenSource.Token);
 
         Console.WriteLine("Press Ctrl+C to stop the monitors.");
 
