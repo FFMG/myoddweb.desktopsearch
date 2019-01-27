@@ -23,6 +23,7 @@ using System.Reflection;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using myoddweb.desktopsearch.helper;
 using myoddweb.desktopsearch.http;
 using myoddweb.desktopsearch.interfaces.Configs;
@@ -94,9 +95,31 @@ namespace myoddweb.desktopsearch.service
     /// </summary>
     private IPersister _persister;
 
+    /// <summary>
+    /// Create the service event log.
+    /// </summary>
+    private readonly EventLog _eventLog;
+
+    /// <summary>
+    /// The currently running task.
+    /// </summary>
+    private Task _serviceTask;
+
     public DesktopSearchService()
     {
       InitializeComponent();
+
+      // create the cancellation source
+      _cancellationTokenSource = new CancellationTokenSource();
+
+      _eventLog = new EventLog();
+      if (!EventLog.SourceExists(DesktopSearchServiceName))
+      {
+        EventLog.CreateEventSource(
+          DesktopSearchServiceName, "Service Log");
+      }
+      _eventLog.Source = DesktopSearchServiceName;
+      _eventLog.Log = "Service Log";
     }
 
     /// <summary>
@@ -125,11 +148,20 @@ namespace myoddweb.desktopsearch.service
     #region ServiceBase overrides
     protected override void OnStart(string[] args)
     {
-      StartParserAndProcessor();
+#if DEBUG
+      // if we start the service ... and it is debug
+      // offer to atach the debugger.
+      Debugger.Launch();
+#endif
+      _eventLog.WriteEntry("Starting service");
+
+      // start the service task
+      _serviceTask = Task.Run( () => StartParserAndProcessor(), _cancellationTokenSource.Token );
     }
 
     protected override void OnStop()
     {
+      _eventLog.WriteEntry("Stopping service");
       StopParser();
     }
     #endregion
@@ -140,7 +172,15 @@ namespace myoddweb.desktopsearch.service
     /// <returns></returns>
     private IConfig CreateConfig()
     {
-      var json = File.ReadAllText(_arguments["config"]);
+      var config = _arguments["config"];
+      if (!File.Exists(config))
+      {
+        config =
+          Path.Combine(
+          Path.GetDirectoryName( Assembly.GetExecutingAssembly().Location ) ?? throw new InvalidOperationException(), 
+          config );
+      }
+      var json = File.ReadAllText(config);
       return JsonConvert.DeserializeObject<Config>(json);
     }
 
@@ -286,6 +326,10 @@ namespace myoddweb.desktopsearch.service
       {
         _startupThreadBusy = true;
 
+        System.IO.Directory.SetCurrentDirectory(
+          Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? throw new InvalidOperationException()
+        );
+
         // create the config
         var config = CreateConfig();
 
@@ -293,9 +337,6 @@ namespace myoddweb.desktopsearch.service
 
         // and the logger
         _logger = CreateLogger(config.Loggers );
-
-        // create the cancellation source
-        _cancellationTokenSource = new CancellationTokenSource();
 
         // we now need to create the files parsers
         var fileParsers = CreateFileParsers<IFileParser>(config.Paths.ComponentsPaths);
@@ -427,14 +468,18 @@ namespace myoddweb.desktopsearch.service
     /// </summary>
     private void StopParser()
     {
+      _cancellationTokenSource?.Cancel();
+
       // don't do the stop while the startup thread is still busy starting up
       SpinWait.SpinUntil( () => !_startupThreadBusy);
 
-      _cancellationTokenSource?.Cancel();
       _parser?.Stop();
       _processor?.Stop();
       _http?.Stop();
       _persister?.Stop();
+
+      // wait for the service task to complete.
+      _serviceTask?.Wait();
 
       _cancellationTokenSource = null;
       _parser = null;
