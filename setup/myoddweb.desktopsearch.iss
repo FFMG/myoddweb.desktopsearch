@@ -52,6 +52,9 @@ Source: "{#RootFolder}\src\bin\Release\nunit.framework.dll"; DestDir: "{app}"; F
 Source: "{#RootFolder}\src\bin\Release\System.Data.SQLite.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\System.Data.SQLite.EF6.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\System.Data.SQLite.Linq.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#RootFolder}\src\bin\Release\x86\SQLite.Interop.dll"; DestDir: "{app}\x86"; Flags: ignoreversion
+Source: "{#RootFolder}\src\bin\Release\x64\SQLite.Interop.dll"; DestDir: "{app}\x64"; Flags: ignoreversion
+
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
