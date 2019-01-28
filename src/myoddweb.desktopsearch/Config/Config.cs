@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.ComponentModel;
+using System.IO;
 using myoddweb.desktopsearch.Interfaces;
 using Newtonsoft.Json;
 
@@ -24,8 +25,33 @@ namespace myoddweb.desktopsearch.Config
     /// <inheritdoc />
     public string Url { get; protected set; }
 
+    private string _save;
+
     /// <inheritdoc />
-    public string Save { get; protected set; }
+    public string Save
+    {
+      get => _save;
+      protected set
+      {
+        // set the value
+        _save = value;
+
+        // did we actually get a value?
+        if (string.IsNullOrEmpty(_save))
+        {
+          return;
+        }
+
+        // we did, try and expand it.
+        _save = Environment.ExpandEnvironmentVariables(_save);
+        var path = Path.GetDirectoryName(_save);
+        if (!string.IsNullOrEmpty(path) && !Directory.Exists(path))
+        {
+          // make sure it exists.
+          Directory.CreateDirectory(path);
+        }
+      }
+    }
 
     /// <inheritdoc />
     public int Port { get; protected set; }

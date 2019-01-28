@@ -7,6 +7,7 @@
 #define AppExeName "myoddweb.desktopsearch.exe"
 #define RootFolder ".."
 #define InstallPath "{pf}\myoddweb"
+#define UserAppData "{userappdata}\myoddweb\desktopsearch"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -34,7 +35,10 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "config.json"; DestDir: "{app}"; Flags: ignoreversion
+; configs.
+Source: "config.json"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
+Source: "desktop.json"; DestDir: "{#UserAppData}"; Flags: onlyifdoesntexist
+
 Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.service.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\EntityFramework.dll"; DestDir: "{app}"; Flags: ignoreversion
@@ -55,14 +59,13 @@ Source: "{#RootFolder}\src\bin\Release\System.Data.SQLite.Linq.dll"; DestDir: "{
 Source: "{#RootFolder}\src\bin\Release\x86\SQLite.Interop.dll"; DestDir: "{app}\x86"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\x64\SQLite.Interop.dll"; DestDir: "{app}\x64"; Flags: ignoreversion
 
-; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
 Name: "{commonprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 Name: "{commondesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExeName}"; Parameters: "--config ""{#UserAppData}\desktop.json"""; Flags: nowait postinstall skipifsilent runascurrentuser; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"
 
 [Code]
 // Get the service path
@@ -81,16 +84,27 @@ function StopService(): Boolean;
 var
   ResultCode: integer;
   Path: String;
+  WasVisible: Boolean;
 begin
 
-  Path := ServicePath();
-  if FileExists(Path) = false then
-  begin
-    Result := false;
-  end
+  try
+    WizardForm.PreparingLabel.Visible := True;
+    
+    Path := ServicePath();
+    if FileExists(Path) = false then
+    begin
+      Result := false;
+    end
 
-  Exec( 'NET', 'STOP "'+ServiceName()+'"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Result := true;
+    // stop it
+    WizardForm.PreparingLabel.Caption := 'Stopping the service';
+    Exec( 'NET', 'STOP "'+ServiceName()+'"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Result := true;
+  finally
+    // restore the original visibility state
+    WizardForm.PreparingLabel.Visible := WasVisible;
+  end;
+
 end;
 
 // Start the service
@@ -134,21 +148,32 @@ end;
 // Uninstall the service
 function InstallService(): Boolean;
 var
+  WasVisible: Boolean;
   ResultCode: integer;
   Path: String;
 begin
 
-  Path := ServicePath();
-  if FileExists(Path) = false then
-  begin
-    Result := false;
-  end
+  try
+    WizardForm.PreparingLabel.Visible := True;
 
-  // stop the service
-  StopService();
+    Path := ServicePath();
+    if FileExists(Path) = false then
+    begin
+      Result := false;
+    end
 
-  // install it.
-  Exec( Path, '--install --config config.json', ExpandConstant( '{app}'), SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    // stop the service
+    StopService();
+
+    // install it.
+    WizardForm.PreparingLabel.Caption := 'Installing the service';
+    Exec( Path, '--install --config config.json', ExpandConstant( '{app}'), SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+  finally
+    // restore the original visibility state
+    WizardForm.PreparingLabel.Visible := WasVisible;
+  end;
+
   Result := true;
 end;
 
@@ -165,14 +190,28 @@ begin
   Result := true;
 end;
 
-procedure CurStepChanged(CurStep: TSetupStep);
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  WasVisible: Boolean;
 begin
-  if CurStep = ssInstall then  
-  begin
+  // store the original visibility state
+  WasVisible := WizardForm.PreparingLabel.Visible;
+  try
+    WizardForm.PreparingLabel.Visible := True;
+    WizardForm.PreparingLabel.Caption := 'Stopping the Service if Running';
+    
     // stop the service if it is running.
     StopService();
-  end 
-    else
+
+  finally
+    // restore the original visibility state
+    WizardForm.PreparingLabel.Visible := WasVisible;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  Log('CurStepChanged(' + IntToStr(Ord(CurStep)) + ') called');
   if CurStep = ssPostInstall then
   begin
     InstallService();

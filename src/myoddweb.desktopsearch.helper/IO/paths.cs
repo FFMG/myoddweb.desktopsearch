@@ -36,7 +36,7 @@ namespace myoddweb.desktopsearch.helper.IO
       {
         try
         {
-          if( null == path )
+          if(string.IsNullOrEmpty(path))
           {
             continue;
           }

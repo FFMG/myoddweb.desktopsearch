@@ -52,7 +52,7 @@ namespace myoddweb.desktopsearch.service.Configs
 
         // if not null, make sure that the path is set.
         var path = System.IO.Path.GetDirectoryName(_path);
-        if (path != null && !Directory.Exists(path))
+        if (!string.IsNullOrEmpty(path) && !Directory.Exists(path))
         {
           Directory.CreateDirectory(path);
         }

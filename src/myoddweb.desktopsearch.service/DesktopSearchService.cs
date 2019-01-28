@@ -168,7 +168,7 @@ namespace myoddweb.desktopsearch.service
     private IConfig CreateConfig()
     {
       var config = _arguments["config"];
-      config = Environment.ExpandEnvironmentVariables(config);
+      config = !string.IsNullOrEmpty(config) ?  Environment.ExpandEnvironmentVariables(config) : "";
       _eventLog.WriteEntry($"Config location: {config}.");
       var json = File.ReadAllText(config);
       return JsonConvert.DeserializeObject<Config>(json);

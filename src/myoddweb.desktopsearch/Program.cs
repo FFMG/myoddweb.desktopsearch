@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Windows.Forms;
 using myoddweb.desktopsearch.helper;
 using myoddweb.desktopsearch.Interfaces;
@@ -42,8 +43,19 @@ namespace myoddweb.desktopsearch
 
     private static IConfig Config(ArgumentsParser arguments )
     {
-      var json = System.IO.File.ReadAllText(arguments["config"]);
+      var json = System.IO.File.ReadAllText( ConfigFile(arguments["config"]));
       return JsonConvert.DeserializeObject<Config.Config>(json);
+    }
+
+    private static string ConfigFile( string config )
+    {
+      var file = Environment.ExpandEnvironmentVariables(config);
+      var path = Path.GetDirectoryName(file);
+      if ( !string.IsNullOrEmpty(path) && !Directory.Exists(path)) 
+      {
+        Directory.CreateDirectory(path);
+      }
+      return file;
     }
   }
 }

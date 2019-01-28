@@ -1,0 +1,7 @@
+{
+    "Url" : "http://localhost/",
+    "Port" : 9123,
+    "MinimumSearchLength" : 5,
+    "KeyDownIntervalMs": 450,
+    "MaxNumberOfItemsToFetch" :  1000 
+}
