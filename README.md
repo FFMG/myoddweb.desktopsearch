@@ -50,3 +50,52 @@ And that's all really, you can add a list of supported extensions, (but you coul
 	    /// <returns></returns>
 	    Task<Words> ParseAsync(FileInfo file, ILogger logger, CancellationToken token);
 	}
+	
+# Desktop Search with [Piger](https://github.com/FFMG/myoddweb.piger)
+
+With [Piger](https://github.com/FFMG/myoddweb.piger) you can launch the desktop seach app and automagically search for a word
+
+- Install the servcice
+- Make sure it is all up and running.
+- Go to your piger root commands (normally `%appdata%\myoddweb\ActionMonitor\RootCommands`)
+- Create a new `lua` file and call it something like `DesktopSearch`
+- Add the code below
+- Reload piger, (`Caps Lock` + `this.reload`)
+
+      --
+      -- Open Desktop search with selected words.
+      --
+
+      -- the number of words passed
+      local sizeOf = am_getCommandCount();
+
+      -- the query we (might) use.
+      local query = "";
+      if sizeOf == 0  then
+          -- no words given ... try use the hilighted ones.
+          query = am_getstring();
+          if false == query then
+            am_say( "Starting Desktop Search.", 400, 10 );
+            query = "";
+          else
+            am_say( "Starting Desktop Search: <b><i>" .. query .. "</i></b>", 400, 10 );
+          end
+      else
+        local prettyQuery = "";
+        for count = 1, sizeOf, 1  do
+          -- the numbers are 0 based.
+          -- and we ignore the first one as it is the command itself
+          local word = am_getCommand( count );
+          query = query .. word;
+          prettyQuery = prettyQuery .. "<b><i>" .. word .. "</i></b>";
+          if count < sizeOf then
+            prettyQuery = prettyQuery .. " and ";
+          end
+        end  
+        am_say( "Starting Desktop Search: " .. prettyQuery, 400, 10 );
+      end
+
+      -- we can launch the desktop search.
+      am_execute( [[%ProgramFiles%\myoddweb\desktopsearch\myoddweb.desktopsearch.exe]], [[--query "]]..query..[[" --config "%appdata%\myoddweb\desktopsearch\desktop.json"]], false);
+
+- Of cour if you have a different config/locations then you can edit those.
