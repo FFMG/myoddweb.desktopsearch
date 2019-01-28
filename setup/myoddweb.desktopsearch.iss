@@ -59,10 +59,9 @@ Source: "{#RootFolder}\src\bin\Release\System.Data.SQLite.Linq.dll"; DestDir: "{
 Source: "{#RootFolder}\src\bin\Release\x86\SQLite.Interop.dll"; DestDir: "{app}\x86"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\x64\SQLite.Interop.dll"; DestDir: "{app}\x64"; Flags: ignoreversion
 
-
 [Icons]
-Name: "{commonprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"
-Name: "{commondesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{commonprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Parameters: "--config ""{#UserAppData}\desktop.json"""
+Name: "{commondesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Parameters: "--config ""{#UserAppData}\desktop.json"""; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Parameters: "--config ""{#UserAppData}\desktop.json"""; Flags: nowait postinstall skipifsilent runascurrentuser; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"
