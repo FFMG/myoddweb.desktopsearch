@@ -1,4 +1,4 @@
-# MyOddWeb.com Desktop Search [![Release](https://img.shields.io/badge/release-v0.0.0.1-brightgreen.png?style=flat)](https://github.com/FFMG/myoddweb.desktopsearch/) [![Build Status](https://travis-ci.org/FFMG/myoddweb.desktopsearch.svg?branch=master)](https://travis-ci.org/FFMG/myoddweb.desktopsearch)
+# MyOddWeb.com Desktop Search [![Release](https://img.shields.io/badge/release-v0.2.0.0-brightgreen.png?style=flat)](https://github.com/FFMG/myoddweb.desktopsearch/) [![Build Status](https://travis-ci.org/FFMG/myoddweb.desktopsearch.svg?branch=master)](https://travis-ci.org/FFMG/myoddweb.desktopsearch)
 
 myoddweb.desktopsearch, (MDS), is a powerful indexer files indexer. It makes is fast and easy to find indexed files on your desktop.
 
