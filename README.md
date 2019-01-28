@@ -98,4 +98,4 @@ With [Piger](https://github.com/FFMG/myoddweb.piger) you can launch the desktop 
       -- we can launch the desktop search.
       am_execute( [[%ProgramFiles%\myoddweb\desktopsearch\myoddweb.desktopsearch.exe]], [[--query "]]..query..[[" --config "%appdata%\myoddweb\desktopsearch\desktop.json"]], false);
 
-- Of cour if you have a different config/locations then you can edit those.
+- Of course if you have a different config/locations then you can edit those.
