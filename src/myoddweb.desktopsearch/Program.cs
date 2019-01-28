@@ -35,10 +35,11 @@ namespace myoddweb.desktopsearch
 
       var arguments = new ArgumentsParser(args, new Dictionary<string, ArgumentData>
       {
-        { "config", new ArgumentData{ IsRequired = false, DefaultValue = "desktop.json"}}
+        { "config", new ArgumentData{ IsRequired = false, DefaultValue = "desktop.json"}},
+        { "query", new ArgumentData{ IsRequired = false, DefaultValue = ""}}
       });
 
-      Application.Run(new Search( Config( arguments ) ));
+      Application.Run(new Search( Config( arguments), arguments["query"]));
     }
 
     private static IConfig Config(ArgumentsParser arguments )

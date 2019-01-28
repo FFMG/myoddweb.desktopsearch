@@ -13,6 +13,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -35,7 +36,7 @@ namespace myoddweb.desktopsearch
     /// <summary>
     /// The timer so we do not call the api while the user is typing.
     /// </summary>
-    private readonly Timer _timer;
+    private Timer _timer;
 
     /// <summary>
     /// The path of the url
@@ -48,7 +49,7 @@ namespace myoddweb.desktopsearch
     private readonly IConfig _config;
     #endregion
 
-    public Search(IConfig config )
+    public Search(IConfig config, string defaultQuery )
     {
       // set the arguments.
       _config = config;
@@ -75,12 +76,50 @@ namespace myoddweb.desktopsearch
       ActiveControl = searchBox;
 
       // create start the timer, make sure that it is not running.
+      CreateKeyDownTimer(config.KeyDownIntervalMs);
+
+      // if the user passed a string search for it.
+      SetTextBoxString(defaultQuery);
+    }
+
+    /// <summary>
+    /// Create the keyboard timer.
+    /// But we do not want to start it.
+    /// </summary>
+    /// <param name="keyDownIntervalMs"></param>
+    private void CreateKeyDownTimer( int keyDownIntervalMs)
+    {
       _timer = new Timer
       {
-        Interval = config.KeyDownIntervalMs,
+        Interval = keyDownIntervalMs,
         Enabled = false
       };
       _timer.Tick += OnTimer;
+    }
+
+    /// <summary>
+    /// Set the text box string and do the query
+    /// </summary>
+    /// <param name="query"></param>
+    private void SetTextBoxString(string query )
+    {
+      if (string.IsNullOrEmpty(query))
+      {
+        return;
+      }
+
+      // set the textbox message
+      searchBox.Text = query;
+
+      // and make sure that the cursor is at the end,
+      searchBox.SelectionStart = query.Length;
+      searchBox.SelectionLength = 0;
+
+      // stop the timer as we will do the search
+      _timer?.Stop();
+
+      // and search for the string.
+      SearchFor(query);
     }
 
     /// <summary>
@@ -197,8 +236,8 @@ namespace myoddweb.desktopsearch
       SetSearchResponse(null);
 
       // restart the timer
-      _timer.Stop();
-      _timer.Start();
+      _timer?.Stop();
+      _timer?.Start();
     }
 
     /// <summary>
@@ -209,17 +248,29 @@ namespace myoddweb.desktopsearch
     private void OnTimer(object sender, EventArgs e)
     {
       // stop the timer
-      _timer.Stop();
+      _timer?.Stop();
 
       // search for the current text.
       var text = searchBox.Text;
-      if (text.Length < _config.MinimumSearchLength)
-      {
-        return;
-      }
+      SearchFor(text);
+    }
 
+    /// <summary>
+    /// Search for a string.
+    /// </summary>
+    /// <param name="text"></param>
+    [SuppressMessage("ReSharper", "LocalizableElement")]
+    private void SearchFor(string text)
+    {
       try
       {
+        // if the text is smaller than the text leng
+        // then we will not even call the API
+        if (text?.Length < _config.MinimumSearchLength)
+        {
+          return;
+        }
+
         //  build the request
         var request = new SearchRequest(text, _config.MaxNumberOfItemsToFetch);
         var content = JsonConvert.SerializeObject(request);
@@ -233,7 +284,7 @@ namespace myoddweb.desktopsearch
       }
       catch
       {
-        // to do.
+        MessageBox.Show($"There was an error trying to run the search query for: {text}", "Could not run query", MessageBoxButtons.OK, MessageBoxIcon.Error);
       }
     }
 
