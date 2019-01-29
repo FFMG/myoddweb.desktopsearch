@@ -92,6 +92,7 @@ else
     query = query .. word;
     prettyQuery = prettyQuery .. "<b><i>" .. word .. "</i></b>";
     if count < sizeOf then
+      query = query .. " "
       prettyQuery = prettyQuery .. " and ";
     end
   end  

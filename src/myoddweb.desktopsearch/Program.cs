@@ -14,6 +14,7 @@
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
 using myoddweb.desktopsearch.helper;
@@ -32,6 +33,12 @@ namespace myoddweb.desktopsearch
     {
       Application.EnableVisualStyles();
       Application.SetCompatibleTextRenderingDefault(false);
+
+#if DEBUG
+      // if we start the service ... and it is debug
+      // offer to atach the debugger.
+      Debugger.Launch();
+#endif
 
       var arguments = new ArgumentsParser(args, new Dictionary<string, ArgumentData>
       {
