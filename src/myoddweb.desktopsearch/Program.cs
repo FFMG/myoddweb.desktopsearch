@@ -17,7 +17,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
-using myoddweb.desktopsearch.helper;
+using myoddweb.commandlineparser;
 using myoddweb.desktopsearch.Interfaces;
 using Newtonsoft.Json;
 
@@ -40,18 +40,18 @@ namespace myoddweb.desktopsearch
       Debugger.Launch();
 #endif
 
-      var arguments = new ArgumentsParser(args, new Dictionary<string, ArgumentData>
+      var arguments = new CommandlineParser(args, new Dictionary<string, CommandlineData>
       {
-        { "config", new ArgumentData{ IsRequired = false, DefaultValue = "desktop.json"}},
-        { "query", new ArgumentData{ IsRequired = false, DefaultValue = ""}}
+        { "config", new CommandlineData{ IsRequired = false, DefaultValue = "desktop.json"}},
+        { "query", new CommandlineData{ IsRequired = false, DefaultValue = ""}}
       });
 
       Application.Run(new Search( Config( arguments), arguments["query"]));
     }
 
-    private static IConfig Config(ArgumentsParser arguments )
+    private static IConfig Config(CommandlineParser arguments )
     {
-      var json = System.IO.File.ReadAllText( ConfigFile(arguments["config"]));
+      var json = File.ReadAllText( ConfigFile(arguments["config"]));
       return JsonConvert.DeserializeObject<Config.Config>(json);
     }
 

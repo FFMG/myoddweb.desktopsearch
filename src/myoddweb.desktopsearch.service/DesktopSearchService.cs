@@ -24,7 +24,7 @@ using System.ServiceProcess;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using myoddweb.desktopsearch.helper;
+using myoddweb.commandlineparser;
 using myoddweb.desktopsearch.http;
 using myoddweb.desktopsearch.interfaces.Configs;
 using myoddweb.desktopsearch.interfaces.IO;
@@ -73,7 +73,7 @@ namespace myoddweb.desktopsearch.service
     /// <summary>
     /// The parsed arguments.
     /// </summary>
-    private ArgumentsParser _arguments;
+    private CommandlineParser _commandlineParsers;
 
     /// <summary> 
     /// Required designer variable.
@@ -167,7 +167,7 @@ namespace myoddweb.desktopsearch.service
     /// <returns></returns>
     private IConfig CreateConfig()
     {
-      var config = _arguments["config"];
+      var config = _commandlineParsers["config"];
       config = !string.IsNullOrEmpty(config) ?  Environment.ExpandEnvironmentVariables(config) : "";
       _eventLog.WriteEntry($"Config location: {config}.");
       var json = File.ReadAllText(config);
@@ -476,11 +476,11 @@ namespace myoddweb.desktopsearch.service
     /// <param name="args"></param>
     public void InvokeAction(string[] args)
     {
-      _arguments = new ArgumentsParser(args, new Dictionary<string, ArgumentData>
+      _commandlineParsers = new CommandlineParser(args, new Dictionary<string, CommandlineData>
       {
-        { "config", new ArgumentData{ IsRequired = false, DefaultValue = "config.json"}},
-        { "install", new ArgumentData{ IsRequired = false} },
-        { "uninstall", new ArgumentData{ IsRequired = false} }
+        { "config", new CommandlineData{ IsRequired = false, DefaultValue = "config.json"}},
+        { "install", new CommandlineData{ IsRequired = false} },
+        { "uninstall", new CommandlineData{ IsRequired = false} }
       });
 
       // we can now call with the parameters.
@@ -493,28 +493,28 @@ namespace myoddweb.desktopsearch.service
     private void InvokeAction()
     {
       // save the arguments.
-      if (null == _arguments)
+      if (null == _commandlineParsers)
       {
         // the arguments must be created @see InvokeAction(string[] args)
-        throw new ArgumentNullException(nameof(_arguments));
+        throw new ArgumentNullException(nameof(_commandlineParsers));
       }
 
       // are we installing?
-      if (_arguments.IsSet("install"))
+      if (_commandlineParsers.IsSet("install"))
       {
         InvokeActionInstall();
         return;
       }
 
       // uninstalling?
-      if (_arguments.IsSet("uninstall"))
+      if (_commandlineParsers.IsSet("uninstall"))
       {
         InvokeActionUnInstall();
         return;
       }
 
       // running as a console
-      if (_arguments.IsSet("console"))
+      if (_commandlineParsers.IsSet("console"))
       {
         RunAsConsole();
         return;
@@ -562,7 +562,7 @@ namespace myoddweb.desktopsearch.service
       using (var serviceProcessInstaller = new ServiceProcessInstaller { Account = ServiceAccount.LocalSystem })
       {
         // make sure we do not have the install listed.
-        var clone = _arguments.Clone().Remove("install");
+        var clone = _commandlineParsers.Clone().Remove("install");
 
         // figure out the command line based on whether we have a custom service name or not
         var processLaunchCommand = $"\"{Assembly.GetEntryAssembly().Location}\" {clone}";
