@@ -41,6 +41,7 @@ Source: "desktop.json"; DestDir: "{#UserAppData}"; Flags: onlyifdoesntexist
 
 Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.service.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#RootFolder}\src\bin\Release\myoddweb.commandlineparser.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\EntityFramework.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\EntityFramework.SqlServer.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.helper.dll"; DestDir: "{app}"; Flags: ignoreversion
