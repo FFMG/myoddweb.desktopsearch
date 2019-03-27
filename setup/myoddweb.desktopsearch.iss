@@ -8,6 +8,7 @@
 #define RootFolder ".."
 #define InstallPath "{pf}\myoddweb"
 #define UserAppData "{userappdata}\myoddweb\desktopsearch"
+#define BinFolder "..\src\bin\Release"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -39,26 +40,27 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "config.json"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
 Source: "desktop.json"; DestDir: "{#UserAppData}"; Flags: onlyifdoesntexist
 
-Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.service.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\myoddweb.commandlineparser.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\EntityFramework.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\EntityFramework.SqlServer.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.helper.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.http.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.interfaces.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.parser.code.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.parser.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.parser.text.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\myoddweb.desktopsearch.processor.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\myoddweb.directorywatcher.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\Newtonsoft.Json.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\nunit.framework.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\System.Data.SQLite.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\System.Data.SQLite.EF6.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\System.Data.SQLite.Linq.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\x86\SQLite.Interop.dll"; DestDir: "{app}\x86"; Flags: ignoreversion
-Source: "{#RootFolder}\src\bin\Release\x64\SQLite.Interop.dll"; DestDir: "{app}\x64"; Flags: ignoreversion
+Source: "{#BinFolder}\myoddweb.desktopsearch.service.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\myoddweb.desktopsearch.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\myoddweb.commandlineparser.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\EntityFramework.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\EntityFramework.SqlServer.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\myoddweb.desktopsearch.helper.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\myoddweb.desktopsearch.http.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\myoddweb.desktopsearch.interfaces.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\myoddweb.desktopsearch.parser.code.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\myoddweb.desktopsearch.parser.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\myoddweb.desktopsearch.parser.text.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\myoddweb.desktopsearch.processor.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\myoddweb.directorywatcher.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\myoddweb.directorywatcher.interfaces.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\Newtonsoft.Json.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\nunit.framework.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\System.Data.SQLite.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\System.Data.SQLite.EF6.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\System.Data.SQLite.Linq.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BinFolder}\x86\SQLite.Interop.dll"; DestDir: "{app}\x86"; Flags: ignoreversion
+Source: "{#BinFolder}\x64\SQLite.Interop.dll"; DestDir: "{app}\x64"; Flags: ignoreversion
 
 [Icons]
 Name: "{commonprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Parameters: "--config ""{#UserAppData}\desktop.json"""

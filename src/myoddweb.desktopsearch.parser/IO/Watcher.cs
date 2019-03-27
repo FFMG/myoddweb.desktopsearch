@@ -213,6 +213,7 @@ namespace myoddweb.desktopsearch.parser.IO
       // cancelled at some point.
       if (_token.IsCancellationRequested)
       {
+        Logger.Information($"Could not start watcher, cancellation requested: {Folder.FullName}.");
         return;
       }
 
@@ -236,17 +237,26 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     private void StartFilesWatcher()
     {
-      _fileWatcher?.Stop();
-      // Start the file watcher.
-      _fileWatcher = new directorywatcher.Watcher();
-      _fileWatcher.Start( new directorywatcher.Request( Folder.FullName, true ) );
+      try
+      {
+        _fileWatcher?.Stop();
+        // Start the file watcher.
+        _fileWatcher = new directorywatcher.Watcher();
+        _fileWatcher.Start(new directorywatcher.Request(Folder.FullName, true));
 
-      _fileWatcher.OnAddedAsync += EventAsync;
-      _fileWatcher.OnRemovedAsync += EventAsync;
-      _fileWatcher.OnTouchedAsync += EventAsync;
-      _fileWatcher.OnRenamedAsync += EventAsync;
+        _fileWatcher.OnAddedAsync += EventAsync;
+        _fileWatcher.OnRemovedAsync += EventAsync;
+        _fileWatcher.OnTouchedAsync += EventAsync;
+        _fileWatcher.OnRenamedAsync += EventAsync;
 
-      _fileWatcher.OnErrorAsync += ErrorAsync;
+        _fileWatcher.OnErrorAsync += ErrorAsync;
+
+        Logger.Information( $"Started File watcher: {Folder.FullName}." );
+      }
+      catch (Exception e)
+      {
+        Logger.Exception( e );
+      }
     }
 
     private async Task ErrorAsync(IEventError e, CancellationToken token)

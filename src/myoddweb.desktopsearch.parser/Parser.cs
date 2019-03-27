@@ -528,12 +528,31 @@ namespace myoddweb.desktopsearch.parser
       _runningTask = ParseAllDirectoriesAsync(token).ContinueWith(
         (t) =>
         {
-          if (!t.Result || t.IsFaulted || t.IsCanceled )
+          if (!t.Result )
           {
+            _logger.Warning("All directory parsing returned an error, watchers not starting.");
             return;
           }
-          // we then watch for files/folder changes.
-          StartWatchers(token);
+          if (t.IsFaulted )
+          {
+            _logger.Exception( "All directory parsing returned a faulted result, watchers not starting.", t.Exception );
+            return;
+          }
+          if (t.IsCanceled)
+          {
+            _logger.Warning("All directory parsing task was cancelled, watchers not starting.");
+            return;
+          }
+
+          try
+          {
+            // we then watch for files/folder changes.
+            StartWatchers(token);
+          }
+          catch (Exception e)
+          {
+            _logger.Exception(e);
+          }
         }, token);
 
 
@@ -550,19 +569,32 @@ namespace myoddweb.desktopsearch.parser
       // get all the paths we will be working with.
       var paths = helper.IO.Paths.GetStartPaths(_config.Paths);
 
+      _logger.Verbose( $"Starting the watchers in {paths.Count} path(s).");
+
       // get the ignore path
       foreach (var path in paths)
       {
-        // the file watcher.
-        var fileWatcher = new Watcher(path, _logger,
-          new FilesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger),
-          new DirectoriesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger)
-        );
+        _logger.Verbose($"Creating the watcher in '{path.FullName}'.");
 
-        fileWatcher.Start(token);
+        try
+        {
+          var fsep = new FilesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger);
+          var dsep = new DirectoriesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger);
 
-        _watchers.Add(fileWatcher);
+          // the file watcher.
+          var fileWatcher = new Watcher(path, _logger, fsep, dsep);
+          fileWatcher.Start(token);
+
+          _watchers.Add(fileWatcher);
+          _logger.Verbose($"Started the watcher in '{path.FullName}'.");
+        }
+        catch (Exception e)
+        {
+          _logger.Exception( e );
+        }
       }
+
+      _logger.Verbose($"Started {_watchers.Count} watchers.");
     }
     #endregion
 
