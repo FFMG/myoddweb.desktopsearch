@@ -65,7 +65,7 @@ namespace myoddweb.desktopsearch.http.Route
       }
     }
 
-    private Task<IList<IWord>> GetWords(SearchRequest search, CancellationToken token)
+    private Task<IList<IWord>> GetWords(ISearchRequest search, CancellationToken token)
     {
       return Persister.Query.FindAsync(search.What, search.Count, token); 
     }
