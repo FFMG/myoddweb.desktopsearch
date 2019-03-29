@@ -100,6 +100,7 @@ namespace myoddweb.desktopsearch.service.Persisters
           AND fw.wordid = w.id
           AND f.id = fw.fileid
           AND fo.id = f.folderid
+          GROUP by f.id
         LIMIT {count};";
 
         var words = new List<IWord>(count);
