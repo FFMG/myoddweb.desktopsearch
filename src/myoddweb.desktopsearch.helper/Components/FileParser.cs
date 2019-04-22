@@ -57,7 +57,7 @@ namespace myoddweb.desktopsearch.helper.Components
     /// <returns></returns>
     public async Task<long> ParserAsync(IParserHelper helper, Func<string, bool> func, CancellationToken token )
     {
-      // open non locking
+      // open non-locking file stream
       using (var fs = new FileStream(helper.File.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
       {
         using (var sr = new StreamReader(fs))
