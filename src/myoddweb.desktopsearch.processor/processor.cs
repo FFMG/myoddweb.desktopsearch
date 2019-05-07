@@ -57,6 +57,7 @@ namespace myoddweb.desktopsearch.processor
     public Processor(
       IList<IFileParser> fileParsers,
       IProcessors processorsConfig,
+      ITimers timersConfig,
       IMaintenance maintenanceConfig,
       IParser parser,
       IPersister persister, 
@@ -81,8 +82,8 @@ namespace myoddweb.desktopsearch.processor
       _eventTimer = new ProcessorTimer(
         new List<IProcessor>
         {
-          new Folders(directoriesCounter, processorsConfig.UpdatesFolderPerEvent, persister, logger, directory),
-          new Files(filesCounter, processorsConfig.UpdatesFilesPerEvent, fileParsers, processorsConfig.IgnoreFiles, persister, logger, directory)
+          new Folders(directoriesCounter, processorsConfig.UpdatesFolderPerEvent, persister, logger, directory, timersConfig.EventsMaxWaitTransactionMs),
+          new Files(filesCounter, processorsConfig.UpdatesFilesPerEvent, fileParsers, processorsConfig.IgnoreFiles, persister, logger, directory, timersConfig.EventsMaxWaitTransactionMs)
         },
         _logger, processorsConfig.EventsProcessorMs);
 

@@ -53,13 +53,20 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// The performance counter.
     /// </summary>
     private readonly ICounter _counter;
+
+    /// <summary>
+    /// How often we will be remobing compledted tasks.
+    /// </summary>
+    private readonly int _eventsTimeOutInMs;
     #endregion
 
     public Folders(ICounter counter,
       int maxNumberFoldersToProcess,
       IPersister persister, 
       ILogger logger, 
-      IDirectory directory)
+      IDirectory directory,
+      int eventsTimeOutInMs
+    )
     {
       if (maxNumberFoldersToProcess <= 0)
       {
@@ -78,6 +85,12 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       // save the directory parser
       _directory = directory ?? throw new ArgumentNullException(nameof(directory));
+
+      if (eventsTimeOutInMs <= 0)
+      {
+        throw new ArgumentException($"The folder processor event timeout, ({eventsTimeOutInMs}), cannot be zero or negative.");
+      }
+      _eventsTimeOutInMs = eventsTimeOutInMs;
     }
 
     /// <inheritdoc />
@@ -87,40 +100,52 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<long> WorkAsync( CancellationToken token)
+    public async Task<long> WorkAsync(CancellationToken token)
     {
       using (_counter.Start())
       {
-        // get a factory item
-        var factory = await _persister.BeginWrite(token).ConfigureAwait(false);
-
         try
         {
-          // then get _all_ the file updates that we want to do.
-          var pendingUpdates = await GetPendingFolderUpdatesAndMarkDirectoryProcessedAsync(factory, token).ConfigureAwait(false);
-          if (null != pendingUpdates)
-          {
-            // process the update.
-            await ProcessFolderUpdatesAsync(factory, pendingUpdates, token).ConfigureAwait(false);
-          }
-
-          _persister.Commit(factory);
-
-          // we processed one update
-          return pendingUpdates?.Count ?? 0;
+          // get a factory item
+          var factory = await _persister.BeginWrite(_eventsTimeOutInMs, token).ConfigureAwait(false);
+          return await WorkAsync(factory, token).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
+        catch (TimeoutException)
         {
-          _persister.Rollback(factory);
-          _logger.Warning("Directory processor: Received cancellation request - Directories Processor - Work");
-          throw;
+          // swallow timeout exceptions...
+          return 0;
         }
-        catch (Exception e)
+      }
+    }
+
+    private async Task<long> WorkAsync(IConnectionFactory factory, CancellationToken token)
+    {
+      try
+      {
+        // then get _all_ the file updates that we want to do.
+        var pendingUpdates = await GetPendingFolderUpdatesAndMarkDirectoryProcessedAsync(factory, token).ConfigureAwait(false);
+        if (null != pendingUpdates)
         {
-          _persister.Rollback(factory);
-          _logger.Exception("Directory processor: ", e);
-          throw;
+          // process the update.
+          await ProcessFolderUpdatesAsync(factory, pendingUpdates, token).ConfigureAwait(false);
         }
+
+        _persister.Commit(factory);
+
+        // we processed one update
+        return pendingUpdates?.Count ?? 0;
+      }
+      catch (OperationCanceledException)
+      {
+        _persister.Rollback(factory);
+        _logger.Warning("Directory processor: Received cancellation request - Directories Processor - Work");
+        throw;
+      }
+      catch (Exception e)
+      {
+        _persister.Rollback(factory);
+        _logger.Exception("Directory processor: ", e);
+        throw;
       }
     }
 

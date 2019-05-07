@@ -33,7 +33,7 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// <summary>
     /// The current directory.
     /// </summary>
-    private IDirectory _directory;
+    private readonly IDirectory _directory;
 
     /// <summary>
     /// The logger that we will be using to log messages.
@@ -66,6 +66,11 @@ namespace myoddweb.desktopsearch.processor.Processors
     /// The performance counter.
     /// </summary>
     private readonly ICounter _counter;
+
+    /// <summary>
+    /// How often we will be remobing compledted tasks.
+    /// </summary>
+    private readonly int _eventsTimeOutInMs;
     #endregion
 
     public Files(
@@ -75,7 +80,8 @@ namespace myoddweb.desktopsearch.processor.Processors
       IList<IIgnoreFile> ignoreFiles,
       IPersister persister, 
       ILogger logger,
-      IDirectory directory
+      IDirectory directory,
+      int eventsTimeOutInMs
       )
     {
       // save the counter
@@ -101,6 +107,12 @@ namespace myoddweb.desktopsearch.processor.Processors
 
       // save the logger
       _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+      if (eventsTimeOutInMs <= 0)
+      {
+        throw new ArgumentException($"The file processor event timeout, ({eventsTimeOutInMs}), cannot be zero or negative.");
+      }
+      _eventsTimeOutInMs = eventsTimeOutInMs;
     }
 
     /// <inheritdoc />
@@ -110,11 +122,23 @@ namespace myoddweb.desktopsearch.processor.Processors
     }
 
     /// <inheritdoc />
-    public async Task<long> WorkAsync( CancellationToken token)
+    public async Task<long> WorkAsync(CancellationToken token)
     {
-      // get a factory item
-      var factory = await _persister.BeginWrite(token).ConfigureAwait(false);
+      try
+      {
+        // get a factory item
+        var factory = await _persister.BeginWrite(_eventsTimeOutInMs, token).ConfigureAwait(false);
+        return await WorkAsync(factory, token).ConfigureAwait(false);
+      }
+      catch (TimeoutException)
+      {
+        // swallow timeout exceptions...
+        return 0;
+      }
+    }
 
+    private async Task<long> WorkAsync( IConnectionFactory factory, CancellationToken token)
+    { 
       try
       {
         // Make sure that we do not kill the IO 

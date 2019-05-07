@@ -230,10 +230,6 @@ namespace myoddweb.desktopsearch.service.Persisters
         PrepareTransaction(factory);
         return factory;
       }
-      catch (TimeoutException)
-      {
-        throw;
-      }
       catch (OperationCanceledException e)
       {
         // is it my token?
@@ -276,6 +272,10 @@ namespace myoddweb.desktopsearch.service.Persisters
         var factory = await _transactionSpinner.BeginWrite( () => new SqliteReadWriteConnectionFactory(createTransaction, _config), timeoutMs, token).ConfigureAwait(false);
         PrepareTransaction( factory );
         return factory;
+      }
+      catch (TimeoutException)
+      {
+        throw;
       }
       catch (OperationCanceledException e)
       {
