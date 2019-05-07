@@ -31,13 +31,13 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     private IFolders Folders { get; }
 
-    public DirectoriesSystemEventsParser( IPersister persister, IDirectory directory, int eventsParserMs, ILogger logger) :
-      this( persister.Folders, persister, directory, eventsParserMs, logger)
+    public DirectoriesSystemEventsParser( IPersister persister, IDirectory directory, int eventsParserMs, int eventsMaxWaitTransactionMs, ILogger logger) :
+      this( persister.Folders, persister, directory, eventsParserMs, eventsMaxWaitTransactionMs, logger)
     {
     }
 
-    public DirectoriesSystemEventsParser(IFolders folders, IPersister persister, IDirectory directory, int eventsParserMs, ILogger logger) :
-      base(persister, directory, eventsParserMs, logger)
+    public DirectoriesSystemEventsParser(IFolders folders, IPersister persister, IDirectory directory, int eventsParserMs, int eventsMaxWaitTransactionMs, ILogger logger) :
+      base(persister, directory, eventsParserMs, eventsMaxWaitTransactionMs, logger)
     {
       Folders = folders;
     }

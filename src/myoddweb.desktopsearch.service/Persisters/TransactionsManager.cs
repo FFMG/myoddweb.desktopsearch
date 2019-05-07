@@ -83,8 +83,9 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// </summary>
     /// <param name="createFactory"></param>
     /// <param name="token"></param>
+    /// <param name="timeoutMs">The max number of ms we want to wait before we return null</param>
     /// <returns></returns>
-    public async Task<IConnectionFactory> BeginWrite(CreateFactory createFactory, CancellationToken token )
+    public async Task<IConnectionFactory> BeginWrite(CreateFactory createFactory, int timeoutMs, CancellationToken token)
     {
       // update the counter.
       using (_counterBegin.Start())
@@ -93,7 +94,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           // wait for the transaction to no longer be null
           // outside of the lock, (so it can be freed.
-          await helper.Wait.UntilAsync(() => _writeFactory == null, token).ConfigureAwait(false);
+          await helper.Wait.UntilAsync(() => _writeFactory == null, timeoutMs, token).ConfigureAwait(false);
 
           // now trans and create the transaction
           var lockTaken = false;

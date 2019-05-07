@@ -499,7 +499,7 @@ namespace myoddweb.desktopsearch.service.Persisters
     private async Task MaintenanceVacuumAsync(CancellationToken token)
     {
       // get a factory item ... but we do not want a transaction.
-      var factory = await BeginWrite(false, token).ConfigureAwait(false);
+      var factory = await BeginWrite(false, Timeout.Infinite, token).ConfigureAwait(false);
       try
       {
         const string configVacuum = "maintenance.vacuum";

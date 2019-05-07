@@ -21,5 +21,10 @@ namespace myoddweb.desktopsearch.interfaces.Configs
     /// Small processing gaps is better than large gaps.
     /// </summary>
     int EventsParserMs { get; }
+
+    /// <summary>
+    /// The maximum number of ms we want to wait for a transaction
+    /// </summary>
+    int EventsMaxWaitTransactionMs{ get; }
   }
 }

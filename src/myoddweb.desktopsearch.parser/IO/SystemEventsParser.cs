@@ -80,12 +80,17 @@ namespace myoddweb.desktopsearch.parser.IO
     private readonly int _eventsTimeOutInMs;
 
     /// <summary>
+    /// The maximum amount of time we want to wait for transaction
+    /// </summary>
+    private readonly int _eventsMaxWaitTransactionMs;
+
+    /// <summary>
     /// The folder persister that will allow us to add/remove folders.
     /// </summary>
     private IPersister Persister { get; }
     #endregion
 
-    protected SystemEventsParser( IPersister persister, IDirectory directory, int eventsParserMs, ILogger logger)
+    protected SystemEventsParser( IPersister persister, IDirectory directory, int eventsParserMs, int eventsMaxWaitTransactionMs, ILogger logger)
     {
       // the directories handler
       Directory = directory ?? throw new ArgumentNullException(nameof(directory));
@@ -95,6 +100,12 @@ namespace myoddweb.desktopsearch.parser.IO
         throw new ArgumentException($"The event timeout, ({eventsParserMs}), cannot be zero or negative.");
       }
       _eventsTimeOutInMs = eventsParserMs;
+
+      if (eventsParserMs < 0)
+      {
+        throw new ArgumentException($"The event max wait for transaction, ({_eventsMaxWaitTransactionMs}), cannot be negative.");
+      }
+      _eventsMaxWaitTransactionMs = eventsMaxWaitTransactionMs;
 
       // save the logger
       Logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -265,45 +276,54 @@ namespace myoddweb.desktopsearch.parser.IO
         }
       }
 
-      // we are starting to process events.
-      var factory = await Persister.BeginWrite(token).ConfigureAwait(false);
       try
       {
-        // we now have the lock... so actually get the events.
-        var events = RebuildSystemEvents();
-
-        // try and do everything at once.
-        // not that we could return null if we have nothing at all to process.
-        foreach (var e in events ?? new List<IFileSystemEvent>() )
+        // we are starting to process events.
+        var factory = await Persister.BeginWrite(_eventsMaxWaitTransactionMs, token).ConfigureAwait(false);
+        try
         {
-          if (token.IsCancellationRequested)
+          // we now have the lock... so actually get the events.
+          var events = RebuildSystemEvents();
+
+          // try and do everything at once.
+          // not that we could return null if we have nothing at all to process.
+          foreach (var e in events ?? new List<IFileSystemEvent>())
           {
-            break;
+            if (token.IsCancellationRequested)
+            {
+              break;
+            }
+
+            await ProcessEventAsync(factory, e).ConfigureAwait(false);
           }
 
-          await ProcessEventAsync(factory, e).ConfigureAwait(false);
+          Persister.Commit(factory);
         }
-        Persister.Commit(factory);
-      }
-      catch ( OperationCanceledException e)
-      {
-        // we cancelled so we need to rollback
-        Persister.Rollback(factory);
-
-        // but no need to log it if it is our token.
-        if (e.CancellationToken != token)
+        catch (OperationCanceledException e)
         {
+          // we cancelled so we need to rollback
+          Persister.Rollback(factory);
+
+          // but no need to log it if it is our token.
+          if (e.CancellationToken != token)
+          {
+            // log it
+            Logger.Exception(e);
+          }
+          throw;
+        }
+        catch (Exception e)
+        {
+          Persister.Rollback(factory);
+
           // log it
           Logger.Exception(e);
         }
-        throw;
       }
-      catch (Exception e)
+      catch (TimeoutException)
       {
-        Persister.Rollback(factory);
-
         // log it
-        Logger.Exception(e);
+        Logger.Verbose("Timeout while waiting for transaction...");
       }
     }
 

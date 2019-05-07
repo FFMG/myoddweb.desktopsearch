@@ -30,13 +30,13 @@ namespace myoddweb.desktopsearch.parser.IO
     /// </summary>
     private IFiles Files { get; }
 
-    public FilesSystemEventsParser( IPersister persister, IDirectory directory, int eventsParserMs, ILogger logger) :
-      this(persister.Folders.Files, persister, directory, eventsParserMs, logger)
+    public FilesSystemEventsParser( IPersister persister, IDirectory directory, int eventsParserMs, int eventsMaxWaitTransactionMs, ILogger logger) :
+      this(persister.Folders.Files, persister, directory, eventsParserMs, eventsMaxWaitTransactionMs, logger)
     {
     }
 
-    public FilesSystemEventsParser(IFiles files, IPersister persister, IDirectory directory, int eventsParserMs, ILogger logger) :
-      base(persister, directory, eventsParserMs, logger)
+    public FilesSystemEventsParser(IFiles files, IPersister persister, IDirectory directory, int eventsParserMs, int eventsMaxWaitTransactionMs, ILogger logger) :
+      base(persister, directory, eventsParserMs, eventsMaxWaitTransactionMs, logger)
     {
       Files = files;
     }

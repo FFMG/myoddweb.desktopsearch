@@ -23,7 +23,8 @@
     }
   ],
   "Timers": {
-    "EventsParserMs": 30000
+    "EventsParserMs": 30000,
+    "EventsMaxWaitTransactionMs" :  30000 
   },
   "Maintenance": {
     "Active" : 

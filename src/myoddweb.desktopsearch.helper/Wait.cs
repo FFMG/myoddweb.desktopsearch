@@ -156,17 +156,25 @@ namespace myoddweb.desktopsearch.helper
     /// What until a function complete.
     /// </summary>
     /// <param name="what"></param>
+    /// <param name="timeoutMs">The maximum number of ms we want to wait before we throw timeout.</param>
     /// <param name="numProcessors"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private static async Task UntilAsync(Func<bool> what, int numProcessors, CancellationToken token)
+    private static async Task UntilAsync(Func<bool> what, int timeoutMs, int numProcessors, CancellationToken token)
     {
+      // create the timeout
+      var timeout = new Timeout(timeoutMs);
+
       // start number of spin waits.
       var spinWait = numProcessors;
       var count = 0;
       while (!what())
       {
+        // check for cancellation
         token.ThrowIfCancellationRequested();
+
+        // check for timeout
+        timeout.ThrowIfTimeoutReached();
 
         if (count > numProcessors && numProcessors > 1)
         {
@@ -213,14 +221,26 @@ namespace myoddweb.desktopsearch.helper
         ++count;
       }
     }
-    
+
     /// <summary>
     /// Wait until a function completes.
     /// </summary>
     /// <param name="what"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public static Task UntilAsync(Func<bool> what, CancellationToken token = default(CancellationToken) )
+    public static Task UntilAsync(Func<bool> what, CancellationToken token = default(CancellationToken))
+    {
+      return UntilAsync(what, Timeout.Infinite, token);
+    }
+
+    /// <summary>
+    /// Wait until a function completes.
+    /// </summary>
+    /// <param name="what"></param>
+    /// <param name="timeoutMs">The maximum number of ms we want to wait before we throw timeout.</param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public static Task UntilAsync(Func<bool> what, int timeoutMs, CancellationToken token = default(CancellationToken))
     {
       // already cancelled?
       if (token.IsCancellationRequested)
@@ -235,7 +255,7 @@ namespace myoddweb.desktopsearch.helper
       }
 
       // do the actual waiting for the event.
-      return UntilAsync(what, Environment.ProcessorCount, token );
+      return UntilAsync(what, timeoutMs, Environment.ProcessorCount, token );
     }
 
     /// <summary>

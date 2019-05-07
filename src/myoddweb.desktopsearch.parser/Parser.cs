@@ -578,8 +578,8 @@ namespace myoddweb.desktopsearch.parser
 
         try
         {
-          var fsep = new FilesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger);
-          var dsep = new DirectoriesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _logger);
+          var fsep = new FilesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _config.Timers.EventsMaxWaitTransactionMs, _logger);
+          var dsep = new DirectoriesSystemEventsParser(_persister, _directory, _config.Timers.EventsParserMs, _config.Timers.EventsMaxWaitTransactionMs, _logger);
 
           // the file watcher.
           var fileWatcher = new Watcher(path, _logger, fsep, dsep);

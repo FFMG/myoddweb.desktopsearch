@@ -62,16 +62,24 @@ namespace myoddweb.desktopsearch.interfaces.Persisters
     /// <summary>
     /// Get a database transaction.
     /// </summary>
+    /// <param name="timeoutMs">The max number of ms we want to wait.</param>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IConnectionFactory> BeginWrite( CancellationToken token );
+    Task<IConnectionFactory> BeginWrite(int timeoutMs, CancellationToken token );
+
+    /// <summary>
+    /// Get a database transaction.
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    Task<IConnectionFactory> BeginWrite(CancellationToken token );
 
     /// <summary>
     /// Get a database readonly transaction.
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    Task<IConnectionFactory> BeginRead(CancellationToken token);
+    Task<IConnectionFactory> BeginRead(CancellationToken token );
 
     /// <summary>
     /// Rollback the current transaction.

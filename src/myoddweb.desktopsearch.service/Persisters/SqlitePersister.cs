@@ -224,9 +224,15 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        var factory = await _transactionSpinner.BeginRead( ()=> new SqliteReadOnlyConnectionFactory(_connectionReadOnly), token).ConfigureAwait(false);
+
+        var factory = await _transactionSpinner
+          .BeginRead(() => new SqliteReadOnlyConnectionFactory(_connectionReadOnly), token).ConfigureAwait(false);
         PrepareTransaction(factory);
         return factory;
+      }
+      catch (TimeoutException)
+      {
+        throw;
       }
       catch (OperationCanceledException e)
       {
@@ -235,6 +241,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           _logger.Exception(e);
         }
+
         throw;
       }
       catch (Exception e)
@@ -247,10 +254,16 @@ namespace myoddweb.desktopsearch.service.Persisters
     /// <inheritdoc/>
     public Task<IConnectionFactory> BeginWrite(CancellationToken token)
     {
-      return BeginWrite(true, token);
+      return BeginWrite(true, Timeout.Infinite, token );
     }
 
-    private async Task<IConnectionFactory> BeginWrite(bool createTransaction, CancellationToken token)
+    /// <inheritdoc/>
+    public Task<IConnectionFactory> BeginWrite(int timeoutMs, CancellationToken token)
+    {
+      return BeginWrite(true, timeoutMs, token );
+    }
+
+    private async Task<IConnectionFactory> BeginWrite(bool createTransaction, int timeoutMs, CancellationToken token)
     {
       // set the value
       try
@@ -260,7 +273,7 @@ namespace myoddweb.desktopsearch.service.Persisters
         {
           throw new InvalidOperationException("You cannot start using the database as it has not started yet.");
         }
-        var factory = await _transactionSpinner.BeginWrite(() => new SqliteReadWriteConnectionFactory(createTransaction, _config), token).ConfigureAwait(false);
+        var factory = await _transactionSpinner.BeginWrite( () => new SqliteReadWriteConnectionFactory(createTransaction, _config), timeoutMs, token).ConfigureAwait(false);
         PrepareTransaction( factory );
         return factory;
       }
