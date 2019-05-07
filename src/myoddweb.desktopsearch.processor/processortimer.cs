@@ -108,8 +108,11 @@ namespace myoddweb.desktopsearch.processor
         _logger.Exception(e);
       }
 
-      // restart the timer ...
-      await _timer.StartAsync().ConfigureAwait( false );
+      // restart the timer if it has not been disposed...
+      if (_timer != null)
+      {
+        await _timer.StartAsync().ConfigureAwait(false);
+      }
     }
 
     /// <summary>
