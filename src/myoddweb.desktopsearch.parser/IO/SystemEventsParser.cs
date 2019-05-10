@@ -138,73 +138,93 @@ namespace myoddweb.desktopsearch.parser.IO
     /// <summary>
     /// Rebuild all the system events and remove duplicates.
     /// </summary>
-    private IEnumerable<IFileSystemEvent> RebuildSystemEvents()
+    private IFileSystemEvent[] RebuildSystemEvents()
     {
+      try
+      {
+        // rebuild the list.
+        var clone = CloneEventsAndResetList();
+        return RebuildSystemEvents(clone, _token);
+      }
+      catch (Exception e)
+      {
+        // log it
+        Logger.Exception(e);
+
+        // return nothing.
+        return null;
+      }
+    }
+
+    /// <summary>
+    /// Clone all the current events and remove all the pending items.
+    /// </summary>
+    /// <returns></returns>
+    private IFileSystemEvent[] CloneEventsAndResetList()
+    {
+      // clone the value and clear it.
+      IFileSystemEvent[] clone = { };
       lock (_lockEvents)
       {
-        try
+        if (!_currentEvents.Any())
         {
-          // ReSharper disable once InconsistentlySynchronizedField
-          if (!_currentEvents.Any())
-          {
-            return null;
-          }
-
-          // the re-created list.
-          var rebuiltEvents = new List<IFileSystemEvent>();
-
-          // ReSharper disable once InconsistentlySynchronizedField
-          foreach (var currentEvent in _currentEvents)
-          {
-            if (_token.IsCancellationRequested)
-            {
-              _currentEvents.Clear();
-              return null;
-            }
-
-            // we will add this event below
-            // so we can remove all the previous 'changed' events.
-            // that way, the last one in the list will be the most 'up-to-date' ones.
-            rebuiltEvents.RemoveAll(e =>
-              e.Action == currentEvent.Action &&  e.FullName == currentEvent.FullName);
-
-            // remove the duplicate
-            if (currentEvent.Action == EventAction.Touched )
-            {
-              // we know that this event is changed
-              // but if we have some 'created' events for the same file
-              // then there is no need to add the changed events.
-              if (rebuiltEvents.Any(e => e.Action == EventAction.Added && e.FullName == currentEvent.FullName))
-              {
-                // Windows sometime flags an item as changed _and_ created.
-                // we just need to worry about the created one.
-                continue;
-              }
-            }
-
-            // then add the event
-            rebuiltEvents.Add(currentEvent);
-          }
-
-          // clear the current values within the lock
-          _currentEvents.Clear();
-
-          // if we have noting to return, just return null
-          return rebuiltEvents.Any() ? rebuiltEvents : null;
+          return clone;
         }
-        catch (Exception e)
-        {
-          //  something in the current events is hurting
-          // so we might as well get rid of it here.
-          _currentEvents.Clear();
 
-          // log it
-          Logger.Exception(e);
-
-          // return nothing.
-          return null;
-        }
+        // clone the list, clear the content
+        // and then release the locks
+        clone = _currentEvents.ToArray();
+        _currentEvents.Clear();
       }
+
+      // return the clone values we found
+      return clone;
+    }
+
+    private static IFileSystemEvent[] RebuildSystemEvents(IFileSystemEvent[] events, CancellationToken token )
+    {
+      if (events == null || !events.Any())
+      {
+        return new IFileSystemEvent[]{};
+      }
+
+      // the re-created list.
+      var rebuiltEvents = new List<IFileSystemEvent>();
+
+      // ReSharper disable once InconsistentlySynchronizedField
+      foreach (var currentEvent in events)
+      {
+        if (token.IsCancellationRequested)
+        {
+          return new IFileSystemEvent[] { };
+        }
+
+        // we will add this event below
+        // so we can remove all the previous 'changed' events.
+        // that way, the last one in the list will be the most 'up-to-date' ones.
+        rebuiltEvents.RemoveAll(e =>
+          e.Action == currentEvent.Action &&  e.FullName == currentEvent.FullName);
+
+        // remove the duplicate
+        if (currentEvent.Action == EventAction.Touched )
+        {
+          // we know that this event is changed
+          // but if we have some 'created' events for the same file
+          // then there is no need to add the changed events.
+          if (rebuiltEvents.Any(e => e.Action == EventAction.Added && e.FullName == currentEvent.FullName))
+          {
+            // Windows sometime flags an item as changed _and_ created.
+            // we just need to worry about the created one.
+            continue;
+          }
+        }
+
+        // then add the event
+        rebuiltEvents.Add(currentEvent);
+      }
+
+      // if we have noting to return, just return null
+      return rebuiltEvents.Any() ? rebuiltEvents.ToArray() : new IFileSystemEvent[] { };
     }
 
     /// <summary>
@@ -278,52 +298,67 @@ namespace myoddweb.desktopsearch.parser.IO
 
       try
       {
-        // we are starting to process events.
+        // get a connection ... with a timeout
         var factory = await Persister.BeginWrite(_eventsMaxWaitTransactionMs, token).ConfigureAwait(false);
-        try
-        {
-          // we now have the lock... so actually get the events.
-          var events = RebuildSystemEvents();
 
-          // try and do everything at once.
-          // not that we could return null if we have nothing at all to process.
-          foreach (var e in events ?? new List<IFileSystemEvent>())
-          {
-            if (token.IsCancellationRequested)
-            {
-              break;
-            }
-
-            await ProcessEventAsync(factory, e).ConfigureAwait(false);
-          }
-
-          Persister.Commit(factory);
-        }
-        catch (OperationCanceledException e)
-        {
-          // we cancelled so we need to rollback
-          Persister.Rollback(factory);
-
-          // but no need to log it if it is our token.
-          if (e.CancellationToken != token)
-          {
-            // log it
-            Logger.Exception(e);
-          }
-          throw;
-        }
-        catch (Exception e)
-        {
-          Persister.Rollback(factory);
-
-          // log it
-          Logger.Exception(e);
-        }
+        // if we did not timeout then we can process the event.
+        await ProcessEventsAsync(factory, token).ConfigureAwait(false);
       }
       catch (TimeoutException)
       {
+        lock (_lockEvents)
+        {
+          var from = _currentEvents.Count;
+          // make the list ever so slightly smaller.
+          _currentEvents.AddRange( RebuildSystemEvents(CloneEventsAndResetList(), _token) );
+
+          // log it
+          Logger.Verbose( $"Timeout while waiting for transaction ({_currentEvents.Count} events pending from {from} events)");
+        }
+      }
+    }
+
+    private async Task ProcessEventsAsync(IConnectionFactory factory, CancellationToken token)
+    {
+      try
+      {
+        // we now have the lock... so actually get the events.
+        var events = RebuildSystemEvents();
+
+        // try and do everything at once.
+        // not that we could return null if we have nothing at all to process.
+        foreach (var e in events )
+        {
+          if (token.IsCancellationRequested)
+          {
+            break;
+          }
+
+          await ProcessEventAsync(factory, e).ConfigureAwait(false);
+        }
+        Persister.Commit(factory);
+      }
+      catch (OperationCanceledException e)
+      {
+        // we cancelled so we need to rollback
+        Persister.Rollback(factory);
+
+        // but no need to log it if it is our token.
+        if (e.CancellationToken != token)
+        {
+          // log it
+          Logger.Exception(e);
+        }
+
+        // rethrow it.
+        throw;
+      }
+      catch (Exception e)
+      {
+        Persister.Rollback(factory);
+
         // log it
-        Logger.Verbose("Timeout while waiting for transaction...");
+        Logger.Exception(e);
       }
     }
 

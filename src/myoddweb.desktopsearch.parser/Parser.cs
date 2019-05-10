@@ -61,6 +61,8 @@ namespace myoddweb.desktopsearch.parser
     /// The system configuration
     /// </summary>
     private readonly interfaces.Configs.IConfig _config;
+
+    private object _taskLock = new object();
     #endregion
 
     public Parser(interfaces.Configs.IConfig config, IPersister persister, ILogger logger, IDirectory directory)
@@ -81,10 +83,13 @@ namespace myoddweb.desktopsearch.parser
     /// <inheritdoc />
     public async Task MaintenanceAsync(CancellationToken token)
     {
-      // are we still running the start?
-      if (!_runningTask?.IsCompleted ?? true)
+      lock (_taskLock)
       {
-        return;
+        // are we still running the start?
+        if (!_runningTask?.IsCompleted ?? true)
+        {
+          return;
+        }
       }
 
       var factory = await _persister.BeginWrite(token).ConfigureAwait(false);
@@ -116,18 +121,25 @@ namespace myoddweb.desktopsearch.parser
     }
 
     /// <inheritdoc />
-    public async Task WorkAsync(CancellationToken token)
+    public Task WorkAsync(CancellationToken token)
     {
-      // are we still running the start?
-      if (!_runningTask?.IsCompleted ?? true)
+      lock (_taskLock)
       {
-        return;
+        // are we still running the start?
+        if (!_runningTask?.IsCompleted ?? true)
+        {
+          return Task.CompletedTask;
+        }
       }
 
       try
       {
-        // we can re-parse everthing
-        await ParseAllDirectoriesAsync(token).ConfigureAwait(false);
+        lock (_taskLock)
+        {
+          // we can re-parse everthing
+          _runningTask = ParseAllDirectoriesAsync(token);
+        }
+        return _runningTask;
       }
       catch (OperationCanceledException )
       {
@@ -515,46 +527,49 @@ namespace myoddweb.desktopsearch.parser
     }
 
     #region Start Parsing
-    /// <summary>
-    /// Start parsing.
-    /// </summary>
+    /// <inheritdoc />
     public void Start(CancellationToken token)
     {
-      if (_runningTask != null && !_runningTask.IsCompleted)
+      lock (_taskLock)
       {
-        Wait.WaitAll(_runningTask, _logger, token);
-        _runningTask = null;
-      }
-      _runningTask = ParseAllDirectoriesAsync(token).ContinueWith(
-        (t) =>
+        if (_runningTask != null && !_runningTask.IsCompleted)
         {
-          if (!t.Result )
-          {
-            _logger.Warning("All directory parsing returned an error, watchers not starting.");
-            return;
-          }
-          if (t.IsFaulted )
-          {
-            _logger.Exception( "All directory parsing returned a faulted result, watchers not starting.", t.Exception );
-            return;
-          }
-          if (t.IsCanceled)
-          {
-            _logger.Warning("All directory parsing task was cancelled, watchers not starting.");
-            return;
-          }
+          Wait.WaitAll(_runningTask, _logger, token);
+          _runningTask = null;
+        }
 
-          try
+        _runningTask = ParseAllDirectoriesAsync(token).ContinueWith(
+          (t) =>
           {
-            // we then watch for files/folder changes.
-            StartWatchers(token);
-          }
-          catch (Exception e)
-          {
-            _logger.Exception(e);
-          }
-        }, token);
+            if (!t.Result)
+            {
+              _logger.Warning("All directory parsing returned an error, watchers not starting.");
+              return;
+            }
 
+            if (t.IsFaulted)
+            {
+              _logger.Exception("All directory parsing returned a faulted result, watchers not starting.", t.Exception);
+              return;
+            }
+
+            if (t.IsCanceled)
+            {
+              _logger.Warning("All directory parsing task was cancelled, watchers not starting.");
+              return;
+            }
+
+            try
+            {
+              // we then watch for files/folder changes.
+              StartWatchers(token);
+            }
+            catch (Exception e)
+            {
+              _logger.Exception(e);
+            }
+          }, token);
+      }
 
       _logger.Information("Parser started");
     }
@@ -599,9 +614,7 @@ namespace myoddweb.desktopsearch.parser
     #endregion
 
     #region Stop Parsing
-    /// <summary>
-    /// Stop parsing
-    /// </summary>
+    /// <inheritdoc />
     public void Stop()
     {
       // Stop the file watcher
@@ -611,9 +624,14 @@ namespace myoddweb.desktopsearch.parser
       }
       _watchers.Clear();
 
-      // wait for the main task itself to complete.
-      if (_runningTask != null && !_runningTask.IsCompleted)
+      lock (_taskLock)
       {
+        // wait for the main task itself to complete.
+        if (_runningTask == null || _runningTask.IsCompleted)
+        {
+          return;
+        }
+
         Wait.WaitAll(_runningTask, _logger);
         _runningTask = null;
       }
