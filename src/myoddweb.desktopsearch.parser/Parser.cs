@@ -168,6 +168,9 @@ namespace myoddweb.desktopsearch.parser
         var stopwatch = new Stopwatch();
         stopwatch.Start();
 
+        // get the last time we checked access time.
+        var lastAccessTimeUtc = await GetLastUpdatedTimeAsync(token).ConfigureAwait(false);
+
         // all the tasks
         var tasks = new List<Task<long>>();
 
@@ -177,7 +180,7 @@ namespace myoddweb.desktopsearch.parser
           token.ThrowIfCancellationRequested();
 
           // parse that one directory
-          tasks.Add(ParseDirectoriesAsync(path, token));
+          tasks.Add(ParseDirectoriesAsync(path, lastAccessTimeUtc, token));
         }
 
         // wait for everything to complete
@@ -208,9 +211,10 @@ namespace myoddweb.desktopsearch.parser
     /// Parse this path and sub directories.
     /// </summary>
     /// <param name="path"></param>
+    /// <param name="lastAccessTimeUtc">The last time we checked the access time.</param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<long> ParseDirectoriesAsync(DirectoryInfo path, CancellationToken token)
+    private async Task<long> ParseDirectoriesAsync(DirectoryInfo path, DateTime lastAccessTimeUtc, CancellationToken token)
     {
       // get all the directories.
       var directories = await _directory.ParseDirectoriesAsync(path, token).ConfigureAwait(false);
@@ -220,7 +224,7 @@ namespace myoddweb.desktopsearch.parser
       }
 
       // process all the files.
-      if (!await PersistDirectoriesAsync(path, directories, token).ConfigureAwait(false))
+      if (!await PersistDirectoriesAsync(path, directories,lastAccessTimeUtc, token).ConfigureAwait(false))
       {
         return 0;
       }
@@ -236,7 +240,7 @@ namespace myoddweb.desktopsearch.parser
     /// <param name="token"></param>
     private async Task<DateTime> GetLastUpdatedTimeAsync(CancellationToken token)
     {
-      var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
+      var transaction = await _persister.BeginRead(token).ConfigureAwait(false);
       if (null == transaction)
       {
         //  we probably cancelled.
@@ -293,16 +297,19 @@ namespace myoddweb.desktopsearch.parser
     /// </summary>
     /// <param name="parent"></param>
     /// <param name="directories"></param>
+    /// <param name="lastAccessTimeUtc">The last time we checked the accessed time.</param>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task<bool> PersistDirectoriesAsync(FileSystemInfo parent, IEnumerable<DirectoryInfo> directories, CancellationToken token)
+    private async Task<bool> PersistDirectoriesAsync(
+      FileSystemInfo parent, 
+      IEnumerable<DirectoryInfo> directories, 
+      DateTime lastAccessTimeUtc,
+      CancellationToken token
+    )
     {
       // start the stopwatch
       var stopwatch = new Stopwatch();
       stopwatch.Start();
-
-      // get the last time we did this
-      var lastAccessTimeUtc = await GetLastUpdatedTimeAsync(token).ConfigureAwait(false);
 
       // get all the changed or updated files.
       var transaction = await _persister.BeginWrite(token).ConfigureAwait(false);
