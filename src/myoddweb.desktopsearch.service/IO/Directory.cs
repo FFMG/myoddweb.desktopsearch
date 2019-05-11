@@ -158,17 +158,44 @@ namespace myoddweb.desktopsearch.service.IO
           return null;
         }
 
-        var posibleFiles = new ConcurrentBag<FileInfo>(  );
-        var tasks = files.Select(file => Task.Run(() =>
+        // all the posible files.
+        var posibleFiles = new ConcurrentBag<FileInfo>();
+
+        // check if we need to use threads or not.
+        var processorCount = Environment.ProcessorCount;
+        if (files.Count() < processorCount)
+        {
+          foreach (var file in files)
           {
-            if (helper.File.CanReadFile(file))
+            token.ThrowIfCancellationRequested();
+            if (!helper.File.CanReadFile(file))
             {
-              posibleFiles.Add(file);
+              continue;
+            }
+            posibleFiles.Add(file);
+          }
+        }
+        else
+        {
+          var partitions = Partitioner.Create(files).GetPartitions(processorCount * 2);
+          var tasks = partitions.Select(partition => Task.Run(() =>
+          {
+            using(partition)
+            {
+              while (partition.MoveNext())
+              {
+                token.ThrowIfCancellationRequested();
+                var file = partition.Current;
+                if (helper.File.CanReadFile(file))
+                {
+                  posibleFiles.Add(file);
+                }
+              }
             }
           }, token)).ToArray();
-
-        // we then wait for them all
-        await Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
+          // we then wait for them all
+          await Wait.WhenAll(tasks, _logger, token).ConfigureAwait(false);
+        }
 
         // if we found nothing we return null.
         return posibleFiles.Any() ? posibleFiles.ToList() : null;
