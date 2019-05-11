@@ -136,7 +136,7 @@ namespace myoddweb.desktopsearch.service.IO
         IEnumerable<FileInfo> files;
         try
         {
-          files = directory.EnumerateFiles();
+          files = directory.EnumerateFiles().ToArray();
         }
         catch (SecurityException)
         {
@@ -177,6 +177,8 @@ namespace myoddweb.desktopsearch.service.IO
         }
         else
         {
+          // partition the files into managable groups
+          // so we don't create thoushands of tasks.
           var partitions = Partitioner.Create(files).GetPartitions(processorCount * 2);
           var tasks = partitions.Select(partition => Task.Run(() =>
           {
