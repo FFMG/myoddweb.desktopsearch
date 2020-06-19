@@ -34,6 +34,7 @@ using myoddweb.desktopsearch.service.Configs;
 using myoddweb.desktopsearch.service.Logger;
 using myoddweb.desktopsearch.service.Persisters;
 using Microsoft.Win32;
+using myoddweb.commandlineparser.Rules;
 using Newtonsoft.Json;
 using Directory = myoddweb.desktopsearch.service.IO.Directory;
 using ILogger = myoddweb.desktopsearch.interfaces.Configs.ILogger;
@@ -476,12 +477,13 @@ namespace myoddweb.desktopsearch.service
     /// <param name="args"></param>
     public void InvokeAction(string[] args)
     {
-      _commandlineParsers = new CommandlineParser(args, new Dictionary<string, CommandlineData>
-      {
-        { "config", new CommandlineData{ IsRequired = false, DefaultValue = "config.json"}},
-        { "install", new CommandlineData{ IsRequired = false} },
-        { "uninstall", new CommandlineData{ IsRequired = false} }
-      });
+      _commandlineParsers = new CommandlineParser(args,
+        new CommandlineArgumentRules
+        {
+          new OptionalCommandlineArgumentRule( "config", "config.json"),
+          new OptionalCommandlineArgumentRule( "install" ),
+          new OptionalCommandlineArgumentRule( "uninstall" )
+        });
 
       // we can now call with the parameters.
       InvokeAction();

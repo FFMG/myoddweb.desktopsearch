@@ -13,11 +13,11 @@
 //    You should have received a copy of the GNU General Public License
 //    along with Myoddweb.DesktopSearch.  If not, see<https://www.gnu.org/licenses/gpl-3.0.en.html>.
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
 using myoddweb.commandlineparser;
+using myoddweb.commandlineparser.Rules;
 using myoddweb.desktopsearch.Interfaces;
 using Newtonsoft.Json;
 
@@ -40,11 +40,12 @@ namespace myoddweb.desktopsearch
       Debugger.Launch();
 #endif
 
-      var arguments = new CommandlineParser(args, new Dictionary<string, CommandlineData>
-      {
-        { "config", new CommandlineData{ IsRequired = false, DefaultValue = "desktop.json"}},
-        { "query", new CommandlineData{ IsRequired = false, DefaultValue = ""}}
-      });
+      var arguments = new CommandlineParser(args, 
+        new CommandlineArgumentRules
+        {
+          new OptionalCommandlineArgumentRule( "config", "desktop.json"),
+          new OptionalCommandlineArgumentRule( "query", "")
+        });
 
       Application.Run(new Search( Config( arguments), arguments["query"]));
     }
