@@ -23,14 +23,21 @@ The port number is set in the config file under `WebServer`
 
 ### As a service
 
-- Install the server `myoddweb.desktopsearch.exe -install --config "path\to\your\config.json"`
-- Using your browser go to `http://localhost:9502/` and search for something :).
+- Install the server `myoddweb.desktopsearch.service.exe --install --config "path\to\your\config.json"`
+- Start the service: `net start "Myoddweb.DesktopSearch Service"`
+- Wait a little bit for indexing to start and actually start parsing.
+- Using your browser go to `http://localhost:9502/` and search for something :) (the port number is configured in the config file).
+
+#### Uninstall
+
+- Stop the service: `net stop "Myoddweb.DesktopSearch Service"`
+- UnInstall the server: `myoddweb.desktopsearch.service.exe --install --config "path\to\your\config.json"`
 
 ### As a console app
 
 Running as a console is significantly slower than running as a service, (more logging, checks, output and so on)
 
-- Just start the console: `myoddweb.desktopsearch.exe --console --config "path\to\your\config.json"`
+- Just start the console: `myoddweb.desktopsearch.service.exe --console --config "path\to\your\config.json"`
 - Using your browser go to `http://localhost:9502/` and search for something :).
 
 ## Why use it?

@@ -17,6 +17,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
 using myoddweb.commandlineparser;
+using myoddweb.commandlineparser.Interfaces;
 using myoddweb.commandlineparser.Rules;
 using myoddweb.desktopsearch.Interfaces;
 using Newtonsoft.Json;
@@ -44,15 +45,16 @@ namespace myoddweb.desktopsearch
         new CommandlineArgumentRules
         {
           new OptionalCommandlineArgumentRule( "config", "desktop.json"),
-          new OptionalCommandlineArgumentRule( "query", "")
+          new OptionalCommandlineArgumentRule( "query", "", "The query we want to search as the app starts")
         });
 
       Application.Run(new Search( Config( arguments), arguments["query"]));
     }
 
-    private static IConfig Config(CommandlineParser arguments )
+    private static IConfig Config(ICommandlineParser arguments )
     {
-      var json = File.ReadAllText( ConfigFile(arguments["config"]));
+      var configFile = arguments.Get<string>("config");
+      var json = File.ReadAllText( ConfigFile(configFile));
       return JsonConvert.DeserializeObject<Config.Config>(json);
     }
 
