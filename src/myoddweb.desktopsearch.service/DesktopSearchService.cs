@@ -168,7 +168,7 @@ namespace myoddweb.desktopsearch.service
     /// <returns></returns>
     private IConfig CreateConfig()
     {
-      var config = _commandlineParsers["config"];
+      var config = _commandlineParsers.Get<string>("config");
       config = !string.IsNullOrEmpty(config) ?  Environment.ExpandEnvironmentVariables(config) : "";
       _eventLog.WriteEntry($"Config location: {config}.");
       var json = File.ReadAllText(config);
@@ -481,8 +481,9 @@ namespace myoddweb.desktopsearch.service
         new CommandlineArgumentRules
         {
           new OptionalCommandlineArgumentRule( "config", "config.json"),
-          new OptionalCommandlineArgumentRule( "install" ),
-          new OptionalCommandlineArgumentRule( "uninstall" )
+          new OptionalCommandlineArgumentRule( "install", "false", "Install the service" ),
+          new OptionalCommandlineArgumentRule( "uninstall", "false", "Uninstall the service" ),
+          new OptionalCommandlineArgumentRule( "console", "false", "Run in console mode" )
         });
 
       // we can now call with the parameters.
@@ -640,7 +641,7 @@ namespace myoddweb.desktopsearch.service
       try
       {
         // start the parsers task
-        _startupTask = Task.Run(() => StartParserAndProcessor(), _cancellationTokenSource.Token);
+        _startupTask = Task.Run(StartParserAndProcessor, _cancellationTokenSource.Token);
 
         Console.WriteLine("Press Ctrl+C to stop the monitors.");
 

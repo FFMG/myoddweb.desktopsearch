@@ -1,6 +1,37 @@
-# MyOddWeb.com Desktop Search [![Release](https://img.shields.io/badge/release-v0.2.0.1-brightgreen.png?style=flat)](https://github.com/FFMG/myoddweb.desktopsearch/) [![Build Status](https://travis-ci.org/FFMG/myoddweb.desktopsearch.svg?branch=master)](https://travis-ci.org/FFMG/myoddweb.desktopsearch)
+# MyOddWeb.com Desktop Search [![Release](https://img.shields.io/badge/release-v0.2.2.0-brightgreen.png?style=flat)](https://github.com/FFMG/myoddweb.desktopsearch/) [![Build Status](https://travis-ci.org/FFMG/myoddweb.desktopsearch.svg?branch=master)](https://travis-ci.org/FFMG/myoddweb.desktopsearch)
 
 myoddweb.desktopsearch, (MDS), is a powerful indexer files indexer. It makes is fast and easy to find indexed files on your desktop.
+
+## How to use it ...
+
+**NB**: Remember that in all cases it takes a bit of time to create/index the database ... (especially if you have large drives)
+
+While the CPU usage might seem high at first, it is only for the initial indexing ... a bit like the first time you install a new version of windows or everytime your Anti-Virus feels like scanning everything.
+
+At the bottom of the search page, (`http://localhost:9502/`), you will get a somewhat accurate percentage of indexing done.
+
+The port number is set in the config file under `WebServer`
+
+```json
+{
+  ...
+  "WebServer": {
+    "Port": 9502
+  },
+  ...
+```
+
+### As a service
+
+- Install the server `myoddweb.desktopsearch.exe -install --config "path\to\your\config.json"`
+- Using your browser go to `http://localhost:9502/` and search for something :).
+
+### As a console app
+
+Running as a console is significantly slower than running as a service, (more logging, checks, output and so on)
+
+- Just start the console: `myoddweb.desktopsearch.exe --console --config "path\to\your\config.json"`
+- Using your browser go to `http://localhost:9502/` and search for something :).
 
 ## Why use it?
 

@@ -1,4 +1,4 @@
-# ChangeLog for MyOddWebDesktop
+# ChangeLog for MyOddWebDesktopSearch
 
 Notable changes
 
@@ -7,6 +7,12 @@ Notable changes
 ### Added
 
 ### Changed
+
+- [MyOddWeb.CommandlineParser](https://github.com/FFMG/myoddweb.commandlineparser) to version 0.1.5
+- Newtonsoft.Json to version 12.0.3
+- System.Data.SQLite to version 1.0.113.1
+- [MyOddWeb.DirectoryWatcher](https://github.com/FFMG/myoddweb.directorywatcher) to version 0.1.8
+- Updated the [Readme](readme.md) with details on how to use MyOddWebDesktopSearch
 
 ### Fixed
 
