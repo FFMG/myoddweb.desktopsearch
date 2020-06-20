@@ -491,6 +491,46 @@ namespace myoddweb.desktopsearch.service.Persisters
     }
 
     /// <summary>
+    /// Return the number of unused pages in the database file
+    /// <see ref="https://www.sqlite.org/pragma.html#pragma_freelist_count"/>
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns>number of unused pages</returns>
+    private async Task<long> CaclulateFreeListAsync( CancellationToken token )
+    {
+      // get a factory item ... but we do not want a transaction.
+      const string sql = "PRAGMA freelist_count;";
+      var factory = await BeginRead(token).ConfigureAwait(false);
+      try
+      {
+        long totalNumberOfPages;
+        using (var command = factory.CreateCommand(sql))
+        {
+          var value = await factory.ExecuteReadOneAsync(command, token).ConfigureAwait(false);
+          if (null == value || value == DBNull.Value)
+          {
+            totalNumberOfPages = 0;
+          }
+          else
+          {
+            totalNumberOfPages = (long)value;
+          }
+        }
+
+        // commit our read, (normally unused).
+        factory.Commit();
+
+        // the value
+        return totalNumberOfPages;
+      }
+      catch (Exception)
+      {
+        factory.Rollback();
+        throw;
+      }
+    }
+
+    /// <summary>
     /// Fix all the parts words to make sure that the search table is up to date.
     /// @see https://www.sqlite.org/lang_vacuum.html
     /// </summary>
@@ -506,13 +546,21 @@ namespace myoddweb.desktopsearch.service.Persisters
         var lastVacuum = await Config.GetConfigValueAsync(configVacuum, DateTime.MinValue, factory, token)
           .ConfigureAwait(false);
 
-        // between 24 and 28 hours to prevent running at the same time as others.
-        var randomHours = (new Random(DateTime.UtcNow.Millisecond)).Next(24, 28);
+        // between 22 and 26 hours to prevent running at the same time as others.
+        var randomHours = (new Random(DateTime.UtcNow.Millisecond)).Next(22, 26);
         if ((DateTime.UtcNow - lastVacuum).TotalHours > randomHours)
         {
-          // https://www.sqlite.org/lang_vacuum.html
-          _logger.Information("Maintenance vacuum database");
-          await ExecuteNonQueryAsync("VACUUM;",factory, token).ConfigureAwait(false);
+          // calculate the current number of pages
+          // https://www.sqlite.org/pragma.html#pragma_freelist_count
+          var pages = await CaclulateFreeListAsync(token).ConfigureAwait(false);
+
+          // get about 25% of that number and make sure that the number is at least 1
+          var pagesToVacuum = (long) (pages * 0.25) + 1;
+
+          // https://www.sqlite.org/pragma.html#pragma_incremental_vacuum
+          // https://www.sqlite.org/fileformat2.html#freelist
+          _logger.Information( $"Maintenance incremental database trying to remove {pagesToVacuum} unused pages, ({pages} actual unused pages)");
+          await ExecuteNonQueryAsync($"PRAGMA incremental_vacuum({pagesToVacuum});", factory, token).ConfigureAwait(false);
 
           // set the update time.
           await Config.SetConfigValueAsync(configVacuum, DateTime.UtcNow, factory, token).ConfigureAwait(false);

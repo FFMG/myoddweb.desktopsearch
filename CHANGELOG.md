@@ -13,6 +13,8 @@ Notable changes
 - System.Data.SQLite to version 1.0.113.1
 - [MyOddWeb.DirectoryWatcher](https://github.com/FFMG/myoddweb.directorywatcher) to version 0.1.8
 - Updated the [Readme](readme.md) with details on how to use MyOddWebDesktopSearch
+- Changed the maintenance process from full Vacumm to [incremental vacuum](https://www.sqlite.org/pragma.html#pragma_incremental_vacuum)
+- Changed the [auto-vacuum](https://www.sqlite.org/pragma.html#pragma_auto_vacuum) to incremental from none
 
 ### Fixed
 
