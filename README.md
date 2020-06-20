@@ -23,6 +23,10 @@ The port number is set in the config file under `WebServer`
 
 ### As a service
 
+Of course, you need to have administrator privileges
+
+#### Install
+
 - Install the server `myoddweb.desktopsearch.service.exe --install --config "path\to\your\config.json"`
 - Start the service: `net start "Myoddweb.DesktopSearch Service"`
 - Wait a little bit for indexing to start and actually start parsing.
