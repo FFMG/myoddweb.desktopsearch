@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define AppName "desktopsearch"
-#define AppVersion "0.2.1"
+#define AppVersion "0.2.2"
 #define AppURL "http://www.myoddweb.com/"
 #define AppExeName "myoddweb.desktopsearch.exe"
 #define RootFolder ".."
